@@ -245,8 +245,84 @@ func (am *AssociativeMemory) AddChat(created time.Time, expiration *time.Time, s
     return nil
 }
 
+// Filter represents a filter for retrieving concept nodes
+type Filter struct {
+    NodeType      string
+    Subject       string
+    Predicate     string
+    Object        string
+    Keywords      []string
+    PlaintextQuery string
+    StartTime     *time.Time
+    EndTime       *time.Time
+    EmbeddingIDs  []string
+}
+
+// RetrieveEventsByFilter retrieves events from the associative memory based on filters
+func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) (*SearchResults, error) {
+    am.mu.RLock()
+    defer am.mu.RUnlock()
+
+    plaintextResults, err := am.RetrieveEventsByFilter(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    vectorResults, err := am.RetrieveEventsByVector(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    return &SearchResults{
+        PlaintextResults: plaintextResults,
+        VectorResults:    vectorResults,
+    }, nil
+}
+
+// RetrieveThoughtsByFilter retrieves thoughts from the associative memory based on filters
+func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) (*SearchResults, error) {
+    am.mu.RLock()
+    defer am.mu.RUnlock()
+
+    plaintextResults, err := am.RetrieveThoughtsByFilter(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    vectorResults, err := am.RetrieveThoughtsByVector(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    return &SearchResults{
+        PlaintextResults: plaintextResults,
+        VectorResults:    vectorResults,
+    }, nil
+}
+
+// RetrieveChatsByFilter retrieves chats from the associative memory based on filters
+func (am *AssociativeMemory) RetrieveChats(filters ...Filter) (*SearchResults, error) {
+    am.mu.RLock()
+    defer am.mu.RUnlock()
+
+    plaintextResults, err := am.RetrieveChatsByFilter(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    vectorResults, err := am.RetrieveChatsByVector(filters...)
+    if err != nil {
+        return nil, err
+    }
+
+    return &SearchResults{
+        PlaintextResults: plaintextResults,
+        VectorResults:    vectorResults,
+    }, nil
+}
+
 // RetrieveEvents retrieves events from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveEventsByFilter(filters ...Filter) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -269,6 +345,11 @@ func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) ([]ConceptNode, e
         }
         if len(filter.Keywords) > 0 {
             query += fmt.Sprintf(" AND keywords && %s", pq.Array(filter.Keywords))
+        }
+        if filter.PlaintextQuery != "" {
+            queryTokens := utils.Tokenize(filter.PlaintextQuery)
+            scores := am.bm25.ScoreTokens(queryTokens)
+            query += fmt.Sprintf(" AND (SELECT SUM(bm25_score(keywords, %s, %s)) FROM unnest(keywords) AS keyword) > 0", pq.Array(queryTokens), pq.Array(scores))
         }
         if filter.StartTime != nil {
             query += fmt.Sprintf(" AND created >= '%s'", filter.StartTime.Format(time.RFC3339))
@@ -306,7 +387,7 @@ func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) ([]ConceptNode, e
 }
 
 // RetrieveThoughts retrieves thoughts from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveThoughtsByFilter(filters ...Filter) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -329,6 +410,11 @@ func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) ([]ConceptNode,
         }
         if len(filter.Keywords) > 0 {
             query += fmt.Sprintf(" AND keywords && %s", pq.Array(filter.Keywords))
+        }
+        if filter.PlaintextQuery != "" {
+            queryTokens := utils.Tokenize(filter.PlaintextQuery)
+            scores := am.bm25.ScoreTokens(queryTokens)
+            query += fmt.Sprintf(" AND (SELECT SUM(bm25_score(keywords, %s, %s)) FROM unnest(keywords) AS keyword) > 0", pq.Array(queryTokens), pq.Array(scores))
         }
         if filter.StartTime != nil {
             query += fmt.Sprintf(" AND created >= '%s'", filter.StartTime.Format(time.RFC3339))
@@ -366,7 +452,7 @@ func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) ([]ConceptNode,
 }
 
 // RetrieveChats retrieves chats from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveChats(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveChatsByFilter(filters ...Filter) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -389,6 +475,11 @@ func (am *AssociativeMemory) RetrieveChats(filters ...Filter) ([]ConceptNode, er
         }
         if len(filter.Keywords) > 0 {
             query += fmt.Sprintf(" AND keywords && %s", pq.Array(filter.Keywords))
+        }
+        if filter.PlaintextQuery != "" {
+            queryTokens := utils.Tokenize(filter.PlaintextQuery)
+            scores := am.bm25.ScoreTokens(queryTokens)
+            query += fmt.Sprintf(" AND (SELECT SUM(bm25_score(keywords, %s, %s)) FROM unnest(keywords) AS keyword) > 0", pq.Array(queryTokens), pq.Array(scores))
         }
         if filter.StartTime != nil {
             query += fmt.Sprintf(" AND created >= '%s'", filter.StartTime.Format(time.RFC3339))
@@ -423,18 +514,6 @@ func (am *AssociativeMemory) RetrieveChats(filters ...Filter) ([]ConceptNode, er
     }
 
     return nodes, nil
-}
-
-// Filter represents a filter for retrieving concept nodes
-type Filter struct {
-    NodeType     string
-    Subject      string
-    Predicate    string
-    Object       string
-    Keywords     []string
-    StartTime    *time.Time
-    EndTime      *time.Time
-    EmbeddingIDs []string
 }
 
 // RetrieveEventsByVector retrieves events from the associative memory based on vector similarity
@@ -533,138 +612,6 @@ func (am *AssociativeMemory) RetrieveChatsByVector(queryEmbedding []float32, k i
     rows, err := am.db.Query(query, pq.Array(queryEmbedding), k)
     if err != nil {
         am.logger.Printf("Error retrieving chats by vector: %v", err)
-        return nil, err
-    }
-    defer rows.Close()
-
-    for rows.Next() {
-        var node ConceptNode
-        var expiration pq.NullTime
-        err = rows.Scan(&node.ID, &node.NodeCount, &node.TypeCount, &node.Type, &node.Depth, &node.Created, &expiration, &node.Subject, &node.Predicate, &node.Object, &node.Description, &node.EmbeddingID, &node.Poignancy, pq.Array(&node.Keywords), pq.Array(&node.Filling))
-        if err != nil {
-            am.logger.Printf("Error scanning chat node: %v", err)
-            return nil, err
-        }
-        if expiration.Valid {
-            node.Expiration = &expiration.Time
-        }
-        nodes = append(nodes, node)
-    }
-
-    return nodes, nil
-}
-
-// RetrieveEventsByPlaintext retrieves events from the associative memory based on plaintext search
-func (am *AssociativeMemory) RetrieveEventsByPlaintext(query string, k int) ([]ConceptNode, error) {
-    am.mu.RLock()
-    defer am.mu.RUnlock()
-
-    var nodes []ConceptNode
-    queryTokens := utils.Tokenize(query)
-    scores := am.bm25.ScoreTokens(queryTokens)
-
-    query = `
-        SELECT id, node_count, type_count, type, depth, created, expiration, subject, predicate, object, description, embedding_id, poignancy, keywords, filling
-        FROM concept_nodes
-        WHERE type = 'event'
-        ORDER BY (
-            SELECT SUM(bm25_score(keywords, $1, $2))
-            FROM unnest(keywords) AS keyword
-        ) DESC
-        LIMIT $3
-    `
-
-    rows, err := am.db.Query(query, pq.Array(queryTokens), pq.Array(scores), k)
-    if err != nil {
-        am.logger.Printf("Error retrieving events by plaintext: %v", err)
-        return nil, err
-    }
-    defer rows.Close()
-
-    for rows.Next() {
-        var node ConceptNode
-        var expiration pq.NullTime
-        err = rows.Scan(&node.ID, &node.NodeCount, &node.TypeCount, &node.Type, &node.Depth, &node.Created, &expiration, &node.Subject, &node.Predicate, &node.Object, &node.Description, &node.EmbeddingID, &node.Poignancy, pq.Array(&node.Keywords), pq.Array(&node.Filling))
-        if err != nil {
-            am.logger.Printf("Error scanning event node: %v", err)
-            return nil, err
-        }
-        if expiration.Valid {
-            node.Expiration = &expiration.Time
-        }
-        nodes = append(nodes, node)
-    }
-
-    return nodes, nil
-}
-
-// RetrieveThoughtsByPlaintext retrieves thoughts from the associative memory based on plaintext search
-func (am *AssociativeMemory) RetrieveThoughtsByPlaintext(query string, k int) ([]ConceptNode, error) {
-    am.mu.RLock()
-    defer am.mu.RUnlock()
-
-    var nodes []ConceptNode
-    queryTokens := utils.Tokenize(query)
-    scores := am.bm25.ScoreTokens(queryTokens)
-
-    query = `
-        SELECT id, node_count, type_count, type, depth, created, expiration, subject, predicate, object, description, embedding_id, poignancy, keywords, filling
-        FROM concept_nodes
-        WHERE type = 'thought'
-        ORDER BY (
-            SELECT SUM(bm25_score(keywords, $1, $2))
-            FROM unnest(keywords) AS keyword
-        ) DESC
-        LIMIT $3
-    `
-
-    rows, err := am.db.Query(query, pq.Array(queryTokens), pq.Array(scores), k)
-    if err != nil {
-        am.logger.Printf("Error retrieving thoughts by plaintext: %v", err)
-        return nil, err
-    }
-    defer rows.Close()
-
-    for rows.Next() {
-        var node ConceptNode
-        var expiration pq.NullTime
-        err = rows.Scan(&node.ID, &node.NodeCount, &node.TypeCount, &node.Type, &node.Depth, &node.Created, &expiration, &node.Subject, &node.Predicate, &node.Object, &node.Description, &node.EmbeddingID, &node.Poignancy, pq.Array(&node.Keywords), pq.Array(&node.Filling))
-        if err != nil {
-            am.logger.Printf("Error scanning thought node: %v", err)
-            return nil, err
-        }
-        if expiration.Valid {
-            node.Expiration = &expiration.Time
-        }
-        nodes = append(nodes, node)
-    }
-
-    return nodes, nil
-}
-
-// RetrieveChatsByPlaintext retrieves chats from the associative memory based on plaintext search
-func (am *AssociativeMemory) RetrieveChatsByPlaintext(query string, k int) ([]ConceptNode, error) {
-    am.mu.RLock()
-    defer am.mu.RUnlock()
-
-    var nodes []ConceptNode
-    queryTokens := utils.Tokenize(query)
-    scores := am.bm25.ScoreTokens(queryTokens)
-
-    query = `
-        SELECT id, node_count, type_count, type, depth, created, expiration, subject, predicate, object, description, embedding_id, poignancy, keywords, filling
-        FROM concept_nodes
-        WHERE type = 'chat'
-        ORDER BY (
-            SELECT SUM(bm25_score(keywords, $1, $2))
-            FROM unnest(keywords) AS keyword
-        ) DESC
-        LIMIT $3
-    `
-
-    rows, err := am.db.Query(query, pq.Array(queryTokens), pq.Array(scores), k)
-    if err != nil {
-        am.logger.Printf("Error retrieving chats by plaintext: %v", err)
         return nil, err
     }
     defer rows.Close()
