@@ -8,6 +8,7 @@ import (
 	"llm-agent/internal/interfaces/mocks"
 )
 
+// TestServiceLocator_Register tests the Register method of the ServiceLocator
 func TestServiceLocator_Register(t *testing.T) {
 	sl := NewServiceLocator()
 
@@ -74,6 +75,7 @@ func TestServiceLocator_Register(t *testing.T) {
 	}
 }
 
+// TestServiceLocator_Get tests the Get method of the ServiceLocator
 func TestServiceLocator_Get(t *testing.T) {
 	sl := NewServiceLocator()
 
@@ -136,6 +138,7 @@ func TestServiceLocator_Get(t *testing.T) {
 	}
 }
 
+// TestServiceLocator_GetServices tests the GetServices method of the ServiceLocator
 func TestServiceLocator_GetServices(t *testing.T) {
 	sl := NewServiceLocator()
 
@@ -177,6 +180,7 @@ func TestServiceLocator_GetServices(t *testing.T) {
 	}
 }
 
+// containsService is a helper function to check if a service is present in a slice of services
 func containsService(services []interfaces.Service, service interfaces.Service) bool {
 	for _, s := range services {
 		if s == service {
