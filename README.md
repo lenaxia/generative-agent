@@ -28,9 +28,13 @@ The system includes concurrency and thread management features to handle the loa
 
 ### Configurable Thread Pools
 
-The system has separate thread pools for handling heartbeats, events, and global tasks. The thread pool sizes are configurable to allow for dynamic scaling based on the observed load. Event Queuing and Prioritization:
+The system has separate thread pools for handling heartbeats, events, and global tasks. The thread pool sizes are configurable to allow for dynamic scaling based on the observed load.
 
-If the event thread pool is at capacity, events are queued in a priority queue. High-priority events can jump to the front of the queue. Before processing an event from the queue, the system makes an LLM call to verify if the event is still relevant. If not, the event is discarded. Global Thread Pool:
+### Event Queuing and Prioritization
+
+If the event thread pool is at capacity, events are queued in a priority queue. High-priority events can jump to the front of the queue. Before processing an event from the queue, the system makes an LLM call to verify if the event is still relevant. If not, the event is discarded.
+
+### Global Thread Pool
 
 The system has a global thread pool, which is smaller than the heartbeat and event thread pools. If the global thread pool is exhausted, new tasks (both heartbeats and events) are queued and processed as resources become available. This concurrency and thread management approach allows the system to handle load spikes, prioritize important events, and gracefully degrade performance when resources are exhausted.
 
@@ -59,6 +63,8 @@ llm-agent/
 │   │   │   └── modulemanager.go
 │   │   ├── servicelocator/
 │   │   │   └── servicelocator.go
+│   │   ├── eventmanager/
+│   │   │   └── eventmanager.go
 │   │   └── types/
 │   │       ├── event.go
 │   │       ├── function.go
