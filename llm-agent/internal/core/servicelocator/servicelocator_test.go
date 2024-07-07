@@ -2,6 +2,7 @@ package servicelocator
 
 import (
 	"reflect"
+	"sync"
 	"testing"
 
 	"llm-agent/internal/interfaces"
@@ -255,6 +256,205 @@ func TestServiceLocator_RegisterAndGet(t *testing.T) {
 	if newTransientService == transientService {
 		t.Errorf("Expected a new instance of transient service, got the same instance")
 	}
+}
+
+// TestServiceLocator_RegisterWithEmptyName tests registering a service with an empty name
+func TestServiceLocator_RegisterWithEmptyName(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a service with an empty name
+	service := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    service,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "",
+	})
+
+	// Get the service with an empty name
+	serviceInstance, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "")
+	if err != nil {
+		t.Errorf("Unexpected error getting service with empty name: %v", err)
+	}
+	if serviceInstance != service {
+		t.Errorf("Expected service with empty name, got %v", serviceInstance)
+	}
+}
+
+// TestServiceLocator_RegisterWithSameNameDifferentLifetimes tests registering services with the same name but different lifetimes
+func TestServiceLocator_RegisterWithSameNameDifferentLifetimes(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a singleton service
+	singletonService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    singletonService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "myService",
+	})
+
+	// Register a static service with the same name
+	staticService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    staticService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Static,
+		Name:       "myService",
+	})
+
+	// Register a transient service with the same name
+	transientService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    transientService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Transient,
+		Name:       "myService",
+	})
+
+	// Get the singleton service
+	service, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "myService")
+	if err != nil {
+		t.Errorf("Unexpected error getting singleton service: %v", err)
+	}
+	if service != singletonService {
+		t.Errorf("Expected singleton service, got %v", service)
+	}
+
+	// Get the static service
+	service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "myService")
+	if err != nil {
+		t.Errorf("Unexpected error getting static service: %v", err)
+	}
+	if service != staticService {
+		t.Errorf("Expected static service, got %v", service)
+	}
+
+	// Get the transient service
+	service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "myService")
+	if err != nil {
+		t.Errorf("Unexpected error getting transient service: %v", err)
+	}
+	if service != transientService {
+		t.Errorf("Expected transient service, got %v", service)
+	}
+}
+
+// TestServiceLocator_RegisterWithSameNameAndLifetime tests registering services with the same name and lifetime
+func TestServiceLocator_RegisterWithSameNameAndLifetime(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a singleton service
+	singletonService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    singletonService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "myService",
+	})
+
+	// Register another singleton service with the same name
+	anotherSingletonService := &mocks.MockService{}
+	err := sl.Register(ServiceRegistration{
+		Service:    anotherSingletonService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "myService",
+	})
+
+	if err == nil {
+		t.Errorf("Expected error when registering service with same name and lifetime, got nil")
+	}
+}
+
+// TestServiceLocator_GetWithIncorrectInterfaceType tests getting a service with an incorrect interface type
+func TestServiceLocator_GetWithIncorrectInterfaceType(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a service
+	service := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    service,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "myService",
+	})
+
+	// Try to get the service with an incorrect interface type
+	_, err := sl.Get(reflect.TypeOf((*interfaces.AnotherInterface)(nil)).Elem(), "myService")
+	if err == nil {
+		t.Errorf("Expected error when getting service with incorrect interface type, got nil")
+	}
+}
+
+// TestServiceLocator_Concurrency tests concurrent access to the service locator
+func TestServiceLocator_Concurrency(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a singleton service
+	singletonService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    singletonService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "singleton",
+	})
+
+	// Register a static service
+	staticService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    staticService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Static,
+		Name:       "static",
+	})
+
+	// Register a transient service
+	transientService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    transientService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Transient,
+		Name:       "transient",
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(100)
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			defer wg.Done()
+
+			// Get the singleton service
+			service, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "singleton")
+			if err != nil {
+				t.Errorf("Unexpected error getting singleton service: %v", err)
+			}
+			if service != singletonService {
+				t.Errorf("Expected singleton service, got %v", service)
+			}
+
+			// Get the static service
+			service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "static")
+			if err != nil {
+				t.Errorf("Unexpected error getting static service: %v", err)
+			}
+			if service != staticService {
+				t.Errorf("Expected static service, got %v", service)
+			}
+
+			// Get the transient service
+			service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "transient")
+			if err != nil {
+				t.Errorf("Unexpected error getting transient service: %v", err)
+			}
+			if service == transientService {
+				t.Errorf("Expected a new instance of transient service, got the same instance")
+			}
+		}()
+	}
+
+	wg.Wait()
 }
 
 // containsService is a helper function to check if a service is present in a slice of services
