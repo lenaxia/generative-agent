@@ -111,6 +111,17 @@ func TestGetStrAccessibleArenas(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expected, arenas)
 	}
 
+	// Test case for non-existent sector
+	arenas, err = mt.GetStrAccessibleArenas("world1:sector3")
+	if err != nil {
+		t.Errorf("Error getting accessible arenas: %v", err)
+	}
+
+	expected = `[]`
+	if arenas != expected {
+		t.Errorf("Expected %s, got %s", expected, arenas)
+	}
+
 	// Add more test cases for different scenarios
 }
 
@@ -142,6 +153,17 @@ func TestGetStrAccessibleObjects(t *testing.T) {
 	}
 
 	expected := `["obj1", "obj2"]`
+	if objects != expected {
+		t.Errorf("Expected %s, got %s", expected, objects)
+	}
+
+	// Test case for non-existent arena
+	objects, err = mt.GetStrAccessibleObjects("world1:sector1:arena3")
+	if err != nil {
+		t.Errorf("Error getting accessible objects: %v", err)
+	}
+
+	expected = `[]`
 	if objects != expected {
 		t.Errorf("Expected %s, got %s", expected, objects)
 	}
@@ -198,6 +220,42 @@ func TestRetrieveLocationsByFilter(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expected, locations[0])
 	}
 
+	// Test case for multiple filters
+	filters = []FilterLocation{
+		{World: "world1", Sector: "sector1", Arena: "arena1", Objects: []string{"obj1"}},
+	}
+	locations, err = mt.RetrieveLocationsByFilter(filters...)
+	if err != nil {
+		t.Errorf("Error retrieving locations by filter: %v", err)
+	}
+
+	if len(locations) != 1 {
+		t.Errorf("Expected 1 location, got %d", len(locations))
+	}
+
+	expected = Location{
+		World:   "world1",
+		Sector:  "sector1",
+		Arena:   "arena1",
+		Objects: []string{"obj1", "obj2"},
+	}
+	if locations[0] != expected {
+		t.Errorf("Expected %v, got %v", expected, locations[0])
+	}
+
+	// Test case for non-existent location
+	filters = []FilterLocation{
+		{World: "world2", Sector: "sector3", Arena: "arena4"},
+	}
+	locations, err = mt.RetrieveLocationsByFilter(filters...)
+	if err != nil {
+		t.Errorf("Error retrieving locations by filter: %v", err)
+	}
+
+	if len(locations) != 0 {
+		t.Errorf("Expected 0 locations, got %d", len(locations))
+	}
+
 	// Add more test cases for different scenarios
 }
 
@@ -250,6 +308,36 @@ func TestRetrieveLocationsByVector(t *testing.T) {
 	}
 	if locations[0] != expected {
 		t.Errorf("Expected %v, got %v", expected, locations[0])
+	}
+
+	// Test case for non-existent location
+	queryEmbedding, err = mt.embedder.Embed("world2:sector3:arena4")
+	if err != nil {
+		t.Errorf("Error generating embedding: %v", err)
+	}
+
+	locations, err = mt.RetrieveLocationsByVector(queryEmbedding, 1)
+	if err != nil {
+		t.Errorf("Error retrieving locations by vector: %v", err)
+	}
+
+	if len(locations) != 0 {
+		t.Errorf("Expected 0 locations, got %d", len(locations))
+	}
+
+	// Test case for multiple locations
+	queryEmbedding, err = mt.embedder.Embed("world1")
+	if err != nil {
+		t.Errorf("Error generating embedding: %v", err)
+	}
+
+	locations, err = mt.RetrieveLocationsByVector(queryEmbedding, 10)
+	if err != nil {
+		t.Errorf("Error retrieving locations by vector: %v", err)
+	}
+
+	if len(locations) != 2 {
+		t.Errorf("Expected 2 locations, got %d", len(locations))
 	}
 
 	// Add more test cases for different scenarios
