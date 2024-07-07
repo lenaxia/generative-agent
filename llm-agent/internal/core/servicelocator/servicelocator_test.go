@@ -136,6 +136,15 @@ func TestServiceLocator_Get(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error getting non-existent service, got nil")
 	}
+
+	// Test getting a transient service again (should create a new instance)
+	newTransientService, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "transient")
+	if err != nil {
+		t.Errorf("Unexpected error getting transient service: %v", err)
+	}
+	if newTransientService == transientService {
+		t.Errorf("Expected a new instance of transient service, got the same instance")
+	}
 }
 
 // TestServiceLocator_GetServices tests the GetServices method of the ServiceLocator
@@ -177,6 +186,74 @@ func TestServiceLocator_GetServices(t *testing.T) {
 
 	if !containsService(services, service1) || !containsService(services, service2) || !containsService(services, service3) {
 		t.Errorf("Expected services %v, %v, %v, got %v", service1, service2, service3, services)
+	}
+}
+
+// TestServiceLocator_RegisterAndGet tests registering and getting services with different lifetimes
+func TestServiceLocator_RegisterAndGet(t *testing.T) {
+	sl := NewServiceLocator()
+
+	// Register a singleton service
+	singletonService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    singletonService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Singleton,
+		Name:       "singleton",
+	})
+
+	// Get the singleton service
+	service, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "singleton")
+	if err != nil {
+		t.Errorf("Unexpected error getting singleton service: %v", err)
+	}
+	if service != singletonService {
+		t.Errorf("Expected singleton service, got %v", service)
+	}
+
+	// Register a static service
+	staticService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    staticService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Static,
+		Name:       "static",
+	})
+
+	// Get the static service
+	service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "static")
+	if err != nil {
+		t.Errorf("Unexpected error getting static service: %v", err)
+	}
+	if service != staticService {
+		t.Errorf("Expected static service, got %v", service)
+	}
+
+	// Register a transient service
+	transientService := &mocks.MockService{}
+	sl.Register(ServiceRegistration{
+		Service:    transientService,
+		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:   Transient,
+		Name:       "transient",
+	})
+
+	// Get the transient service
+	service, err = sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "transient")
+	if err != nil {
+		t.Errorf("Unexpected error getting transient service: %v", err)
+	}
+	if service != transientService {
+		t.Errorf("Expected transient service, got %v", service)
+	}
+
+	// Get the transient service again (should create a new instance)
+	newTransientService, err := sl.Get(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "transient")
+	if err != nil {
+		t.Errorf("Unexpected error getting transient service: %v", err)
+	}
+	if newTransientService == transientService {
+		t.Errorf("Expected a new instance of transient service, got the same instance")
 	}
 }
 
