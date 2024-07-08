@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/llm-agent/configs"
-	"github.com/yourusername/llm-agent/pkg/embeddings"
-	"github.com/yourusername/llm-agent/pkg/vectors"
+	"llm-agent/configs"
+	"llm-agent/internal/core/types"
+	"llm-agent/pkg/embeddings"
+	"llm-agent/pkg/vectors"
 )
 
 func TestAddLocation(t *testing.T) {

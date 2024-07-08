@@ -8,7 +8,7 @@ import (
     "time"
 
     "github.com/lib/pq"
-	"llm-agent/internal/types"
+    "llm-agent/internal/types"
     "llm-agent/configs"
     "llm-agent/internal/interfaces"
     "llm-agent/pkg/utils"
@@ -24,16 +24,6 @@ type MemoryCache interface {
 // MemoryStorage is an interface for the persistent storage layer
 type MemoryStorage interface {
     // Define methods for interacting with the persistent storage
-}
-
-// CoreMemory is the central hub for managing the agent's memory components
-type CoreMemory struct {
-    serviceLocator *servicelocator.ServiceLocator
-    storage        MemoryStorage
-    cache          MemoryCache
-    associative    *AssociativeMemory
-    logger         *log.Logger
-    mu             sync.RWMutex
 }
 
 // NewCoreMemory creates a new instance of CoreMemory

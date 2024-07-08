@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/llm-agent/configs"
-	"github.com/yourusername/llm-agent/pkg/embeddings"
+	"llm-agent/configs"
+	"llm-agent/internal/core/types"
+	"llm-agent/pkg/embeddings"
 )
 
 func TestAddEvent(t *testing.T) {

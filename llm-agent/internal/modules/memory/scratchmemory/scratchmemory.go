@@ -4,16 +4,17 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/yourusername/llm-agent/configs"
-	"github.com/yourusername/llm-agent/internal/interfaces"
-	"github.com/yourusername/llm-agent/internal/types"
-	"github.com/yourusername/llm-agent/pkg/embeddings"
-	"github.com/yourusername/llm-agent/pkg/utils"
-	"github.com/yourusername/llm-agent/pkg/vectors"
+	"llm-agent/configs"
+	"llm-agent/internal/interfaces"
+	"llm-agent/internal/types"
+	"llm-agent/pkg/embeddings"
+	"llm-agent/pkg/utils"
+	"llm-agent/pkg/vectors"
 	"github.com/rankbm25/bm25"
 )
 
@@ -25,6 +26,7 @@ type Scratch struct {
 	vectorSimilarity vectors.VectorSimilarity
 	bm25            *bm25.BM25
 }
+
 
 // NewScratch creates a new instance of Scratch
 func NewScratch(cfg *configs.Config, logger *log.Logger) (*Scratch, error) {
@@ -160,8 +162,8 @@ func (s *Scratch) Save(scratch *types.Scratch) error {
 			recency_w = $22,
 			relevance_w = $23,
 			importance_w = $24,
-			recency_decay = $25,
-			importance_trigger_max = $26,
+			recency_decay = $25, 
+                        importance_trigger_max = $26,
 			importance_trigger_curr = $27,
 			importance_ele_n = $28,
 			thought_count = $29,
@@ -178,7 +180,7 @@ func (s *Scratch) Save(scratch *types.Scratch) error {
 			act_obj_pronunciatio = $40,
 			act_obj_event = $41,
 			chatting_with = $42,
-			chat= $43,
+			chat = $43,
 			chatting_with_buffer = $44,
 			chatting_end_time = $45,
 			act_path_set = $46,
@@ -387,10 +389,12 @@ func (s *Scratch) GetStrDailyScheduleHourlyOrgSummary(scratch *types.Scratch) st
 		hour := currMinSum / 60
 		minute := currMinSum % 60
 		ret += fmt.Sprintf("%02d:%02d || %s\n", hour, minute, row[0])
+	}
+	return ret
 }
 
 // RetrieveScratchesByFilter retrieves scratches from the database based on filters
-func (s *Scratch) RetrieveScratchesByFilter(filters ...Filter) ([]types.Scratch, error) {
+func (s *Scratch) RetrieveScratchesByFilter(filters ...FilterScratch) ([]types.Scratch, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -432,6 +436,14 @@ func (s *Scratch) RetrieveScratchesByFilter(filters ...Filter) ([]types.Scratch,
 		}
 		if filter.ActDescription != "" {
 			query += fmt.Sprintf(" AND act_description = '%s'", filter.ActDescription)
+		}
+		if len(filter.ActEvent) == 3 {
+			actEvent := strings.Join(filter.ActEvent[:], " ")
+			query += fmt.Sprintf(" AND act_event = '%s'", actEvent)
+		}
+		if len(filter.ActObjEvent) == 3 {
+			actObjEvent := strings.Join(filter.ActObjEvent[:], " ")
+			query += fmt.Sprintf(" AND act_obj_event = '%s'", actObjEvent)
 		}
 		if filter.PlaintextQuery != "" {
 			queryTokens := utils.Tokenize(filter.PlaintextQuery)
@@ -489,7 +501,7 @@ func (s *Scratch) RetrieveScratchesByVector(queryEmbedding []float32, k int) ([]
 	if err != nil {
 		s.logger.Printf("Error retrieving scratches by vector: %v", err)
 		return nil, err
-        }
+	}
 	defer rows.Close()
 
 	for rows.Next() {
