@@ -8,9 +8,10 @@ import (
     "time"
 
     "github.com/lib/pq"
-    "github.com/yourusername/llm-agent/configs"
-    "github.com/yourusername/llm-agent/internal/interfaces"
-    "github.com/yourusername/llm-agent/pkg/utils"
+    "llm-agent/configs"
+    "llm-agent/internal/interfaces"
+    "llm-agent/internal/core/types"
+    "llm-agent/pkg/utils"
     "github.com/rankbm25/bm25"
 )
 
@@ -20,25 +21,6 @@ type AssociativeMemory struct {
     mu     sync.RWMutex
     logger *log.Logger
     bm25   *bm25.BM25
-}
-
-// ConceptNode represents a node in the associative memory
-type ConceptNode struct {
-    ID          string         `json:"id"`
-    NodeCount   int            `json:"node_count"`
-    TypeCount   int            `json:"type_count"`
-    Type        string         `json:"type"`
-    Depth       int            `json:"depth"`
-    Created     time.Time      `json:"created"`
-    Expiration  *time.Time     `json:"expiration,omitempty"`
-    Subject     string         `json:"subject"`
-    Predicate   string         `json:"predicate"`
-    Object      string         `json:"object"`
-    Description string         `json:"description"`
-    EmbeddingID string         `json:"embedding_id"`
-    Poignancy   float32        `json:"poignancy"`
-    Keywords    pq.StringArray `json:"keywords"`
-    Filling     []string       `json:"filling,omitempty"`
 }
 
 // NewAssociativeMemory creates a new instance of AssociativeMemory
@@ -245,21 +227,8 @@ func (am *AssociativeMemory) AddChat(created time.Time, expiration *time.Time, s
     return nil
 }
 
-// Filter represents a filter for retrieving concept nodes
-type Filter struct {
-    NodeType      string
-    Subject       string
-    Predicate     string
-    Object        string
-    Keywords      []string
-    PlaintextQuery string
-    StartTime     *time.Time
-    EndTime       *time.Time
-    EmbeddingIDs  []string
-}
-
 // RetrieveEventsByFilter retrieves events from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) (*SearchResults, error) {
+func (am *AssociativeMemory) RetrieveEvents(filters ...FilterMemory) (*SearchResults, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -280,7 +249,7 @@ func (am *AssociativeMemory) RetrieveEvents(filters ...Filter) (*SearchResults, 
 }
 
 // RetrieveThoughtsByFilter retrieves thoughts from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) (*SearchResults, error) {
+func (am *AssociativeMemory) RetrieveThoughts(filters ...FilterMemory) (*SearchResults, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -301,7 +270,7 @@ func (am *AssociativeMemory) RetrieveThoughts(filters ...Filter) (*SearchResults
 }
 
 // RetrieveChatsByFilter retrieves chats from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveChats(filters ...Filter) (*SearchResults, error) {
+func (am *AssociativeMemory) RetrieveChats(filters ...FilterMemory) (*SearchResults, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -322,7 +291,7 @@ func (am *AssociativeMemory) RetrieveChats(filters ...Filter) (*SearchResults, e
 }
 
 // RetrieveEvents retrieves events from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveEventsByFilter(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveEventsByFilter(filters ...FilterMemory) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -387,7 +356,7 @@ func (am *AssociativeMemory) RetrieveEventsByFilter(filters ...Filter) ([]Concep
 }
 
 // RetrieveThoughts retrieves thoughts from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveThoughtsByFilter(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveThoughtsByFilter(filters ...FilterMemory) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
@@ -452,7 +421,7 @@ func (am *AssociativeMemory) RetrieveThoughtsByFilter(filters ...Filter) ([]Conc
 }
 
 // RetrieveChats retrieves chats from the associative memory based on filters
-func (am *AssociativeMemory) RetrieveChatsByFilter(filters ...Filter) ([]ConceptNode, error) {
+func (am *AssociativeMemory) RetrieveChatsByFilter(filters ...FilterMemory) ([]ConceptNode, error) {
     am.mu.RLock()
     defer am.mu.RUnlock()
 
