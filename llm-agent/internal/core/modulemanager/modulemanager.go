@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"plugin"
+	"reflect"
 	"sync"
 
 	"llm-agent/internal/core/servicelocator"
@@ -91,6 +92,7 @@ func (mm *ModuleManager) unloadModule(moduleName string) {
 
 	for i, module := range mm.modules {
 		if filepath.Base(reflect.TypeOf(module).PkgPath()) == moduleName {
+			module.UnregisterServices(mm.serviceLocator)
 			mm.modules = append(mm.modules[:i], mm.modules[i+1:]...)
 			fmt.Printf("Unloaded module: %s\n", moduleName)
 			return
