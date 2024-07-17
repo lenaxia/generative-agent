@@ -1,13 +1,15 @@
-package main
+package invalidmodule
 
 import (
 	"fmt"
+
+	"llm-agent/internal/core/servicelocator"
 )
 
-type invalidModule struct{}
+type InvalidModule struct{}
 
-func (m *invalidModule) RegisterServices() {
+func (m *InvalidModule) RegisterServices(sl *servicelocator.ServiceLocator) {
 	fmt.Println("Invalid module")
 }
 
-var Module = &invalidModule{}
+var Module = &InvalidModule{}
