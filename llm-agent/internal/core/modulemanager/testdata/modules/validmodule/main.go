@@ -1,20 +1,44 @@
-package main
+package validmodule
 
 import (
+	"reflect"
+
 	"llm-agent/internal/core/servicelocator"
 	"llm-agent/internal/interfaces"
-	"llm-agent/internal/interfaces/mocks"
 )
 
-type validModule struct{}
+type ValidModule struct {
+	validService *ValidService
+}
 
-func (m *validModule) RegisterServices(sl *servicelocator.ServiceLocator) {
+func NewValidModule() *ValidModule {
+	return &ValidModule{
+		validService: &ValidService{},
+	}
+}
+
+func (m *ValidModule) RegisterServices(sl *servicelocator.ServiceLocator) {
 	sl.Register(servicelocator.ServiceRegistration{
-		Service:    &mocks.MockService{},
-		Interfaces: []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
-		Lifetime:   servicelocator.Singleton,
-		Name:       "validService",
+		Constructor:       m.validService.Constructor,
+		Interfaces:        []reflect.Type{reflect.TypeOf((*interfaces.Service)(nil)).Elem()},
+		Lifetime:          servicelocator.Singleton,
+		Name:              "validService",
+		ConstructorParams: []interface{}{},
 	})
 }
 
-var Module interfaces.Module = &validModule{}
+func (m *ValidModule) UnregisterServices(sl *servicelocator.ServiceLocator) {
+	sl.ReleaseService(reflect.TypeOf((*interfaces.Service)(nil)).Elem(), "validService")
+}
+
+type ValidService struct{}
+
+func (s *ValidService) Constructor() interfaces.Service {
+	return s
+}
+
+func (s *ValidService) DoSomething() {
+	// Service implementation
+}
+
+var Module = NewValidModule()
