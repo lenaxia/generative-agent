@@ -1,9 +1,11 @@
 package modulemanager
 
 import (
+	"reflect"
 	"testing"
 
 	"llm-agent/internal/core/servicelocator"
+	"llm-agent/internal/interfaces"
 	"llm-agent/internal/interfaces/mocks"
 )
 
@@ -27,7 +29,7 @@ func TestModuleManager_LoadModule(t *testing.T) {
 	}
 
 	// Check if the service is of the expected type
-	_, ok := service.(*mocks.MockService)
+	_, ok := service.(interfaces.Service)
 	if !ok {
 		t.Errorf("Service is not of the expected type")
 	}
@@ -96,7 +98,7 @@ func TestModuleManager_WatchModules(t *testing.T) {
 	}
 
 	// Check if the service is of the expected type
-	_, ok := service.(*mocks.MockService)
+	_, ok := service.(interfaces.Service)
 	if !ok {
 		t.Errorf("Service is not of the expected type")
 	}
