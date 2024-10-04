@@ -1,14 +1,17 @@
+from logging import Logger
 from typing import Any, Dict, Optional
 from agents.base_agent import BaseAgent
 from langchain.tools import BaseTool
-from llm_provider import BaseLLMClient
-from llm_config import LLMRegistry, LLMType
-from basic_math_tool import BasicMathTool, BasicMathInput, BasicMathOutput
+from llm_provider.base_client import BaseLLMClient
+from supervisor.llm_registry import LLMRegistry, LLMType
+from agents.base_agent import BaseAgent
+from .tools.basic_math_tool import BasicMathTool, BasicMathInput, BasicMathOutput
+from shared_tools.message_bus import MessageBus
 
 class BasicMathAgent(BaseAgent):
-    def __init__(self, llm_registry: LLMRegistry, message_bus: MessageBus, config: Optional[Dict] = None):
-        super().__init__(llm_registry, message_bus, config)
-        self.tool = BasicMathTool(llm_registry.get_llm(LLMType.DEFAULT))
+    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
+        super().__init__(logger, llm_registry, message_bus, agent_id, config)
+        self.tool = BasicMathTool(llm_registry.get_client(LLMType.DEFAULT))
 
     @property
     def tools(self) -> Dict[str, BaseTool]:

@@ -1,16 +1,18 @@
+from logging import Logger
 from typing import Any, Dict, List
 from langchain.agents import AgentType
 from langchain.tools import BaseTool
-from langchain.pydantic_utils import BaseModel
-from llm_provider import BaseLLMClient
-from llm_config import LLMRegistry, LLMType
-
-from web_search_tool import WebSearchTool, WebSearchInput, WebSearchOutput
+from pydantic import BaseModel
+from llm_provider.base_client import BaseLLMClient
+from supervisor.llm_registry import LLMRegistry, LLMType
+from agents.base_agent import BaseAgent
+from shared_tools.message_bus import MessageBus
+from .tools.web_search_tool import WebSearchTool, WebSearchInput, WebSearchOutput
 
 class WebSearchAgent(BaseAgent):
-    def __init__(self, llm_registry: LLMRegistry, message_bus: MessageBus, config: Dict = None):
-        super().__init__(llm_registry, message_bus, config)
-        self.tools = {"web_search": WebSearchTool(llm_client=self.llm_registry.get_llm(LLMType.DEFAULT))}
+    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Dict = None):
+        super().__init__(logger, llm_registry, message_bus, agent_id, config)
+        self.tools = {"web_search": WebSearchTool(llm_client=self.llm_registry.get_client(LLMType.DEFAULT))}
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
