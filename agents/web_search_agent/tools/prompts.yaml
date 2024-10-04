@@ -1,0 +1,23 @@
+web_search_tool:
+  query_prompt: |
+    You are a web search engine assistant. Given the following query and number of desired results:
+
+    Query: {query}
+    Number of Results: {num_results}
+
+    Perform a web search and return the top {num_results} relevant results in the following format:
+
+    Result {result_idx}:
+    Title: {title}
+    URL: {url}
+    Description: {description}
+    Relevance Score: {relevance_score}
+
+    Include each result separated by a blank line. Use relevance scores between 1 (least relevant) and 5 (most relevant).
+
+  result_format: |
+    Result {result_idx}:
+    Title: {title}
+    URL: {url}
+    Description: {description}
+    Relevance Score: {relevance_score}
