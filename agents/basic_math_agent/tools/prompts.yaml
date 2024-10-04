@@ -1,0 +1,4 @@
+math_prompt: |
+  Given the algebraic expression: {expression}
+
+  Break down the steps to solve this expression, showing the work step-by-step.
