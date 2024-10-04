@@ -1,10 +1,10 @@
 from typing import Dict, List, Union
 from langchain_core.messages import ToolMessage
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
-from langchain_core.pydantic_v1 import ValidationError
+from pydantic import ValidationError
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.tools import BaseTool
-from langchain_core.pydantic_v1 import BaseModel
+from pydantic import BaseModel
 from llm_provider import BaseLLMClient, ResponderWithRetries
 from config import BaseConfig
 

@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 from enum import Enum
 import uuid
 
-from task_models import Task, TaskStatus
+from supervisor.task_models import Task, TaskStatus
 from langchain.tools import BaseTool
 from pydantic import BaseModel
 

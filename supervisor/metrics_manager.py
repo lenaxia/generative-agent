@@ -1,14 +1,20 @@
 import logging
-from typing import Dict
+from typing import Dict, Optional
 import yaml
 from pathlib import Path
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-class MetricsManager:
+class MetricsManager(BaseModel):
+    config: BaseModel = Field(..., description="The configuration object")
+    metrics: Dict[str, Dict] = Field(default_factory=dict, description="Dictionary to store metrics")
+
+    class Config:
+        arbitrary_types_allowed = True
+
     def __init__(self, config):
-        self.config = config
-        self.metrics: Dict[str, Dict] = {}
+        super().__init__(config=config)
 
     def get_metrics(self, request_id: Optional[str] = None) -> Dict:
         try:

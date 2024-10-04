@@ -1,11 +1,10 @@
 import os
 from typing import Optional, Union, Tuple, Dict, List, Any, Mapping, Callable
-from langchain_core.rate_limits import BaseRateLimiter
-from langchain_core.cache import BaseCache
 from langchain_core.callbacks.manager import BaseCallbackManager, Callbacks
+from .base_config import BaseConfig
 
 class AnthropicConfig(BaseConfig):
-    provider_name = "anthropic"
+    provider_name: str = "anthropic"
 
     def __init__(
         self,
@@ -18,16 +17,13 @@ class AnthropicConfig(BaseConfig):
         timeout: Optional[float] = None,
         max_retries: Optional[int] = 2,
         api_base: Optional[str] = None,
-        cache: Optional[BaseCache] = None,
         callback_manager: Optional[BaseCallbackManager] = None,
         callbacks: Optional[Callbacks] = None,
         custom_get_token_ids: Optional[Callable[[str], List[int]]] = None,
         default_headers: Optional[Mapping[str, str]] = None,
         default_request_timeout: Optional[float] = None,
-        disable_streaming: bool | Literal['tool_calling'] = False,
         metadata: Optional[Dict[str, Any]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
-        rate_limiter: Optional[BaseRateLimiter] = None,
         stream_usage: bool = True,
         tags: Optional[List[str]] = None,
         **base_config_kwargs,

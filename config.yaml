@@ -1,0 +1,7 @@
+llm_providers:
+  openai:
+    name: localai
+    type: openai
+    model_name: qwen2.5-32b-instruct
+    registry_type: default
+    base_url: http://192.168.5.74:8080/v1/chat/completions
