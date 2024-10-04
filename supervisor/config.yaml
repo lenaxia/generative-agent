@@ -1,0 +1,5 @@
+llm_providers:
+  bedrock:
+    name: bedrock-claude-3-sonnet
+    type: bedrock
+    model_id: anthropic.claude-3-sonnet-20240229-v1:0:200k

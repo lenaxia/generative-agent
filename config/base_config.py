@@ -7,6 +7,7 @@ from langchain_core.callbacks.manager import BaseCallbackManager, Callbacks
 class BaseConfig:
     def __init__(
         self,
+        name: str,
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
         endpoint: Optional[str] = None,
@@ -21,6 +22,7 @@ class BaseConfig:
         streaming: Optional[bool] = None,
         verbose: Optional[bool] = None,
     ):
+        self.name = name
         self.api_key = os.environ.get(f"{self.provider_name.upper()}_API_KEY", api_key)
         self.model_name = os.environ.get(f"{self.provider_name.upper()}_MODEL_NAME", model_name)
         self.endpoint = os.environ.get(f"{self.provider_name.upper()}_ENDPOINT", endpoint)
