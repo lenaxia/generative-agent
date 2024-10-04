@@ -5,7 +5,7 @@ from langchain_core.cache import BaseCache
 from langchain_core.callbacks.manager import BaseCallbackManager, Callbacks
 
 class ChatBedrockConfig(BaseConfig):
-    provider_name = "aws"
+    provider_name = "bedrock"
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class ChatBedrockConfig(BaseConfig):
         self.provider_stop_reason_key_map = provider_stop_reason_key_map
         self.provider_stop_sequence_key_name_map = provider_stop_sequence_key_name_map
         self.rate_limiter = rate_limiter
-        self.region_name = region_name
+        self.region_name = os.environ.get("AWS_REGION_NAME", region_name)
         self.streaming = streaming
         self.system_prompt_with_tools = system_prompt_with_tools
         self.tags = tags

@@ -7,6 +7,7 @@ from config_manager import ConfigManager
 from logging_config import configure_logging
 from message_bus import MessageBus, MessageType
 from task_models import Agent, TaskGraph
+from config import SupervisorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,13 @@ class Supervisor:
                 self.config_manager = ConfigManager(str(default_config_file))
             else:
                 raise FileNotFoundError(f"Default configuration file not found: {default_config_file}")
-        self.config = self.config_manager.load_config()
+
+        self.config = SupervisorConfig(**self.config_manager.load_config())
 
         configure_logging(self.config.log_level, self.config.log_file)
 
         self.message_bus = MessageBus()
 
-        self.llm_registry = LLMRegistry()
         self.populate_llm_registry(self.config.llm_providers)
 
         self.request_manager = RequestManager(self.config)
