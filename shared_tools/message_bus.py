@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Any, Callable, Dict, List
 import threading
+from pydantic import BaseModel
 
 class MessageType(Enum):
     TASK_ASSIGNMENT = 'task_assignment'
@@ -10,22 +11,22 @@ class MessageType(Enum):
     AGENT_ERROR = 'agent_error'
 
 class MessageBus:
+    class Config:
+        arbitrary_types_allowed = True
+
     def __init__(self):
         self._subscribers: Dict[MessageType, Dict[Any, List[Callable]]] = {}
         self._lock = threading.Lock()
         self._running = False
 
     def start(self):
-        with self._lock:
-            self._running = True
+        self._running = True
 
     def stop(self):
-        with self._lock:
-            self._running = False
+        self._running = False
 
     def is_running(self):
-        with self._lock:
-            return self._running
+        return self._running
 
     def publish(self, publisher, message_type: MessageType, message: Any):
         if not self.is_running():

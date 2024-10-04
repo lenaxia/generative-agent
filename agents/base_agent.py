@@ -1,10 +1,12 @@
+from abc import abstractmethod
 from typing import Any, Dict, Optional
 from langchain.agents import AgentType
-from llm_provider import BaseLLMClient
+from llm_provider.base_client import BaseLLMClient
 from langchain.tools import BaseTool
-from llm_config import LLMRegistry, LLMType
+from supervisor.llm_registry import LLMRegistry, LLMType
+from shared_tools.message_bus import MessageBus
 
-class BaseAgent(AgentType):
+class BaseAgent:
     def __init__(self, llm_registry: LLMRegistry, message_bus: MessageBus, config: Optional[Dict] = None):
         self.llm_registry = llm_registry
         self.config = config or {}

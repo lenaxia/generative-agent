@@ -14,7 +14,7 @@ sentencepiece
 scikit-learn
 nltk
 spacy
-transformers>=4.44.0
-tensorboardX>=2.5
+transformers
+tensorboardX
 torch
-scipy>=1.13.0
+

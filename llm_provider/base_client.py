@@ -1,24 +1,27 @@
 import logging
-from typing import Dict, Type, List, Union
+from typing import Dict, Type, List, Union, Optional
 from langchain_core.messages import ToolMessage
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
-from langchain_core.pydantic_v1 import ValidationError
+from langchain_core.runnables import Runnable
+from pydantic import ValidationError, BaseModel
 from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.tools import BaseTool
-from langchain_core.pydantic_v1 import BaseModel
 
-from config import AnthropicConfig, OpenAIConfig, ChatBedrockConfig
+from config.anthropic_config import AnthropicConfig
+from config.openai_config import OpenAIConfig
+from config.bedrock_config import BedrockConfig
+from config.base_config import BaseConfig
 
 logger = logging.getLogger(__name__)
 
 class LLMClientError(Exception):
     pass
 
-class BaseLLMClient:
+class BaseLLMClient(BaseModel):
     """
     Base class for LLM clients.
 
@@ -26,9 +29,16 @@ class BaseLLMClient:
         config (BaseConfig): The configuration object containing LLM provider settings.
         name (str): A unique name for the LLM client instance.
     """
-    def __init__(self, config, name: str):
-        self.config = config
-        self.name = name
+    config: BaseConfig
+    name: str
+    model: Optional[Runnable] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, config: BaseConfig, name: str):
+        super().__init__(config=config, name=name)
+        self.model = None
 
     def initialize_responder(self, prompt_template: ChatPromptTemplate, tools: List[Union[Type[BaseModel], BaseTool]]):
         """
@@ -69,7 +79,7 @@ class OpenAILLMClient(BaseLLMClient):
     """
     def __init__(self, config: OpenAIConfig, name: str):
         super().__init__(config, name)
-        self.model = ChatOpenAI(config=config)
+        self.model = ChatOpenAI(model=config.model_name, **config.dict())
 
 class AnthropicLLMClient(BaseLLMClient):
     """
@@ -88,12 +98,12 @@ class BedrockLLMClient(BaseLLMClient):
     LLM client for Bedrock models.
 
     Args:
-        config (ChatBedrockConfig): The configuration object containing Bedrock settings.
+        config (BedrockConfig): The configuration object containing Bedrock settings.
         name (str): A unique name for the LLM client instance.
     """
-    def __init__(self, config: ChatBedrockConfig, name: str):
+    def __init__(self, config: BedrockConfig, name: str):
         super().__init__(config, name)
-        self.model = ChatBedrock(config=config)
+        self.model = ChatBedrock(model_id=config.model_name, config=config)
 
 class ResponderWithRetries:
     """
@@ -160,5 +170,3 @@ class ResponderWithRetries:
                     ),
                 ]
         return response
-
-

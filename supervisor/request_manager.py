@@ -1,12 +1,12 @@
 import logging
 import time
 import uuid
-from typing import Dict
+from typing import Dict, Optional, Any
 
-from pydantic import BaseModel, ValidationError
-from task_graph import TaskGraph
-from task import Task, TaskStatus
-from message_bus import MessageBus, MessageType
+from pydantic import BaseModel, ValidationError, Field
+from supervisor.task_graph import TaskGraph, TaskNode
+from supervisor.task_models import Task, TaskStatus
+from shared_tools.message_bus import MessageBus, MessageType
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +14,13 @@ class RequestModel(BaseModel):
     instructions: str
     additional_data: Optional[Dict] = None
 
-class RequestManager:
+class RequestManager(BaseModel):
+    config: Any = Field(..., description="Configuration object for the request manager.")
+    request_map: Dict[str, TaskGraph] = Field(default_factory=dict, description="Map of request IDs to task graphs.")
+
     def __init__(self, config):
-        self.config = config
-        self.request_map: Dict[str, TaskGraph] = {}
+        super().__init__(config=config, request_map={})
+
 
     def handle_request(self, request: RequestModel) -> str:
         try:

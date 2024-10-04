@@ -1,13 +1,17 @@
 import logging
 import yaml
-from pydantic import ValidationError
-from config import SupervisorConfig
+from pydantic import ValidationError, BaseModel
+from typing import Optional
+
+from supervisor.supervisor_config import SupervisorConfig
 
 logger = logging.getLogger(__name__)
 
-class ConfigManager:
-    def __init__(self, config_file):
-        self.config_file = config_file
+class ConfigManager(BaseModel):
+    config_file: Optional[str] = None
+
+    def __init__(self, config_file: str):
+        super().__init__(config_file=config_file)
 
     def load_config(self):
         try:
