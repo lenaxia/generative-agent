@@ -1,14 +1,16 @@
+import os
 import yaml
 from typing import Any, Dict, List, Optional
-from langchain.agents import AgentType
 from langchain.tools import BaseTool
-from langchain.pydantic_utils import BaseModel
-from pydantic import Field, validator
-from llm_provider import BaseLLMClient
-from llm_config import LLMRegistry, LLMType
+from pydantic import BaseModel, Field, validator
+from llm_provider.base_client import BaseLLMClient
+from supervisor.llm_registry import LLMRegistry, LLMType
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+prompts_file_path = os.path.join(current_dir, "prompts.yaml")
 
 # Load prompts from the YAML file
-with open("prompts.yaml", "r") as f:
+with open(prompts_file_path, "r") as f:
     prompts = yaml.safe_load(f)
 
 # Pydantic models for input and output
@@ -32,11 +34,13 @@ class WebSearchOutput(BaseModel):
     results: List[WebSearchResult]
 
 # WebSearchTool class
-class WebSearchTool(BaseTool):
-    name = "web_search_tool"
-    description = "A tool for performing web searches and retrieving the top relevant results."
+class WebSearchTool(BaseTool, BaseModel):
+    name: str = "web_search_tool"
+    description: str = "A tool for performing web searches and retrieving the top relevant results."
     input_schema: Optional[BaseModel] = WebSearchInput
     output_schema: Optional[BaseModel] = WebSearchOutput
+    query_prompt: str = None
+    llm_client: BaseLLMClient = None
 
     def __init__(self, llm_client: BaseLLMClient):
         self.query_prompt = prompts["web_search_tool"]["query_prompt"]

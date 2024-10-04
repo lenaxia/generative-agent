@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, List
 from pathlib import Path
-from supervisor.request_manager import RequestManager
+from supervisor.request_manager import RequestManager, RequestModel
 from supervisor.agent_manager import AgentManager
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
@@ -64,11 +64,11 @@ class Supervisor:
         logger.info("Populating LLM registry...")
         self.populate_llm_registry(self.config.llm_providers)
 
-        self.request_manager = RequestManager(self.config)
-        logger.info("Request manager initialized.")
-
         self.agent_manager = AgentManager(self.config, self.message_bus)
         logger.info("Agent manager initialized.")
+
+        self.request_manager = RequestManager(self.config, self.agent_manager)
+        logger.info("Request manager initialized.")
 
         self.metrics_manager = MetricsManager(self.config)
         logger.info("Metrics manager initialized.")
@@ -108,8 +108,16 @@ class Supervisor:
             logger.info("Running Supervisor...")
             self.start()
             while True:
-                action = input("Enter action (status, stop): ").strip().lower()
-                if action == "status":
+                action = input("Enter action (new, status, stop): ").strip().lower()
+                if action == "new":
+                    instruction = input("Enter the instruction: ").strip()
+                    if instruction:
+                        request = RequestModel(instructions=instruction)
+                        request_id = self.request_manager.handle_request(request)
+                        logger.info(f"New request '{request_id}' created and delegated.")
+                    else:
+                        logger.warning("No instruction provided. Please try again.")
+                elif action == "status":
                     status = self.status()
                     if status:
                         logger.info(f"Supervisor Status: {status}")
@@ -131,7 +139,7 @@ class Supervisor:
         try:
             status = {
                 "running": self.message_bus.is_running(),
-                "requests": self.request_manager.get_request_status(),
+                #"requests": self.request_manager.get_request_status(),
                 "metrics": self.metrics_manager.get_metrics(),
             }
             logger.info(f"Retrieved Supervisor status: {status}")

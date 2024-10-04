@@ -1,3 +1,4 @@
+from logging import Logger
 from abc import abstractmethod
 from typing import Any, Dict, Optional
 from langchain.agents import AgentType
@@ -7,12 +8,14 @@ from supervisor.llm_registry import LLMRegistry, LLMType
 from shared_tools.message_bus import MessageBus
 
 class BaseAgent:
-    def __init__(self, llm_registry: LLMRegistry, message_bus: MessageBus, config: Optional[Dict] = None):
+    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
         self.llm_registry = llm_registry
         self.config = config or {}
         self.state = None
         self.version = None
         self.message_bus = None
+        self.agent_id = agent_id
+        self.logger = logger
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
@@ -50,7 +53,7 @@ class BaseAgent:
         Executes the agent's task synchronously.
         """
         self.setup()
-        llm_client = self.llm_registry.get_llm(llm_type)
+        llm_client = self.llm_registry.get_client(llm_type)
         input_data = self._format_input(instruction, *args, **kwargs)
         output_data = self._run(llm_client, input_data)
         self.teardown()
@@ -61,7 +64,7 @@ class BaseAgent:
         Executes the agent's task asynchronously.
         """
         self.setup()
-        llm_client = self.llm_registry.get_llm(llm_type)
+        llm_client = self.llm_registry.get_client(llm_type)
         input_data = self._format_input(instruction, *args, **kwargs)
         output_data = await self._arun(llm_client, input_data)
         self.teardown()

@@ -3,6 +3,7 @@ langchain
 langchain-openai
 langchain-anthropic
 langchain-aws
+langchain-community
 sympy
 typing
 pandas

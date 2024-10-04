@@ -1,10 +1,13 @@
+from logging import Logger
 from typing import Any, Dict
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-from textsummarizertool import TextSummarizerTool
-from llm_config import LLMRegistry, LLMType
-from llm_provider import BaseLLMClient
-from baseagent import BaseAgent, MessageBus, MessageType
+from .tools.text_summarizer_tool import TextSummarizerTool
+from supervisor.llm_registry import LLMRegistry, LLMType
+from llm_provider.base_client import BaseLLMClient
+from shared_tools.message_bus import MessageBus, MessageType
+from agents.base_agent import BaseAgent
+
 
 class TextSummarizeInput(BaseModel):
     text: str
@@ -16,8 +19,8 @@ class TextSummarizeOutput(BaseModel):
     completeness_score: float
 
 class TextSummarizerAgent(BaseAgent):
-    def __init__(self, llm_registry: LLMRegistry, message_bus: MessageBus, config: Dict = None):
-        super().__init__(llm_registry, message_bus, config)
+    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Dict = None):
+        super().__init__(logger, llm_registry, message_bus, agent_id, config)
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
