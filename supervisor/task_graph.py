@@ -6,22 +6,25 @@ from supervisor.task_models import Task, TaskStatus
 from langchain.tools import BaseTool
 from pydantic import BaseModel
 
-class TaskNode:
+class TaskNode(BaseModel):
     def __init__(self, task: Task):
         self.task = task
         self.inbound_edges = []
         self.outbound_edges = []
 
-class TaskEdge:
+class TaskEdge(BaseModel):
     def __init__(self, source: TaskNode, target: TaskNode, condition: Optional[Dict] = None):
         self.source = source
         self.target = target
         self.condition = condition
 
-class TaskGraph(BaseModel):
+class TaskGraph:
+    nodes: Dict[str, TaskNode]
+    edges: List[TaskEdge]
+
     def __init__(self, tasks: List[Task], dependencies: Optional[List[Dict]] = None):
-        self.nodes: Dict[str, TaskNode] = {}
-        self.edges: List[TaskEdge] = []
+        self.nodes = {}
+        self.edges = []
 
         # Create task nodes
         for task in tasks:

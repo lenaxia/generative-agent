@@ -2,18 +2,18 @@ from logging import Logger
 from abc import abstractmethod
 from typing import Any, Dict, Optional
 from langchain.agents import AgentType
-from llm_provider.base_client import BaseLLMClient
+from llm_provider.factory import LLMFactory, LLMType
 from langchain.tools import BaseTool
-from supervisor.llm_registry import LLMRegistry, LLMType
-from shared_tools.message_bus import MessageBus
+from langchain_core.runnables.base import Runnable
+from shared_tools.message_bus import MessageBus, MessageType
 
 class BaseAgent:
-    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
-        self.llm_registry = llm_registry
+    def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
+        self.llm_factory = llm_factory
         self.config = config or {}
         self.state = None
         self.version = None
-        self.message_bus = None
+        self.message_bus = message_bus
         self.agent_id = agent_id
         self.logger = logger
 
@@ -24,13 +24,13 @@ class BaseAgent:
         """
         raise NotImplementedError
 
-    def _run(self, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
+    def _run(self, llm_provider, *args, **kwargs) -> Any:
         """
         Executes the agent's task synchronously.
         """
         raise NotImplementedError
 
-    def _arun(self, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
+    def _arun(self, llm_provider, *args, **kwargs) -> Any:
         """
         Executes the agent's task asynchronously.
         """
@@ -38,42 +38,47 @@ class BaseAgent:
 
     def _format_input(self, *args, **kwargs) -> Any:
         """
-        Formats the input for the LLM client and the respective tool(s).
+        Formats the input for the LLM provider and the respective tool(s).
         """
         raise NotImplementedError
 
     def _process_output(self, *args, **kwargs) -> Any:
         """
-        Processes the output from the LLM client and the respective tool(s).
+        Processes the output from the LLM provider and the respective tool(s).
         """
         raise NotImplementedError
+
 
     def run(self, instruction: str, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
         """
         Executes the agent's task synchronously.
         """
         self.setup()
-        llm_client = self.llm_registry.get_client(llm_type)
         input_data = self._format_input(instruction, *args, **kwargs)
-        output_data = self._run(llm_client, input_data)
+
+        llm_provider = self._select_llm_provider(llm_type, **kwargs)
+        output_data = self._run(llm_provider, input_data)
         self.teardown()
         return self._process_output(output_data)
+
+    def _select_llm_provider(self, llm_type: LLMType, **kwargs) -> Runnable:
+        """
+        Selects the LLM provider based on the specified type and additional arguments.
+        Subclasses can override this method to customize LLM provider selection.
+        """
+        return self.llm_factory.create_provider(llm_type, **kwargs)
 
     async def arun(self, instruction: str, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
         """
         Executes the agent's task asynchronously.
         """
         self.setup()
-        llm_client = self.llm_registry.get_client(llm_type)
+        llm_provider = self.llm_factory.create_provider(llm_type, **kwargs)
         input_data = self._format_input(instruction, *args, **kwargs)
-        output_data = await self._arun(llm_client, input_data)
+        output_data = await self._arun(llm_provider, input_data)
         self.teardown()
         return self._process_output(output_data)
 
-    def set_message_bus(self, message_bus: MessageBus):
-        self.message_bus = message_bus
-        self.message_bus.subscribe(self, MessageType.TASK_ASSIGNMENT, self.handle_task_assignment)
-        
     def handle_task_assignment(self, task_data: Dict):
         try:
             task_id = task_data["task_id"]
@@ -81,10 +86,11 @@ class BaseAgent:
             task_type = task_data["task_type"]
             prompt = task_data["prompt"]
             request_id = task_data["request_id"]
-            llm_client: BaseLLMClient = task_data["llm_client"]
+            llm_type = task_data["llm_type"]
+            llm_provider = self.llm_factory.create_provider(llm_type)
 
-            # Use the provided llm_client instance to respond to the task
-            result = self._run(llm_client, prompt)
+            # Use the provided llm_provider instance to respond to the task
+            result = self._run(llm_provider, prompt)
 
             # Publish the task response on the MessageBus
             response_data = {
@@ -96,7 +102,7 @@ class BaseAgent:
             }
             self.message_bus.publish(self, MessageType.TASK_RESPONSE, response_data)
         except Exception as e:
-            logger.error(f"Error handling task assignment for task '{task_id}': {e}")
+            self.logger.error(f"Error handling task assignment for task '{task_id}': {e}")
             # Publish an error message on the MessageBus
             error_data = {
                 "request_id": request_id,

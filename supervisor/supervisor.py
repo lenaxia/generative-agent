@@ -67,7 +67,7 @@ class Supervisor:
         self.agent_manager = AgentManager(self.config, self.message_bus)
         logger.info("Agent manager initialized.")
 
-        self.request_manager = RequestManager(self.config, self.agent_manager)
+        self.request_manager = RequestManager(self.config, self.agent_manager, self.message_bus)
         logger.info("Request manager initialized.")
 
         self.metrics_manager = MetricsManager(self.config)
@@ -146,17 +146,6 @@ class Supervisor:
             return status
         except Exception as e:
             logger.error(f"Error getting Supervisor status: {e}")
-            return None
-
-    def create_task_graph(self, instruction: str, agents: List[Agent]) -> TaskGraph:
-        logger.info(f"Creating task graph for instruction: {instruction}")
-        planning_agent = self.agent_manager.get_agent("PlanningAgent")
-        if planning_agent:
-            task_graph = planning_agent.run(instruction, agents=agents)
-            logger.info("Task graph created successfully.")
-            return task_graph
-        else:
-            logger.error("Planning Agent not found in the agent registry.")
             return None
 
     def populate_llm_registry(self, llm_providers: dict[str, dict]):
