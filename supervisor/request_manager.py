@@ -1,12 +1,13 @@
 import logging
 import time
 import uuid
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 
 from pydantic import BaseModel, ValidationError, Field
 from supervisor.task_graph import TaskGraph, TaskNode
 from supervisor.task_models import Task, TaskStatus
 from supervisor.agent_manager import AgentManager
+from agents.base_agent import BaseAgent
 from shared_tools.message_bus import MessageBus, MessageType
 
 logger = logging.getLogger(__name__)
@@ -15,14 +16,15 @@ class RequestModel(BaseModel):
     instructions: str
     additional_data: Optional[Dict] = None
 
-class RequestManager(BaseModel):
+class RequestManager:
     config: Any = Field(..., description="Configuration object for the request manager.")
     agent_manager: AgentManager = Field(..., description="Agent manager instance.")
     request_map: Dict[str, TaskGraph] = Field(default_factory=dict, description="Map of request IDs to task graphs.")
     message_bus: MessageBus = Field(..., description="Message Bus instance")
 
-    def __init__(self, config, agent_manager):
-        super().__init__(config=config, agent_manager=agent_manager, request_map={})
+    def __init__(self, config, agent_manager, message_bus):
+        self.agent_manager = agent_manager
+        self.message_bus = message_bus
 
     def handle_request(self, request: RequestModel) -> str:
         try:
@@ -32,7 +34,7 @@ class RequestManager(BaseModel):
             agents = self.agent_manager.get_agents()
     
             # Create the task graph using the Planning Agent
-            task_graph = self.config.supervisor.create_task_graph(request.instructions, agents)
+            task_graph = self.create_task_graph(request.instructions, agents)
     
             # Delegate the initial tasks
             for task in task_graph.tasks:
@@ -50,6 +52,18 @@ class RequestManager(BaseModel):
         except Exception as e:
             logger.error(f"Error handling request: {e}")
             raise e
+
+
+    def create_task_graph(self, instruction: str, agents: List[BaseAgent]) -> TaskGraph:
+        logger.info(f"Creating task graph for instruction: {instruction}")
+        planning_agent = self.agent_manager.get_agent("PlanningAgent")
+        if planning_agent:
+            task_graph = planning_agent.run(instruction, agents=agents)
+            logger.info("Task graph created successfully.")
+            return task_graph
+        else:
+            logger.error("Planning Agent not found in the agent registry.")
+            return None
 
     def monitor_progress(self, request_id: str):
         try:
@@ -184,7 +198,7 @@ class RequestManager(BaseModel):
                 "request_id": request_id,
                 "llm_client": llm_client,  # Pass the LLM client instance to the agent
             }
-            self.config.supervisor.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
+            self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
         except Exception as e:
             logger.error(f"Error delegating task '{task.id}' for request '{request_id}': {e}")
             self.handle_agent_error({"request_id": request_id, "task_id": task.id, "error_message": str(e)})

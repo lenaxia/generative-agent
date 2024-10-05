@@ -4,6 +4,7 @@ langchain-openai
 langchain-anthropic
 langchain-aws
 langchain-community
+langgraph
 sympy
 typing
 pandas
@@ -19,3 +20,4 @@ transformers>=4.44.0
 tensorboardX>=2.5
 torch
 scipy>=1.13.0
+setuptools>=75.0.0

@@ -24,7 +24,7 @@ class TextSummarizerAgent(BaseAgent):
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
-        llm_client = self.llm_registry.get_llm(LLMType.DEFAULT)
+        llm_client = self.llm_registry.get_client(LLMType.DEFAULT)
         return {"text_summarizer": TextSummarizerTool(llm_client)}
 
     def _run(self, llm_client: BaseLLMClient, input_data: TextSummarizeInput = None) -> TextSummarizeOutput:

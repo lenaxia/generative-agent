@@ -37,10 +37,10 @@ class BaseConfig(BaseModel):
 
     def populate_from_env(self, provider_name):
         env_prefix = provider_name.upper() + "_"
-        for field_name, field_value in self.__fields__.items():
-            if field_value.alias:
-                env_var_name = env_prefix + field_value.alias.upper()
-            else:
-                env_var_name = env_prefix + field_name.upper()
+        for field in self.model_fields.items():
+            field_name = field[0]
+            field_obj = field[1]
+            field_alias = field_obj.alias or field_name
+            env_var_name = env_prefix + field_alias.upper()
             if env_var_name in os.environ:
                 setattr(self, field_name, os.environ[env_var_name])

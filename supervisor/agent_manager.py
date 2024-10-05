@@ -13,6 +13,7 @@ from agents.base_agent import BaseAgent
 from shared_tools.message_bus import MessageBus
 from llm_provider.base_client import BaseLLMClient
 from agents.basic_math_agent.agent import BasicMathAgent
+from agents.helloworld_agent.agent import HelloWorldAgent
 from agents.web_search_agent.agent import WebSearchAgent
 from agents.summarizer_agent.agent import TextSummarizerAgent
 from agents.planning_agent.agent import PlanningAgent
@@ -30,7 +31,7 @@ class AgentManager(BaseModel):
     def __init__(self, config: SupervisorConfig, message_bus: MessageBus):
         super().__init__(config=config, message_bus=message_bus)
 
-    def register_agent(self, agent: AgentType):
+    def register_agent(self, agent: BaseAgent):
         try:
             self.agent_registry[agent.agent_id] = agent
             logger.info(f"Registered agent '{agent.agent_id}'.")
@@ -48,7 +49,7 @@ class AgentManager(BaseModel):
     def get_agent(self, agent_id: str) -> Optional[AgentType]:
         return self.agent_registry.get(agent_id)
 
-    def get_agents(self) -> list[AgentType]:
+    def get_agents(self) -> list[BaseAgent]:
         return list(self.agent_registry.values())
 
     def register_agents(self):
@@ -60,15 +61,20 @@ class AgentManager(BaseModel):
                     'config_path': 'agents/basic_math_agent/config.yaml'
                 },
                 #{
+                #    'name': 'HelloWorldAgent',
+                #    'class': HelloWorldAgent,
+                #    'config_path': 'agents/helloworld_agent/config.yaml'
+                #},
+                #{
                 #    'name': 'WebSearchAgent',
                 #    'class': WebSearchAgent,
                 #    'config_path': 'agents/web_search_agent/config.yaml'
                 #},
-                {
-                    'name': 'TextSummarizerAgent',
-                    'class': TextSummarizerAgent,
-                    'config_path': 'agents/summarizer_agent/config.yaml'
-                },
+                #{
+                #    'name': 'TextSummarizerAgent',
+                #    'class': TextSummarizerAgent,
+                #    'config_path': 'agents/summarizer_agent/config.yaml'
+                #},
                 {
                     'name': 'PlanningAgent',
                     'class': PlanningAgent,
