@@ -54,7 +54,6 @@ class TestLLMFactory(unittest.TestCase):
             logprobs=False,
             top_logprobs=None,
             model_kwargs={"stream": False, "request_kwargs": None},
-            api_key="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",
         )
         self.assertIsInstance(chain, mock_chatgpt.return_value.__class__)
 
