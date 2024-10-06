@@ -56,6 +56,9 @@ class RequestManager:
     def create_task_graph(self, instruction: str, agents: List[BaseAgent]) -> TaskGraph:
         logger.info(f"Creating task graph for instruction: {instruction}")
         planning_agent = self.agent_manager.get_agent("PlanningAgent")
+        if planning_agent is None:
+            logger.error("No planning agent found")
+
         if planning_agent:
             task_graph = planning_agent.run(instruction, agents=agents)
             logger.info("Task graph created successfully.")
