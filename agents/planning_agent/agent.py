@@ -2,7 +2,7 @@ import json
 from langchain.output_parsers import OutputFixingParser
 from typing import List
 from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.output_parsers import JsonOutputParser, PydanticOutputParser
 from pydantic import BaseModel, validator, ValidationError
 from pydantic import parse_obj_as
 from uuid import uuid4
@@ -19,7 +19,7 @@ class PlanningAgentOutput(BaseModel):
     @validator('tasks')
     def check_tasks(cls, tasks):
         for task in tasks:
-            if not task.task_id or not task.agent_id or not task.task_type or not task.prompt_template:
+            if not task.task_name or not task.agent_id or not task.task_type or not task.prompt_template:
                 raise ValueError("All tasks must have agent_id, task_type, and prompt_template set.")
         return tasks
 
@@ -47,7 +47,7 @@ class PlanningAgent(BaseAgent):
     def _run(self, instruction, llm_type=LLMType.DEFAULT):
         self.logger.info(f"Running PlanningAgent with instruction: {instruction}")
 
-        parser = JsonOutputParser(pydantic_object=PlanningAgentOutput)
+        parser = PydanticOutputParser(pydantic_object=PlanningAgentOutput)
 
         prompt_template = PromptTemplate(
             input_variables=["input", "agents"],
@@ -71,10 +71,6 @@ class PlanningAgent(BaseAgent):
 
         self.logger.info(f"PlanningAgent generated task graph: {planning_agent_output}")
 
-        print("YAR123")
-        print(type(planning_agent_output))
-        print(planning_agent_output)
-
         return planning_agent_output
 
 
@@ -88,16 +84,10 @@ class PlanningAgent(BaseAgent):
         dependencies = None
 
         try:
-            # Create list of TaskDescription objects from the validated PlanningAgentOutput
-            tasks = [TaskDescription(**task_dict) for task_dict in output['tasks']]
-            dependencies = output['dependencies']
+            tasks = output.tasks
+            dependencies = output.dependencies
         except Exception as e:
             print(e)
-
-
-        print("OOGA12#")
-        print(tasks)
-        print(dependencies)
 
         task_graph = TaskGraph(tasks=tasks, dependencies=dependencies)
         return task_graph

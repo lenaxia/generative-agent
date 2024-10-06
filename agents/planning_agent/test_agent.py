@@ -34,8 +34,8 @@ class TestPlanningAgent(unittest.TestCase):
     def test_run(self, mock_invoke):
         mock_output = PlanningAgentOutput(
             tasks=[
-                TaskDescription(task_id="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-                TaskDescription(task_id="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
+                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
             ],
             dependencies=[
                 TaskDependency(source="fetch_data", target="process_data"),
@@ -48,8 +48,8 @@ class TestPlanningAgent(unittest.TestCase):
         task_graph = self.planning_agent.run(instruction)
     
         self.assertIsNotNone(task_graph)
-        self.assertEqual(len(task_graph.tasks), 2)
-        self.assertEqual(len(task_graph.dependencies), 2)
+        self.assertEqual(len(task_graph.nodes), 2)
+        self.assertEqual(len(task_graph.edges), 1)
 
     def test_format_input(self):
         instruction = "Fetch weather data for Seattle"
@@ -61,8 +61,8 @@ class TestPlanningAgent(unittest.TestCase):
     def test_process_output(self, mock_parse_obj_as):
         mock_output = PlanningAgentOutput(
             tasks=[
-                TaskDescription(task_id="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-                TaskDescription(task_id="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
+                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
             ],
             dependencies=[
                 TaskDependency(source="fetch_data", target="process_data"),
@@ -72,13 +72,11 @@ class TestPlanningAgent(unittest.TestCase):
     
         output = "Task 1: Fetch data from API\nAgent: agent_1\n\nTask 2: Process data\nAgent: agent_1\n\nDependencies:\nTask 1 -> Task 2"
         instruction = "Fetch and process data from an API"
-        task_graph = self.planning_agent._process_output(output, instruction)
+        task_graph = self.planning_agent._process_output(mock_output, instruction)
     
-        print(task_graph)
-
         self.assertIsNotNone(task_graph)
-        self.assertEqual(len(task_graph.tasks), 2)
-        self.assertEqual(len(task_graph.dependencies), 1)
+        self.assertEqual(len(task_graph.nodes), 2)
+        self.assertEqual(len(task_graph.edges), 1)
 
     def test_setup(self):
         self.planning_agent.setup()
