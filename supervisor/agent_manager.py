@@ -11,25 +11,23 @@ from langchain.agents import AgentType
 from supervisor.supervisor_config import SupervisorConfig
 from agents.base_agent import BaseAgent
 from shared_tools.message_bus import MessageBus
-from llm_provider.base_client import BaseLLMClient
-from agents.basic_math_agent.agent import BasicMathAgent
-from agents.helloworld_agent.agent import HelloWorldAgent
-from agents.web_search_agent.agent import WebSearchAgent
-from agents.summarizer_agent.agent import TextSummarizerAgent
-from agents.planning_agent.agent import PlanningAgent
+from llm_provider.factory import LLMFactory, LLMType
+from agents.hello_world_agent.agent import HelloWorldAgent
+from agents.weather_agent.agent import WeatherAgent
 
 logger = logging.getLogger(__name__)
 
 class AgentManager(BaseModel):
     config: SupervisorConfig = Field(..., description="The supervisor configuration")
     message_bus: MessageBus = Field(..., description="The message bus instance")
-    agent_registry: Dict[str, AgentType] = Field(default_factory=dict, description="Registry of agents")
+    llm_factory: LLMFactory = Field(..., description="The LLM factory instance")
+    agent_registry: Dict[str, BaseAgent] = Field(default_factory=dict, description="Registry of agents")
 
     class Config:
         arbitrary_types_allowed = True
 
-    def __init__(self, config: SupervisorConfig, message_bus: MessageBus):
-        super().__init__(config=config, message_bus=message_bus)
+    def __init__(self, config: SupervisorConfig, message_bus: MessageBus, llm_factory: LLMFactory):
+        super().__init__(config=config, message_bus=message_bus, llm_factory=llm_factory)
 
     def register_agent(self, agent: BaseAgent):
         try:
@@ -46,7 +44,7 @@ class AgentManager(BaseModel):
         except Exception as e:
             logger.error(f"Error unregistering agent '{agent_id}': {e}")
 
-    def get_agent(self, agent_id: str) -> Optional[AgentType]:
+    def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
         return self.agent_registry.get(agent_id)
 
     def get_agents(self) -> list[BaseAgent]:
@@ -56,61 +54,39 @@ class AgentManager(BaseModel):
         try:
             agents_to_register = [
                 {
-                    'name': 'BasicMathAgent',
-                    'class': BasicMathAgent,
-                    'config_path': 'agents/basic_math_agent/config.yaml'
+                    'name': 'HelloWorldAgent',
+                    'class': HelloWorldAgent,
+                    'config_path': 'agents/hello_world_agent/config.yaml'
                 },
-                #{
-                #    'name': 'HelloWorldAgent',
-                #    'class': HelloWorldAgent,
-                #    'config_path': 'agents/helloworld_agent/config.yaml'
-                #},
-                #{
-                #    'name': 'WebSearchAgent',
-                #    'class': WebSearchAgent,
-                #    'config_path': 'agents/web_search_agent/config.yaml'
-                #},
-                #{
-                #    'name': 'TextSummarizerAgent',
-                #    'class': TextSummarizerAgent,
-                #    'config_path': 'agents/summarizer_agent/config.yaml'
-                #},
                 {
-                    'name': 'PlanningAgent',
-                    'class': PlanningAgent,
-                    'config_path': 'agents/planning_agent/config.yaml'
+                    'name': 'WeatherAgent',
+                    'class': WeatherAgent,
+                    'config_path': 'agents/weather_agent/config.yaml'
                 },
-                # Add more agents here
             ]
     
             registered_agents = []
     
             for agent in agents_to_register:
                 logger.info(f"Trying to register agent: {agent['name']}")
-                try:
-                    agent_config_file = Path(__file__).parent.parent / agent['config_path']
-                    if agent_config_file.exists():
-                        logger.info(f"Loading config from {agent_config_file}")
-                        with open(agent_config_file, 'r') as f:
-                            agent_config = yaml.safe_load(f)
-                    else:
-                        logger.info(f"No config file found for {agent['name']}, using default config.")
-                        agent_config = {}
+                agent_config = {}
     
-                    agent_instance = agent['class'](logger, self.config.llm_registry, self.message_bus, **agent_config.get("config", {}), agent_id=agent['name'])
-                    logger.info(f"LOGGING agent '{agent_instance.agent_id}'.")
+                agent_config_file = Path(__file__).parent.parent / agent['config_path']
+                if os.path.exists(agent_config_file):
+                    logger.info(f"Loading config from {agent_config_file}")
+                    with open(agent_config_file, 'r') as f:
+                        agent_config = yaml.safe_load(f)
+                else:
+                    logger.warning(f"No config file found for {agent['name']}, using default config.")
+    
+                try:
+                    agent_instance = agent['class'](logger, self.llm_factory, self.message_bus, config=agent_config.get("config", {}), agent_id=agent['name'])
                     self.register_agent(agent_instance)
                     registered_agents.append(agent_instance)
                     logger.info(f"Successfully registered agent: {agent['name']}")
                 except Exception as e:
                     logger.error(f"Error registering agent '{agent['name']}': {e}")
-    
-            # Set the list of available agents for the PlanningAgent
-            planning_agent = next((agent for agent in registered_agents if isinstance(agent, PlanningAgent)), None)
-            if planning_agent:
-                planning_agent.set_agents(registered_agents)
-            else:
-                logger.error("PlanningAgent not found among registered agents.")
+                    continue
     
         except Exception as e:
             logger.error(f"Error registering agents: {e}")
