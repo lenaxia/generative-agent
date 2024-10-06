@@ -1,80 +1,115 @@
-import logging
-from logging import Logger
-from typing import List, Dict, Optional
-from langchain.agents import AgentExecutor
-from langchain.tools import BaseTool
+import json
+from langchain.output_parsers import OutputFixingParser
+from typing import List
 from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, validator, ValidationError
 from pydantic import parse_obj_as
-from agents.base_agent import BaseAgent
+from uuid import uuid4
+from enum import Enum
 from shared_tools.message_bus import MessageBus
-from supervisor.llm_registry import LLMRegistry, LLMType
-from supervisor.task_graph import TaskGraph
-from llm_provider.base_client import BaseLLMClient
+from llm_provider.factory import LLMFactory, LLMType
+from agents.base_agent import BaseAgent
+from supervisor.task_graph import TaskGraph, TaskDescription, TaskDependency
+
+class PlanningAgentOutput(BaseModel):
+    tasks: List[TaskDescription]
+    dependencies: List[TaskDependency] = None
+
+    @validator('tasks')
+    def check_tasks(cls, tasks):
+        for task in tasks:
+            if not task.task_id or not task.agent_id or not task.task_type or not task.prompt_template:
+                raise ValueError("All tasks must have agent_id, task_type, and prompt_template set.")
+        return tasks
+
+    @validator('dependencies', each_item=True)
+    def check_dependencies(cls, dependency):
+        if not dependency.source or not dependency.target:
+            raise ValueError("All dependencies must have source and target set.")
+        return dependency
 
 class PlanningAgent(BaseAgent):
-    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
-        super().__init__(logger, llm_registry, message_bus, agent_id, config)
-        self.agents = []
-        self._tools = None  # Initialize tools as None
+    def __init__(self, logger, llm_factory, message_bus, agent_id, config=None):
+        super().__init__(logger, llm_factory, message_bus, agent_id, config)
+        self.agent_manager = None
         self.logger.info(f"Initialized PlanningAgent with ID: {agent_id}")
+        self.feedback_added = False
 
-    def set_agents(self, agents: List[BaseAgent]):
-        """
-        Sets the list of available agents for the PlanningAgent.
-        """
-        self.agents = agents
-        self.logger.info(f"Set agents for PlanningAgent: {[agent.__class__.__name__ for agent in agents]}")
+    def set_agent_manager(self, agent_manager):
+        self.agent_manager = agent_manager
+        self.logger.info(f"Set AgentManager for PlanningAgent: {agent_manager}")
 
-    def create_tools(self) -> List[BaseTool]:
-        self.logger.debug("Creating tools for PlanningAgent...")
-        tools = []
-        for agent in self.agents:
-            agent_tools = agent.tools.values()  # Get the tool instances directly
-            tools.extend(agent_tools)  # Add the tool instances to the tools list
-            self.logger.debug(f"Added tools: {[tool.name for tool in agent_tools]}")
-        self.logger.info(f"Created {len(tools)} tools for PlanningAgent")
-        return tools
+    def _select_llm_provider(self, llm_type, **kwargs):
+        llm = self.llm_factory.create_chat_model(llm_type)
+        return llm
 
-    def get_tools(self) -> Dict[str, BaseTool]:
-        if self._tools is None:
-            self._tools = {tool.name: tool for tool in self.create_tools()}
-        return self._tools
-
-    def _run(self, llm_client: BaseLLMClient, instruction: str, llm_type: LLMType = LLMType.DEFAULT) -> TaskGraph:
+    def _run(self, instruction, llm_type=LLMType.DEFAULT):
         self.logger.info(f"Running PlanningAgent with instruction: {instruction}")
+
+        parser = JsonOutputParser(pydantic_object=PlanningAgentOutput)
+
         prompt_template = PromptTemplate(
             input_variables=["input", "agents"],
             template="You are a planning agent responsible for breaking down complex tasks into a sequence of smaller subtasks. "
                      "Given the available agents and their capabilities, create a task graph to accomplish the following task: {input}\n\n"
                      "Agents:\n{agents}\n\n"
-                     "Task Graph:",
-            formatter={
-                "agents": lambda agents: "\n".join([f"- {agent.__class__.__name__} ({agent.description})\n  Tools:\n    {' '.join([f'- {tool.name} ({tool.description})' for tool_name, tool in agent.tools.items()])}" for agent in agents])
-            },
+                     "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
+                     "Only respond with the JSON and no additional formatting or comments, do not include anything else besides the json output\n"
+                     "Task Graph:\n",
+            formatter={"agents": lambda agents: "\n".join([f"- {agent.agent_id} ({agent.description})" for agent in agents])},
+            partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
-        self.logger.info(f"Prompt template created.")
-        tools = self.get_tools().values()
-        self.logger.info(f"Tools for PlanningAgent: {[tool.name for tool in tools]}")
+        agents = self.agent_manager.get_agents()
+        self.logger.info(f"Agents for PlanningAgent: {[agent.agent_id for agent in agents]}")
 
-        agent = AgentExecutor.from_tools_and_prompt(
-            tools=list(tools),
-            llm=llm_client.model,
-            prompt=prompt_template,
-        )
+        llm_provider = self._select_llm_provider(llm_type)
 
-        self.logger.info("Executing PlanningAgent...")
-        response = agent({"input": instruction, "agents": self.agents}, return_intermediate_steps=True)
-        self.logger.debug(f"PlanningAgent response: {response}")
+        chain = prompt_template | llm_provider | parser
+        planning_agent_output = chain.invoke({"input": instruction, "agents": agents})
 
-        task_graph = parse_obj_as(TaskGraph, response)
-        self.logger.info(f"PlanningAgent generated task graph: {task_graph}")
-        return task_graph
+        self.logger.info(f"PlanningAgent generated task graph: {planning_agent_output}")
 
-    def _format_input(self, instruction: str, *args, **kwargs) -> str:
+        print("YAR123")
+        print(type(planning_agent_output))
+        print(planning_agent_output)
+
+        return planning_agent_output
+
+
+    def _format_input(self, instruction, *args, **kwargs):
         self.logger.info(f"Formatting input for PlanningAgent: {instruction}")
         return instruction
 
-    def _process_output(self, task_graph: TaskGraph) -> TaskGraph:
-        self.logger.info(f"Processing output for PlanningAgent: {task_graph}")
+    def _process_output(self, output, instruction):
+        self.logger.info(f"Processing output for PlanningAgent: {output}")
+        tasks = None
+        dependencies = None
+
+        try:
+            # Create list of TaskDescription objects from the validated PlanningAgentOutput
+            tasks = [TaskDescription(**task_dict) for task_dict in output['tasks']]
+            dependencies = output['dependencies']
+        except Exception as e:
+            print(e)
+
+
+        print("OOGA12#")
+        print(tasks)
+        print(dependencies)
+
+        task_graph = TaskGraph(tasks=tasks, dependencies=dependencies)
         return task_graph
+
+    def run(self, instruction, llm_type=LLMType.DEFAULT, *args, **kwargs):
+        self.setup()
+        planning_agent_output = self._run(instruction, llm_type)
+        self.teardown()
+        return self._process_output(planning_agent_output, instruction)
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass

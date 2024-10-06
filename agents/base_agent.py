@@ -17,6 +17,8 @@ class BaseAgent:
         self.agent_id = agent_id
         self.logger = logger
 
+        self.subscribe_to_messages(MessageType.TASK_ASSIGNMENT, self.handle_task_assignment)
+
     @property
     def tools(self) -> Dict[str, BaseTool]:
         """
@@ -86,12 +88,13 @@ class BaseAgent:
             task_type = task_data["task_type"]
             prompt = task_data["prompt"]
             request_id = task_data["request_id"]
-            llm_type = task_data["llm_type"]
-            llm_provider = self.llm_factory.create_provider(llm_type)
-
+    
+            # Use the llm_factory instance to create the LLM provider
+            llm_provider = self._select_llm_provider(self.preferred_llm_type, self.llm_factory)
+    
             # Use the provided llm_provider instance to respond to the task
             result = self._run(llm_provider, prompt)
-
+    
             # Publish the task response on the MessageBus
             response_data = {
                 "task_id": task_id,

@@ -7,15 +7,11 @@ from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
 from shared_tools.message_bus import MessageBus, MessageType
-from supervisor.task_models import Agent
-from supervisor.task_graph import TaskGraph
-from supervisor.llm_registry import LLMType
 from supervisor.supervisor_config import SupervisorConfig
 from config.bedrock_config import BedrockConfig
 from config.anthropic_config import AnthropicConfig
 from config.openai_config import OpenAIConfig
-from llm_provider.base_client import BaseLLMClient, BedrockLLMClient, OpenAILLMClient, AnthropicLLMClient
-from pydantic import BaseModel
+from llm_provider.factory import LLMFactory, LLMType
 
 logger = logging.getLogger("supervisor")
 
@@ -61,10 +57,20 @@ class Supervisor:
         self.message_bus = MessageBus()
         logger.info("Message bus initialized.")
 
-        logger.info("Populating LLM registry...")
-        self.populate_llm_registry(self.config.llm_providers)
+        logger.info("Initializing LLM factory...")
+        llm_factory = LLMFactory({})
 
-        self.agent_manager = AgentManager(self.config, self.message_bus)
+        # Populate the LLM factory with configurations from self.config.llm_providers
+        for provider_name, provider_config in self.config.llm_providers.items():
+            llm_type = LLMType[provider_config.pop("registry_type", "DEFAULT").upper()]
+            config_cls = self.get_config_class(provider_config.pop("type", None))
+            if config_cls:
+                config = config_cls(**provider_config)
+                llm_factory.add_config(llm_type, config)
+            else:
+                logger.warning(f"Unsupported LLM provider type for '{provider_name}'.")
+
+        self.agent_manager = AgentManager(self.config, self.message_bus, llm_factory)
         logger.info("Agent manager initialized.")
 
         self.request_manager = RequestManager(self.config, self.agent_manager, self.message_bus)
@@ -148,42 +154,15 @@ class Supervisor:
             logger.error(f"Error getting Supervisor status: {e}")
             return None
 
-    def populate_llm_registry(self, llm_providers: dict[str, dict]):
-        logger.info("Populating LLM registry...")
-        for provider_name, provider_config in llm_providers.items():
-            logger.info(f"Processing LLM provider '{provider_name}'...")
-            provider_type = provider_config.pop("type", None)
-            if provider_type is None:
-                logger.warning(f"Skipping LLM provider '{provider_name}' as the type is not specified.")
-                continue
-
-            registry_type = LLMType[provider_config.pop("registry_type", "DEFAULT").upper()]
-            logger.info(f"LLM provider '{provider_name}' will be registered as type '{registry_type}'.")
-
-            logging.info(f"Creating config for provider '{provider_name}'")
-            logging.info(f"Config: {provider_config}")
-
-            if provider_type == "openai":
-                config = OpenAIConfig(**provider_config)
-                llm_client = OpenAILLMClient(config, provider_name)
-                logger.info(f"Created OpenAI LLM client for provider '{provider_name}'.")
-            elif provider_type == "anthropic":
-                config = AnthropicConfig(**provider_config)
-                llm_client = AnthropicLLMClient(config, provider_name)
-                logger.info(f"Created Anthropic LLM client for provider '{provider_name}'.")
-            elif provider_type == "bedrock":
-                config = BedrockConfig(**provider_config)
-                llm_client = BedrockLLMClient(config, provider_name)
-                logger.info(f"Created Bedrock LLM client for provider '{provider_name}'.")
-            else:
-                logger.warning(f"Unsupported LLM provider type '{provider_type}' for '{provider_name}'.")
-                continue
-
-            logging.info(f"Registering LLM client '{provider_name}' of type '{registry_type}'")
-            self.config.llm_registry.register_client(llm_client, registry_type)
-            logger.info(f"LLM client '{provider_name}' registered successfully.")
-
-        logger.info("LLM registry population complete.")
+    def get_config_class(self, provider_type):
+        if provider_type == "openai":
+            return OpenAIConfig
+        elif provider_type == "anthropic":
+            return AnthropicConfig
+        elif provider_type == "bedrock":
+            return BedrockConfig
+        else:
+            return None
 
 if __name__ == "__main__":
     logger.info("Starting Supervisor application...")

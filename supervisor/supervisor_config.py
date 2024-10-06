@@ -1,12 +1,10 @@
 from typing import Dict, Optional
 from pydantic import BaseModel, validator, Field
-from .llm_registry import LLMRegistry
 
 class SupervisorConfig(BaseModel):
     log_level: str = "INFO"
     log_file: Optional[str] = None
     llm_providers: Dict[str, Dict] = {}
-    llm_registry: LLMRegistry = Field(default=None, exclude=True)
 
     @validator('llm_providers', pre=True)
     def validate_llm_providers(cls, value):
@@ -17,4 +15,3 @@ class SupervisorConfig(BaseModel):
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.llm_registry = LLMRegistry()

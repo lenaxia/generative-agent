@@ -3,7 +3,8 @@ from typing import Optional, Dict, List, Union, Type
 from langchain.prompts import ChatPromptTemplate
 from langchain.tools import BaseTool
 from pydantic import BaseModel
-from langchain_openai import ChatOpenAI
+#from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 from langchain_core.output_parsers import BaseOutputParser
 from config.base_config import BaseConfig
 
@@ -41,19 +42,23 @@ class LLMFactory:
         else:
             config = configs[0]
     
-        model = ChatOpenAI(
-            base_url=config.endpoint,
-            model_name=config.model_name,
-            temperature=config.temperature,
-            max_tokens=config.max_tokens,
-            top_p=config.top_p,
-            frequency_penalty=config.frequency_penalty,
-            presence_penalty=config.presence_penalty,
-            n=config.n,
-            logprobs=config.logprobs,
-            top_logprobs=config.top_logprobs,
-            api_key=config.api_key,
-        )
+        #model = ChatOpenAI(
+        #    base_url=config.endpoint,
+        #    model_name=config.model_name,
+        #    temperature=config.temperature,
+        #    max_tokens=config.max_tokens,
+        #    top_p=config.top_p,
+        #    frequency_penalty=config.frequency_penalty,
+        #    presence_penalty=config.presence_penalty,
+        #    n=config.n,
+        #    logprobs=config.logprobs,
+        #    top_logprobs=config.top_logprobs,
+        #    api_key=config.api_key,
+        #)
+        model = ChatBedrock(
+                    model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+                    model_kwargs=dict(temperature=0)
+                )
     
         if tools:
             model = model.bind_tools(tools=tools)
@@ -66,3 +71,33 @@ class LLMFactory:
     
         return model
 
+    def create_chat_model(self, llm_type: LLMType, name: Optional[str] = None):
+        configs = self.configs.get(llm_type, [])
+        if not configs:
+            raise ValueError(f"No configurations found for LLMType '{llm_type}'")
+    
+        if name:
+            config = next((c for c in configs if c.name == name), None)
+            if not config:
+                raise ValueError(f"No configuration found with name '{name}' for LLMType '{llm_type}'")
+        else:
+            config = configs[0]
+    
+        #return ChatOpenAI(
+        #    base_url=config.endpoint,
+        #    model_name=config.model_name,
+        #    temperature=config.temperature,
+        #    max_tokens=config.max_tokens,
+        #    top_p=config.top_p,
+        #    frequency_penalty=config.frequency_penalty,
+        #    presence_penalty=config.presence_penalty,
+        #    n=config.n,
+        #    logprobs=config.logprobs,
+        #    top_logprobs=config.top_logprobs,
+        #    api_key=config.api_key,
+        #)
+        return ChatBedrock(
+                    model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+                    model_kwargs=dict(temperature=0)
+                )
+    
