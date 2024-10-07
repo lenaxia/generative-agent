@@ -1,4 +1,4 @@
-#Design Document for Multi-Agent Collaboration and Planning System
+# Design Document for Multi-Agent Collaboration and Planning System
 
 ## 1. Introduction
 
