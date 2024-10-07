@@ -39,8 +39,6 @@ class HelloWorldAgentIntegrationTest(unittest.TestCase):
         # Run the agent
         result = self.agent._run(llm_provider, instruction)
 
-        print(str(result))
-
         # Assert that the output is as expected
         self.assertEqual(result.content, expected_output)
 

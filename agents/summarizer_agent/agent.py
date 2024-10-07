@@ -76,7 +76,7 @@ class TextSummarizerAgent(BaseAgent):
             }
             self.message_bus.publish(self, MessageType.TASK_RESPONSE, response_data)
         except Exception as e:
-            logger.error(f"Error handling task assignment for task '{task_id}': {e}")
+            logger.error(f"Summarizer: Error handling task assignment for task '{task_id}': {e}")
             # Publish an error message on the MessageBus
             error_data = {
                 "request_id": request_id,

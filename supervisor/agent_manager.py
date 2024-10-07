@@ -14,6 +14,7 @@ from shared_tools.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from agents.hello_world_agent.agent import HelloWorldAgent
 from agents.weather_agent.agent import WeatherAgent
+from agents.planning_agent.agent import PlanningAgent
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +54,15 @@ class AgentManager(BaseModel):
     def register_agents(self):
         try:
             agents_to_register = [
+                #{
+                #    'name': 'HelloWorldAgent',
+                #    'class': HelloWorldAgent,
+                #    'config_path': 'agents/hello_world_agent/config.yaml'
+                #},
                 {
-                    'name': 'HelloWorldAgent',
-                    'class': HelloWorldAgent,
-                    'config_path': 'agents/hello_world_agent/config.yaml'
+                    'name': 'PlanningAgent',
+                    'class': PlanningAgent,
+                    'config_path': 'agents/planning_agent/config.yaml'
                 },
                 {
                     'name': 'WeatherAgent',

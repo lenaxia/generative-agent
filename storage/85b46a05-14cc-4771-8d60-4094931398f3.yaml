@@ -1,0 +1,11 @@
+metrics:
+  duration: 1.854264736175537
+  error: '''str'' object has no attribute ''status'''
+  start_time: 1728287094.3696318
+request_id: 85b46a05-14cc-4771-8d60-4094931398f3
+task_graph:
+  edges: []
+  nodes:
+  - status: COMPLETED
+    task_id: 3802ae47303a
+    task_name: GetWeatherForSeattle

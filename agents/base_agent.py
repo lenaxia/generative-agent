@@ -8,13 +8,14 @@ from langchain_core.runnables.base import Runnable
 from shared_tools.message_bus import MessageBus, MessageType
 
 class BaseAgent:
-    def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
+    def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None, agent_description: Optional[str] = None):
         self.llm_factory = llm_factory
         self.config = config or {}
         self.state = None
         self.version = None
         self.message_bus = message_bus
         self.agent_id = agent_id
+        self.agent_description = agent_description or None
         self.logger = logger
 
         self.subscribe_to_messages(MessageType.TASK_ASSIGNMENT, self.handle_task_assignment)
@@ -82,6 +83,12 @@ class BaseAgent:
         return self._process_output(output_data)
 
     def handle_task_assignment(self, task_data: Dict):
+        if task_data["agent_id"] != self.agent_id:
+            self.logger.info(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}")
+            return 
+
+        self.logger.info(f"New Request Received by {self.agent_id}, Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
+
         try:
             task_id = task_data["task_id"]
             agent_id = task_data["agent_id"]
@@ -89,12 +96,13 @@ class BaseAgent:
             prompt = task_data["prompt"]
             request_id = task_data["request_id"]
     
+
             # Use the llm_factory instance to create the LLM provider
-            llm_provider = self._select_llm_provider(self.preferred_llm_type, self.llm_factory)
+            llm_provider = self._select_llm_provider(LLMType.DEFAULT)
     
             # Use the provided llm_provider instance to respond to the task
             result = self._run(llm_provider, prompt)
-    
+
             # Publish the task response on the MessageBus
             response_data = {
                 "task_id": task_id,
@@ -103,6 +111,7 @@ class BaseAgent:
                 "result": result,
                 "request_id": request_id,
             }
+
             self.message_bus.publish(self, MessageType.TASK_RESPONSE, response_data)
         except Exception as e:
             self.logger.error(f"Error handling task assignment for task '{task_id}': {e}")

@@ -2,6 +2,9 @@ from enum import Enum
 from typing import Any, Callable, Dict, List
 import threading
 from pydantic import BaseModel
+import logging
+
+logger = logging.getLogger("supervisor")
 
 class MessageType(Enum):
     TASK_ASSIGNMENT = 'task_assignment'
@@ -36,9 +39,17 @@ class MessageBus:
             if message_type not in self._subscribers:
                 return
 
-            for subscriber, callbacks in self._subscribers[message_type].items():
-                for callback in callbacks:
-                    callback(message)
+            logger.info(f"Publishing message: {message}")
+
+            # Create a copy of the subscribers to avoid modifying the dictionary while iterating
+            subscribers_copy = self._subscribers[message_type].copy()
+
+        # Release the lock before executing the callbacks
+        for subscriber, callbacks in subscribers_copy.items():
+            for callback in callbacks:
+                # Start a new thread for each callback
+                callback_thread = threading.Thread(target=callback, args=(message,))
+                callback_thread.start()
 
     def subscribe(self, subscriber, message_type: MessageType, callback: Callable):
         with self._lock:

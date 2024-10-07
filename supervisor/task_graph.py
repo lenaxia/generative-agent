@@ -2,26 +2,37 @@ from typing import Dict, List, Optional
 from enum import Enum
 from pydantic import BaseModel, Field
 import uuid
+import logging
+import time
 
 from pydantic import BaseModel
+
+logger = logging.getLogger("supervisor")
 
 class TaskStatus(str, Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    RETRIESEXCEEDED = "RETRIESEXCEEDED"
+
+class TaskResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    result: Optional[dict] = None
+    stop_reason: Optional[str] = None
 
 class TaskDescription(BaseModel):
     task_name: str = Field(..., description="A friendly name for the task, e.g., 'ConvertSeattleToGPSCoords', 'MathCaclulationStep1'")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
-    prompt_template: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
-    prompt_args: dict = Field(None, description="Arguments to be used in the prompt template")
+    prompt_template: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
+    prompt_args: Optional[dict] = Field(None, description="Arguments to be used in the prompt template", exclude=True)
 
 class TaskDependency(BaseModel):
     source: str = Field(..., description="The task name that is the source of data")
     target: str = Field(..., description="The task name that is the target of data")
-    condition: dict = Field(None, description="Conditions for the dependency to be fulfilled")
+    condition: Optional[dict] = Field(None, description="Conditions for the dependency to be fulfilled")
 
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
@@ -29,25 +40,30 @@ class TaskNode(BaseModel):
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt_template: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
-    prompt_args: Dict = Field({}, description="Arguments to be used in the prompt template")
+    prompt_args: Optional[dict] = Field({}, description="Arguments to be used in the prompt template")
+    prompt_template_formatted: Optional[str] = Field(..., description="Formatted prompt template", exclude=True)
     status: TaskStatus = Field(TaskStatus.PENDING, description="Current status of the task")
     inbound_edges: List["TaskEdge"] = Field([], description="List of incoming edges to this task node")
     outbound_edges: List["TaskEdge"] = Field([], description="List of outgoing edges from this task node")
+    result: Optional[str] = Field(None, description="Result of the task", exclude=True)
+    stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped", exclude=True)
 
 class TaskEdge(BaseModel):
     source: TaskNode = Field(..., description="The source task node")
     target: TaskNode = Field(..., description="The target task node")
-    condition: Optional[Dict] = Field(None, description="Conditions for the edge to be traversed")
+    condition: Optional[dict] = Field(None, description="Conditions for the edge to be traversed")
 
 class TaskGraph:
     nodes: Dict[str, TaskNode]
     edges: List[TaskEdge]
     task_name_map: Dict[str, str]  # Map task_name to task_id
+    start_time: Optional[float] = Field(..., description="The time that the request arrived", exclude=True)
 
     def __init__(self, tasks: List[TaskDescription], dependencies: Optional[List[Dict]] = None):
         self.nodes = {}
         self.edges = []
         self.task_name_map = {}
+        self.start_time = time.time()
 
         if tasks is None:
             # Handle the case where tasks is None
@@ -64,14 +80,14 @@ class TaskGraph:
                 task_type=task.task_type,
                 prompt_template=task.prompt_template,
                 prompt_args=task.prompt_args or {},
+                prompt_template_formatted=self._format_prompt_template(task),
             )
             self.nodes[task_id] = node
             self.task_name_map[task.task_name] = task_id
 
 
-        print(dependencies)
         # Create task edges based on dependencies
-        if dependencies:
+        if dependencies and len(tasks) > 1:
             for dependency in dependencies:
                 source_name = dependency.source
                 target_name = dependency.target
@@ -105,3 +121,29 @@ class TaskGraph:
         nodes_data = [{"task_id": node.task_id, "task_name": node.task_name, "status": node.status.value} for node in self.nodes.values()]
         edges_data = [{"source": edge.source.task_id, "target": edge.target.task_id} for edge in self.edges]
         return {"nodes": nodes_data, "edges": edges_data}
+
+    def get_top_level_leaf_nodes(self) -> List[TaskNode]:
+        # Initialize an empty list to store the top-level leaf nodes
+        top_level_leaf_nodes = []
+
+        # Iterate over all nodes in the task graph
+        for node in self.nodes.values():
+            # Check if the node has no inbound edges
+            if not node.inbound_edges:
+                # If it has no inbound edges, add it to the list of top-level leaf nodes
+                top_level_leaf_nodes.append(node)
+
+        # Return the list of top-level leaf nodes
+        return top_level_leaf_nodes
+    
+    def _format_prompt_template(self, task: TaskDescription) -> str:
+        try:
+            if task.prompt_args is None:
+                return task.prompt_template
+            return task.prompt_template.format(**task.prompt_args)
+        except KeyError as e:
+            logger.warning(f"Missing variable in prompt template for task {task.task_name}: {e}")
+            return task.prompt_template
+        except Exception as e:
+            logger.warning(f"Error formatting prompt template for task {task.task_name}: {e}")
+            return task.prompt_template

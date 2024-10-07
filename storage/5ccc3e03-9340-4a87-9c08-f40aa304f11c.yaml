@@ -1,0 +1,11 @@
+metrics:
+  duration: 2.132126569747925
+  error: '''tasks_completed'''
+  start_time: 1728287492.0488312
+request_id: 5ccc3e03-9340-4a87-9c08-f40aa304f11c
+task_graph:
+  edges: []
+  nodes:
+  - status: COMPLETED
+    task_id: 4335b912ccbd
+    task_name: GetWeatherForSeattle

@@ -112,7 +112,6 @@ class ZipCodeToCoordinatesTool(BaseTool):
 class WeatherAgent(BaseAgent):
     def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
-        self.prompt_template = ChatPromptTemplate.from_template("You are a weather bot. Make multiple tool calls if it makes sense. Answer the following query: {instruction}")
 
     @property
     def tools(self):
@@ -127,12 +126,13 @@ class WeatherAgent(BaseAgent):
         return llm
 
     def _run(self, llm_provider, instruction: str) -> Any:
+        system_prompt = "You are a weather bot who can look up the current weather in a city or zip code. Answer the user query below"
+
         memory = MemorySaver()
         config = {"configurable": {"thread_id": "abc123"}}
         llm = self.llm_factory.create_chat_model(LLMType.DEFAULT)
-        graph = create_react_agent(llm, tools=self.tools, checkpointer=memory)
-        inputs = {"messages": [("user", instruction)]}
-        print(instruction)
+        graph = create_react_agent(llm, tools=self.tools)
+        inputs = {"messages": [("system", system_prompt),("user", instruction)]}
         output = None
         for chunk in graph.stream(inputs, config):
             output = chunk

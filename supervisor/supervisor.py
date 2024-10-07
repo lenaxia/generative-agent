@@ -1,4 +1,6 @@
 import logging
+import sys
+import time
 from typing import Optional, List
 from pathlib import Path
 from supervisor.request_manager import RequestManager, RequestModel
@@ -73,10 +75,10 @@ class Supervisor:
         self.agent_manager = AgentManager(self.config, self.message_bus, llm_factory)
         logger.info("Agent manager initialized.")
 
-        self.request_manager = RequestManager(self.config, self.agent_manager, self.message_bus)
+        self.request_manager = RequestManager(self.agent_manager, self.message_bus)
         logger.info("Request manager initialized.")
 
-        self.metrics_manager = MetricsManager(self.config)
+        self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
 
         self.message_bus.subscribe(self, MessageType.TASK_RESPONSE, self.request_manager.handle_task_response)
@@ -92,9 +94,9 @@ class Supervisor:
             logger.info("Starting Supervisor...")
             self.agent_manager.register_agents()
             logger.info("Agents registered.")
-
             self.message_bus.start()
             logger.info("Message bus started.")
+
 
             logger.info("Supervisor started successfully.")
         except Exception as e:
@@ -110,36 +112,46 @@ class Supervisor:
             logger.error(f"Error stopping Supervisor: {e}")
 
     def run(self):
-        try:
-            logger.info("Running Supervisor...")
-            self.start()
-            while True:
-                action = input("Enter action (new, status, stop): ").strip().lower()
-                if action == "new":
-                    instruction = input("Enter the instruction: ").strip()
-                    if instruction:
-                        request = RequestModel(instructions=instruction)
-                        request_id = self.request_manager.handle_request(request)
-                        logger.info(f"New request '{request_id}' created and delegated.")
-                    else:
-                        logger.warning("No instruction provided. Please try again.")
-                elif action == "status":
-                    status = self.status()
-                    if status:
-                        logger.info(f"Supervisor Status: {status}")
-                    else:
-                        logger.warning("Failed to retrieve Supervisor status.")
-                elif action == "stop":
-                    self.stop()
-                    break
+        #try:
+        logger.info("Running Supervisor...")
+        self.start()
+        while True:
+            action = input("Enter action (instruction, status, stop): ").strip().lower()
+            if action == "stop":
+                self.stop()
+                break
+            elif action == "status":
+                status = self.status()
+                if status:
+                    logger.info(f"Supervisor Status: {status}")
                 else:
-                    logger.warning("Invalid action. Please try again.")
-        except KeyboardInterrupt:
-            logger.info("Keyboard interrupt received. Stopping Supervisor...")
-            self.stop()
-        except Exception as e:
-            logger.error(f"Error running Supervisor: {e}")
-            self.stop()
+                    logger.warning("Failed to retrieve Supervisor status.")
+            else:
+                if len(action) < 5:
+                    logger.warning("Invalid instruction. Please enter at least 5 characters.")
+                    continue
+                request = RequestModel(instructions=action)
+                request_id = self.request_manager.handle_request(request)
+                logger.info(f"New request '{request_id}' created and delegated.")
+
+                request_completed = False
+                while not request_completed:
+                    progress_info = self.request_manager.monitor_progress(request_id)
+                    if progress_info is None:
+                        logger.info(f"Request '{request_id}' completed or failed.")
+                        request_completed = True
+                    else:
+                        logger.info(f"Request '{request_id}' Status: {progress_info}")
+                        if progress_info.get("graph_completed", False):
+                            request_completed = True
+                        else:
+                            time.sleep(5)  # Wait for 5 seconds before checking progress again
+        #except KeyboardInterrupt:
+        #    logger.info("Keyboard interrupt received. Stopping Supervisor...")
+        #    self.stop()
+        #except Exception as e:
+        #    logger.error(f"Error running Supervisor: {e}")
+        #    sys.exit(1)
 
     def status(self) -> Optional[dict]:
         try:
