@@ -22,6 +22,7 @@ class SearchAgent(BaseAgent):
         return {"search": self.search_tool}
 
     def _run(self, llm_provider, instruction: str) -> Any:
+        # TODO: Needs refactor for the new agent design pattern using create_react_agent
         messages = [HumanMessage(content=instruction)]
         response = llm_provider.invoke(messages)
 

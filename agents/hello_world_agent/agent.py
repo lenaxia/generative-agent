@@ -21,7 +21,7 @@ class HelloWorldAgent(BaseAgent):
     def _run(self, llm_provider, instruction: str) -> Any:
         messages = [
             SystemMessage(
-                content="You are a helpful assistant! Your name is Bob."
+                content="You are a HelloWorld bot which responds with Hello World in various languages to all requests."
             ),
             HumanMessage(
                 content=instruction,

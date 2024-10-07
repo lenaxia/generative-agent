@@ -17,6 +17,7 @@ class LLMType(Enum):
     IMAGE_GENERATION = 'image_generation'
 
 class LLMFactory:
+    # TODO: Make this LLM agnostic, so it can support OpenAI (high priority), Bedrock (high priority) and Anthropic (low priority)
     def __init__(self, configs: Dict[LLMType, List[BaseConfig]]):
         self.configs = configs
 

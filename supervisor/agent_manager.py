@@ -52,6 +52,24 @@ class AgentManager(BaseModel):
         return list(self.agent_registry.values())
 
     def register_agents(self):
+        """
+        Registers agents specified in the configuration file.
+
+        The configuration file should specify the list of agents to register.
+        For each agent, the configuration file should specify the name of the agent,
+        the class of the agent, and the path to the configuration file for the agent.
+
+        The configuration file is expected to be in yaml format.
+
+        If the agent configuration file does not exist, the agent will be registered
+        with the default configuration.
+
+        If there is an error registering an agent, the error will be logged and
+        the agent will not be registered.
+
+        :return: A list of registered agents.
+        """
+        # TODO: Move to using dynamic loading of agents using importlib (see commented out code below). 
         try:
             agents_to_register = [
                 #{
@@ -97,6 +115,9 @@ class AgentManager(BaseModel):
         except Exception as e:
             logger.error(f"Error registering agents: {e}")
 
+
+# TODO: Get the below code working. Right now the problem is that when using importlib, the agent module has a new context outside of the primary project,
+#       so it cannot find some of the other modules, like LLMFactory, MessageBus, etc.
 
 #    def register_agents(self):
 #        try:

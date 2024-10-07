@@ -29,33 +29,34 @@ class RequestManager:
         self.request_map = {}
 
     def handle_request(self, request: RequestModel) -> str:
-        #try:
-        request_id = str(uuid.uuid4())
-        request_time = time.time()
+        try:
+            request_id = str(uuid.uuid4())
+            request_time = time.time()
 
-        # Get the list of available agents
-        agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
+            # Get the list of available agents
+            agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
 
-        # Create the task graph using the Planning Agent
-        task_graph = self.create_task_graph(request.instructions, agents)
+            # Create the task graph using the Planning Agent
+            task_graph = self.create_task_graph(request.instructions, agents)
 
-        # Delegate the initial tasks
-        for task in task_graph.get_top_level_leaf_nodes():
-            self.delegate_task(task, request_id)
+            # Delegate the initial tasks
+            for task in task_graph.get_top_level_leaf_nodes():
+                self.delegate_task(task, request_id)
 
-        self.request_map[request_id] = task_graph
-        #self.config.metrics_manager.update_metrics(request_id, {
-        #    "start_time": time.time(),
-        #    "tasks_completed": 0,
-        #    "tasks_failed": 0,
-        #    "retries": 0,
-        #})
-        self.config.metrics_manager.update_metrics(request_id, {"start_time": request_time})
-        logger.info(f"Received new request with ID '{request_id}'.")
-        return request_id
-        #except Exception as e:
-        #    logger.error(f"Error handling request: {e}")
-        #    raise e
+            self.request_map[request_id] = task_graph
+            # TODO: This was causing some problems so commented it out for now.
+            #self.config.metrics_manager.update_metrics(request_id, {
+            #    "start_time": time.time(),
+            #    "tasks_completed": 0,
+            #    "tasks_failed": 0,
+            #    "retries": 0,
+            #})
+            self.config.metrics_manager.update_metrics(request_id, {"start_time": request_time})
+            logger.info(f"Received new request with ID '{request_id}'.")
+            return request_id
+        except Exception as e:
+            logger.error(f"Error handling request: {e}")
+            raise e
 
     def create_task_graph(self, instruction: str, agents: List[BaseAgent]) -> TaskGraph:
         logger.info(f"Creating task graph for instruction: {instruction}")
