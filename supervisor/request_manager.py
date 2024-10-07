@@ -260,21 +260,21 @@ class RequestManager:
             return {}
     
     def delegate_task(self, task: TaskNode, request_id: str):
-        #try:
-        task_data = {
-            "task_id": task.task_id,
-            "agent_id": task.agent_id,
-            "task_type": task.task_type,
-            "prompt": task.prompt_template_formatted,
-            "request_id": request_id,
-            "outbound_edges": task.outbound_edges,
-            "status": task.status,
-        }
-        self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
-        #except Exception as e:
-        #    logger.error(f"Error delegating task '{task.task_id}' for request '{request_id}': {e}")
-        #    logger.error(traceback.format_exc())
-        #    self.handle_agent_error({"request_id": request_id, "task_id": task.task_id, "error_message": str(e)})
+        try:
+            task_data = {
+                "task_id": task.task_id,
+                "agent_id": task.agent_id,
+                "task_type": task.task_type,
+                "prompt": task.prompt_template_formatted,
+                "request_id": request_id,
+                "outbound_edges": task.outbound_edges,
+                "status": task.status,
+            }
+            self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
+        except Exception as e:
+            logger.error(f"Error delegating task '{task.task_id}' for request '{request_id}': {e}")
+            logger.error(traceback.format_exc())
+            self.handle_agent_error({"request_id": request_id, "task_id": task.task_id, "error_message": str(e)})
     
     def handle_request_completion(self, request_id: str):
         try:

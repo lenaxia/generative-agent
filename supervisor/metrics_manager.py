@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 class MetricsManager(BaseModel):
+    # TODO: Enable configuration of the metrics manager
     #config: BaseModel = Field(..., description="The configuration object")
     metrics: Dict[str, Dict] = Field(default_factory=dict, description="Dictionary to store metrics")
 
@@ -45,8 +46,8 @@ class MetricsManager(BaseModel):
 
     def persist_metrics(self, request_id: str, request_data: Dict):
         try:
-            # Implement logic to persist the request data and metrics
-            # to a persistent storage (e.g., database, file system)
+            # TODO: Implement logic to persist the request data and metrics
+            #       to a persistent storage (e.g., database, file system)
             storage_path = Path("storage") / f"{request_id}.yaml"
             storage_path.parent.mkdir(exist_ok=True)
             with open(storage_path, "w") as f:

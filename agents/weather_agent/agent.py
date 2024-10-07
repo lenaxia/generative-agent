@@ -15,6 +15,7 @@ class WeatherInput(BaseModel):
     lon: float = Field(..., description="Longitude of the location")
 
 class WeatherTool(BaseTool):
+    # TODO: Need to move tools into a separate tools folder
     name: str = "check_weather"
     description: str = "Return the current weather for the specified coordinates."
 
@@ -52,6 +53,7 @@ class WeatherTool(BaseTool):
         raise NotImplementedError("Asynchronous execution not supported.")
 
 class CityToCoordinatesTool(BaseTool):
+    # TODO: Need to move tools into a separate tools folder
     name: str = "city_to_coordinates"
     description: str = "Convert a city name to latitude and longitude coordinates. Call this in order to convert a city name into coordinates for fetching the weather"
 
@@ -78,6 +80,7 @@ class CityToCoordinatesTool(BaseTool):
         raise NotImplementedError("Asynchronous execution not supported.")
 
 class ZipCodeToCoordinatesTool(BaseTool):
+    # TODO: Need to move tools into a separate tools folder
     name: str = "zipcode_to_coordinates"
     description: str = "Convert a ZIP code to latitude and longitude coordinates for the United States. Call this in order to convert a US zip code into coordinates for fetching the weather"
 
