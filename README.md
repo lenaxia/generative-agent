@@ -60,10 +60,7 @@ generative-agent/
 │   │   └── ...
 │   ├── llm_provider/
 │   │   ├── __init__.py
-│   │   ├── base_client.py
-│   │   ├── openai_client.py
-│   │   ├── anthropic_client.py
-│   │   ├── client_factory.py
+│   │   ├── factory.py
 │   │   └── ...
 │   └── utils/
 │       ├── __init__.py

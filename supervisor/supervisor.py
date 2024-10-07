@@ -18,6 +18,10 @@ from llm_provider.factory import LLMFactory, LLMType
 logger = logging.getLogger("supervisor")
 
 class Supervisor:
+    # TODO: It should be able to do it mostly out of the box right now, but we should confirm whether or not we can nest supervisors, to basically do
+    #       teams of teams. Each team would get its own MessageBus to communicate internally, and then the Supervisor would be responsible for communicating
+    #       with the other teams and the top level supervisor.
+    # TODO: Need to add support for heartbeats
     config_file: Optional[str] = None
     config_manager: Optional[ConfigManager] = None
     config: Optional[SupervisorConfig] = None
@@ -27,6 +31,15 @@ class Supervisor:
     metrics_manager: Optional[MetricsManager] = None
 
     def __init__(self, config_file: Optional[str] = None):
+        """
+        Initializes the Supervisor with the given configuration file.
+
+        If no configuration file is given, it will use the default configuration
+        file name.
+
+        Args:
+            config_file: The path to the configuration file.
+        """
         logger.info("Initializing Supervisor...")
         self.config_file = config_file
         self.initialize_config_manager(config_file)
@@ -34,6 +47,15 @@ class Supervisor:
         logger.info("Supervisor initialization complete.")
 
     def initialize_config_manager(self, config_file: Optional[str] = None):
+        """
+        Initializes the config manager and loads the configuration.
+
+        If a configuration file is provided, it will be used to initialize the
+        config manager. Otherwise, the default configuration file will be used.
+
+        Raises:
+            FileNotFoundError: If the default configuration file is not found.
+        """
         logger.info("Initializing config manager...")
         if config_file:
             self.config_manager = ConfigManager(config_file)
@@ -52,6 +74,18 @@ class Supervisor:
         logger.info("Config loaded successfully.")
 
     def initialize_components(self):
+        """
+        Initializes all components of the supervisor.
+
+        This includes setting up logging, initializing the message bus, populating
+        the LLM factory with configurations, initializing the agent manager,
+        initializing the request manager, and initializing the metrics manager.
+
+        It also sets up subscriptions to TASK_RESPONSE and AGENT_ERROR messages.
+
+        This function is idempotent and can be called multiple times without
+        causing any issues.
+        """
         logger.info("Initializing components...")
         configure_logging(self.config.log_level, self.config.log_file)
         logger.info(f"Logging configured with level: {self.config.log_level} and file: {self.config.log_file}")
@@ -72,6 +106,9 @@ class Supervisor:
             else:
                 logger.warning(f"Unsupported LLM provider type for '{provider_name}'.")
 
+        # TODO: We need to restructure how we pass configs and instances of supervisor and the other modules to each other. 
+        #       Right now its a mess, and very inconsistent, we need a way that any module can easily talk to or get information from
+        #       other modules easily.
         self.agent_manager = AgentManager(self.config, self.message_bus, llm_factory)
         logger.info("Agent manager initialized.")
 
@@ -90,6 +127,11 @@ class Supervisor:
         logger.info("Component initialization complete.")
 
     def start(self):
+        """
+        Starts the Supervisor by registering agents and starting the message bus.
+
+        This method can be invoked multiple times without causing any issues.
+        """
         try:
             logger.info("Starting Supervisor...")
             self.agent_manager.register_agents()
@@ -103,6 +145,11 @@ class Supervisor:
             logger.error(f"Error starting Supervisor: {e}")
 
     def stop(self):
+        """
+        Stops the Supervisor by stopping the message bus.
+
+        This method can be invoked multiple times without causing any issues.
+        """
         try:
             logger.info("Stopping Supervisor...")
             self.message_bus.stop()
@@ -112,48 +159,68 @@ class Supervisor:
             logger.error(f"Error stopping Supervisor: {e}")
 
     def run(self):
-        #try:
-        logger.info("Running Supervisor...")
-        self.start()
-        while True:
-            action = input("Enter action (instruction, status, stop): ").strip().lower()
-            if action == "stop":
-                self.stop()
-                break
-            elif action == "status":
-                status = self.status()
-                if status:
-                    logger.info(f"Supervisor Status: {status}")
-                else:
-                    logger.warning("Failed to retrieve Supervisor status.")
-            else:
-                if len(action) < 5:
-                    logger.warning("Invalid instruction. Please enter at least 5 characters.")
-                    continue
-                request = RequestModel(instructions=action)
-                request_id = self.request_manager.handle_request(request)
-                logger.info(f"New request '{request_id}' created and delegated.")
+        
+        """
+        Runs the Supervisor by starting the message bus and registering agents.
+        Then enters an infinite loop to process user instructions.
 
-                request_completed = False
-                while not request_completed:
-                    progress_info = self.request_manager.monitor_progress(request_id)
-                    if progress_info is None:
-                        logger.info(f"Request '{request_id}' completed or failed.")
-                        request_completed = True
+        The user can enter one of the following instructions:
+
+        *   instruction: A task instruction that will be delegated to the appropriate agents.
+        *   status: Retrieves the Supervisor status.
+        *   stop: Stops the Supervisor and exits the program.
+
+        The Supervisor will display the progress of the tasks and notify the user when a task is completed or failed.
+        """
+        try:
+            logger.info("Running Supervisor...")
+            self.start()
+            while True:
+                action = input("Enter action (instruction, status, stop): ").strip().lower()
+                if action == "stop":
+                    self.stop()
+                    break
+                elif action == "status":
+                    status = self.status()
+                    if status:
+                        logger.info(f"Supervisor Status: {status}")
                     else:
-                        logger.info(f"Request '{request_id}' Status: {progress_info}")
-                        if progress_info.get("graph_completed", False):
+                        logger.warning("Failed to retrieve Supervisor status.")
+                else:
+                    if len(action) < 5:
+                        logger.warning("Invalid instruction. Please enter at least 5 characters.")
+                        continue
+                    request = RequestModel(instructions=action)
+                    request_id = self.request_manager.handle_request(request)
+                    logger.info(f"New request '{request_id}' created and delegated.")
+
+                    request_completed = False
+                    while not request_completed:
+                        progress_info = self.request_manager.monitor_progress(request_id)
+                        if progress_info is None:
+                            logger.info(f"Request '{request_id}' completed or failed.")
                             request_completed = True
                         else:
-                            time.sleep(5)  # Wait for 5 seconds before checking progress again
-        #except KeyboardInterrupt:
-        #    logger.info("Keyboard interrupt received. Stopping Supervisor...")
-        #    self.stop()
-        #except Exception as e:
-        #    logger.error(f"Error running Supervisor: {e}")
-        #    sys.exit(1)
+                            logger.info(f"Request '{request_id}' Status: {progress_info}")
+                            if progress_info.get("graph_completed", False):
+                                request_completed = True
+                            else:
+                                time.sleep(5)  # Wait for 5 seconds before checking progress again
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received. Stopping Supervisor...")
+            self.stop()
+        except Exception as e:
+            logger.error(f"Error running Supervisor: {e}")
+            sys.exit(1)
 
     def status(self) -> Optional[dict]:
+        """
+        Retrieves the current status of the Supervisor, including whether it is running,
+        the current metrics, and the status of all requests.
+
+        Returns:
+            Optional[dict]: The Supervisor status, or None if an error occurred.
+        """
         try:
             status = {
                 "running": self.message_bus.is_running(),
@@ -167,6 +234,8 @@ class Supervisor:
             return None
 
     def get_config_class(self, provider_type):
+        # TODO: [Low] We need to get rid of this method and extract the type dynamically, we don't want to be tied to hard coded definitions
+        
         if provider_type == "openai":
             return OpenAIConfig
         elif provider_type == "anthropic":

@@ -126,6 +126,8 @@ class WeatherAgent(BaseAgent):
         return llm
 
     def _run(self, llm_provider, instruction: str) -> Any:
+        # TODO: Needs refactor for the new agent design pattern using create_react_agent
+        # TODO: Move prompts to external file
         system_prompt = "You are a weather bot who can look up the current weather in a city or zip code. Answer the user query below"
 
         memory = MemorySaver()

@@ -9,6 +9,7 @@ from .tools.basic_math_tool import BasicMathTool, BasicMathInput, BasicMathOutpu
 from shared_tools.message_bus import MessageBus
 
 class BasicMathAgent(BaseAgent):
+    # TODO: Needs refactor for the new agent design pattern using create_react_agent
     def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None):
         super().__init__(logger, llm_registry, message_bus, agent_id, config)
         self.tool = BasicMathTool(llm_registry.get_client(LLMType.DEFAULT))
@@ -18,6 +19,7 @@ class BasicMathAgent(BaseAgent):
         return {"math_tool": self.tool}
 
     def _run(self, llm_client: BaseLLMClient, *args, **kwargs) -> Any:
+        
         expression = self._format_input(*args, **kwargs)
         math_input = BasicMathInput(expression=expression)
         math_output = self.tool._run(math_input)

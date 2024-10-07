@@ -63,10 +63,13 @@ class PlanningAgent(BaseAgent):
                      "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
                      "Only respond with the JSON and no additional formatting or comments, do not include anything else besides the json output\n"
                      "Task Graph:\n",
-            formatter={"agents": lambda agents: "\n".join([f"- {agent.agent_id} ({agent.description})" for agent in agents])},
+            #formatter={"agents": lambda agents: "\n".join([f"- {agent.agent_id} ({agent.description})" for agent in agents])},
+            formatter={"agents": lambda agents: "\n".join([f"- {agent}" for agent in agents])},
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
+        # TODO: Instead of just getting the agent names, also get the agent descriptions, so the LLM has more context on what each agent does
+        #   and update the formatter above to properly format the agent name and description
         agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
         self.logger.info(f"Agents for PlanningAgent: {agents}")
 

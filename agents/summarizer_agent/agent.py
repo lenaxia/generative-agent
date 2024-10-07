@@ -19,6 +19,7 @@ class TextSummarizeOutput(BaseModel):
     completeness_score: float
 
 class TextSummarizerAgent(BaseAgent):
+    # TODO: Needs refactor for the new agent design pattern using create_react_agent
     def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_registry, message_bus, agent_id, config)
 

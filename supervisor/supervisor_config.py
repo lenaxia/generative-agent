@@ -3,6 +3,9 @@ from pydantic import BaseModel, validator, Field
 from supervisor.metrics_manager import MetricsManager
 
 class SupervisorConfig(BaseModel):
+    # TODO: This needs to be refactored, because its a total mess right now. Its not passed between modules consistently, etc.
+    #       We need to think through how it should be used. Problably should rename it something other than SupervisorConfig
+
     log_level: str = "INFO"
     log_file: Optional[str] = None
     llm_providers: Dict[str, Dict] = {}

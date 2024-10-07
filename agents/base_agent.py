@@ -8,6 +8,7 @@ from langchain_core.runnables.base import Runnable
 from shared_tools.message_bus import MessageBus, MessageType
 
 class BaseAgent:
+    # TODO: Potentially need to rename this class to not conflict with the LangChain BaseAgent Class that I think exists
     def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None, agent_description: Optional[str] = None):
         self.llm_factory = llm_factory
         self.config = config or {}

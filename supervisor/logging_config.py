@@ -13,6 +13,7 @@ credential_patterns = [
 ]
 
 def configure_logging(log_level=logging.INFO, log_file=None):
+    # TODO: Update the logger so that it also includes the module name that the logging statement was called from
     log_level = logging.getLevelName(log_level.upper())
     logging.basicConfig(
         level=log_level,
@@ -27,6 +28,7 @@ def configure_logging(log_level=logging.INFO, log_file=None):
     supervisor_logger.addFilter(credential_filter)
 
 class CredentialFilter(logging.Filter):
+    # TODO: This doesn't work right now
     def __init__(self, credential_patterns):
         self.credential_patterns = credential_patterns
         super().__init__()

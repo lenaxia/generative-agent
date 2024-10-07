@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Heartbeat:
+    # TODO: Not used yet, need to implement support in Supervisor
     def __init__(self, supervisor, interval=5):
         self.supervisor = supervisor
         self.interval = interval
