@@ -1,6 +1,6 @@
 import json
 from langchain.output_parsers import OutputFixingParser
-from typing import List
+from typing import List, Optional
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, PydanticOutputParser
 from pydantic import BaseModel, validator, ValidationError
@@ -13,20 +13,26 @@ from agents.base_agent import BaseAgent
 from supervisor.task_graph import TaskGraph, TaskDescription, TaskDependency
 
 class PlanningAgentOutput(BaseModel):
-    tasks: List[TaskDescription]
-    dependencies: List[TaskDependency] = None
+    tasks: List[TaskDescription] = None
+    dependencies: Optional[List[TaskDependency]] = None
 
     @validator('tasks')
     def check_tasks(cls, tasks):
+
         for task in tasks:
-            if not task.task_name or not task.agent_id or not task.task_type or not task.prompt_template:
-                raise ValueError("All tasks must have agent_id, task_type, and prompt_template set.")
+            if not task.task_name or not task.agent_id or not task.task_type or (task.prompt_template is None and task.prompt_args is not None):
+                raise ValueError("All tasks must have agent_id, task_type, and prompt_template set if prompt_args is set.")
+            if task.prompt_template is not None and not isinstance(task.prompt_template, str):
+                raise ValueError("prompt_template must be a string")
+            if task.prompt_args is not None and not isinstance(task.prompt_args, dict):
+                raise ValueError("prompt_args must be a dict")
         return tasks
 
     @validator('dependencies', each_item=True)
     def check_dependencies(cls, dependency):
-        if not dependency.source or not dependency.target:
-            raise ValueError("All dependencies must have source and target set.")
+        if dependency is not None:
+            if not dependency.source or not dependency.target:
+                raise ValueError("All dependencies must have source and target set.")
         return dependency
 
 class PlanningAgent(BaseAgent):
@@ -38,7 +44,7 @@ class PlanningAgent(BaseAgent):
 
     def set_agent_manager(self, agent_manager):
         self.agent_manager = agent_manager
-        self.logger.info(f"Set AgentManager for PlanningAgent: {agent_manager}")
+        self.logger.info(f"Set AgentManager for PlanningAgent")
 
     def _select_llm_provider(self, llm_type, **kwargs):
         llm = self.llm_factory.create_chat_model(llm_type)
@@ -61,8 +67,8 @@ class PlanningAgent(BaseAgent):
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
-        agents = self.agent_manager.get_agents()
-        self.logger.info(f"Agents for PlanningAgent: {[agent.agent_id for agent in agents]}")
+        agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
+        self.logger.info(f"Agents for PlanningAgent: {agents}")
 
         llm_provider = self._select_llm_provider(llm_type)
 
@@ -75,11 +81,9 @@ class PlanningAgent(BaseAgent):
 
 
     def _format_input(self, instruction, *args, **kwargs):
-        self.logger.info(f"Formatting input for PlanningAgent: {instruction}")
         return instruction
 
     def _process_output(self, output, instruction):
-        self.logger.info(f"Processing output for PlanningAgent: {output}")
         tasks = None
         dependencies = None
 

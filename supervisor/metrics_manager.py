@@ -7,14 +7,15 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 class MetricsManager(BaseModel):
-    config: BaseModel = Field(..., description="The configuration object")
+    #config: BaseModel = Field(..., description="The configuration object")
     metrics: Dict[str, Dict] = Field(default_factory=dict, description="Dictionary to store metrics")
 
     class Config:
         arbitrary_types_allowed = True
 
-    def __init__(self, config):
-        super().__init__(config=config)
+    def __init__(self):
+        super().__init__()
+
 
     def get_metrics(self, request_id: Optional[str] = None) -> Dict:
         try:
@@ -32,6 +33,15 @@ class MetricsManager(BaseModel):
             self.metrics[request_id].update(updates)
         except Exception as e:
             logger.error(f"Error updating metrics for request '{request_id}': {e}")
+
+    def delta_metrics(self, request_id: str, increments: Dict):
+        try:
+            if request_id not in self.metrics:
+                self.metrics[request_id] = {}
+            for key, value in increments.items():
+                self.metrics[request_id][key] = self.metrics[request_id].get(key, 0) + value
+        except Exception as e:
+            logger.error(f"Error incrementing metrics for request '{request_id}': {e}")
 
     def persist_metrics(self, request_id: str, request_data: Dict):
         try:

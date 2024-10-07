@@ -6,6 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 from llm_provider.factory import LLMFactory, LLMType
 from shared_tools.message_bus import MessageBus
 from agents.base_agent import BaseAgent
+from langchain_core.messages import HumanMessage, SystemMessage
 
 class HelloWorldAgent(BaseAgent):
     def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
@@ -18,7 +19,15 @@ class HelloWorldAgent(BaseAgent):
         return {}
 
     def _run(self, llm_provider, instruction: str) -> Any:
-        return llm_provider.invoke({"instruction": instruction})
+        messages = [
+            SystemMessage(
+                content="You are a helpful assistant! Your name is Bob."
+            ),
+            HumanMessage(
+                content=instruction,
+            )
+        ]
+        return llm_provider.invoke(messages)
 
     def _arun(self, llm_provider, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
