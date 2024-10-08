@@ -116,6 +116,8 @@ class WeatherAgent(BaseAgent):
     def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
 
+        self.logger = logger
+
     @property
     def tools(self):
         return [
@@ -141,10 +143,8 @@ class WeatherAgent(BaseAgent):
         output = None
         for chunk in graph.stream(inputs, config):
             output = chunk
-            print(chunk)
-            print("-----")
+            self.logger.info(chunk)
 
-        #message = graph.invoke(inputs)
         return output
 
     def _arun(self, llm_provider, instruction: str) -> Any:

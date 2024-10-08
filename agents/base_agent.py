@@ -13,7 +13,7 @@ class BaseAgent:
         self.llm_factory = llm_factory
         self.config = config or {}
         self.state = None
-        self.version = None
+        self.version = None 
         self.message_bus = message_bus
         self.agent_id = agent_id
         self.agent_description = agent_description or None

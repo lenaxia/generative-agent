@@ -48,8 +48,9 @@ class MetricsManager(BaseModel):
         try:
             # TODO: Implement logic to persist the request data and metrics
             #       to a persistent storage (e.g., database, file system)
-            storage_path = Path("storage") / f"{request_id}.yaml"
+            storage_path = Path("logs/storage") / f"{request_id}.yaml"
             storage_path.parent.mkdir(exist_ok=True)
+            
             with open(storage_path, "w") as f:
                 yaml.safe_dump(request_data, f)
             logger.info(f"Persisted metrics for request '{request_id}' to '{storage_path}'.")
