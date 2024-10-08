@@ -30,7 +30,7 @@ class RequestManager:
 
     def handle_request(self, request: RequestModel) -> str:
         try:
-            request_id = str(uuid.uuid4())
+            request_id = 'req_' + str(uuid.uuid4()).split('-')[-1]
             request_time = time.time()
 
             # Get the list of available agents
@@ -40,7 +40,7 @@ class RequestManager:
             task_graph = self.create_task_graph(request.instructions, agents)
 
             # Delegate the initial tasks
-            for task in task_graph.get_top_level_leaf_nodes():
+            for task in task_graph.get_entrypoint_nodes():
                 self.delegate_task(task, request_id)
 
             self.request_map[request_id] = task_graph
@@ -273,7 +273,6 @@ class RequestManager:
             self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
         except Exception as e:
             logger.error(f"Error delegating task '{task.task_id}' for request '{request_id}': {e}")
-            logger.error(traceback.format_exc())
             self.handle_agent_error({"request_id": request_id, "task_id": task.task_id, "error_message": str(e)})
     
     def handle_request_completion(self, request_id: str):
@@ -284,6 +283,14 @@ class RequestManager:
             self.config.metrics_manager.update_metrics(request_id, {"duration": duration})
             # Persist the request data and results
             self.persist_request(request_id)
+
+            # Get the terminal nodes and print the results
+            terminal_nodes = self.request_map[request_id].get_terminal_nodes()
+            results = {}
+            for node in terminal_nodes:
+                results[node.task_name] = node.result
+            print(f"Results for request '{request_id}': {results}")
+
         except Exception as e:
             logger.error(f"Error handling request completion for '{request_id}': {e}")
     
@@ -300,11 +307,31 @@ class RequestManager:
     
     def persist_request(self, request_id: str):
         try:
-            # Implement logic to persist the request data, task graph, and results
-            # to a persistent storage (e.g., database, file system)
+            task_graph = self.request_map[request_id]
+            include_fields = {
+                'task_id',
+                'task_name',
+                'agent_id',
+                'task_type',
+                'prompt_template',
+                'prompt_args',
+                'status',
+                'inbound_edges',
+                'outbound_edges',
+                'result',
+                'stop_reason',
+            }
+
+            nodes = {node_id: node.model_dump(include=include_fields) for node_id, node in task_graph.nodes.items()}
+            edges = {edge_id: {"source": edge.source, "target": edge.target, "type": edge.type.name} for edge_id, edge in task_graph.edges}
+            
             request_data = {
                 "request_id": request_id,
-                "task_graph": self.request_map[request_id].to_dict(),
+                "task_graph": {
+                    "nodes": nodes,
+                    "edges": edges,
+
+                },
                 "metrics": self.config.metrics_manager.get_metrics(request_id),
             }
             self.config.metrics_manager.persist_metrics(request_id, request_data)

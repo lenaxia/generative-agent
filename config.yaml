@@ -5,3 +5,9 @@ llm_providers:
     model_name: qwen2.5-32b-instruct
     registry_type: default
     base_url: http://192.168.5.74:8080/v1/chat/completions
+
+logging:
+  log_file: logs/supervisor.log
+  log_level: info
+  log_file_max_size: 1024
+  disable_console_logging: true

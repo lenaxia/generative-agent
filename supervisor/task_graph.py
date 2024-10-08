@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 import uuid
 import logging
 import time
+import yaml
 
 from pydantic import BaseModel
 
@@ -15,6 +16,14 @@ class TaskStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     RETRIESEXCEEDED = "RETRIESEXCEEDED"
+
+    def __repr__(self):
+        return f"TaskStatus.{self.name}"
+
+yaml.SafeDumper.add_multi_representer(
+    TaskStatus,
+    yaml.representer.SafeRepresenter.represent_str,
+)
 
 class TaskResponse(BaseModel):
     task_id: str
@@ -34,6 +43,8 @@ class TaskDependency(BaseModel):
     target: str = Field(..., description="The task name that is the target of data")
     condition: Optional[dict] = Field(None, description="Conditions for the dependency to be fulfilled")
 
+from typing import Optional
+
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
     task_name: str = Field(..., description="A friendly name for the task")
@@ -41,12 +52,12 @@ class TaskNode(BaseModel):
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt_template: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
     prompt_args: Optional[dict] = Field({}, description="Arguments to be used in the prompt template")
-    prompt_template_formatted: Optional[str] = Field(..., description="Formatted prompt template", exclude=True)
+    prompt_template_formatted: Optional[str] = Field(..., description="Formatted prompt template, LLM should leave this empty")
     status: TaskStatus = Field(TaskStatus.PENDING, description="Current status of the task")
     inbound_edges: List["TaskEdge"] = Field([], description="List of incoming edges to this task node")
     outbound_edges: List["TaskEdge"] = Field([], description="List of outgoing edges from this task node")
-    result: Optional[str] = Field(None, description="Result of the task", exclude=True)
-    stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped", exclude=True)
+    result: Optional[str] = Field(None, description="Result of the task, LLM should leave this empty")
+    stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped, LLM should leave this empty")
 
 class TaskEdge(BaseModel):
     source: TaskNode = Field(..., description="The source task node")
@@ -72,7 +83,7 @@ class TaskGraph:
 
         # Create task nodes
         for task in tasks:
-            task_id = str(uuid.uuid4()).split('-')[-1]  # Use only the last part of the UUID
+            task_id = 'task_' + str(uuid.uuid4()).split('-')[-1]  # Use only the last part of the UUID
             node = TaskNode(
                 task_id=task_id,
                 task_name=task.task_name,
@@ -122,7 +133,12 @@ class TaskGraph:
         edges_data = [{"source": edge.source.task_id, "target": edge.target.task_id} for edge in self.edges]
         return {"nodes": nodes_data, "edges": edges_data}
 
-    def get_top_level_leaf_nodes(self) -> List[TaskNode]:
+    def get_entrypoint_nodes(self) -> List[TaskNode]:
+        
+        """
+        Returns a list of all top-level leaf nodes in the task graph.
+        A top-level leaf node is a node that has no inbound edges.
+        """
         # Initialize an empty list to store the top-level leaf nodes
         top_level_leaf_nodes = []
 
@@ -135,6 +151,19 @@ class TaskGraph:
 
         # Return the list of top-level leaf nodes
         return top_level_leaf_nodes
+    
+    def get_terminal_nodes(self) -> List[TaskNode]:
+        """
+        Returns a list of all terminal nodes in the task graph.
+        A terminal node is a node that has no outbound edges.
+        """
+        terminal_nodes = []
+
+        for node in self.nodes.values():
+            if not node.outbound_edges:
+                terminal_nodes.append(node)
+
+        return terminal_nodes
     
     def _format_prompt_template(self, task: TaskDescription) -> str:
         try:

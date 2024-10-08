@@ -1,49 +1,91 @@
 from logging import Logger
-from typing import Any, Dict
 from langchain.tools import BaseTool
-from pydantic import BaseModel, Field
-from .tools.text_summarizer_tool import TextSummarizerTool
-from supervisor.llm_registry import LLMRegistry, LLMType
-from llm_provider.base_client import BaseLLMClient
-from shared_tools.message_bus import MessageBus, MessageType
+from shared_tools.message_bus import MessageBus
 from agents.base_agent import BaseAgent
 
+from typing import List, Literal, TypedDict, Dict
+
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
+from langgraph.constants import Send
+from langgraph.graph import END, START, StateGraph
+
+
+from typing import Any, Dict, List
+from pydantic import BaseModel
+from llm_provider.factory import LLMFactory, LLMType
+from logging import Logger
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 class TextSummarizeInput(BaseModel):
     text: str
-    max_summary_length: int = Field(500, description="Maximum length of the summary")
+    max_summary_length: int
 
 class TextSummarizeOutput(BaseModel):
     summary: str
     factualness_score: float
     completeness_score: float
+    relevance_score: float
+
+class SummarizationState(TypedDict):
+    contents: List[str]
+    index: int
+    summary: str
 
 class TextSummarizerAgent(BaseAgent):
-    # TODO: Needs refactor for the new agent design pattern using create_react_agent
-    def __init__(self, logger: Logger, llm_registry: LLMRegistry, message_bus: MessageBus, agent_id: str, config: Dict = None):
-        super().__init__(logger, llm_registry, message_bus, agent_id, config)
+    def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
+        super().__init__(logger, llm_factory, message_bus, agent_id, config)
+        self.config = config or {}
+        self.chunk_size = self.config.get("chunk_size", 500)
+        self.max_summary_length = self.config.get("max_summary_length", 500)
+        self.factualness_threshold = self.config.get("factualness_threshold", 0.8)
+        self.completeness_threshold = self.config.get("completeness_threshold", 0.8)
+        self.relevance_threshold = self.config.get("relevance_threshold", 0.8)
+        self.setup_graph()
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
-        llm_client = self.llm_registry.get_client(LLMType.DEFAULT)
-        return {"text_summarizer": TextSummarizerTool(llm_client)}
+        # No tools needed for this agent
+        return {}
 
-    def _run(self, llm_client: BaseLLMClient, input_data: TextSummarizeInput = None) -> TextSummarizeOutput:
-        tool = self.tools["text_summarizer"]
+    def _select_llm_provider(self, llm_type: LLMType, **kwargs):
+        llm = self.llm_factory.create_chat_model(llm_type)
+        return llm
 
-        input_dict = input_data.dict() if input_data else {}
-        output = tool._run(**input_dict)
+    def _run(self, llm_provider, input_data: TextSummarizeInput) -> TextSummarizeOutput:
+        # Split the input text into chunks
+        #chunks = [input_data.text[i:i+self.chunk_size] for i in range(0, len(input_data.text), self.chunk_size)]
 
-        return TextSummarizeOutput(**output)
+        # Run the iterative summarization process
+        #config = {"configurable": {"thread_id": "abc123"}}
+        #output = self.app.invoke({"contents": chunks}, config=config)
+        #print(output)
+        #print(type(output))
+        
 
-    def _arun(self, llm_client: BaseLLMClient, input_data: TextSummarizeInput = None) -> TextSummarizeOutput:
-        raise NotImplementedError("TextSummarizerAgent does not support async execution.")
+        # Calculate factualness, completeness, and relevance scores
+        #factualness_score, completeness_score = self.calculate_accuracy_scores(summary, input_data.text)
+        #relevance_score = self.calculate_relevance_score(summary, input_data.text)
 
-    def _format_input(self, instruction: str, text: str, max_summary_length: int = 500) -> TextSummarizeInput:
+        # Check if scores meet thresholds, regenerate summary if needed
+        #if factualness_score < self.factualness_threshold or completeness_score < self.completeness_threshold or relevance_score < self.relevance_threshold:
+        #    self.logger.info("Summary scores did not meet thresholds, regenerating summary.")
+        #    return self._run(llm_provider, input_data)
+
+        #return TextSummarizeOutput(summary=summary, factualness_score=factualness_score, completeness_score=completeness_score, relevance_score=relevance_score)
+
+        return TextSummarizeOutput(summary="hello world", factualness_score=0.9, completeness_score=0.9, relevance_score=0.9)
+
+    def _arun(self, llm_provider, input_data: TextSummarizeInput) -> TextSummarizeOutput:
+        raise NotImplementedError("Asynchronous execution not supported.")
+
+    def _format_input(self, instruction: str, text: str, max_summary_length: int) -> TextSummarizeInput:
         return TextSummarizeInput(text=text, max_summary_length=max_summary_length)
 
     def _process_output(self, output: TextSummarizeOutput) -> str:
-        return f"Summary: {output.summary}\nFactualness Score: {output.factualness_score}\nCompleteness Score: {output.completeness_score}"
+        return f"Summary: {output.summary}\nFactualness Score: {output.factualness_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
 
     def setup(self):
         pass
@@ -51,37 +93,83 @@ class TextSummarizerAgent(BaseAgent):
     def teardown(self):
         pass
 
-    def handle_task_assignment(self, task_data: Dict):
-        try:
-            task_id = task_data["task_id"]
-            agent_id = task_data["agent_id"]
-            task_type = task_data["task_type"]
-            text = task_data["text"]
-            max_summary_length = task_data.get("max_summary_length", 500)
-            request_id = task_data["request_id"]
-            llm_client: BaseLLMClient = task_data["llm_client"]
+    def setup_graph(self):
+        # Initial summary
+        summarize_prompt = ChatPromptTemplate(
+            [
+                ("human", f"Write a concise summary of the following in {self.max_summary_length} words or less: {{context}}"),
+            ]
+        )
+        initial_summary_chain = summarize_prompt | self._select_llm_provider(LLMType.DEFAULT) | StrOutputParser()
 
-            # Prepare input data
-            input_data = self._format_input(task_type, text, max_summary_length)
+        # Refining the summary with new docs
+        refine_template = """
+        Produce a final summary in {max_summary_length} words or less.
 
-            # Use the provided llm_client instance to respond to the task
-            result = self._run(llm_client, input_data)
+        Existing summary up to this point:
+        {existing_answer}
 
-            # Publish the task response on the MessageBus
-            response_data = {
-                "task_id": task_id,
-                "agent_id": agent_id,
-                "task_type": task_type,
-                "result": self._process_output(result),
-                "request_id": request_id,
-            }
-            self.message_bus.publish(self, MessageType.TASK_RESPONSE, response_data)
-        except Exception as e:
-            logger.error(f"Summarizer: Error handling task assignment for task '{task_id}': {e}")
-            # Publish an error message on the MessageBus
-            error_data = {
-                "request_id": request_id,
-                "task_id": task_id,
-                "error_message": str(e),
-            }
-            self.message_bus.publish(self, MessageType.AGENT_ERROR, error_data)
+        New context:
+        ------------
+        {context}
+        ------------
+
+        Given the new context, refine the original summary.
+        """
+        refine_prompt = ChatPromptTemplate([("human", refine_template)])
+
+        refine_summary_chain = refine_prompt | self._select_llm_provider(LLMType.DEFAULT) | StrOutputParser()
+
+        def generate_initial_summary(state: SummarizationState, config: RunnableConfig):
+            summary = initial_summary_chain.invoke(
+                state["contents"][0],
+                config,
+            )
+            return {"summary": summary, "index": 1}
+
+
+        def refine_summary(state: SummarizationState, config: RunnableConfig):
+            content = state["contents"][state["index"]]
+            summary = refine_summary_chain.invoke(
+                {"existing_answer": state["summary"], "context": content, "max_summary_length": self.max_summary_length},
+                config,
+            )
+
+            return{"summary": summary, "index": state["index"] + 1}
+
+        def should_refine(state: SummarizationState) -> str:
+            if state["index"] >= len(state["contents"]):
+                return END
+            else:
+                return "refine_summary"
+
+        graph = StateGraph(SummarizationState)
+        graph.add_node("generate_initial_summary", generate_initial_summary)
+        graph.add_node("refine_summary", refine_summary)
+
+        graph.add_edge(START, "generate_initial_summary")
+        graph.add_conditional_edges("generate_initial_summary", should_refine)
+        graph.add_conditional_edges("refine_summary", should_refine)
+        self.app = graph.compile()
+
+    def calculate_accuracy_scores(self, summary, original_text):
+        # TODO: Implement factualness and completeness scoring logic here
+        # For now, returning dummy scores
+        factualness_score = 0.8
+        completeness_score = 0.7
+        return factualness_score, completeness_score
+
+    def calculate_relevance_score(self, summary, original_text):
+        vectorizer = TfidfVectorizer()
+        vectors = vectorizer.fit_transform([summary, original_text])
+        relevance_score = cosine_similarity(vectors[0], vectors[1])[0][0]
+        return relevance_score
+
+# Example configuration dictionary
+#example_config = {
+#    "chunk_size": 1000,  # Adjust chunk size for splitting input text
+#    "max_summary_length": 200,  # Maximum length of the summary
+#    "factualness_threshold": 0.9,  # Threshold for factualness score
+#    "completeness_threshold": 0.9,  # Threshold for completeness score
+#    "relevance_threshold": 0.9,  # Threshold for relevance score
+#}

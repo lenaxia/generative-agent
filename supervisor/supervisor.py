@@ -9,7 +9,7 @@ from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
 from shared_tools.message_bus import MessageBus, MessageType
-from supervisor.supervisor_config import SupervisorConfig
+from supervisor.supervisor_config import SupervisorConfig, LLMProviderConfig
 from config.bedrock_config import BedrockConfig
 from config.anthropic_config import AnthropicConfig
 from config.openai_config import OpenAIConfig
@@ -87,8 +87,8 @@ class Supervisor:
         causing any issues.
         """
         logger.info("Initializing components...")
-        configure_logging(self.config.log_level, self.config.log_file)
-        logger.info(f"Logging configured with level: {self.config.log_level} and file: {self.config.log_file}")
+        configure_logging(self.config.logging)
+        logger.info(f"Logging configured with level: {self.config.logging.log_level} and file: {self.config.logging.log_file}")
 
         self.message_bus = MessageBus()
         logger.info("Message bus initialized.")
@@ -98,10 +98,16 @@ class Supervisor:
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
-            llm_type = LLMType[provider_config.pop("registry_type", "DEFAULT").upper()]
-            config_cls = self.get_config_class(provider_config.pop("type", None))
+            provider_config = LLMProviderConfig(**provider_config.model_dump())  # Convert to LLMProviderConfig instance
+            llm_type = LLMType[provider_config.registry_type.upper()] if provider_config.registry_type else LLMType.DEFAULT
+            config_cls = self.get_config_class(provider_config.type)
             if config_cls:
-                config = config_cls(**provider_config)
+                config = config_cls(
+                    name=provider_config.name,
+                    model_name=provider_config.model_name,
+                    base_url=provider_config.base_url,
+                    # Add any other provider-specific configuration fields here
+                )
                 llm_factory.add_config(llm_type, config)
             else:
                 logger.warning(f"Unsupported LLM provider type for '{provider_name}'.")
