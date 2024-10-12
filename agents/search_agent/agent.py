@@ -21,8 +21,7 @@ class SearchAgent(BaseAgent):
     def tools(self) -> Dict[str, BaseTool]:
         return {"search": self.search_tool}
 
-    def _run(self, llm_provider, instruction: str) -> Any:
-        # TODO: Needs refactor for the new agent design pattern using create_react_agent
+    def _run(self, llm_provider: Runnable, instruction: str) -> Any:
         messages = [HumanMessage(content=instruction)]
         response = llm_provider.invoke(messages)
 
@@ -34,14 +33,14 @@ class SearchAgent(BaseAgent):
                 if tool_call["name"] == "tavily_search_results_json":
                     search_query = tool_call["args"]["query"]
                     search_results = self.search_tool.run(search_query)
-                    messages.append(str(ToolMessage(content=search_results, name="tavily_search_results_json")))
+                    messages.append(str(ToolMessage(content=search_results, name="tavily_search_results_json", tool_call_id="123")))
 
             final_response = llm_provider.invoke(messages)
             messages.append(final_response)
 
-        return final_response
+        return final_response.content
 
-    def _arun(self, llm_provider, instruction: str) -> Any:
+    def _arun(self, llm_provider: Runnable, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
 
     def _format_input(self, instruction: str, *args, **kwargs) -> str:
@@ -49,9 +48,6 @@ class SearchAgent(BaseAgent):
 
     def _process_output(self, output: str, *args, **kwargs) -> str:
         return output
-
-    def _select_llm_provider(self, llm_type: LLMType, **kwargs) -> Runnable:
-        return self.llm_factory.create_provider(llm_type, tools=self.tools.values(), **kwargs)
 
     def setup(self):
         pass

@@ -125,6 +125,13 @@ class BaseAgent:
             self.message_bus.publish(self, MessageType.AGENT_ERROR, error_data)
 
     @abstractmethod
+    def initialize(self):
+        """
+        Performs initialization operations 
+        """
+        pass
+
+    @abstractmethod
     def setup(self):
         """
         Performs setup operations before task execution.
