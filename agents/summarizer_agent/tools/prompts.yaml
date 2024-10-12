@@ -4,17 +4,17 @@ summarize_prompt: |
   Text: {text}
 
 validation_prompt: |
-  You are a fact-checking assistant. Your task is to evaluate the factualness and completeness of the given summary in relation to the original text.
+  You are a fact-checking assistant. Your task is to evaluate the accuracy and completeness of the given summary in relation to the original text.
 
   Summary: {summary}
 
   Original Text: {text}
 
   Please provide two scores between 0 and 1:
-  1. A factualness score indicating how factually accurate and consistent the summary is with the original text.
+  1. A accuracy score indicating how accurate and consistent the summary is with the original text.
   2. A completeness score indicating how well the summary covers the key information and main ideas of the original text.
 
   Your response should be in the following format:
   
-  factualness_score: <score> 
-  7completeness_score: <score>
+  accuracy_score: <score> 
+  completeness_score: <score>

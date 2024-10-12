@@ -12,6 +12,18 @@
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.test_agent"
+        },
+        {
+            "name": "Python Debugger: IntegSummarizerAgent",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.summarizer_agent.integ_agent"
+        },
+        {
+            "name": "Python Debugger: TestSearchAgent",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.search_agent.test_agent"
         }
     ]
 }
