@@ -29,7 +29,7 @@ class TestTextSummarizerAgent(unittest.TestCase):
         instruction = "Summarize this text"
         text = "This is a sample text to summarize."
         max_summary_length = 100
-        expected_input = TextSummarizeInput(text=text, max_summary_length=max_summary_length)
+        expected_input = TextSummarizeInput(prompt=text, max_summary_length=max_summary_length)
 
         input_data = self.agent._format_input(instruction, text, max_summary_length)
 

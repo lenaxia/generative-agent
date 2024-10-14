@@ -21,7 +21,7 @@ class TestHelloWorldAgent(unittest.TestCase):
         mock_provider.invoke.return_value = expected_output
         self.llm_factory.create_provider = Mock(return_value=mock_provider)
 
-        result = self.agent.run(instruction, LLMType.DEFAULT)
+        result = self.agent.run(instruction, history=[])
         self.assertEqual(result, expected_output)
 
     def test_format_input(self):

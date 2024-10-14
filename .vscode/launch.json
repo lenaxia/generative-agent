@@ -8,22 +8,28 @@
             "module": "supervisor.supervisor"
         },
         {
-            "name": "Python Debugger: TestSummarizerAgent",
+            "name": "Python Debugger: SummarizerAgentTest",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.test_agent"
         },
         {
-            "name": "Python Debugger: IntegSummarizerAgent",
+            "name": "Python Debugger: SummarizerAgentInteg",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.integ_agent"
         },
         {
-            "name": "Python Debugger: TestSearchAgent",
+            "name": "Python Debugger: SearchAgentTest",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.search_agent.test_agent"
+        },
+        {
+            "name": "Python Debugger: SearchAgentInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.search_agent.integ_agent"
         }
     ]
 }

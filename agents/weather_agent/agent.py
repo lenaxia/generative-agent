@@ -1,14 +1,15 @@
 import requests
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate
 from langgraph.prebuilt import create_react_agent
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, AgentInput
 from llm_provider.factory import LLMFactory, LLMType
 from shared_tools.message_bus import MessageBus
 from pydantic import BaseModel, Field
+from agents.base_agent import AgentInput
 
 class WeatherInput(BaseModel):
     lat: float = Field(..., description="Latitude of the location")
@@ -130,7 +131,7 @@ class WeatherAgent(BaseAgent):
         llm = self.llm_factory.create_chat_model(llm_type)
         return llm
 
-    def _run(self, llm_provider, instruction: str) -> Any:
+    def _run(self, input: AgentInput) -> Any:
         # TODO: Needs refactor for the new agent design pattern using create_react_agent
         # TODO: Move prompts to external file
         system_prompt = "You are a weather bot who can look up the current weather in a city or zip code. Answer the user query below"
@@ -139,7 +140,7 @@ class WeatherAgent(BaseAgent):
         config = {"configurable": {"thread_id": "abc123"}}
         llm = self.llm_factory.create_chat_model(LLMType.DEFAULT)
         graph = create_react_agent(llm, tools=self.tools)
-        inputs = {"messages": [("system", system_prompt),("user", instruction)]}
+        inputs = {"messages": [("system", system_prompt),("user", input.prompt)]}
         output = None
         for chunk in graph.stream(inputs, config):
             output = chunk
@@ -147,11 +148,11 @@ class WeatherAgent(BaseAgent):
 
         return output
 
-    def _arun(self, llm_provider, instruction: str) -> Any:
+    def _arun(self, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
 
-    def _format_input(self, instruction: str, *args, **kwargs) -> str:
-        return instruction
+    def _format_input(self, instruction: str, history: List[Any], *args, **kwargs) -> str:
+        return AgentInput(prompt=instruction, history=history)
 
     def _process_output(self, output: str, *args, **kwargs) -> str:
         return output

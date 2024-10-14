@@ -1,53 +1,52 @@
-from logging import Logger
+import requests
+from datetime import datetime
 from typing import Any, Dict, List
+from langgraph.checkpoint.memory import MemorySaver
 from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables.base import Runnable
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.prebuilt import create_react_agent
+from agents.base_agent import BaseAgent, AgentInput
 from llm_provider.factory import LLMFactory, LLMType
 from shared_tools.message_bus import MessageBus
-from agents.base_agent import BaseAgent
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 class SearchAgent(BaseAgent):
-    def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
+    def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
+        self.logger = logger
         self.search_tool = TavilySearchResults(max_results=2)
-        self.prompt_template = ChatPromptTemplate.from_template("{instruction}\n\nSearch Quality Reflection: {search_quality_reflection}\nSearch Quality Score: {search_quality_score:0.2f}\n\nSearch Results:\n{search_results}")
-        self.output_parser = StrOutputParser()
 
     @property
-    def tools(self) -> Dict[str, BaseTool]:
-        return {"search": self.search_tool}
+    def tools(self):
+        return [self.search_tool]
 
-    def _run(self, llm_provider: Runnable, instruction: str) -> Any:
-        messages = [HumanMessage(content=instruction)]
-        response = llm_provider.invoke(messages)
+    def _select_llm_provider(self, llm_type: LLMType, **kwargs):
+        llm = self.llm_factory.create_chat_model(llm_type)
+        return llm
 
-        if response.tool_calls:
-            messages.append(response)  # Add the initial AI response with tool calls
+    def _run(self, input: AgentInput) -> Any:
+        system_prompt = "You are a search bot who can search the internet for information to answer user queries."
 
-            for tool_call in response.tool_calls:
-                messages.append(str(tool_call))  # Add the initial AI response with tool calls
-                if tool_call["name"] == "tavily_search_results_json":
-                    search_query = tool_call["args"]["query"]
-                    search_results = self.search_tool.run(search_query)
-                    messages.append(str(ToolMessage(content=search_results, name="tavily_search_results_json", tool_call_id="123")))
+        llm_provider = self._select_llm_provider(LLMType.DEFAULT)
+        config = {"configurable": {"thread_id": "abc123"}}
+        graph = create_react_agent(llm_provider, tools=self.tools)
+        inputs = {"messages": [("system", system_prompt), ("user", input.prompt)]}
+        output = None
+        for chunk in graph.stream(inputs, config):
+            output = chunk
+            self.logger.info(chunk)
 
-            final_response = llm_provider.invoke(messages)
-            messages.append(final_response)
+        return output
 
-        return final_response.content
-
-    def _arun(self, llm_provider: Runnable, instruction: str) -> Any:
+    def _arun(self, llm_provider, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
 
-    def _format_input(self, instruction: str, *args, **kwargs) -> str:
-        return instruction
+    def _format_input(self, instruction: str, history: List[str], *args, **kwargs) -> AgentInput:
+        return AgentInput(prompt=instruction, history=history)
 
     def _process_output(self, output: str, *args, **kwargs) -> str:
-        return output
+        result = output["agent"]["messages"][0].content
+        return result
 
     def setup(self):
         pass

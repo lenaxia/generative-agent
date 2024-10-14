@@ -5,6 +5,7 @@ from supervisor.supervisor_config import SupervisorConfig
 from llm_provider.factory import LLMFactory, LLMType
 from config.openai_config import OpenAIConfig
 from shared_tools.message_bus import MessageBus
+from agents.base_agent import AgentInput
 
 class WeatherAgentManagerIntegrationTest(unittest.TestCase):
     def setUp(self):
@@ -43,7 +44,8 @@ class WeatherAgentManagerIntegrationTest(unittest.TestCase):
         cities = ["Seattle", "New York", "London", "Tokyo"]
         for city in cities:
             instruction = f"What is the current weather in {city}?"
-            result = weather_agent._run(llm_provider, instruction)
+            input = AgentInput(prompt=instruction)
+            result = weather_agent._run(input)
 
             print(f"Weather for {city}: {result}")
 

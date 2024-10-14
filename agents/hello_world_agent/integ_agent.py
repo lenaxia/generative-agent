@@ -5,6 +5,7 @@ from agents.hello_world_agent.agent import HelloWorldAgent
 from llm_provider.factory import LLMFactory, LLMType
 from config.openai_config import OpenAIConfig
 from shared_tools.message_bus import MessageBus
+from agents.base_agent import AgentInput
 
 class HelloWorldAgentIntegrationTest(unittest.TestCase):
     def setUp(self):
@@ -35,9 +36,11 @@ class HelloWorldAgentIntegrationTest(unittest.TestCase):
             name="openai",
             prompt_template=prompt_template,
         )
+        
+        input = AgentInput(prompt=instruction)
 
         # Run the agent
-        result = self.agent._run(llm_provider, instruction)
+        result = self.agent._run(input)
 
         # Assert that the output is as expected
         self.assertEqual(result.content, expected_output)

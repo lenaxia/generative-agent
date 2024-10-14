@@ -9,7 +9,7 @@ from uuid import uuid4
 from enum import Enum
 from shared_tools.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, AgentInput
 from supervisor.task_graph import TaskGraph, TaskDescription, TaskDependency
 
 class PlanningAgentOutput(BaseModel):
@@ -50,8 +50,9 @@ class PlanningAgent(BaseAgent):
         llm = self.llm_factory.create_chat_model(llm_type)
         return llm
 
-    def _run(self, instruction, llm_type=LLMType.DEFAULT):
-        self.logger.info(f"Running PlanningAgent with instruction: {instruction}")
+    def _run(self, input: AgentInput, request_id: str):
+        self.logger.info(f"Running PlanningAgent with instruction: {input.prompt}")
+        self.request_id = request_id
 
         parser = PydanticOutputParser(pydantic_object=PlanningAgentOutput)
 
@@ -67,16 +68,18 @@ class PlanningAgent(BaseAgent):
             formatter={"agents": lambda agents: "\n".join([f"- {agent}" for agent in agents])},
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
+        
+        #self.logger.info({"agents": lambda agents: "\n".join([f"- {agent}" for agent in agents])})
 
         # TODO: Instead of just getting the agent names, also get the agent descriptions, so the LLM has more context on what each agent does
         #   and update the formatter above to properly format the agent name and description
         agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
         self.logger.info(f"Agents for PlanningAgent: {agents}")
 
-        llm_provider = self._select_llm_provider(llm_type)
+        llm_provider = self._select_llm_provider(input.llm_type)
 
         chain = prompt_template | llm_provider | parser
-        planning_agent_output = chain.invoke({"input": instruction, "agents": agents})
+        planning_agent_output = chain.invoke({"input": input.prompt, "agents": agents})
 
         self.logger.info(f"PlanningAgent generated task graph: {planning_agent_output}")
 
@@ -96,12 +99,16 @@ class PlanningAgent(BaseAgent):
         except Exception as e:
             print(e)
 
-        task_graph = TaskGraph(tasks=tasks, dependencies=dependencies)
+        task_graph = TaskGraph(tasks=tasks, dependencies=dependencies, request_id=self.request_id)
         return task_graph
 
-    def run(self, instruction, llm_type=LLMType.DEFAULT, *args, **kwargs):
+    def run(self, instruction: str, history: List[str], request_id: str, *args, **kwargs):
         self.setup()
-        planning_agent_output = self._run(instruction, llm_type)
+        input = AgentInput(
+            prompt=instruction,
+            history=history
+        )
+        planning_agent_output = self._run(input, request_id=request_id)
         self.teardown()
         return self._process_output(planning_agent_output, instruction)
 
