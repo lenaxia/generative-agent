@@ -37,11 +37,11 @@ class RequestManager:
             agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
 
             # Create the task graph using the Planning Agent
-            task_graph = self.create_task_graph(request.instructions, agents)
+            task_graph = self.create_task_graph(request.instructions, agents, request_id)
 
             # Delegate the initial tasks
             for task in task_graph.get_entrypoint_nodes():
-                self.delegate_task(task, request_id)
+                self.delegate_task(task_graph, task)
 
             self.request_map[request_id] = task_graph
             # TODO: This was causing some problems so commented it out for now.
@@ -58,7 +58,7 @@ class RequestManager:
             logger.error(f"Error handling request: {e}")
             raise e
 
-    def create_task_graph(self, instruction: str, agents: List[BaseAgent]) -> TaskGraph:
+    def create_task_graph(self, instruction: str, agents: List[BaseAgent], request_id: str) -> TaskGraph:
         logger.info(f"Creating task graph for instruction: {instruction}")
         planning_agent = self.agent_manager.get_agent("PlanningAgent")
         if planning_agent is None:
@@ -66,7 +66,7 @@ class RequestManager:
 
         if planning_agent:
             planning_agent.set_agent_manager(self.agent_manager)
-            task_graph = planning_agent.run(instruction, agents=agents)
+            task_graph = planning_agent.run(instruction, history=None, agents=agents, request_id=request_id)
             logger.info("Task graph created successfully.")
             logger.debug(f"TASK GRAPH: {task_graph.nodes}")
             return task_graph
@@ -92,9 +92,7 @@ class RequestManager:
                 if node.status == TaskStatus.COMPLETED:
                     completed_nodes.append(node)
                     self.config.metrics_manager.delta_metrics(request_id, {"tasks_completed": 1})
-                    for child_node in task_graph.get_child_nodes(node):
-                        if self.check_conditions(child_node, task_graph):
-                            self.delegate_task(child_node.task, request_id)
+                    self.delegate_next_tasks(task_graph, node)
                 elif node.status in (TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED):
                     failed_nodes.append(node)
 
@@ -151,38 +149,39 @@ class RequestManager:
             if node is None:
                 logger.error(f"Task '{task_id}' not found in the task graph.")
                 return
-
+            
+            node.result = response.get("result", None)
             node.status = TaskStatus.COMPLETED
-            node.result = response.get("result")
+            task_graph.history.append(response.get("result"))
 
             self.monitor_progress(request_id)
-            self.delegate_next_tasks(node)
         except Exception as e:
             logger.error(f"Error handling task response for request '{request_id}', task '{task_id}': {e}")
             self.handle_agent_error({"request_id": request_id, "task_id": task_id, "error_message": str(e)})
 
-    def delegate_next_tasks(self, node: TaskNode):
+    def delegate_next_tasks(self, task_graph: TaskGraph, node: TaskNode):
         """
         Delegates the next tasks in the task graph after the current task has been completed.
 
         :param node: The completed task node
         :return: None
         """
-        for edge in node.outbound_edges:
-            child_node = edge.target
-            if self.all_parents_completed(child_node):
-                self.delegate_task(child_node, node.task.request_id)
+        for child_node in task_graph.get_child_nodes(task_graph.nodes, node):
+            if self.all_parents_completed(task_graph.nodes, child_node.task_id):
+                if self.check_conditions(child_node, task_graph):
+                    self.delegate_task(task_graph, child_node)
 
-    def all_parents_completed(self, node: TaskNode):
+    def all_parents_completed(self, nodes: Dict[str, TaskNode], node_id: str):
         """
         Checks if all parent nodes of the given node have been completed.
 
         :param node: The node to check
         :return: True if all parents have been completed, False otherwise
         """
+        node = nodes[node_id]
         for edge in node.inbound_edges:
-            parent_node = edge.source
-            if parent_node.task.status != TaskStatus.COMPLETED:
+            parent_node = nodes[edge.source_id]
+            if parent_node.status != TaskStatus.COMPLETED:
                 return False
         return True
 
@@ -259,21 +258,24 @@ class RequestManager:
             logger.error(f"Error getting request status for '{request_id}': {e}")
             return {}
     
-    def delegate_task(self, task: TaskNode, request_id: str):
-        try:
-            task_data = {
-                "task_id": task.task_id,
-                "agent_id": task.agent_id,
-                "task_type": task.task_type,
-                "prompt": task.prompt_template_formatted,
-                "request_id": request_id,
-                "outbound_edges": task.outbound_edges,
-                "status": task.status,
-            }
-            self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
-        except Exception as e:
-            logger.error(f"Error delegating task '{task.task_id}' for request '{request_id}': {e}")
-            self.handle_agent_error({"request_id": request_id, "task_id": task.task_id, "error_message": str(e)})
+    def delegate_task(self, task_graph: TaskGraph, task: TaskNode):
+        if (task.status == TaskStatus.PENDING):
+            try:
+                task_data = {
+                    "task_id": task.task_id,
+                    "agent_id": task.agent_id,
+                    "task_type": task.task_type,
+                    "prompt": task.prompt_template_formatted,
+                    "request_id": task_graph.request_id,
+                    "outbound_edges": task.outbound_edges,
+                    "status": task.status,
+                    "history": task_graph.history
+                }
+                task.status = TaskStatus.RUNNING
+                self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
+            except Exception as e:
+                logger.error(f"Error delegating task '{task.task_id}' for request '{task_graph.request_id}': {e}")
+                self.handle_agent_error({"request_id": task_graph.request_id, "task_id": task.task_id, "error_message": str(e)})
     
     def handle_request_completion(self, request_id: str):
         try:
@@ -323,7 +325,7 @@ class RequestManager:
             }
 
             nodes = {node_id: node.model_dump(include=include_fields) for node_id, node in task_graph.nodes.items()}
-            edges = {edge_id: {"source": edge.source, "target": edge.target, "type": edge.type.name} for edge_id, edge in task_graph.edges}
+            edges = {edge.source_id + '_' + edge.target_id: {"source": edge.source_id, "target": edge.target_id, "condition": edge.condition} for edge in task_graph.edges}
             
             request_data = {
                 "request_id": request_id,

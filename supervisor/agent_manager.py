@@ -12,7 +12,8 @@ from supervisor.supervisor_config import SupervisorConfig
 from agents.base_agent import BaseAgent
 from shared_tools.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
-from agents.hello_world_agent.agent import HelloWorldAgent
+from agents.summarizer_agent.agent import TextSummarizerAgent
+from agents.search_agent.agent import SearchAgent
 from agents.weather_agent.agent import WeatherAgent
 from agents.planning_agent.agent import PlanningAgent
 
@@ -72,11 +73,16 @@ class AgentManager(BaseModel):
         # TODO: Move to using dynamic loading of agents using importlib (see commented out code below). 
         try:
             agents_to_register = [
-                #{
-                #    'name': 'HelloWorldAgent',
-                #    'class': HelloWorldAgent,
-                #    'config_path': 'agents/hello_world_agent/config.yaml'
-                #},
+                {
+                    'name': 'TextSummarizerAgent',
+                    'class': TextSummarizerAgent,
+                    'config_path': 'agents/summarizer_agent/config.yaml'
+                },
+                {
+                    'name': 'SearchAgent',
+                    'class': SearchAgent,
+                    'config_path': 'agents/search_agent/config.yaml'
+                },
                 {
                     'name': 'PlanningAgent',
                     'class': PlanningAgent,

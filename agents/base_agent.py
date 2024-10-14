@@ -1,11 +1,18 @@
 from logging import Logger
 from abc import abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 from langchain.agents import AgentType
 from llm_provider.factory import LLMFactory, LLMType
 from langchain.tools import BaseTool
 from langchain_core.runnables.base import Runnable
 from shared_tools.message_bus import MessageBus, MessageType
+from pydantic import BaseModel, Field
+
+class AgentInput(BaseModel):
+    prompt: str
+    history: Optional[Union[List[Any], None]] = None
+    llm_type: Optional[LLMType] = LLMType.DEFAULT
+    additional_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class BaseAgent:
     # TODO: Potentially need to rename this class to not conflict with the LangChain BaseAgent Class that I think exists
@@ -28,19 +35,19 @@ class BaseAgent:
         """
         raise NotImplementedError
 
-    def _run(self, llm_provider, *args, **kwargs) -> Any:
+    def _run(self, input: AgentInput, *args, **kwargs) -> Any:
         """
         Executes the agent's task synchronously.
         """
         raise NotImplementedError
 
-    def _arun(self, llm_provider, *args, **kwargs) -> Any:
+    def _arun(self, input: AgentInput, *args, **kwargs) -> Any:
         """
         Executes the agent's task asynchronously.
         """
         raise NotImplementedError
 
-    def _format_input(self, *args, **kwargs) -> Any:
+    def _format_input(self, *args, **kwargs) -> AgentInput:
         """
         Formats the input for the LLM provider and the respective tool(s).
         """
@@ -53,15 +60,14 @@ class BaseAgent:
         raise NotImplementedError
 
 
-    def run(self, instruction: str, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
+    def run(self, instruction: str, history: List[Any], *args, **kwargs) -> Any:
         """
         Executes the agent's task synchronously.
         """
         self.setup()
-        input_data = self._format_input(instruction, *args, **kwargs)
-
-        llm_provider = self._select_llm_provider(llm_type, **kwargs)
-        output_data = self._run(llm_provider, input_data)
+        input_data = self._format_input(instruction, history, *args, **kwargs)
+        
+        output_data = self._run(input_data)
         self.teardown()
         return self._process_output(output_data)
 
@@ -72,13 +78,13 @@ class BaseAgent:
         """
         return self.llm_factory.create_provider(llm_type, **kwargs)
 
-    async def arun(self, instruction: str, llm_type: LLMType = LLMType.DEFAULT, *args, **kwargs) -> Any:
+    async def arun(self, input: AgentInput, *args, **kwargs) -> Any:
         """
         Executes the agent's task asynchronously.
         """
         self.setup()
-        llm_provider = self.llm_factory.create_provider(llm_type, **kwargs)
-        input_data = self._format_input(instruction, *args, **kwargs)
+        llm_provider = self.llm_factory.create_provider(input.llm_type, **kwargs)
+        input_data = self._format_input(input.prompt, *args, **kwargs)
         output_data = await self._arun(llm_provider, input_data)
         self.teardown()
         return self._process_output(output_data)
@@ -92,28 +98,16 @@ class BaseAgent:
 
         try:
             task_id = task_data["task_id"]
-            agent_id = task_data["agent_id"]
-            task_type = task_data["task_type"]
-            prompt = task_data["prompt"]
             request_id = task_data["request_id"]
-    
+            history = task_data.get("history", ["the beginning"])
 
-            # Use the llm_factory instance to create the LLM provider
-            llm_provider = self._select_llm_provider(LLMType.DEFAULT)
-    
             # Use the provided llm_provider instance to respond to the task
-            result = self._run(llm_provider, prompt)
+            result = self.run(task_data["prompt"], history=history)
 
             # Publish the task response on the MessageBus
-            response_data = {
-                "task_id": task_id,
-                "agent_id": agent_id,
-                "task_type": task_type,
-                "result": result,
-                "request_id": request_id,
-            }
+            task_data["result"] = result
 
-            self.message_bus.publish(self, MessageType.TASK_RESPONSE, response_data)
+            self.message_bus.publish(self, MessageType.TASK_RESPONSE, task_data)
         except Exception as e:
             self.logger.error(f"Error handling task assignment for task '{task_id}': {e}")
             # Publish an error message on the MessageBus

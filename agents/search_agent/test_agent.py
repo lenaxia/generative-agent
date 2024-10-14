@@ -7,7 +7,7 @@ from langchain_core.runnables.base import Runnable
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from llm_provider.factory import LLMFactory, LLMType
 from shared_tools.message_bus import MessageBus
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, AgentInput
 from langchain_community.tools.tavily_search import TavilySearchResults
 from agents.search_agent.agent import SearchAgent
 
@@ -35,9 +35,11 @@ class TestSearchAgent(unittest.TestCase):
         initial_response = AIMessage(content="I will search for the capital of France.", tool_calls=[{"name": "tavily_search_results_json", "id": "123","args": {"query": "capital of france"}}])
         final_response = AIMessage(content="The capital of France is Paris.")
         llm_provider.invoke.side_effect = [initial_response, final_response]
+        
+        input = AgentInput(prompt=instruction)
 
         agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)
-        output = agent._run(llm_provider, instruction)
+        output = agent._run(input)
 
         self.assertEqual(output, "The capital of France is Paris.")
         mock_search_tool.assert_called_once_with("capital of france")

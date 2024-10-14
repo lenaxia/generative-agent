@@ -1,13 +1,10 @@
 import unittest
 from unittest.mock import Mock, patch
 from agents.planning_agent.agent import PlanningAgent
-from agents.base_agent import BaseAgent
-from supervisor.llm_registry import LLMRegistry
+from agents.base_agent import BaseAgent, AgentInput
 from shared_tools.message_bus import MessageBus
-from llm_provider.base_client import BaseLLMClient
 from langchain.tools import BaseTool
 from supervisor.task_graph import TaskGraph
-from supervisor.llm_registry import LLMType
 
 class TestPlanningAgent(unittest.TestCase):
     def setUp(self):
@@ -56,6 +53,7 @@ class TestPlanningAgent(unittest.TestCase):
         mock_agent_executor.from_tools_and_prompt.return_value = mock_agent
         mock_agent.return_value = {"task_graph": "sample_task_graph"}
         mock_parse_obj_as.return_value = TaskGraph([])
+
 
         task_graph = self.planning_agent._run(llm_client, instruction, LLMType.DEFAULT)
 

@@ -1,7 +1,7 @@
 from logging import Logger
 from langchain.tools import BaseTool
 from shared_tools.message_bus import MessageBus
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, AgentInput
 
 from typing import List, Literal, TypedDict, Dict
 
@@ -19,8 +19,7 @@ from logging import Logger
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-class TextSummarizeInput(BaseModel):
-    text: str
+class TextSummarizeInput(AgentInput):
     max_summary_length: int
 
 class TextSummarizeOutput(BaseModel):
@@ -39,10 +38,10 @@ class TextSummarizerAgent(BaseAgent):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.config = config or {}
         self.chunk_size = self.config.get("chunk_size", 500)
-        self.max_summary_length = self.config.get("max_summary_length", 500)
+        self.max_summary_length = self.config.get("max_summary_length", 100)
         self.accuracy_threshold = self.config.get("accuracy_threshold", 0.8)
         self.completeness_threshold = self.config.get("completeness_threshold", 0.8)
-        self.relevance_threshold = self.config.get("relevance_threshold", 0.8)
+        self.relevance_threshold = self.config.get("relevance_threshold", 0.25)
         self.setup_graph()
 
     @property
@@ -54,37 +53,59 @@ class TextSummarizerAgent(BaseAgent):
         llm = self.llm_factory.create_chat_model(llm_type)
         return llm
 
-    def _run(self, llm_provider, input_data: TextSummarizeInput) -> TextSummarizeOutput:
-        # Split the input text into chunks
-        chunks = [input_data.text[i:i+self.chunk_size] for i in range(0, len(input_data.text), self.chunk_size)]
+    def _run(self, input_data: TextSummarizeInput) -> TextSummarizeOutput:
+        max_retries = 5  # Set the maximum number of retries
+        best_summary = None
+        best_scores = (0.0, 0.0, 0.0)  # Initialize best scores with (accuracy, completeness, relevance)
 
-        # Run the iterative summarization process
-        config = {"configurable": {"thread_id": "abc123"}}
-        output = self.app.invoke({"contents": chunks}, config=config)
-        print(output)
-        print(type(output))
-        summary = output["summary"]
-        
-        # Calculate accuracy, completeness, and relevance scores
-        accuracy_score, completeness_score = self.calculate_accuracy_scores(summary, input_data.text)
-        relevance_score = self.calculate_relevance_score(summary, input_data.text)
+        retries = 0
+        while retries < max_retries:
+            # Split the input text into chunks
+            most_recent = input_data.history[-1]
+            chunks = [most_recent[i:i+self.chunk_size] for i in range(0, len(most_recent), self.chunk_size)]
 
-        # Check if scores meet thresholds, regenerate summary if needed
-        if accuracy_score < self.accuracy_threshold or completeness_score < self.completeness_threshold or relevance_score < self.relevance_threshold:
-            self.logger.info("Summary scores did not meet thresholds, regenerating summary.")
-            return self._run(llm_provider, input_data)
+            # Run the iterative summarization process
+            config = {"configurable": {"thread_id": "abc123"}}
+            output = self.app.invoke({"contents": chunks}, config=config)
+            summary = output["summary"]
 
-        return TextSummarizeOutput(summary=summary, accuracy_score=accuracy_score, completeness_score=completeness_score, relevance_score=relevance_score)
+            # Calculate accuracy, completeness, and relevance scores
+            accuracy_score, completeness_score = self.calculate_accuracy_scores(summary, input_data.prompt)
+            relevance_score = self.calculate_relevance_score(summary, input_data.prompt)
 
+            # Check if scores meet thresholds
+            if (
+                accuracy_score >= self.accuracy_threshold
+                and completeness_score >= self.completeness_threshold
+                and relevance_score >= self.relevance_threshold
+            ):
+                # Store the summary and scores if they are the best so far
+                if (accuracy_score, completeness_score, relevance_score) > best_scores:
+                    best_summary = summary
+                    best_scores = (accuracy_score, completeness_score, relevance_score)
+                break  # Exit the loop if thresholds are met
+
+            retries += 1
+            self.logger.info(f"Summary scores did not meet thresholds, regenerating summary. Retries: {retries}/{max_retries}")
+
+        if best_summary is None:
+            self.logger.warning("Maximum retries reached, returning best summary found.")
+
+        return TextSummarizeOutput(
+            summary=best_summary if best_summary else "",
+            accuracy_score=best_scores[0],
+            completeness_score=best_scores[1],
+            relevance_score=best_scores[2],
+        )
         
     def _arun(self, llm_provider, input_data: TextSummarizeInput) -> TextSummarizeOutput:
         raise NotImplementedError("Asynchronous execution not supported.")
 
-    def _format_input(self, instruction: str, text: str, max_summary_length: int) -> TextSummarizeInput:
-        return TextSummarizeInput(text=text, max_summary_length=max_summary_length)
+    def _format_input(self, instruction: str, history: List[str], max_summary_length: int = 500) -> TextSummarizeInput:
+        return TextSummarizeInput(prompt=instruction, history=history, max_summary_length=max_summary_length)
 
     def _process_output(self, output: TextSummarizeOutput) -> str:
-        return f"Summary: {output.summary}\Accuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
+        return f"Summary: {output.summary}\nAccuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
 
     def setup(self):
         pass

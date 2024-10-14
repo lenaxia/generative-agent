@@ -45,7 +45,7 @@ class TestPlanningAgent(unittest.TestCase):
         mock_invoke.return_value = mock_output
     
         instruction = "Fetch and process data from an API"
-        task_graph = self.planning_agent.run(instruction)
+        task_graph = self.planning_agent.run(instruction, history=[])
     
         self.assertIsNotNone(task_graph)
         self.assertEqual(len(task_graph.nodes), 2)

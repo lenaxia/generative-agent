@@ -48,6 +48,7 @@ from typing import Optional
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
     task_name: str = Field(..., description="A friendly name for the task")
+    request_id: str = Field(..., description="The request id for the parent request this task derives from")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt_template: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
@@ -60,21 +61,24 @@ class TaskNode(BaseModel):
     stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped, LLM should leave this empty")
 
 class TaskEdge(BaseModel):
-    source: TaskNode = Field(..., description="The source task node")
-    target: TaskNode = Field(..., description="The target task node")
+    source_id: str = Field(..., description="The source task node")
+    target_id: str = Field(..., description="The target task node")
     condition: Optional[dict] = Field(None, description="Conditions for the edge to be traversed")
 
 class TaskGraph:
     nodes: Dict[str, TaskNode]
     edges: List[TaskEdge]
     task_name_map: Dict[str, str]  # Map task_name to task_id
-    start_time: Optional[float] = Field(..., description="The time that the request arrived", exclude=True)
+    start_time: Optional[float] = Field(..., description="The time that the request arrived")
+    history: List[str] = Field(..., description="History of the task graph calls")
 
-    def __init__(self, tasks: List[TaskDescription], dependencies: Optional[List[Dict]] = None):
+    def __init__(self, tasks: List[TaskDescription], request_id: str, dependencies: Optional[List[Dict]] = None):
         self.nodes = {}
         self.edges = []
         self.task_name_map = {}
         self.start_time = time.time()
+        self.request_id = request_id
+        self.history = list()
 
         if tasks is None:
             # Handle the case where tasks is None
@@ -87,7 +91,9 @@ class TaskGraph:
             node = TaskNode(
                 task_id=task_id,
                 task_name=task.task_name,
+                request_id=self.request_id,
                 agent_id=task.agent_id,
+                status=TaskStatus.PENDING,
                 task_type=task.task_type,
                 prompt_template=task.prompt_template,
                 prompt_args=task.prompt_args or {},
@@ -110,7 +116,7 @@ class TaskGraph:
                 source_node = self.nodes[source_id]
                 target_node = self.nodes[target_id]
 
-                edge = TaskEdge(source=source_node, target=target_node, condition=condition)
+                edge = TaskEdge(source_id=source_node.task_id, target_id=target_node.task_id, condition=condition)
 
                 source_node.outbound_edges.append(edge)
                 target_node.inbound_edges.append(edge)
@@ -119,10 +125,10 @@ class TaskGraph:
     def get_node_by_task_id(self, task_id: str) -> Optional[TaskNode]:
         return self.nodes.get(task_id)
 
-    def get_child_nodes(self, node: TaskNode) -> List[TaskNode]:
+    def get_child_nodes(self, nodes: Dict[str, TaskNode], node: TaskNode) -> List[TaskNode]:
         child_nodes = []
         for edge in node.outbound_edges:
-            child_nodes.append(edge.target)
+            child_nodes.append(nodes[edge.target_id])
         return child_nodes
 
     def is_complete(self) -> bool:
@@ -130,7 +136,7 @@ class TaskGraph:
 
     def to_dict(self) -> Dict:
         nodes_data = [{"task_id": node.task_id, "task_name": node.task_name, "status": node.status.value} for node in self.nodes.values()]
-        edges_data = [{"source": edge.source.task_id, "target": edge.target.task_id} for edge in self.edges]
+        edges_data = [{"source": edge.source_id, "target": edge.target_id} for edge in self.edges]
         return {"nodes": nodes_data, "edges": edges_data}
 
     def get_entrypoint_nodes(self) -> List[TaskNode]:

@@ -73,6 +73,9 @@ class LLMFactory:
         return model
 
     def create_chat_model(self, llm_type: LLMType, name: Optional[str] = None):
+        if not isinstance(llm_type, LLMType):
+            llm_type = LLMType.DEFAULT
+        
         configs = self.configs.get(llm_type, [])
         if not configs:
             raise ValueError(f"No configurations found for LLMType '{llm_type}'")

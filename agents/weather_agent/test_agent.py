@@ -41,7 +41,7 @@ class WeatherAgentTest(unittest.TestCase):
             {"messages": [("user", instruction), ("assistant", expected_output)]}
         ]
 
-        result = self.agent.run(instruction)
+        result = self.agent.run(instruction, history=[])
 
         print(str(result))
 
