@@ -14,7 +14,8 @@ class SearchAgent(BaseAgent):
     def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.logger = logger
-        self.search_tool = TavilySearchResults(max_results=2)
+        self.search_tool = TavilySearchResults(max_results=4)
+        self.agent_description = "An agent which can search the web for arbitrary information and return a summary"
 
     @property
     def tools(self):

@@ -48,7 +48,7 @@ class TestTextSummarizerAgentIntegration(unittest.TestCase):
         output = self.agent._run(input_data)
 
         self.assertIsInstance(output, TextSummarizeOutput)
-        self.assertIsNotNone(output.summary)
+        self.assertIsNotNone(output.result)
         self.assertGreaterEqual(output.accuracy_score, self.config["accuracy_threshold"])
         self.assertGreaterEqual(output.completeness_score, self.config["completeness_threshold"])
         self.assertGreaterEqual(output.relevance_score, self.config["relevance_threshold"])

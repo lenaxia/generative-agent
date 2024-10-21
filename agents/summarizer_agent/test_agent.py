@@ -36,8 +36,8 @@ class TestTextSummarizerAgent(unittest.TestCase):
         self.assertEqual(input_data, expected_input)
 
     def test_process_output(self):
-        output_data = TextSummarizeOutput(summary="Summary text", accuracy_score=0.9, completeness_score=0.9, relevance_score=0.9)
-        expected_output = f"Summary: {output_data.summary}\nAccuracy Score: {output_data.accuracy_score}\nCompleteness Score: {output_data.completeness_score}\nRelevance Score: {output_data.relevance_score}"
+        output_data = TextSummarizeOutput(result="Summary text", accuracy_score=0.9, completeness_score=0.9, relevance_score=0.9)
+        expected_output = f"Summary: {output_data.result}\nAccuracy Score: {output_data.accuracy_score}\nCompleteness Score: {output_data.completeness_score}\nRelevance Score: {output_data.relevance_score}"
 
         output = self.agent._process_output(output_data)
 
