@@ -14,6 +14,7 @@ class HelloWorldAgent(BaseAgent):
         self.prompt_template = ChatPromptTemplate.from_template("{instruction}")
         self.output_parser = StrOutputParser()
         self.llm_factory = llm_factory
+        self.agent_description = "Just say hello to the world"
         
     @property
     def tools(self) -> Dict[str, BaseTool]:

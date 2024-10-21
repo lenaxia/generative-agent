@@ -23,7 +23,7 @@ class TextSummarizeInput(AgentInput):
     max_summary_length: int
 
 class TextSummarizeOutput(BaseModel):
-    summary: str
+    result: str
     accuracy_score: float
     completeness_score: float
     relevance_score: float
@@ -42,6 +42,7 @@ class TextSummarizerAgent(BaseAgent):
         self.accuracy_threshold = self.config.get("accuracy_threshold", 0.8)
         self.completeness_threshold = self.config.get("completeness_threshold", 0.8)
         self.relevance_threshold = self.config.get("relevance_threshold", 0.25)
+        self.agent_description = "Summarize a long body of text and perform checks to ensure it meets minimum accuracy and releavance thresholds"
         self.setup_graph()
 
     @property
@@ -90,9 +91,10 @@ class TextSummarizerAgent(BaseAgent):
 
         if best_summary is None:
             self.logger.warning("Maximum retries reached, returning best summary found.")
+            best_summary = ""
 
         return TextSummarizeOutput(
-            summary=best_summary if best_summary else "",
+            result=best_summary,
             accuracy_score=best_scores[0],
             completeness_score=best_scores[1],
             relevance_score=best_scores[2],
@@ -105,7 +107,7 @@ class TextSummarizerAgent(BaseAgent):
         return TextSummarizeInput(prompt=instruction, history=history, max_summary_length=max_summary_length)
 
     def _process_output(self, output: TextSummarizeOutput) -> str:
-        return f"Summary: {output.summary}\nAccuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
+        return f"Summary: {output.result}\nAccuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
 
     def setup(self):
         pass
