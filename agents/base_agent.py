@@ -1,6 +1,6 @@
 from logging import Logger
 from abc import abstractmethod
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, Callable
 from langchain.agents import AgentType
 from llm_provider.factory import LLMFactory, LLMType
 from langchain.tools import BaseTool
@@ -15,7 +15,6 @@ class AgentInput(BaseModel):
     additional_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class BaseAgent:
-    # TODO: Potentially need to rename this class to not conflict with the LangChain BaseAgent Class that I think exists
     def __init__(self, logger: Logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Optional[Dict] = None, agent_description: Optional[str] = None):
         self.llm_factory = llm_factory
         self.config = config or {}
@@ -23,6 +22,7 @@ class BaseAgent:
         self.version = None 
         self.message_bus = message_bus
         self.agent_id = agent_id
+        self.agent_type = None
         self.agent_description = agent_description or None
         self.logger = logger
 
@@ -59,14 +59,12 @@ class BaseAgent:
         """
         raise NotImplementedError
 
-
     def run(self, instruction: str, history: List[Any], *args, **kwargs) -> Any:
         """
         Executes the agent's task synchronously.
         """
         self.setup()
         input_data = self._format_input(instruction, history, *args, **kwargs)
-        
         output_data = self._run(input_data)
         self.teardown()
         return self._process_output(output_data)
@@ -171,3 +169,14 @@ class BaseAgent:
         Subscribes to messages of a specific type from the MessageBus.
         """
         self.message_bus.subscribe(self, message_type, callback)
+
+    def create_tool_from_agent(self) -> Callable:
+        """
+        Converts the current agent into a tool, relying on a pydantic to validate input.
+        This is meant to allow this agent to be called as a tool as part of a high level
+        supervisor agent/workflow. 
+        """
+        def tool_func(input_data: Dict[str, Any]) -> Any:
+            input_model_instance = AgentInput(**input_data)
+            return self.run(input_model_instance.prompt, history=input_model_instance.history, llm_type=input_model_instance.llm_type, **input_model_instance.additional_data)
+        return tool_func

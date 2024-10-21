@@ -2,7 +2,7 @@ import importlib
 import logging
 import os
 import sys
-from typing import Optional, Type, Dict
+from typing import Optional, Type, Dict, List, Callable
 from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
@@ -23,7 +23,7 @@ class AgentManager(BaseModel):
     config: SupervisorConfig = Field(..., description="The supervisor configuration")
     message_bus: MessageBus = Field(..., description="The message bus instance")
     llm_factory: LLMFactory = Field(..., description="The LLM factory instance")
-    agent_registry: Dict[str, BaseAgent] = Field(default_factory=dict, description="Registry of agents")
+    registry: Dict[str, BaseAgent] = Field(default_factory=dict, description="Combined registry of agents and their tools")
 
     class Config:
         arbitrary_types_allowed = True
@@ -33,24 +33,31 @@ class AgentManager(BaseModel):
 
     def register_agent(self, agent: BaseAgent):
         try:
-            self.agent_registry[agent.agent_id] = agent
+            self.registry[agent.agent_id] = agent
             logger.info(f"Registered agent '{agent.agent_id}'.")
         except Exception as e:
             logger.error(f"Error registering agent '{agent.agent_id}': {e}")
 
     def unregister_agent(self, agent_id: str):
         try:
-            if agent_id in self.agent_registry:
-                del self.agent_registry[agent_id]
+            if agent_id in self.registry:
+                del self.registry[agent_id]
                 logger.info(f"Unregistered agent '{agent_id}'.")
         except Exception as e:
             logger.error(f"Error unregistering agent '{agent_id}': {e}")
 
     def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
-        return self.agent_registry.get(agent_id)
+        return self.registry.get(agent_id)
 
-    def get_agents(self) -> list[BaseAgent]:
-        return list(self.agent_registry.values())
+    def get_agents(self) -> List[BaseAgent]:
+        return list(self.registry.values())
+
+    def get_tool(self, agent_id: str) -> Optional[Callable]:
+        agent = self.get_agent(agent_id)
+        return agent.create_tool_from_agent() if agent else None
+
+    def get_tools(self) -> Dict[str, Callable]:
+        return {agent_id: agent.create_tool_from_agent() for agent_id, agent in self.registry.items()}
 
     def register_agents(self):
         """
@@ -120,7 +127,6 @@ class AgentManager(BaseModel):
     
         except Exception as e:
             logger.error(f"Error registering agents: {e}")
-
 
 # TODO: Get the below code working. Right now the problem is that when using importlib, the agent module has a new context outside of the primary project,
 #       so it cannot find some of the other modules, like LLMFactory, MessageBus, etc.

@@ -98,20 +98,9 @@ class Supervisor:
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
-            provider_config = LLMProviderConfig(**provider_config.model_dump())  # Convert to LLMProviderConfig instance
-            llm_type = LLMType[provider_config.registry_type.upper()] if provider_config.registry_type else LLMType.DEFAULT
-            config_cls = self.get_config_class(provider_config.type)
-            if config_cls:
-                config = config_cls(
-                    name=provider_config.name,
-                    model_name=provider_config.model_name,
-                    base_url=provider_config.base_url,
-                    # Add any other provider-specific configuration fields here
-                )
-                llm_factory.add_config(llm_type, config)
-            else:
-                logger.warning(f"Unsupported LLM provider type for '{provider_name}'.")
-
+            llm_type = LLMType[provider_config.get("registry_type", LLMType.DEFAULT)]
+            llm_factory.add_config(llm_type, provider_config)
+            
         # TODO: We need to restructure how we pass configs and instances of supervisor and the other modules to each other. 
         #       Right now its a mess, and very inconsistent, we need a way that any module can easily talk to or get information from
         #       other modules easily.
