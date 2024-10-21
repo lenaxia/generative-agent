@@ -3,7 +3,7 @@ from typing import Optional, Dict, List, Union, Type
 from langchain.prompts import ChatPromptTemplate
 from langchain.tools import BaseTool
 from pydantic import BaseModel
-#from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_aws import ChatBedrock
 from langchain_core.output_parsers import BaseOutputParser
 from config.base_config import BaseConfig
@@ -21,7 +21,7 @@ class LLMFactory:
     def __init__(self, configs: Dict[LLMType, List[BaseConfig]]):
         self.configs = configs
 
-    def add_config(self, llm_type: LLMType, config: BaseConfig):
+    def add_config(self, llm_type: LLMType, config: Dict):
         if llm_type not in self.configs:
             self.configs[llm_type] = []
         self.configs[llm_type].append(config)
@@ -43,6 +43,17 @@ class LLMFactory:
         else:
             config = configs[0]
     
+        model_type = config['type']
+        model_classes = {
+            'openai': ChatOpenAI,
+            'bedrock': ChatBedrock
+        }
+
+        if model_type not in model_classes:
+            raise ValueError(f"Unknown model type: {model_type}")
+
+        model = model_classes[model_type](**config)
+
         #model = ChatOpenAI(
         #    base_url=config.endpoint,
         #    model_name=config.model_name,
@@ -56,10 +67,10 @@ class LLMFactory:
         #    top_logprobs=config.top_logprobs,
         #    api_key=config.api_key,
         #)
-        model = ChatBedrock(
-                    model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-                    model_kwargs=dict(temperature=0)
-                )
+        #model = ChatBedrock(
+        #            model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+        #            model_kwargs=dict(temperature=0)
+        #        )
     
         if tools:
             model = model.bind_tools(tools=tools)
@@ -87,6 +98,17 @@ class LLMFactory:
         else:
             config = configs[0]
     
+        model_type = config['type']
+        model_classes = {
+            'openai': ChatOpenAI,
+            'bedrock': ChatBedrock
+        }
+
+        if model_type not in model_classes:
+            raise ValueError(f"Unknown model type: {model_type}")
+
+        return model_classes[model_type](**(config.get('config', {})))
+
         #return ChatOpenAI(
         #    base_url=config.endpoint,
         #    model_name=config.model_name,
@@ -100,8 +122,8 @@ class LLMFactory:
         #    top_logprobs=config.top_logprobs,
         #    api_key=config.api_key,
         #)
-        return ChatBedrock(
-                    model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-                    model_kwargs=dict(temperature=0)
-                )
+        #return ChatBedrock(
+        #            model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+        #            model_kwargs=dict(temperature=0)
+        #        )
     
