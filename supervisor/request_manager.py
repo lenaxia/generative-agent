@@ -265,7 +265,7 @@ class RequestManager:
                     "task_id": task.task_id,
                     "agent_id": task.agent_id,
                     "task_type": task.task_type,
-                    "prompt": task.prompt_template_formatted,
+                    "prompt": task.prompt,
                     "request_id": task_graph.request_id,
                     "outbound_edges": task.outbound_edges,
                     "status": task.status,

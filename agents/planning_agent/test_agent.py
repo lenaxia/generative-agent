@@ -34,8 +34,8 @@ class TestPlanningAgent(unittest.TestCase):
     def test_run(self, mock_invoke):
         mock_output = PlanningAgentOutput(
             tasks=[
-                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt="Fetch data from API"),
+                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt="Process fetched data"),
             ],
             dependencies=[
                 TaskDependency(source="fetch_data", target="process_data"),
@@ -61,8 +61,8 @@ class TestPlanningAgent(unittest.TestCase):
     def test_process_output(self, mock_parse_obj_as):
         mock_output = PlanningAgentOutput(
             tasks=[
-                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+                TaskDescription(task_name="fetch_data", agent_id="agent_1", task_type="fetch_data", prompt="Fetch data from API"),
+                TaskDescription(task_name="process_data", agent_id="agent_1", task_type="process_data", prompt="Process fetched data"),
             ],
             dependencies=[
                 TaskDependency(source="fetch_data", target="process_data"),
