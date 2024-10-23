@@ -35,15 +35,14 @@ class TaskDescription(BaseModel):
     task_name: str = Field(..., description="A friendly name for the task, e.g., 'ConvertSeattleToGPSCoords', 'MathCaclulationStep1'")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
-    prompt_template: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
-    prompt_args: Optional[dict] = Field(None, description="Arguments to be used in the prompt template", exclude=True)
+    prompt: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
+    include_full_history: bool = Field(False, description="Whether to include the full history of the task graph when invoking the agent, false means only inbound edge results are included")
+    input_model: BaseModel = Field(..., description="The input model to use for the agent")
 
 class TaskDependency(BaseModel):
     source: str = Field(..., description="The task name that is the source of data")
     target: str = Field(..., description="The task name that is the target of data")
     condition: Optional[dict] = Field(None, description="Conditions for the dependency to be fulfilled")
-
-from typing import Optional
 
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
@@ -51,14 +50,19 @@ class TaskNode(BaseModel):
     request_id: str = Field(..., description="The request id for the parent request this task derives from")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
-    prompt_template: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
-    prompt_args: Optional[dict] = Field({}, description="Arguments to be used in the prompt template")
-    prompt_template_formatted: Optional[str] = Field(..., description="Formatted prompt template, LLM should leave this empty")
+    prompt: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
     status: TaskStatus = Field(TaskStatus.PENDING, description="Current status of the task")
     inbound_edges: List["TaskEdge"] = Field([], description="List of incoming edges to this task node")
     outbound_edges: List["TaskEdge"] = Field([], description="List of outgoing edges from this task node")
     result: Optional[str] = Field(None, description="Result of the task, LLM should leave this empty")
     stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped, LLM should leave this empty")
+
+    def update_status(self, status: TaskStatus, result: Optional[str] = None):
+        self.status = status
+        self.result = result
+
+    def get_child_nodes(self, task_graph: 'TaskGraph'):
+        return [task_graph.get_node_by_task_id(edge.target_id) for edge in self.outbound_edges]
 
 class TaskEdge(BaseModel):
     source_id: str = Field(..., description="The source task node")
@@ -95,9 +99,7 @@ class TaskGraph:
                 agent_id=task.agent_id,
                 status=TaskStatus.PENDING,
                 task_type=task.task_type,
-                prompt_template=task.prompt_template,
-                prompt_args=task.prompt_args or {},
-                prompt_template_formatted=self._format_prompt_template(task),
+                prompt_template=task.prompt,
             )
             self.nodes[task_id] = node
             self.task_name_map[task.task_name] = task_id
@@ -133,6 +135,9 @@ class TaskGraph:
 
     def is_complete(self) -> bool:
         return all(node.status == TaskStatus.COMPLETED for node in self.nodes.values())
+
+    def get_failed_tasks(self) -> List[TaskNode]:
+        return [node for node in self.nodes.values() if node.status in [TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED]]
 
     def to_dict(self) -> Dict:
         nodes_data = [{"task_id": node.task_id, "task_name": node.task_name, "status": node.status.value} for node in self.nodes.values()]
@@ -170,15 +175,21 @@ class TaskGraph:
                 terminal_nodes.append(node)
 
         return terminal_nodes
-    
-    def _format_prompt_template(self, task: TaskDescription) -> str:
-        try:
-            if task.prompt_args is None:
-                return task.prompt_template
-            return task.prompt_template.format(**task.prompt_args)
-        except KeyError as e:
-            logger.warning(f"Missing variable in prompt template for task {task.task_name}: {e}")
-            return task.prompt_template
-        except Exception as e:
-            logger.warning(f"Error formatting prompt template for task {task.task_name}: {e}")
-            return task.prompt_template
+
+    def is_complete(self) -> bool:
+        return all(node.status == TaskStatus.COMPLETED for node in self.nodes.values())
+
+    def get_ready_tasks(self) -> List[TaskNode]:
+        ready_nodes = []
+        for node in self.nodes.values():
+            if node.status == TaskStatus.PENDING and all(self.nodes[edge.source_id].status == TaskStatus.COMPLETED for edge in node.inbound_edges):
+                ready_nodes.append(node)
+        return ready_nodes
+
+    def mark_task_completed(self, task_id: str, result: Optional[str] = None) -> List[TaskNode]:
+        node = self.get_node_by_task_id(task_id)
+        if node:
+            node.update_status(TaskStatus.COMPLETED, result)
+            self.history.append({"task_id": task_id, "status": TaskStatus.COMPLETED, "result": result})
+            return self.get_ready_tasks()
+

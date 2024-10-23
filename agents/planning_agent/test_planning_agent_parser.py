@@ -4,8 +4,8 @@ from agents.planning_agent.agent import PlanningAgentOutput, PlanningAgentOutput
 class TestPlanningAgentOutput(unittest.TestCase):
     def test_valid_output(self):
         tasks = [
-            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-            TaskDescription(agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt="Fetch data from API"),
+            TaskDescription(agent_id="agent_1", task_type="process_data", prompt="Process fetched data"),
         ]
         dependencies = [
             TaskDependency(source="fetch_data", target="process_data"),
@@ -18,8 +18,8 @@ class TestPlanningAgentOutput(unittest.TestCase):
 
     def test_invalid_task(self):
         tasks = [
-            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-            TaskDescription(agent_id=None, task_type=None, prompt_template=None),
+            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt="Fetch data from API"),
+            TaskDescription(agent_id=None, task_type=None, prompt=None),
         ]
 
         with self.assertRaises(ValueError):
@@ -27,8 +27,8 @@ class TestPlanningAgentOutput(unittest.TestCase):
 
     def test_invalid_dependency(self):
         tasks = [
-            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt_template="Fetch data from API"),
-            TaskDescription(agent_id="agent_1", task_type="process_data", prompt_template="Process fetched data"),
+            TaskDescription(agent_id="agent_1", task_type="fetch_data", prompt="Fetch data from API"),
+            TaskDescription(agent_id="agent_1", task_type="process_data", prompt="Process fetched data"),
         ]
         dependencies = [
             TaskDependency(source=None, target=None),
