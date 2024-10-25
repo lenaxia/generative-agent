@@ -4,7 +4,7 @@ from agents.weather_agent.agent import WeatherInput, WeatherTool, CityToCoordina
 
 class WeatherToolIntegrationTest(unittest.TestCase):
     def test_weather_tool(self):
-        input_data = WeatherInput(lat=47.6062, lon=-122.3321)
+        input_data = {"lat": 47.6062, "lon": -122.3321}
         tool = WeatherTool()
         result = tool._run(input_data)
         print(result)
@@ -26,7 +26,7 @@ class CityToCoordinatesToolIntegrationTest(unittest.TestCase):
 class ZipCodeToCoordinatesToolIntegrationTest(unittest.TestCase):
     def test_zipcode_to_coordinates_tool(self):
         tool = ZipCodeToCoordinatesTool()
-        result = tool._run("98101")
+        result = tool._run("98101", "us")
 
         self.assertIsNotNone(result)
         self.assertIn("lat", result)

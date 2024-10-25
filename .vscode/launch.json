@@ -2,34 +2,71 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Supervisor",
+            "name": "Py: Supervisor",
             "type": "debugpy",
             "request": "launch",
             "module": "supervisor.supervisor"
         },
         {
-            "name": "Python Debugger: SummarizerAgentTest",
+            "name": "Py: PlanningAgentTest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.planning_agent.test_agent"
+        },
+        {
+            "name": "Py: PlanningAgentInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.planning_agent.integ_agent"
+        },
+        {
+            "name": "Py: SummarizerAgentTest",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.test_agent"
         },
         {
-            "name": "Python Debugger: SummarizerAgentInteg",
+            "name": "Py: SummarizerAgentInteg",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.integ_agent"
         },
         {
-            "name": "Python Debugger: SearchAgentTest",
+            "name": "Py: SearchAgentTest",
             "type": "debugpy",
             "request": "launch",
             "module": "agents.search_agent.test_agent"
         },
         {
-            "name": "Python Debugger: SearchAgentInteg",
+            "name": "Py: WeatherAgentTest",
             "type": "debugpy",
             "request": "launch",
-            "module": "agents.search_agent.integ_agent"
+            "module": "agents.weather_agent.test_agent"
+        },
+        {
+            "name": "Py: WeatherAgentToolsTest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.weather_agent.test_agent_tools"
+        },
+        {
+            "name": "Py: WeatherAgentToolsInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.weather_agent.integ_agent_tools"
+        },
+        {
+            "name": "Py: FactoryInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "llm_provider.integ_factory"
+        },
+        {
+            "name": "Py: FactoryTest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "llm_provider.test_factory"
         }
+
     ]
 }

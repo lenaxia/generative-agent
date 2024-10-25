@@ -35,61 +35,62 @@ class BaseAgent:
         """
         raise NotImplementedError
 
-    def _run(self, input: AgentInput, *args, **kwargs) -> Any:
+    def _run(self, input: AgentInput) -> Any:
         """
         Executes the agent's task synchronously.
         """
         raise NotImplementedError
 
-    def _arun(self, input: AgentInput, *args, **kwargs) -> Any:
+    def _arun(self, input: AgentInput) -> Any:
         """
         Executes the agent's task asynchronously.
         """
         raise NotImplementedError
 
-    def _format_input(self, *args, **kwargs) -> AgentInput:
+    def _format_input(self, task_data: Dict) -> AgentInput:
         """
         Formats the input for the LLM provider and the respective tool(s).
         """
-        raise NotImplementedError
+        input: AgentInput = AgentInput(**task_data)
+        return input
 
-    def _process_output(self, *args, **kwargs) -> Any:
+    def _process_output(self, task_data: Dict, output: Any) -> Any:
         """
         Processes the output from the LLM provider and the respective tool(s).
         """
-        raise NotImplementedError
+        return output
 
-    def run(self, instruction: str, history: List[Any], *args, **kwargs) -> Any:
+    def run(self, task_data: Dict) -> Any:
         """
         Executes the agent's task synchronously.
         """
         self.setup()
-        input_data = self._format_input(instruction, history, *args, **kwargs)
+        input_data: AgentInput = self._format_input(task_data)
         output_data = self._run(input_data)
         self.teardown()
-        return self._process_output(output_data)
+        return self._process_output(task_data, output_data)
 
     def _select_llm_provider(self, llm_type: LLMType, **kwargs) -> Runnable:
         """
         Selects the LLM provider based on the specified type and additional arguments.
         Subclasses can override this method to customize LLM provider selection.
         """
-        return self.llm_factory.create_provider(llm_type, **kwargs)
+        return self.llm_factory.create_chat_model(llm_type, **kwargs)
 
-    async def arun(self, input: AgentInput, *args, **kwargs) -> Any:
+    async def arun(self, input: AgentInput) -> Any:
         """
         Executes the agent's task asynchronously.
         """
         self.setup()
-        llm_provider = self.llm_factory.create_provider(input.llm_type, **kwargs)
-        input_data = self._format_input(input.prompt, *args, **kwargs)
-        output_data = await self._arun(llm_provider, input_data)
+        llm: Runnable = self.llm_factory.create_chat_model(input.llm_type)
+        input_data: AgentInput = self._format_input(input.prompt)
+        output_data = await self._arun(llm, input_data)
         self.teardown()
-        return self._process_output(output_data)
+        return self._process_output(input, output_data)
 
     def handle_task_assignment(self, task_data: Dict):
         if task_data["agent_id"] != self.agent_id:
-            self.logger.info(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}")
+            self.logger.info(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
             return 
 
         self.logger.info(f"New Request Received by {self.agent_id}, Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
@@ -97,10 +98,9 @@ class BaseAgent:
         try:
             task_id = task_data["task_id"]
             request_id = task_data["request_id"]
-            history = task_data.get("history", ["the beginning"])
 
             # Use the provided llm_provider instance to respond to the task
-            result = self.run(task_data["prompt"], history=history)
+            result = self.run(task_data)
 
             # Publish the task response on the MessageBus
             task_data["result"] = result

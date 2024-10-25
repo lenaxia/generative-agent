@@ -1,15 +1,11 @@
 import pprint
 import unittest
 from unittest.mock import patch, Mock
-#from langchain_openai import ChatOpenAI
 from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import BaseOutputParser
-from config.base_config import BaseConfig
-#from config.openai_config import OpenAIConfig
+from config.openai_config import OpenAIConfig
 from config.bedrock_config import BedrockConfig
-from typing import Dict, List, Union, Type
-from pydantic import BaseModel
 from llm_provider.factory import LLMType, LLMFactory
 from langchain.schema import HumanMessage, AIMessage
 
@@ -21,11 +17,13 @@ class TestLLMFactory(unittest.TestCase):
     def setUp(self):
         self.configs = {
             LLMType.DEFAULT: [
-                BedrockConfig(name="default_config", model_name="text-davinci-003", max_tokens=100),
-                BedrockConfig(name="another_default", model_name="text-curie-001", max_tokens=50),
+                BedrockConfig(name="default_config", model="text-davinci-003", max_tokens=100),
+                BedrockConfig(name="another_default", model="text-curie-001", max_tokens=50),
+                OpenAIConfig(name="openai_default", model_name="text-davinci-003", max_tokens=100),
             ],
             LLMType.STRONG: [
-                BedrockConfig(name="strong_config", model_name="text-davinci-002", temperature=0.2),
+                BedrockConfig(name="strong_config", model="text-davinci-002", temperature=0.2),
+                OpenAIConfig(name="openai_strong", model_name="text-davinci-002", temperature=0.2),
             ],
         }
         self.factory = LLMFactory(self.configs)
@@ -37,20 +35,38 @@ class TestLLMFactory(unittest.TestCase):
 
     def test_remove_config(self):
         self.factory.remove_config(LLMType.DEFAULT, "another_default")
-        self.assertEqual(len(self.factory.configs[LLMType.DEFAULT]), 1)
+        self.assertEqual(len(self.factory.configs[LLMType.DEFAULT]), 2)
         self.assertEqual(self.factory.configs[LLMType.DEFAULT][0].name, "default_config")
 
-    @patch("llm_provider.factory.ChatBedrock")
-    def test_create_provider(self, mock_chatgpt):
+    @patch("llm_provider.factory.ChatOpenAI")
+    def test_create_openai_provider(self, mock_chatgpt):
         mock_chatgpt.return_value = Mock()
+        config = self.configs[LLMType.DEFAULT][2]
+        expected_config = config.dict(exclude_none=True)
+        expected_config['llm_config'] = config.llm_config.model_dump(exclude_defaults=True)
+        chain = self.factory.create_provider(LLMType.DEFAULT, name="openai_default")
+        mock_chatgpt.assert_called_once_with(**expected_config["llm_config"])
+        self.assertIsInstance(chain, mock_chatgpt.return_value.__class__)
+
+    @patch("llm_provider.factory.ChatOpenAI")
+    def test_create_openai_provider_with_tools(self, mock_chatgpt):
+        mock_tool = Mock(spec=BaseTool)
+        mock_chatgpt.return_value = Mock()
+        chain = self.factory.create_provider(LLMType.STRONG, name="openai_strong", tools=[mock_tool])
+        mock_chatgpt.return_value.bind_tools.assert_called_once_with(tools=[mock_tool])
+
+    @patch("llm_provider.factory.ChatBedrock")
+    def test_create_bedrock_provider(self, mock_chatgpt):
+        mock_chatgpt.return_value = Mock()
+        config = self.configs[LLMType.DEFAULT][0]
+        expected_config = config.model_dump(exclude_none=True)
+        expected_config['llm_config'] = config.llm_config.model_dump(exclude_defaults=True)
         chain = self.factory.create_provider(LLMType.DEFAULT, name="default_config")
-        mock_chatgpt.assert_called_once_with(
-             model_id='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
-        )
+        mock_chatgpt.assert_called_once_with(**expected_config['llm_config'])
         self.assertIsInstance(chain, mock_chatgpt.return_value.__class__)
 
     @patch("llm_provider.factory.ChatBedrock")
-    def test_create_provider_with_tools(self, mock_chatgpt):
+    def test_create_bedrock_provider_with_tools(self, mock_chatgpt):
         mock_tool = Mock(spec=BaseTool)
         mock_chatgpt.return_value = Mock()
         chain = self.factory.create_provider(LLMType.STRONG, tools=[mock_tool])

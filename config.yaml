@@ -1,17 +1,19 @@
 llm_providers:
-  openai:
-    name: localai
-    type: openai
+  #openai:
+  #  name: localai
+  #  type: openai
+  #  registry_type: DEFAULT
+  #  config:
+  #    model_name: qwen2.5-72b-instruct-iq4_xs
+  #    base_url: http://192.168.5.74:8080/v1
+  bedrock:
+    name: bedrock
+    type: bedrock
     registry_type: DEFAULT
     config:
-      model_name: qwen2.5-72b-instruct-iq4_xs
-      base_url: http://192.168.5.74:8080/v1
-  #bedrock:
-  #  name: bedrock
-  #  type: bedrock
-  #  model_id: anthropic.claude-3-sonnet-20240229-v1:0
-  #  temperature: 0
-
+      model: anthropic.claude-3-sonnet-20240229-v1:0
+      temperature: 0
+    
 logging:
   log_file: logs/supervisor.log
   log_level: info

@@ -36,8 +36,7 @@ class TaskDescription(BaseModel):
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
-    include_full_history: bool = Field(False, description="Whether to include the full history of the task graph when invoking the agent, false means only inbound edge results are included")
-    input_model: BaseModel = Field(..., description="The input model to use for the agent")
+    include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
 
 class TaskDependency(BaseModel):
     source: str = Field(..., description="The task name that is the source of data")
@@ -47,8 +46,9 @@ class TaskDependency(BaseModel):
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
     task_name: str = Field(..., description="A friendly name for the task")
-    request_id: str = Field(..., description="The request id for the parent request this task derives from")
+    request_id: Optional[str] = Field(..., description="The request id for the parent request this task derives from")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
+    agent_config: dict = Field(default_factory=dict, description="Configuration for the agent responsible for executing the task")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt: str = Field(..., description="Template for the prompt to be sent to the agent. This should contain enough information for the agent to act, as well as an {input} so additional information can be injected")
     status: TaskStatus = Field(TaskStatus.PENDING, description="Current status of the task")
@@ -56,6 +56,7 @@ class TaskNode(BaseModel):
     outbound_edges: List["TaskEdge"] = Field([], description="List of outgoing edges from this task node")
     result: Optional[str] = Field(None, description="Result of the task, LLM should leave this empty")
     stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped, LLM should leave this empty")
+    include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
 
     def update_status(self, status: TaskStatus, result: Optional[str] = None):
         self.status = status
@@ -75,14 +76,17 @@ class TaskGraph:
     task_name_map: Dict[str, str]  # Map task_name to task_id
     start_time: Optional[float] = Field(..., description="The time that the request arrived")
     history: List[str] = Field(..., description="History of the task graph calls")
+    graph_id: Optional[str] = Field(None, description="Unique identifier for the task graph")
+    request_id: Optional[str] = Field(None, description="Unique identifier for the request")
 
-    def __init__(self, tasks: List[TaskDescription], request_id: str, dependencies: Optional[List[Dict]] = None):
+    def __init__(self, tasks: List[TaskDescription], dependencies: Optional[List[Dict]] = None, request_id: Optional[str] = ""):
         self.nodes = {}
         self.edges = []
         self.task_name_map = {}
         self.start_time = time.time()
         self.request_id = request_id
         self.history = list()
+        self.graph_id = 'graph_' + str(uuid.uuid4()).split('-')[-1]
 
         if tasks is None:
             # Handle the case where tasks is None
@@ -99,7 +103,8 @@ class TaskGraph:
                 agent_id=task.agent_id,
                 status=TaskStatus.PENDING,
                 task_type=task.task_type,
-                prompt_template=task.prompt,
+                prompt=task.prompt,
+                include_full_history=task.include_full_history
             )
             self.nodes[task_id] = node
             self.task_name_map[task.task_name] = task_id
@@ -145,7 +150,6 @@ class TaskGraph:
         return {"nodes": nodes_data, "edges": edges_data}
 
     def get_entrypoint_nodes(self) -> List[TaskNode]:
-        
         """
         Returns a list of all top-level leaf nodes in the task graph.
         A top-level leaf node is a node that has no inbound edges.
@@ -190,6 +194,32 @@ class TaskGraph:
         node = self.get_node_by_task_id(task_id)
         if node:
             node.update_status(TaskStatus.COMPLETED, result)
-            self.history.append({"task_id": task_id, "status": TaskStatus.COMPLETED, "result": result})
+            self.history.append({"task_id": node.task_id, "agent_id": node.agent_id, "status": node.status, "result": node.result})
             return self.get_ready_tasks()
 
+    def get_task_history(self, task_id: str) -> List[str]:
+        """
+        Get the history of a specific task node, either a full history of all previous tasks or just the results of the parent tasks.
+        Determines whether or not to provide full history by checking the `include_full_history` attribute of the task node.
+
+        :param task_id: The task ID of the node for which to retrieve the history.
+        :return: A list of strings, either the full history of the task graph or just the results of the parent tasks.
+        """
+        node = self.get_node_by_task_id(task_id)
+        if node is None:
+            raise ValueError(f"Task node with id {task_id} not found in the task graph.")
+
+        history = []
+        if node.include_full_history:
+            # TODO: Make max history size configurable when including full history
+            history = self.history
+        else:
+            for edge in node.inbound_edges:
+                parent_node = self.get_node_by_task_id(edge.source_id)
+                if parent_node.result is not None:
+                    history.append(parent_node.result)
+                    
+        if len(history) == 0:
+            history = ["The beginning"]
+            
+        return history

@@ -16,7 +16,7 @@ class TestSearchAgentIntegration(unittest.TestCase):
         # Configure the LLMFactory
         self.llm_factory = LLMFactory({})
         bedrock_config = BedrockConfig(
-            name="bedrock", model_id='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
+            name="bedrock", model='anthropic.claude-3-sonnet-20240229-v1:0'
         )
         self.llm_factory.add_config(LLMType.DEFAULT, bedrock_config)
         self.message_bus = Mock(MessageBus)
@@ -26,10 +26,12 @@ class TestSearchAgentIntegration(unittest.TestCase):
 
     def test_run_integration(self):
         instruction = "What is the capital of France?"
+        history = ["This is some maybe relevant history", "This is some more history"]
         
-        input = AgentInput(prompt=instruction)
-
+        input = AgentInput(prompt=instruction, history=history)
         output = self.agent._run(input)
+        
+        print(output)
 
         self.assertIsInstance(output, dict)
         self.assertIn("agent", output)

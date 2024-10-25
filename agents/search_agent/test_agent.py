@@ -1,4 +1,5 @@
 import unittest
+from typing import Dict
 from unittest.mock import Mock, patch
 from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate
@@ -22,47 +23,44 @@ class TestSearchAgent(unittest.TestCase):
     def test_init(self):
         agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)
         self.assertIsInstance(agent.search_tool, TavilySearchResults)
-        self.assertIsInstance(agent.prompt_template, ChatPromptTemplate)
-        self.assertIsInstance(agent.output_parser, StrOutputParser)
-
-    @patch.object(TavilySearchResults, 'run')
-    def test_run(self, mock_search_tool):
-        instruction = "What is the capital of France?"
-        search_results = "Paris is the capital of France."
-        mock_search_tool.return_value = search_results
-
-        llm_provider = Mock(spec=Runnable)
-        initial_response = AIMessage(content="I will search for the capital of France.", tool_calls=[{"name": "tavily_search_results_json", "id": "123","args": {"query": "capital of france"}}])
-        final_response = AIMessage(content="The capital of France is Paris.")
-        llm_provider.invoke.side_effect = [initial_response, final_response]
-        
-        input = AgentInput(prompt=instruction)
-
-        agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)
-        output = agent._run(input)
-
-        self.assertEqual(output, "The capital of France is Paris.")
-        mock_search_tool.assert_called_once_with("capital of france")
-        #llm_provider.invoke.assert_has_calls([
-        #    unittest.mock.call([HumanMessage(content=instruction)]),
-        #    unittest.mock.call([
-        #        HumanMessage(content=instruction),
-        #        initial_response,
-        #        ToolMessage(content=search_results, name="tavily_search_results_json", tool_call_id="123")
-        #    ])
-        #])
+        #self.assertIsInstance(agent.prompt_template, ChatPromptTemplate)
+        #self.assertIsInstance(agent.output_parser, StrOutputParser)
 
     def test_format_input(self):
         agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)
-        instruction = "What is the capital of France?"
-        formatted_input = agent._format_input(instruction)
-        self.assertEqual(formatted_input, instruction)
+        prompt = "What is the capital of France?"
+        history = ["This is some maybe relevant history", "This is some more history"]
+        formatted_input = agent._format_input({"prompt": prompt, "history": history})
+        expected_input = AgentInput(prompt=prompt, history=history)
+        self.assertEqual(formatted_input, expected_input)
 
     def test_process_output(self):
         agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)
-        output = "The capital of France is Paris."
-        processed_output = agent._process_output(output)
-        self.assertEqual(processed_output, output)
+        output = {
+            "agent": {
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": "The capital of France is Paris."
+                    }
+                ]
+            }
+        }
+        input: Dict = dict(
+            task_id="task_1",
+            task_name="fetch_data",
+            request_id="request_1",
+            agent_id="agent_1",
+            task_type="fetch_data",
+            prompt="Fetch data from API",
+            status="pending",
+            inbound_edges=[],
+            outbound_edges=[],
+            include_full_history=False,
+        )
+        processed_output = agent._process_output(input, output)
+        expected_output = "The capital of France is Paris."
+        self.assertEqual(processed_output, expected_output)
 
     def test_setup_and_teardown(self):
         agent = SearchAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id, self.config)

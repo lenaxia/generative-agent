@@ -3,12 +3,11 @@ from langchain.tools import BaseTool
 from shared_tools.message_bus import MessageBus
 from agents.base_agent import BaseAgent, AgentInput
 
-from typing import List, Literal, TypedDict, Dict
+from typing import List, TypedDict, Dict, Optional
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langgraph.constants import Send
 from langgraph.graph import END, START, StateGraph
 
 
@@ -20,7 +19,18 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 class TextSummarizeInput(AgentInput):
-    max_summary_length: int
+    max_summary_length: Optional[int] = 100
+    
+    def __init__(self, prompt: str, history: List[str], config: Dict):
+        super().__init__(prompt=prompt, history=history)
+        self.max_summary_length = config.get('max_summary_length', 100)
+    
+    @property
+    def config(self):
+        return {
+            'max_summary_length': self.max_summary_length,
+            # Add other config settings if needed
+        }
 
 class TextSummarizeOutput(BaseModel):
     result: str
@@ -54,7 +64,7 @@ class TextSummarizerAgent(BaseAgent):
         llm = self.llm_factory.create_chat_model(llm_type)
         return llm
 
-    def _run(self, input_data: TextSummarizeInput) -> TextSummarizeOutput:
+    def _run(self, input_data: TextSummarizeInput):
         max_retries = 5  # Set the maximum number of retries
         best_summary = None
         best_scores = (0.0, 0.0, 0.0)  # Initialize best scores with (accuracy, completeness, relevance)
@@ -93,21 +103,22 @@ class TextSummarizerAgent(BaseAgent):
             self.logger.warning("Maximum retries reached, returning best summary found.")
             best_summary = ""
 
-        return TextSummarizeOutput(
-            result=best_summary,
-            accuracy_score=best_scores[0],
-            completeness_score=best_scores[1],
-            relevance_score=best_scores[2],
-        )
+        return best_summary
+        #return TextSummarizeOutput(
+        #    result=best_summary,
+        #    accuracy_score=best_scores[0],
+        #    completeness_score=best_scores[1],
+        #    relevance_score=best_scores[2],
+        #)
         
     def _arun(self, llm_provider, input_data: TextSummarizeInput) -> TextSummarizeOutput:
         raise NotImplementedError("Asynchronous execution not supported.")
 
-    def _format_input(self, instruction: str, history: List[str], max_summary_length: int = 500) -> TextSummarizeInput:
-        return TextSummarizeInput(prompt=instruction, history=history, max_summary_length=max_summary_length)
+    def _format_input(self, task_data: Dict) -> TextSummarizeInput:
+        return TextSummarizeInput(prompt=task_data["prompt"], history=task_data.get("history", ["The Beginning"]), config=task_data.get("agent_config", {}))
 
-    def _process_output(self, output: TextSummarizeOutput) -> str:
-        return f"Summary: {output.result}\nAccuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
+    #def _process_output(self, output: TextSummarizeOutput) -> str:
+    #    return f"Summary: {output.result}\nAccuracy Score: {output.accuracy_score}\nCompleteness Score: {output.completeness_score}\nRelevance Score: {output.relevance_score}"
 
     def setup(self):
         pass

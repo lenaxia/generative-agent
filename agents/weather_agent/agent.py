@@ -20,7 +20,7 @@ class WeatherTool(BaseTool):
     name: str = "check_weather"
     description: str = "Return the current weather for the specified coordinates."
 
-    def _run(self, input_dict: Dict[str, Any], at_time: datetime | None = None) -> str:
+    def _run(self, input_dict: Dict[str, float], at_time: datetime | None = None) -> str:
         if "lat" not in input_dict or "lon" not in input_dict:
             return "Invalid input. Please provide valid latitude and longitude coordinates."
 
@@ -85,8 +85,8 @@ class ZipCodeToCoordinatesTool(BaseTool):
     name: str = "zipcode_to_coordinates"
     description: str = "Convert a ZIP code to latitude and longitude coordinates for the United States. Call this in order to convert a US zip code into coordinates for fetching the weather"
 
-    def _run(self, zipcode: str) -> Dict[str, float]:
-        url = f"https://nominatim.openstreetmap.org/search?postalcode={zipcode}&format=json"
+    def _run(self, zipcode: str, two_letter_country_code: str) -> Dict[str, float]:
+        url = f"https://nominatim.openstreetmap.org/search?postalcode={zipcode}&format=json&country={two_letter_country_code}"
 
         # Set custom headers
         headers = {
@@ -128,12 +128,11 @@ class WeatherAgent(BaseAgent):
             ZipCodeToCoordinatesTool()
         ]
 
-    def _select_llm_provider(self, llm_type: LLMType, **kwargs):
+    def _select_llm_provider(self, llm_type: LLMType):
         llm = self.llm_factory.create_chat_model(llm_type)
         return llm
 
     def _run(self, input: AgentInput) -> Any:
-        # TODO: Needs refactor for the new agent design pattern using create_react_agent
         # TODO: Move prompts to external file
         system_prompt = "You are a weather bot who can look up the current weather in a city or zip code. Answer the user query below"
 
@@ -151,12 +150,6 @@ class WeatherAgent(BaseAgent):
 
     def _arun(self, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
-
-    def _format_input(self, instruction: str, history: List[Any], *args, **kwargs) -> str:
-        return AgentInput(prompt=instruction, history=history)
-
-    def _process_output(self, output: str, *args, **kwargs) -> str:
-        return output
 
     def setup(self):
         pass
