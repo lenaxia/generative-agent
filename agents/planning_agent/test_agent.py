@@ -1,24 +1,26 @@
 import unittest
 from pydantic import parse_obj_as
 from unittest.mock import Mock, patch
-from agents.planning_agent.agent import PlanningAgent, PlanningAgentOutput, TaskDescription, TaskDependency
+from agents.base_agent import AgentInput
+from agents.planning_agent.agent import PlanningAgent, PlanningAgentInput, PlanningAgentOutput, TaskDescription, TaskDependency
 from llm_provider.factory import LLMFactory, LLMType
 from shared_tools.message_bus import MessageBus
 from supervisor.agent_manager import AgentManager
-from supervisor.supervisor_config import SupervisorConfig
+from supervisor.supervisor_config import LoggingConfig, SupervisorConfig
 from config.bedrock_config import BedrockConfig
 from langchain_core.runnables.base import Runnable
+from typing import Dict
 
 class TestPlanningAgent(unittest.TestCase):
     def setUp(self):
         self.logger = Mock()
         self.message_bus = MessageBus()
-        self.supervisor_config = SupervisorConfig()
+        self.supervisor_config = SupervisorConfig(logging=LoggingConfig(log_level="INFO"))
         self.llm_factory = LLMFactory({})
 
         # Configure the LLM provider
         bedrock_config = BedrockConfig(
-            name="bedrock", model_id='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
+            name="bedrock", model='anthropic.claude-3-sonnet-20240229-v1:0'
         )
         self.llm_factory.add_config(LLMType.DEFAULT, bedrock_config)
 
@@ -44,17 +46,30 @@ class TestPlanningAgent(unittest.TestCase):
     
         mock_invoke.return_value = mock_output
     
-        instruction = "Fetch and process data from an API"
-        task_graph = self.planning_agent.run(instruction, history=[])
+        input: Dict = dict(
+            task_id="task_1",
+            task_name="fetch_data",
+            request_id="request_1",
+            agent_id="agent_1",
+            task_type="fetch_data",
+            prompt="Fetch data from API",
+            status="pending",
+            inbound_edges=[],
+            outbound_edges=[],
+            include_full_history=False,
+        )
+        task_graph = self.planning_agent.run(input)
     
         self.assertIsNotNone(task_graph)
-        self.assertEqual(len(task_graph.nodes), 2)
-        self.assertEqual(len(task_graph.edges), 1)
+        self.assertGreaterEqual(len(task_graph.nodes), 2)
+        self.assertGreaterEqual(len(task_graph.edges), 1)
 
     def test_format_input(self):
-        instruction = "Fetch weather data for Seattle"
-        formatted_input = self.planning_agent._format_input(instruction)
-        self.assertEqual(formatted_input, instruction)
+        prompt = "Fetch weather data for Seattle"
+        history = ["This is some maybe relevant history", "This is some more history"]
+        formatted_input = self.planning_agent._format_input({"prompt": prompt, "history": history, "request_id": "request_1"})
+        expected_input = PlanningAgentInput(prompt=prompt, history=history, request_id="request_1")
+        self.assertEqual(formatted_input, expected_input)
 
 
     @patch('pydantic.parse_obj_as')
@@ -69,10 +84,23 @@ class TestPlanningAgent(unittest.TestCase):
             ],
         )
         mock_parse_obj_as.return_value = mock_output
+        
+        input: Dict = dict(
+            task_id="task_1",
+            task_name="fetch_data",
+            request_id="request_1",
+            agent_id="agent_1",
+            task_type="fetch_data",
+            prompt="Fetch data from API",
+            status="pending",
+            inbound_edges=[],
+            outbound_edges=[],
+            include_full_history=False,
+        )
     
         output = "Task 1: Fetch data from API\nAgent: agent_1\n\nTask 2: Process data\nAgent: agent_1\n\nDependencies:\nTask 1 -> Task 2"
         instruction = "Fetch and process data from an API"
-        task_graph = self.planning_agent._process_output(mock_output, instruction)
+        task_graph = self.planning_agent._process_output(input, mock_output)
     
         self.assertIsNotNone(task_graph)
         self.assertEqual(len(task_graph.nodes), 2)

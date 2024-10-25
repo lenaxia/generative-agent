@@ -1,46 +1,68 @@
-from typing import Optional, List
-from pydantic import BaseModel, Field, validator
+from typing import Optional, Type
+from pydantic import BaseModel, field_validator
 import os
+
+class ModelConfig(BaseModel):
+    class Config:
+        env_prefix = ''
+        arbitrary_types_allowed = True
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        
+    def populate_from_env(self, provider, name):
+        env_prefix = f"{provider.upper()}_{name.upper()}_"
+        for field in self.model_fields:
+            env_var_name = env_prefix + field.upper()
+            if env_var_name in os.environ:
+                setattr(self, field, os.environ[env_var_name])
 
 class BaseConfig(BaseModel):
     name: str
-    provider_name: str
+    provider_name: str = "baseconfig"
     api_key: Optional[str] = None
-    model_name: Optional[str] = None
-    endpoint: Optional[str] = None
-    top_p: Optional[float] = None
-    top_k: Optional[int] = None
-    temperature: Optional[float] = None
-    max_retries: Optional[int] = None
-    api_base: Optional[str] = None
-    stop_sequences: Optional[List[str]] = None
-    stream_usage: Optional[bool] = None
-    streaming: Optional[bool] = None
-    verbose: Optional[bool] = None
-
-    @validator('api_key', pre=True, always=True)
-    def set_api_key(cls, api_key, values):
-        provider_name = values.get('provider_name')
-        if provider_name:
-            env_var_name = f"{provider_name.upper()}_API_KEY"
-            api_key = api_key or os.environ.get(env_var_name)
-        return api_key
+    llm_config_class: Type[ModelConfig] = None  # Add a new field for the model configuration class
+    llm_config: ModelConfig = None
 
     class Config:
         env_prefix = ''
         arbitrary_types_allowed = True
-        protected_namespaces = ''
 
     def __init__(self, **data):
-        super().__init__(**data)
-        self.populate_from_env(self.provider_name)
+        llm_config_data = {}
+        for key, value in data.items():
+            if key not in self.model_fields:
+                llm_config_data[key] = value
 
-    def populate_from_env(self, provider_name):
-        env_prefix = provider_name.upper() + "_"
-        for field in self.model_fields.items():
-            field_name = field[0]
-            field_obj = field[1]
-            field_alias = field_obj.alias or field_name
-            env_var_name = env_prefix + field_alias.upper()
+        super().__init__(**{k: v for k, v in data.items() if k in self.model_fields})
+
+        if self.llm_config_class:
+            self.llm_config = self.llm_config_class(**llm_config_data)
+        else:
+            self.llm_config = ModelConfig(**llm_config_data)
+
+        self.populate_from_env(self.provider_name, self.name)
+
+    def populate_from_env(self, provider_name, name):
+        """
+        Populate the configuration fields from environment variables.
+
+        The environment variables are of the form `<PROVIDER_NAME>_<NAME>_<FIELD_NAME>`, where `<PROVIDER_NAME>` is the
+        provider name (e.g. "openai"), `<NAME>` is the name of the configuration (e.g. "default"), and `<FIELD_NAME>` is
+        the name of the field (e.g. "api_key").
+
+        This method is called automatically in the constructor, but can also be called manually to re-populate the
+        configuration from environment variables.
+
+        :param provider_name: The name of the provider (e.g. "openai").
+        :param name: The name of the configuration (e.g. "default").
+        :return: None
+        """
+        env_prefix = f"{provider_name.upper()}_{name.upper()}_"
+        for field in self.model_fields:
+            env_var_name = env_prefix + field.upper()
             if env_var_name in os.environ:
-                setattr(self, field_name, os.environ[env_var_name])
+                setattr(self, field, os.environ[env_var_name])
+
+        self.llm_config.populate_from_env(provider_name, name)
+

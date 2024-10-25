@@ -4,7 +4,7 @@ import uuid
 from typing import Dict, Optional, Any, List
 
 from pydantic import BaseModel, ValidationError, Field
-from supervisor.task_graph import TaskGraph, TaskNode, TaskStatus
+from common.task_graph import TaskGraph, TaskNode, TaskStatus
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
 from agents.base_agent import BaseAgent
@@ -37,7 +37,8 @@ class RequestManager:
             agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
 
             # Create the task graph using the Planning Agent
-            task_graph = self.create_task_graph(request.instructions, agents, request_id)
+            task_graph = self.create_task_graph(request.instructions, request_id)
+            task_graph.request_id = request_id
 
             # Delegate the initial tasks
             for task in task_graph.get_entrypoint_nodes():
@@ -58,7 +59,7 @@ class RequestManager:
             logger.error(f"Error handling request: {e}")
             raise e
 
-    def create_task_graph(self, instruction: str, agents: List[BaseAgent], request_id: str) -> TaskGraph:
+    def create_task_graph(self, instruction: str, request_id: Optional[str] = None) -> TaskGraph:
         logger.info(f"Creating task graph for instruction: {instruction}")
         planning_agent = self.agent_manager.get_agent("PlanningAgent")
         if planning_agent is None:
@@ -66,7 +67,18 @@ class RequestManager:
 
         if planning_agent:
             planning_agent.set_agent_manager(self.agent_manager)
-            task_graph = planning_agent.run(instruction, history=None, agents=agents, request_id=request_id)
+            
+            task_data = {
+                "task_id": "plan_" + str(uuid.uuid4()).split('-')[-1],
+                "request_id": request_id,
+                "agent_id": "PlanningAgent",
+                "task_name": "Planning",
+                "task_description": "Create a plan for the user request",
+                "task_type": "RequestPlanning",
+                "status": TaskStatus.PENDING,
+                "prompt": instruction,
+            }
+            task_graph = planning_agent.run(task_data)
             logger.info("Task graph created successfully.")
             logger.debug(f"TASK GRAPH: {task_graph.nodes}")
             return task_graph
@@ -74,6 +86,16 @@ class RequestManager:
             logger.error("Planning Agent not found in the agent registry.")
             return None
 
+    def delegate_task(self, task_graph: TaskGraph, task: TaskNode):
+        if (task.status == TaskStatus.PENDING):
+            try:
+                task.status = TaskStatus.RUNNING
+                task_data = task.model_dump()
+                task_data["history"] = task_graph.get_task_history(task.task_id)
+                self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
+            except Exception as e:
+                logger.error(f"Error delegating task '{task.task_id}' for request '{task_graph.request_id}': {e}")
+                self.handle_agent_error({"request_id": task_graph.request_id, "task_id": task.task_id, "error_message": str(e)})
 
     def monitor_progress(self, request_id: str, verbose: Optional[bool] = False):
         try:
@@ -257,25 +279,6 @@ class RequestManager:
         except Exception as e:
             logger.error(f"Error getting request status for '{request_id}': {e}")
             return {}
-    
-    def delegate_task(self, task_graph: TaskGraph, task: TaskNode):
-        if (task.status == TaskStatus.PENDING):
-            try:
-                task_data = {
-                    "task_id": task.task_id,
-                    "agent_id": task.agent_id,
-                    "task_type": task.task_type,
-                    "prompt": task.prompt,
-                    "request_id": task_graph.request_id,
-                    "outbound_edges": task.outbound_edges,
-                    "status": task.status,
-                    "history": task_graph.history
-                }
-                task.status = TaskStatus.RUNNING
-                self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
-            except Exception as e:
-                logger.error(f"Error delegating task '{task.task_id}' for request '{task_graph.request_id}': {e}")
-                self.handle_agent_error({"request_id": task_graph.request_id, "task_id": task.task_id, "error_message": str(e)})
     
     def handle_request_completion(self, request_id: str):
         try:

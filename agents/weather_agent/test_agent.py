@@ -24,40 +24,38 @@ class WeatherAgentTest(unittest.TestCase):
         #    api_key="YOUR_API_KEY",
         #)
         bedrock_config = BedrockConfig(
-                name="bedrock", model_id='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
+                name="bedrock", model='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
             )
         self.llm_factory.add_config(LLMType.DEFAULT, bedrock_config)
 
         self.agent = WeatherAgent(self.logger, self.llm_factory, self.message_bus, self.agent_id)
 
-    @patch("langchain_aws.ChatBedrock")
-    def test_agent_run(self, mock_chat):
-        instruction = "What is the weather in Seattle?"
-        expected_output = "It's always sunny in San Francisco"
 
-        # Mock the ChatOpenAI instance
-        mock_chat_instance = mock_chat.return_value
-        mock_chat_instance.stream.return_value = [
-            {"messages": [("user", instruction), ("assistant", expected_output)]}
-        ]
+    def test_agent_run_city(self):
+        prompt = "What is the weather in Seattle?"
+        history = ["This is some maybe relevant history", "This is some more history"]
+        formatted_input = self.agent._format_input({"prompt": prompt, "history": history})
 
-        result = self.agent.run(instruction, history=[])
+        output = self.agent._run(formatted_input)
 
+        result = output["agent"]["messages"][0].content
         print(str(result))
 
         # Assert that the output is as expected
-        self.assertEqual(result, expected_output)
+        self.assertIn("Seattle",result)
+        
+    def test_agent_run_zipcode(self):
+        prompt = "What is the weather in 98104?"
+        history = ["This is some maybe relevant history", "This is some more history"]
+        formatted_input = self.agent._format_input({"prompt": prompt, "history": history})
 
-        # Assert that the ChatOpenAI instance was created with the correct parameters
-        mock_chat.assert_called_with(
-            model_id='anthropic.claude-3-sonnet-20240229-v1:0', model_kwargs={'temperature': 0}
-            #base_url="http://192.168.5.74:8080/v1/",
-            #model_name="gpt-4",
-            #temperature=0.7,
-            #max_tokens=512,
-            #top_p=1.0,
-            #api_key="YOUR_API_KEY",
-        )
+        output = self.agent._run(formatted_input)
+
+        result = output["agent"]["messages"][0].content
+        print(str(result))
+
+        # Assert that the output is as expected
+        self.assertIn("Seattle",result)
 
 if __name__ == "__main__":
     unittest.main()

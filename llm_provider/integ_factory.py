@@ -9,8 +9,8 @@ class LLMProviderIntegrationTest(unittest.TestCase):
         llm_factory = LLMFactory({})
         openai_config = OpenAIConfig(
             name="openai",
-            endpoint="http://192.168.5.74:8080/v1/",
-            model_name="qwen2.5-32b-instruct",
+            base_url="http://192.168.5.74:8080/v1/",
+            model="qwen2.5-72b-instruct-iq4_xs",
         )
         llm_factory.add_config(LLMType.DEFAULT, openai_config)
 
@@ -35,6 +35,7 @@ class LLMProviderIntegrationTest(unittest.TestCase):
 
         # Assert that output is not empty
         self.assertIsNotNone(output)
+        self.assertIn("'finish_reason': 'stop'", str(output))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import time
 from logging import Logger
 from unittest.mock import Mock, patch
 from supervisor.request_manager import RequestManager, RequestModel
-from supervisor.task_graph import TaskGraph, TaskNode, TaskStatus
+from common.task_graph import TaskGraph, TaskNode, TaskStatus
 from shared_tools.message_bus import MessageBus, MessageType
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
@@ -47,11 +47,8 @@ class TestRequestManager(unittest.TestCase):
         self.assertIsInstance(self.request_manager.request_map[request_id], TaskGraph)
 
     def test_create_task_graph(self):
-        # Arrange
-        agents = self.agent_manager.get_agents()
-
         # Act
-        task_graph = self.request_manager.create_task_graph("Test instruction", agents)
+        task_graph = self.request_manager.create_task_graph("Test instruction")
 
         # Assert
         self.assertIsInstance(task_graph, TaskGraph)

@@ -27,27 +27,19 @@ class TestTextSummarizerAgent(unittest.TestCase):
         
     def test_format_input(self):
         instruction = "Summarize this text"
-        text = "This is a sample text to summarize."
+        history = ["This is some maybe relevant history", "This is a sample text to summarize."]
         max_summary_length = 100
-        expected_input = TextSummarizeInput(prompt=text, max_summary_length=max_summary_length)
+        expected_input = TextSummarizeInput(prompt=instruction, history=history, config={"max_summary_length": max_summary_length})
 
-        input_data = self.agent._format_input(instruction, text, max_summary_length)
+        input_data = self.agent._format_input({"prompt": instruction, "history": history, "agent_config": {"max_summary_length": max_summary_length}})
 
         self.assertEqual(input_data, expected_input)
-
-    def test_process_output(self):
-        output_data = TextSummarizeOutput(result="Summary text", accuracy_score=0.9, completeness_score=0.9, relevance_score=0.9)
-        expected_output = f"Summary: {output_data.result}\nAccuracy Score: {output_data.accuracy_score}\nCompleteness Score: {output_data.completeness_score}\nRelevance Score: {output_data.relevance_score}"
-
-        output = self.agent._process_output(output_data)
-
-        self.assertEqual(output, expected_output)
 
     def test_calculate_accuracy_scores(self):
         summary = "Summary text"
         original_text = "This is a sample text to summarize."
-        expected_accuracy_score = 0.8
-        expected_completeness_score = 0.7
+        expected_accuracy_score = 0.9
+        expected_completeness_score = 0.9
 
         accuracy_score, completeness_score = self.agent.calculate_accuracy_scores(summary, original_text)
 

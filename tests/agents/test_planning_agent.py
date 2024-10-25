@@ -1,10 +1,11 @@
 import unittest
+from typing import Dict
 from unittest.mock import Mock, patch
 from agents.planning_agent.agent import PlanningAgent
 from agents.base_agent import BaseAgent, AgentInput
 from shared_tools.message_bus import MessageBus
 from langchain.tools import BaseTool
-from supervisor.task_graph import TaskGraph
+from common.task_graph import TaskGraph
 
 class TestPlanningAgent(unittest.TestCase):
     def setUp(self):
@@ -71,7 +72,19 @@ class TestPlanningAgent(unittest.TestCase):
 
     def test_process_output(self):
         task_graph = TaskGraph([])
-        processed_output = self.planning_agent._process_output(task_graph)
+        input: Dict = dict(
+            task_id="task_1",
+            task_name="fetch_data",
+            request_id="request_1",
+            agent_id="agent_1",
+            task_type="fetch_data",
+            prompt="Fetch data from API",
+            status="pending",
+            inbound_edges=[],
+            outbound_edges=[],
+            include_full_history=False,
+        )
+        processed_output = self.planning_agent._process_output(input, task_graph)
         self.assertEqual(processed_output, task_graph)
 
 if __name__ == '__main__':

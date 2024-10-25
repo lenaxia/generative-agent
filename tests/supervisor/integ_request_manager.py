@@ -3,7 +3,7 @@ from unittest.mock import patch, Mock
 from typing import Dict, Any
 
 from supervisor.request_manager import RequestManager, RequestModel
-from supervisor.task_graph import TaskGraph
+from common.task_graph import TaskGraph
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
 from shared_tools.message_bus import MessageBus

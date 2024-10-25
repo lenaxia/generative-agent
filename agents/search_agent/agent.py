@@ -15,7 +15,7 @@ class SearchAgent(BaseAgent):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.logger = logger
         self.search_tool = TavilySearchResults(max_results=4)
-        self.agent_description = "An agent which can search the web for arbitrary information and return a summary"
+        self.agent_description = "An agent which can search the web for arbitrary information and return a summary. If there are more specialized agents available, prefer using those."
 
     @property
     def tools(self):
@@ -27,25 +27,24 @@ class SearchAgent(BaseAgent):
 
     def _run(self, input: AgentInput) -> Any:
         system_prompt = "You are a search bot who can search the internet for information to answer user queries."
+        history_entries = [f"* {entry}" for entry in input.history]
+        history_prompt = "This is the conversation so far:\n\n" + "\n".join(history_entries)
 
         llm_provider = self._select_llm_provider(LLMType.DEFAULT)
         config = {"configurable": {"thread_id": "abc123"}}
         graph = create_react_agent(llm_provider, tools=self.tools)
-        inputs = {"messages": [("system", system_prompt), ("user", input.prompt)]}
+        inputs = {"messages": [("system", system_prompt), ("user", history_prompt), ("user", input.prompt)]}
         output = None
         for chunk in graph.stream(inputs, config):
             output = chunk
             self.logger.info(chunk)
-
+            
         return output
 
     def _arun(self, llm_provider, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
 
-    def _format_input(self, instruction: str, history: List[str], *args, **kwargs) -> AgentInput:
-        return AgentInput(prompt=instruction, history=history)
-
-    def _process_output(self, output: str, *args, **kwargs) -> str:
+    def _process_output(self, task_data: Dict, output: Dict) -> str:
         result = output["agent"]["messages"][0].content
         return result
 
