@@ -12,6 +12,8 @@ class MessageType(Enum):
     AGENT_STATUS = 'agent_status'
     AGENT_EVENT = 'agent_event'
     AGENT_ERROR = 'agent_error'
+    SEND_MESSAGE = 'send_message'
+    INCOMING_REQUEST = 'incoming_request'
 
 class MessageBus:
     class Config:
