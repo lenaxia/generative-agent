@@ -20,6 +20,7 @@ class LLMProviderConfig(BaseModel):
 class SupervisorConfig(BaseModel):
     logging: LoggingConfig = Field(..., description="Logging configuration")
     llm_providers: Dict[str, Dict] = {}
+    agents: Dict[str, Dict] = {}
 
     max_retries: int = 3
     retry_delay: float = 0.1

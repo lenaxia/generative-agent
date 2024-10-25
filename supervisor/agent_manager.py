@@ -16,6 +16,7 @@ from agents.summarizer_agent.agent import TextSummarizerAgent
 from agents.search_agent.agent import SearchAgent
 from agents.weather_agent.agent import WeatherAgent
 from agents.planning_agent.agent import PlanningAgent
+from agents.slack_agent.agent import SlackAgent
 
 logger = logging.getLogger(__name__)
 
@@ -82,23 +83,23 @@ class AgentManager(BaseModel):
             agents_to_register = [
                 {
                     'name': 'TextSummarizerAgent',
-                    'class': TextSummarizerAgent,
-                    'config_path': 'agents/summarizer_agent/config.yaml'
+                    'class': TextSummarizerAgent
                 },
                 {
                     'name': 'SearchAgent',
-                    'class': SearchAgent,
-                    'config_path': 'agents/search_agent/config.yaml'
+                    'class': SearchAgent
                 },
                 {
                     'name': 'PlanningAgent',
-                    'class': PlanningAgent,
-                    'config_path': 'agents/planning_agent/config.yaml'
+                    'class': PlanningAgent
                 },
                 {
                     'name': 'WeatherAgent',
-                    'class': WeatherAgent,
-                    'config_path': 'agents/weather_agent/config.yaml'
+                    'class': WeatherAgent
+                },
+                {
+                    'name': 'slack_agent',
+                    'class': SlackAgent
                 },
             ]
     
@@ -106,18 +107,10 @@ class AgentManager(BaseModel):
     
             for agent in agents_to_register:
                 logger.info(f"Trying to register agent: {agent['name']}")
-                agent_config = {}
-    
-                agent_config_file = Path(__file__).parent.parent / agent['config_path']
-                if os.path.exists(agent_config_file):
-                    logger.info(f"Loading config from {agent_config_file}")
-                    with open(agent_config_file, 'r') as f:
-                        agent_config = yaml.safe_load(f)
-                else:
-                    logger.warning(f"No config file found for {agent['name']}, using default config.")
+                agent_config = self.config.agents.get(agent['name'], {}).get('config', {})
     
                 try:
-                    agent_instance = agent['class'](logger, self.llm_factory, self.message_bus, config=agent_config.get("config", {}), agent_id=agent['name'])
+                    agent_instance = agent['class'](logger, self.llm_factory, self.message_bus, config=agent_config, agent_id=agent['name'])
                     self.register_agent(agent_instance)
                     registered_agents.append(agent_instance)
                     logger.info(f"Successfully registered agent: {agent['name']}")

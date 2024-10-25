@@ -19,3 +19,13 @@ logging:
   log_level: info
   log_file_max_size: 1024
   disable_console_logging: true
+
+agents:
+  slack_agent:
+    agent_class: SlackAgent
+    config:
+      slack_channel: general
+      status_channel: logging
+      monitored_event_types:
+        - message
+      online_message: "SlackAgent is online and ready to receive messages."
