@@ -7,7 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables.base import Runnable
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from agents.base_agent import BaseAgent, AgentInput
 from langchain_community.tools.tavily_search import TavilySearchResults
 from agents.search_agent.agent import SearchAgent

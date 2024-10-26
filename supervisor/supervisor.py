@@ -3,12 +3,12 @@ import sys
 import time
 from typing import Optional, List
 from pathlib import Path
-from supervisor.request_manager import RequestManager, RequestModel
+from supervisor.request_manager import RequestManager, RequestMetadata
 from supervisor.agent_manager import AgentManager
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
-from shared_tools.message_bus import MessageBus, MessageType
+from common.message_bus import MessageBus, MessageType
 from supervisor.supervisor_config import SupervisorConfig, LLMProviderConfig
 from config.bedrock_config import BedrockConfig
 from config.anthropic_config import AnthropicConfig
@@ -185,7 +185,7 @@ class Supervisor:
                     if len(action) < 5:
                         logger.warning("Invalid instruction. Please enter at least 5 characters.")
                         continue
-                    request = RequestModel(instructions=action)
+                    request = RequestMetadata(prompt=action)
                     request_id = self.request_manager.handle_request(request)
                     logger.info(f"New request '{request_id}' created and delegated.")
 

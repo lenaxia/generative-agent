@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from agents.base_agent import BaseAgent
 from agents.hello_world_agent.agent import HelloWorldAgent
 from agents.weather_agent.agent import WeatherAgent

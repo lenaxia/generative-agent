@@ -2,10 +2,11 @@ from logging import Logger
 from abc import abstractmethod
 from typing import Any, Dict, Optional, List, Union, Callable
 from langchain.agents import AgentType
+from common.bus_packet import BusPacket
 from llm_provider.factory import LLMFactory, LLMType
 from langchain.tools import BaseTool
 from langchain_core.runnables.base import Runnable
-from shared_tools.message_bus import MessageBus, MessageType
+from common.message_bus import MessageBus, MessageType
 from pydantic import BaseModel, Field
 
 class AgentInput(BaseModel):
@@ -163,6 +164,12 @@ class BaseAgent:
         Publishes a message to the MessageBus for other agents to consume.
         """
         self.message_bus.publish(self, message_type, message)
+        
+    def publish_packet(self, packet: BusPacket):
+        """
+        Publishes a message to the MessageBus for other agents to consume.
+        """
+        self.message_bus.publish(self, packet)
 
     def subscribe_to_messages(self, message_type, callback):
         """

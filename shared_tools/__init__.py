@@ -1,1 +1,1 @@
-from .message_bus import *
+from ..common.message_bus import *

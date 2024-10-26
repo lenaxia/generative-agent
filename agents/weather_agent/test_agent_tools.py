@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock
 from agents.base_agent import AgentInput
 from agents.weather_agent.agent import WeatherAgent, WeatherInput, WeatherTool, CityToCoordinatesTool, ZipCodeToCoordinatesTool
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 
 class TestWeatherAgent(unittest.TestCase):
     def setUp(self):

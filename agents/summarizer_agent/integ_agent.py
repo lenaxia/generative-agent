@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from agents.summarizer_agent.agent import TextSummarizerAgent, TextSummarizeInput, TextSummarizeOutput
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from logging import Logger
 from langchain_aws import ChatBedrock
 from config.bedrock_config import BedrockConfig

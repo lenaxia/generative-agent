@@ -4,7 +4,7 @@ from langchain.prompts import ChatPromptTemplate
 from agents.hello_world_agent.agent import HelloWorldAgent
 from llm_provider.factory import LLMFactory, LLMType
 from config.openai_config import OpenAIConfig
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from agents.base_agent import AgentInput
 
 class HelloWorldAgentIntegrationTest(unittest.TestCase):

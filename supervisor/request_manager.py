@@ -1,50 +1,45 @@
 import logging
 import time
 import uuid
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional
 
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import Field
 from common.task_graph import TaskGraph, TaskNode, TaskStatus
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
-from agents.base_agent import BaseAgent
-from shared_tools.message_bus import MessageBus, MessageType
+from common.message_bus import MessageBus, MessageType
+from common.request_model import Request, RequestMetadata
 
 logger = logging.getLogger(__name__)
 
-class RequestModel(BaseModel):
-    instructions: str
-    additional_data: Optional[Dict] = None
-
 class RequestManager:
     agent_manager: AgentManager = Field(..., description="Agent manager instance.")
-    request_map: Dict[str, TaskGraph] = Field(default_factory=dict, description="Map of request IDs to task graphs.")
+    request_map: Dict[str, Request] = Field(default_factory=dict, description="Map of request IDs to task graphs.")
     message_bus: MessageBus = Field(..., description="Message Bus instance")
     config: SupervisorConfig = Field(..., description="Agent manager configuration")
-
+    
     def __init__(self, agent_manager, message_bus):
         self.agent_manager = agent_manager
         self.message_bus = message_bus
         self.config = agent_manager.config
         self.request_map = {}
+        
+        self.message_bus.subscribe(self, MessageType.INCOMING_REQUEST, self.handle_request)
 
-    def handle_request(self, request: RequestModel) -> str:
+    def handle_request(self, request: RequestMetadata) -> str:
         try:
             request_id = 'req_' + str(uuid.uuid4()).split('-')[-1]
             request_time = time.time()
 
-            # Get the list of available agents
-            agents = [agent.agent_id for agent in self.agent_manager.get_agents()]
-
             # Create the task graph using the Planning Agent
-            task_graph = self.create_task_graph(request.instructions, request_id)
+            task_graph = self.create_task_graph(request.prompt, request_id)
             task_graph.request_id = request_id
 
             # Delegate the initial tasks
             for task in task_graph.get_entrypoint_nodes():
                 self.delegate_task(task_graph, task)
 
-            self.request_map[request_id] = task_graph
+            self.request_map[request_id] = Request(request, task_graph) 
             # TODO: This was causing some problems so commented it out for now.
             #self.config.metrics_manager.update_metrics(request_id, {
             #    "start_time": time.time(),
@@ -99,7 +94,7 @@ class RequestManager:
 
     def monitor_progress(self, request_id: str, verbose: Optional[bool] = False):
         try:
-            task_graph = self.request_map.get(request_id)
+            task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return
@@ -161,7 +156,7 @@ class RequestManager:
         """
         try:
             request_id = response.get("request_id")
-            task_graph = self.request_map.get(request_id)
+            task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return
@@ -219,7 +214,7 @@ class RequestManager:
         """
         try:
             request_id = error.get("request_id")
-            task_graph = self.request_map.get(request_id)
+            task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return
@@ -241,7 +236,7 @@ class RequestManager:
 
     def retry_failed_task(self, task_id: str, request_id: str):
         try:
-            task_graph = self.request_map.get(request_id)
+            task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return
@@ -270,7 +265,7 @@ class RequestManager:
 
     def get_request_status(self, request_id: str) -> Dict[str, TaskStatus]:
         try:
-            task_graph = self.request_map.get(request_id)
+            task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return {}
@@ -290,7 +285,7 @@ class RequestManager:
             self.persist_request(request_id)
 
             # Get the terminal nodes and print the results
-            terminal_nodes = self.request_map[request_id].get_terminal_nodes()
+            terminal_nodes = self.request_map[request_id].task_graph.get_terminal_nodes()
             results = {}
             for node in terminal_nodes:
                 results[node.task_name] = node.result
@@ -312,7 +307,7 @@ class RequestManager:
     
     def persist_request(self, request_id: str):
         try:
-            task_graph = self.request_map[request_id]
+            task_graph = self.request_map[request_id].task_graph
             include_fields = {
                 'task_id',
                 'task_name',

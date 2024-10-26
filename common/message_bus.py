@@ -52,7 +52,7 @@ class MessageBus:
                 # Start a new thread for each callback
                 callback_thread = threading.Thread(target=callback, args=(message,))
                 callback_thread.start()
-
+           
     def subscribe(self, subscriber, message_type: MessageType, callback: Callable):
         with self._lock:
             if message_type not in self._subscribers:

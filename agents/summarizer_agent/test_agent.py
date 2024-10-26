@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from agents.summarizer_agent.agent import TextSummarizerAgent, TextSummarizeInput, TextSummarizeOutput
 from llm_provider.factory import LLMFactory
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from logging import Logger
 
 class TestTextSummarizerAgent(unittest.TestCase):

@@ -2,11 +2,11 @@ import unittest
 from unittest.mock import patch, Mock
 from typing import Dict, Any
 
-from supervisor.request_manager import RequestManager, RequestModel
+from supervisor.request_manager import RequestManager, RequestMetadata
 from common.task_graph import TaskGraph
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from config.bedrock_config import BedrockConfig
 from agents.hello_world_agent.agent import HelloWorldAgent
@@ -33,7 +33,7 @@ class RequestManagerIntegrationTest(unittest.TestCase):
     @patch("supervisor.request_manager.RequestManager.persist_request")
     def test_handle_request(self, mock_persist_request):
         # Arrange
-        request = RequestModel(instructions="What is the weather in Seattle?")
+        request = RequestMetadata(prompt="What is the weather in Seattle?")
 
         # Act
         request_id = self.request_manager.handle_request(request)
@@ -41,13 +41,13 @@ class RequestManagerIntegrationTest(unittest.TestCase):
         # Assert
         self.assertIsInstance(request_id, str)
         self.assertIn(request_id, self.request_manager.request_map)
-        self.assertIsInstance(self.request_manager.request_map[request_id], TaskGraph)
+        self.assertIsInstance(self.request_manager.request_map[request_id].task_graph, TaskGraph)
         #mock_persist_request.assert_called_once_with(request_id)
 
     @patch("supervisor.request_manager.MessageBus.publish")
     def test_monitor_progress(self, mock_publish):
         # Arrange
-        request = RequestModel(instructions="What is the weather in Seattle?")
+        request = RequestMetadata(prompt="What is the weather in Seattle?")
         request_id = self.request_manager.handle_request(request)
 
         # Act
@@ -59,9 +59,9 @@ class RequestManagerIntegrationTest(unittest.TestCase):
     @patch("supervisor.request_manager.MessageBus.publish")
     def test_handle_task_response(self, mock_publish):
         # Arrange
-        request = RequestModel(instructions="What is the weather in Seattle?")
+        request = RequestMetadata(prompt="What is the weather in Seattle?")
         request_id = self.request_manager.handle_request(request)
-        task_graph = self.request_manager.request_map[request_id]
+        task_graph = self.request_manager.request_map[request_id].task_graph
         task_node = list(task_graph.nodes.values())[0]
         response = {
             "request_id": request_id,

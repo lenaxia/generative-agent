@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from langchain.agents import AgentType
 from supervisor.supervisor_config import SupervisorConfig
 from agents.base_agent import BaseAgent
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from agents.summarizer_agent.agent import TextSummarizerAgent
 from agents.search_agent.agent import SearchAgent
