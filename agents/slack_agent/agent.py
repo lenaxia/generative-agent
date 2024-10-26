@@ -1,13 +1,18 @@
+import json
 import os
 import threading
 from typing import Any, Dict, List
-from agents.base_agent import BaseAgent
+from agents.base_agent import AgentInput, BaseAgent
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from llm_provider.factory import LLMFactory
-from shared_tools.message_bus import MessageBus, MessageType
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import PromptTemplate
 import logging
+
+from common.request_model import RequestMetadata
+from llm_provider.factory import LLMFactory
+from common.message_bus import MessageBus, MessageType
 
 
 class SlackAgentConfig(BaseModel):
@@ -15,6 +20,10 @@ class SlackAgentConfig(BaseModel):
     status_channel: str
     monitored_event_types: List[str] = ["message"]
     online_message: str = "SlackAgent is online and ready to receive messages."
+    
+class SlackMessageOutput(BaseModel):
+    text: str = Field(description="The text of the message")
+    
 
 class SlackAgent(BaseAgent):
     slack_app_token = os.environ.get("SLACK_APP_TOKEN")
@@ -30,6 +39,7 @@ class SlackAgent(BaseAgent):
         self.setup_error_handler()
         self.subscribe_to_messages(MessageType.SEND_MESSAGE, self.handle_send_message)
         self.initialize()
+        self.agent_description = "An agent which can send and receive messages to and from Slack. When receiving a request from Slack, send a response when it makes sense"
 
     def setup_middleware(self):
         @self.app.middleware
@@ -41,8 +51,17 @@ class SlackAgent(BaseAgent):
         @self.app.event("app_mention")
         def handle_app_mention(event, say):
             metadata = self.event_metadata(event)
-            self.publish_message(MessageType.INCOMING_REQUEST, {"event": event, "metadata": metadata})
-            say(f"Event: {event}\n\nMetadata: {metadata}")
+            
+            request = RequestMetadata(
+                prompt=event["text"],
+                source_id=self.agent_id,
+                target_id="supervisor",
+                response_requested=True,
+                callback_details={"channel": metadata["channel"], "timestamp": metadata["timestamp"], "user": event["user"]}
+            )
+            
+            self.publish_message(MessageType.INCOMING_REQUEST, request)
+            #say(f"Request received: {request}")
 
         @self.app.event("message")
         def handle_message(event, say, logger):
@@ -96,6 +115,27 @@ class SlackAgent(BaseAgent):
         channel = metadata.get("channel", None)
         if channel:
             self.app.client.chat_postMessage(channel=channel, text=event["text"])
+
+    def _run(self, input: AgentInput) -> Any:
+        parser = PydanticOutputParser(pydantic_object=SlackMessageOutput)  # Replace YourOutputModel with the appropriate output model
+        
+        prompt_template = PromptTemplate(
+            input_variables=["prompt", "history"],
+            template="Given the following prompt and history, generate a response: {prompt}\n\n"
+                     "History:\n{history}\n\n"
+                     "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
+                     "Response:",
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+        
+        llm_provider = self._select_llm_provider(input.llm_type)
+        
+        chain = prompt_template | llm_provider | parser
+        response = chain.invoke({"prompt": input.prompt, "history": input.history})
+        
+        self.post_message_to_channel(self.config.slack_channel, str(response.text))
+        
+        return response
 
     def setup(self):
         pass

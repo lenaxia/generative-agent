@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from agents.base_agent import AgentInput
 from agents.planning_agent.agent import PlanningAgent, PlanningAgentInput, PlanningAgentOutput, TaskDescription, TaskDependency
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import LoggingConfig, SupervisorConfig
 from config.bedrock_config import BedrockConfig

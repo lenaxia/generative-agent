@@ -2,9 +2,9 @@ import unittest
 import time
 from logging import Logger
 from unittest.mock import Mock, patch
-from supervisor.request_manager import RequestManager, RequestModel
+from supervisor.request_manager import RequestManager, RequestMetadata
 from common.task_graph import TaskGraph, TaskNode, TaskStatus
-from shared_tools.message_bus import MessageBus, MessageType
+from common.message_bus import MessageBus, MessageType
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import SupervisorConfig
 from llm_provider.factory import LLMFactory, LLMType
@@ -36,7 +36,7 @@ class TestRequestManager(unittest.TestCase):
 
     def test_handle_request(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
 
         # Act
         request_id = self.request_manager.handle_request(request)
@@ -55,7 +55,7 @@ class TestRequestManager(unittest.TestCase):
 
     def test_monitor_progress(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
 
@@ -67,7 +67,7 @@ class TestRequestManager(unittest.TestCase):
 
     def test_handle_task_response(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         task_node = list(task_graph.nodes.values())[0]
@@ -86,7 +86,7 @@ class TestRequestManager(unittest.TestCase):
 
     def test_handle_agent_error(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         task_node = list(task_graph.nodes.values())[0]
@@ -109,7 +109,7 @@ class TestRequestManager(unittest.TestCase):
     @patch("shared_tools.message_bus.MessageBus.publish")
     def test_retry_failed_task(self, mock_publish, mock_update_metrics, mock_sleep):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         task_node = list(task_graph.nodes.values())[0]
@@ -129,7 +129,7 @@ class TestRequestManager(unittest.TestCase):
 
     def test_get_request_status(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
 
@@ -143,7 +143,7 @@ class TestRequestManager(unittest.TestCase):
     @patch("shared_tools.message_bus.MessageBus.publish")
     def test_delegate_task(self, mock_publish):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         task_node = list(task_graph.nodes.values())[0]
@@ -160,7 +160,7 @@ class TestRequestManager(unittest.TestCase):
     @patch("supervisor.metrics_manager.MetricsManager.update_metrics")
     def test_handle_request_completion(self, mock_update_metrics, mock_get_metrics, mock_persist_request, mock_safe_dump):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
 
@@ -184,7 +184,7 @@ class TestRequestManager(unittest.TestCase):
     @patch("supervisor.metrics_manager.MetricsManager.update_metrics")
     def test_handle_request_failure(self, mock_update_metrics, mock_get_metrics, mock_persist_request, mock_safe_dump):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         error_message = "Test error"
 
@@ -204,7 +204,7 @@ class TestRequestManager(unittest.TestCase):
     @patch("supervisor.metrics_manager.MetricsManager.update_metrics")
     def test_persist_request(self, mock_update_metrics, mock_get_metrics, mock_persist_metrics):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         
@@ -232,7 +232,7 @@ class TestRequestManager(unittest.TestCase):
     
     def test_check_conditions(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         request_id = self.request_manager.handle_request(request)
         task_graph = self.request_manager.request_map[request_id]
         node = list(task_graph.nodes.values())[0]
@@ -245,7 +245,7 @@ class TestRequestManager(unittest.TestCase):
     
     def test_handle_request_with_exception(self):
         # Arrange
-        request = RequestModel(instructions="Test instruction")
+        request = RequestMetadata(prompt="Test instruction")
         self.request_manager.create_task_graph = Mock(side_effect=Exception("Test exception"))
     
         # Act & Assert

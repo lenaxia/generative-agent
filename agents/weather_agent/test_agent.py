@@ -4,7 +4,7 @@ from agents.weather_agent.agent import WeatherAgent
 from llm_provider.factory import LLMFactory, LLMType
 #from config.openai_config import OpenAIConfig
 from config.bedrock_config import BedrockConfig
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 
 class WeatherAgentTest(unittest.TestCase):
     def setUp(self):

@@ -6,7 +6,7 @@ from llm_provider.base_client import BaseLLMClient
 from supervisor.llm_registry import LLMRegistry, LLMType
 from agents.base_agent import BaseAgent
 from .tools.basic_math_tool import BasicMathTool, BasicMathInput, BasicMathOutput
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 
 class BasicMathAgent(BaseAgent):
     # TODO: Needs refactor for the new agent design pattern using create_react_agent

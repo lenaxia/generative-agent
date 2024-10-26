@@ -4,10 +4,10 @@ from unittest.mock import patch, mock_open
 from pathlib import Path
 from supervisor.supervisor import Supervisor
 from supervisor.supervisor_config import SupervisorConfig
-from supervisor.request_manager import RequestManager, RequestModel
+from supervisor.request_manager import RequestManager, RequestMetadata
 from supervisor.agent_manager import AgentManager
 from supervisor.metrics_manager import MetricsManager
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

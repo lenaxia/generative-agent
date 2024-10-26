@@ -3,7 +3,7 @@ from typing import Dict
 from unittest.mock import Mock, patch
 from agents.planning_agent.agent import PlanningAgent
 from agents.base_agent import BaseAgent, AgentInput
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from langchain.tools import BaseTool
 from common.task_graph import TaskGraph
 

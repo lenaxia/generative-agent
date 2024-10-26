@@ -4,7 +4,7 @@ from langchain.tools import BaseTool
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from agents.base_agent import BaseAgent, AgentInput
 from langchain_core.messages import HumanMessage, SystemMessage
 

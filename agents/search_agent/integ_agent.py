@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 from agents.search_agent.agent import SearchAgent
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from logging import Logger
 from langchain_aws import ChatBedrock
 from agents.base_agent import AgentInput

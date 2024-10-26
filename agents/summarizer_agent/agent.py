@@ -1,6 +1,6 @@
 from logging import Logger
 from langchain.tools import BaseTool
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from agents.base_agent import BaseAgent, AgentInput
 
 from typing import List, TypedDict, Dict, Optional

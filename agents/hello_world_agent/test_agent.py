@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock
 from agents.hello_world_agent.agent import HelloWorldAgent
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 
 class TestHelloWorldAgent(unittest.TestCase):
     def setUp(self):

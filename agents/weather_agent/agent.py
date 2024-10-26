@@ -7,7 +7,7 @@ from langchain.prompts import ChatPromptTemplate
 from langgraph.prebuilt import create_react_agent
 from agents.base_agent import BaseAgent, AgentInput
 from llm_provider.factory import LLMFactory, LLMType
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from pydantic import BaseModel, Field
 from agents.base_agent import AgentInput
 

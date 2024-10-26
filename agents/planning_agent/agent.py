@@ -6,7 +6,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, field_validator, ValidationError
 from uuid import uuid4
 from enum import Enum
-from shared_tools.message_bus import MessageBus
+from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from agents.base_agent import BaseAgent, AgentInput
 from common.task_graph import TaskGraph, TaskDescription, TaskDependency
