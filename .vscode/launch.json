@@ -2,6 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Py: SlackTest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "slack"
+        },
+        {
             "name": "Py: Supervisor",
             "type": "debugpy",
             "request": "launch",
