@@ -124,6 +124,8 @@ class SlackAgent(BaseAgent):
             template="Given the following prompt and history, generate a response: {prompt}\n\n"
                      "History:\n{history}\n\n"
                      "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
+                     "Your response should be conversational and be as if you are responding to the user."
+                     "Do not include anything else besides the json output\n\n"
                      "Response:",
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )

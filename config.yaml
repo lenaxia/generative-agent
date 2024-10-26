@@ -6,13 +6,20 @@ llm_providers:
   #  config:
   #    model_name: qwen2.5-72b-instruct-iq4_xs
   #    base_url: http://192.168.5.74:8080/v1
-  bedrock:
-    name: bedrock
+  bedrock-strong:
+    name: bedrock-sonnet
     type: bedrock
     registry_type: DEFAULT
     config:
       model: anthropic.claude-3-sonnet-20240229-v1:0
-      temperature: 0
+      temperature: 0.5
+  bedrock-weak:
+    name: bedrock-haiku
+    type: bedrock
+    registry_type: WEAK
+    config:
+      model: anthropic.claude-3-haiku-20240307-v1:0
+      temperature: 0.5
     
 logging:
   log_file: logs/supervisor.log
