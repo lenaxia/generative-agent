@@ -70,15 +70,17 @@ class SlackAgent(BaseAgent):
                 age_minutes = round(age / 60)
                 messages.insert(0, f"({age_minutes}min ago) {user}: {text}")
             
+            compiled_history = "\n".join(messages)
+            
             prompt = f"""
 Here is the most recent {history_limit} messages in the channel:
-{"\n".join(messages)}
+{compiled_history}
 
 {metadata.get("user", "")} just mentioned your name and said the following:
 
 {metadata.get("text", "")}
                     """
-            
+                                
             request = RequestMetadata(
                 prompt=prompt,
                 source_id=self.agent_id,
