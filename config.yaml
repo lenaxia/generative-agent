@@ -46,3 +46,9 @@ agents:
     agent_class: WeatherAgent
     config:
       llm_class: weak
+  summary_agent:
+    agent_class: TextSummarizerAgent
+    config:
+      llm_class: default
+      skip_if_text_shorter_than: 300
+      target_length: 200

@@ -157,7 +157,9 @@ class RequestManager:
         """
         try:
             request_id = response.get("request_id")
-            task_graph = self.request_map.get(request_id).task_graph
+            request = self.request_map.get(request_id)
+            task_graph = request.task_graph
+            
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
                 return
