@@ -150,27 +150,29 @@ Here is the most recent {history_limit} messages in the channel for context when
             self.app.client.chat_postMessage(channel=channel, text=event["text"])
 
     def _run(self, input: AgentInput) -> Any:
-        parser = PydanticOutputParser(pydantic_object=SlackMessageOutput)  # Replace YourOutputModel with the appropriate output model
+        #parser = PydanticOutputParser(pydantic_object=SlackMessageOutput)  # Replace YourOutputModel with the appropriate output model
+        #
+        #prompt_template = PromptTemplate(
+        #    input_variables=["prompt", "history"],
+        #    template="Given the following prompt and history, generate a response: {prompt}\n\n"
+        #             "History:\n{history}\n\n"
+        #             "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
+        #             "Your response should be conversational and be as if you are responding to the user."
+        #             "Do not include anything else besides the json output\n\n"
+        #             "Response:",
+        #    partial_variables={"format_instructions": parser.get_format_instructions()},
+        #)
+        #
+        #llm_provider = self._select_llm_provider()
+        #
+        #chain = prompt_template | llm_provider | parser
+        #response = chain.invoke({"prompt": input.prompt, "history": input.history})
+        #
+        #self.post_message_to_channel(self.config.slack_channel, str(response.text))
         
-        prompt_template = PromptTemplate(
-            input_variables=["prompt", "history"],
-            template="Given the following prompt and history, generate a response: {prompt}\n\n"
-                     "History:\n{history}\n\n"
-                     "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
-                     "Your response should be conversational and be as if you are responding to the user."
-                     "Do not include anything else besides the json output\n\n"
-                     "Response:",
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
+        self.post_message_to_channel(self.config.slack_channel, input.history[-1])
         
-        llm_provider = self._select_llm_provider()
-        
-        chain = prompt_template | llm_provider | parser
-        response = chain.invoke({"prompt": input.prompt, "history": input.history})
-        
-        self.post_message_to_channel(self.config.slack_channel, str(response.text))
-        
-        return response.text
+        return input.history[-1]
 
     def setup(self):
         pass

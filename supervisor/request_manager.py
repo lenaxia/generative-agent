@@ -282,19 +282,19 @@ class RequestManager:
     
     def handle_request_completion(self, request_id: str):
         try:
-            logger.info(f"Request '{request_id}' completed successfully.")
             end_time = time.time()
             duration = end_time - self.config.metrics_manager.get_metrics(request_id)["start_time"]
             self.config.metrics_manager.update_metrics(request_id, {"duration": duration})
             # Persist the request data and results
             self.persist_request(request_id)
+            logger.info(f"Request '{request_id}' completed successfully. Duration: {duration} seconds.")
 
             # Get the terminal nodes and print the results
             terminal_nodes = self.request_map[request_id].task_graph.get_terminal_nodes()
             results = {}
             for node in terminal_nodes:
                 results[node.task_name] = node.result
-            print(f"Results for request '{request_id}': {results}")
+            print(f"Results for request '{request_id}' ({round(duration,2)}s): {results}")
 
         except Exception as e:
             logger.error(f"Error handling request completion for '{request_id}': {e}")
