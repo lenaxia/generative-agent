@@ -73,7 +73,7 @@ class SlackAgent(BaseAgent):
             compiled_history = "\n".join(messages)
             
             prompt = f"""
-Here is the most recent {history_limit} messages in the channel:
+Here is the most recent {history_limit} messages in the channel for context when responding to the below message:
 {compiled_history}
 
 {metadata.get("user", "")} just mentioned your name and said the following:

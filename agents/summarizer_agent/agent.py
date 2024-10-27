@@ -65,6 +65,9 @@ class TextSummarizerAgent(BaseAgent):
         return llm
 
     def _run(self, input_data: TextSummarizeInput):
+        if len(input_data.history[-1]) < self.config.get("skip_if_text_shorter_than", 300):
+            return input_data.history[-1]
+        
         max_retries = 5  # Set the maximum number of retries
         best_summary = None
         best_scores = (0.0, 0.0, 0.0)  # Initialize best scores with (accuracy, completeness, relevance)
