@@ -60,8 +60,8 @@ class TextSummarizerAgent(BaseAgent):
         # No tools needed for this agent
         return {}
 
-    def _select_llm_provider(self, llm_type: LLMType, **kwargs):
-        llm = self.llm_factory.create_chat_model(llm_type)
+    def _select_llm_provider(self):
+        llm = self.llm_factory.create_chat_model(self.config.get("llm_class", LLMType.DEFAULT))
         return llm
 
     def _run(self, input_data: TextSummarizeInput):
@@ -133,7 +133,7 @@ class TextSummarizerAgent(BaseAgent):
                 ("human", f"Write a concise summary of the following in {self.max_summary_length} words or less: {{context}}"),
             ]
         )
-        initial_summary_chain = summarize_prompt | self._select_llm_provider(LLMType.DEFAULT) | StrOutputParser()
+        initial_summary_chain = summarize_prompt | self._select_llm_provider() | StrOutputParser()
 
         # Refining the summary with new docs
         refine_template = """
@@ -151,7 +151,7 @@ class TextSummarizerAgent(BaseAgent):
         """
         refine_prompt = ChatPromptTemplate([("human", refine_template)])
 
-        refine_summary_chain = refine_prompt | self._select_llm_provider(LLMType.DEFAULT) | StrOutputParser()
+        refine_summary_chain = refine_prompt | self._select_llm_provider() | StrOutputParser()
 
         def generate_initial_summary(state: SummarizationState, config: RunnableConfig):
             summary = initial_summary_chain.invoke(

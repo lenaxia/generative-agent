@@ -71,12 +71,12 @@ class BaseAgent:
         self.teardown()
         return self._process_output(task_data, output_data)
 
-    def _select_llm_provider(self, llm_type: LLMType, **kwargs) -> Runnable:
+    def _select_llm_provider(self) -> Runnable:
         """
         Selects the LLM provider based on the specified type and additional arguments.
         Subclasses can override this method to customize LLM provider selection.
         """
-        return self.llm_factory.create_chat_model(llm_type, **kwargs)
+        return self.llm_factory.create_chat_model(LLMType.DEFAULT)
 
     async def arun(self, input: AgentInput) -> Any:
         """
@@ -91,7 +91,7 @@ class BaseAgent:
 
     def handle_task_assignment(self, task_data: Dict):
         if task_data["agent_id"] != self.agent_id:
-            self.logger.info(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
+            self.logger.debug(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
             return 
 
         self.logger.info(f"New Request Received by {self.agent_id}, Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")

@@ -98,8 +98,8 @@ class Supervisor:
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
-            llm_type = LLMType[provider_config.get("registry_type", LLMType.DEFAULT)]
-            llm_factory.add_config(llm_type, provider_config)
+            llm_class = LLMType[provider_config.get("llm_class", LLMType.DEFAULT).upper()]
+            llm_factory.add_config(llm_class, provider_config)
             
         # TODO: We need to restructure how we pass configs and instances of supervisor and the other modules to each other. 
         #       Right now its a mess, and very inconsistent, we need a way that any module can easily talk to or get information from
@@ -193,11 +193,10 @@ class Supervisor:
                     while not request_completed:
                         progress_info = self.request_manager.monitor_progress(request_id)
                         if progress_info is None:
-                            logger.info(f"Request '{request_id}' completed or failed.")
                             request_completed = True
                         else:
                             logger.info(f"Request '{request_id}' Status: {progress_info}")
-                            if progress_info.get("graph_completed", False):
+                            if progress_info.get("status", False):
                                 request_completed = True
                             else:
                                 time.sleep(5)  # Wait for 5 seconds before checking progress again

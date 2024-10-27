@@ -117,7 +117,7 @@ class WeatherAgent(BaseAgent):
     def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.agent_description = "Check the weather for a given city or zip code within the US."
-
+        self.config = config or {}
         self.logger = logger
 
     @property
@@ -128,8 +128,8 @@ class WeatherAgent(BaseAgent):
             ZipCodeToCoordinatesTool()
         ]
 
-    def _select_llm_provider(self, llm_type: LLMType):
-        llm = self.llm_factory.create_chat_model(llm_type)
+    def _select_llm_provider(self):
+        llm = self.llm_factory.create_chat_model(self.config.get("llm_class", LLMType.DEFAULT))
         return llm
 
     def _run(self, input: AgentInput) -> Any:

@@ -20,6 +20,7 @@ class SlackAgentConfig(BaseModel):
     status_channel: str
     monitored_event_types: List[str] = ["message"]
     online_message: str = "SlackAgent is online and ready to receive messages."
+    llm_class: str = "default"
     
 class SlackMessageOutput(BaseModel):
     text: str = Field(description="The text of the message")
@@ -130,7 +131,7 @@ class SlackAgent(BaseAgent):
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
         
-        llm_provider = self._select_llm_provider(input.llm_type)
+        llm_provider = self._select_llm_provider()
         
         chain = prompt_template | llm_provider | parser
         response = chain.invoke({"prompt": input.prompt, "history": input.history})

@@ -1,15 +1,10 @@
-import json
-from langchain.output_parsers import OutputFixingParser
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, field_validator, ValidationError
-from uuid import uuid4
-from enum import Enum
-from common.message_bus import MessageBus
-from llm_provider.factory import LLMFactory, LLMType
+from pydantic import BaseModel, field_validator
 from agents.base_agent import BaseAgent, AgentInput
 from common.task_graph import TaskGraph, TaskDescription, TaskDependency
+from llm_provider.factory import LLMType
 
 class PlanningAgentInput(AgentInput):
     request_id: str
@@ -42,13 +37,13 @@ class PlanningAgent(BaseAgent):
         self.logger.info(f"Initialized PlanningAgent with ID: {agent_id}")
         self.feedback_added = False
         self.agent_description = "Generate a plan for completing the given task"
+        self.config = config
 
     def set_agent_manager(self, agent_manager):
         self.agent_manager = agent_manager
-        self.logger.info(f"Set AgentManager for PlanningAgent")
-
-    def _select_llm_provider(self, llm_type, **kwargs):
-        llm = self.llm_factory.create_chat_model(llm_type)
+        
+    def _select_llm_provider(self):
+        llm = self.llm_factory.create_chat_model(self.config.get("llm_class", LLMType.DEFAULT))
         return llm
 
     def _run(self, input: PlanningAgentInput):
@@ -66,19 +61,16 @@ class PlanningAgent(BaseAgent):
                      "Your output should follow the provided JSON schema:\n\n{format_instructions}\n\n"
                      "Only respond with the JSON and no additional formatting or comments, do not include anything else besides the json output\n"
                      "Task Graph:\n",
-            #formatter={"agents": lambda agents: "\n".join([f"- {agent}" for agent in agents])},
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
         
-        #self.logger.info({"agents": lambda agents: "\n".join([f"- {agent}" for agent in agents])})
-
         # TODO: Instead of just getting the agent names, also get the agent descriptions, so the LLM has more context on what each agent does
         #   and update the formatter above to properly format the agent name and description
         agents = [agent for agent in self.agent_manager.get_agents()]
         agents_prompt =  "\n".join([f"- {agent.agent_id} ({agent.agent_description})" for agent in agents])
-        self.logger.info(f"Agents for PlanningAgent: {agents_prompt}")
+        self.logger.debug(f"Agents for PlanningAgent: {agents_prompt}")
         
-        llm_provider = self._select_llm_provider(input.llm_type)
+        llm_provider = self._select_llm_provider()
 
         chain = prompt_template | llm_provider | parser
         planning_agent_output = chain.invoke({"input": input.prompt, "agents": agents_prompt})
