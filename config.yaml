@@ -37,6 +37,7 @@ agents:
         - message
       online_message: "SlackAgent is online and ready to receive messages."
       llm_class: default
+      history_limit: 5
   planning_agent:
     agent_class: PlanningAgent
     config:

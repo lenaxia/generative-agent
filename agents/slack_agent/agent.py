@@ -1,6 +1,7 @@
 import json
 import os
 import threading
+import time
 from typing import Any, Dict, List
 from agents.base_agent import AgentInput, BaseAgent
 from slack_bolt import App
@@ -21,6 +22,7 @@ class SlackAgentConfig(BaseModel):
     monitored_event_types: List[str] = ["message"]
     online_message: str = "SlackAgent is online and ready to receive messages."
     llm_class: str = "default"
+    history_limit: int = 5
     
 class SlackMessageOutput(BaseModel):
     text: str = Field(description="The text of the message")
@@ -52,9 +54,33 @@ class SlackAgent(BaseAgent):
         @self.app.event("app_mention")
         def handle_app_mention(event, say):
             metadata = self.event_metadata(event)
+            client = self.app.client
+            
+            history_limit = self.config.history_limit
+            result = client.conversations_history(channel=metadata.get("channel"), limit=history_limit)
+            history = result.data["messages"]
+            history.pop(0) # remove the most recent message from history becuase thats what we're processing right now
+            
+            messages = []
+            
+            for message in history:
+                user = message["user"]
+                text = message["text"]
+                age = time.time() - float(message.get("ts", 0))
+                age_minutes = round(age / 60)
+                messages.insert(0, f"({age_minutes}min ago) {user}: {text}")
+            
+            prompt = f"""
+Here is the most recent {history_limit} messages in the channel:
+{"\n".join(messages)}
+
+{metadata.get("user", "")} just mentioned your name and said the following:
+
+{metadata.get("text", "")}
+                    """
             
             request = RequestMetadata(
-                prompt=event["text"],
+                prompt=prompt,
                 source_id=self.agent_id,
                 target_id="supervisor",
                 response_requested=True,
@@ -103,11 +129,15 @@ class SlackAgent(BaseAgent):
 
     @staticmethod
     def event_metadata(event):
+        text = event.get("text", "")
+        if "<@" in text:
+            text = text.split(">", 1)[1].strip()
         return {
             "event_type": event["type"],
             "channel": event.get("channel", None),
             "user": event.get("user", None),
-            "timestamp": event.get("ts", None)
+            "timestamp": event.get("ts", None),
+            "text": text
         }
 
     def handle_send_message(self, message):
