@@ -57,6 +57,8 @@ class TaskNode(BaseModel):
     result: Optional[str] = Field(None, description="Result of the task, LLM should leave this empty")
     stop_reason: Optional[str] = Field(None, description="The reason why the task was stopped, LLM should leave this empty")
     include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
+    start_time: Optional[float] = Field(None, description="The time that the task was started")
+    duration: Optional[float] = Field(None, description="The number of seconds that it took to complete the task")
 
     def update_status(self, status: TaskStatus, result: Optional[str] = None):
         self.status = status

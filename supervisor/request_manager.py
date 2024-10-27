@@ -41,12 +41,12 @@ class RequestManager:
 
             self.request_map[request_id] = Request(request, task_graph) 
             # TODO: This was causing some problems so commented it out for now.
-            #self.config.metrics_manager.update_metrics(request_id, {
-            #    "start_time": time.time(),
-            #    "tasks_completed": 0,
-            #    "tasks_failed": 0,
-            #    "retries": 0,
-            #})
+            self.config.metrics_manager.update_metrics(request_id, {
+                "start_time": time.time(),
+                "tasks_completed": 0,
+                "tasks_failed": 0,
+                "retries": 0,
+            })
             self.config.metrics_manager.update_metrics(request_id, {"start_time": request_time})
             logger.info(f"Received new request with ID '{request_id}'.")
             return request_id
@@ -55,10 +55,11 @@ class RequestManager:
             raise e
 
     def create_task_graph(self, instruction: str, request_id: Optional[str] = None) -> TaskGraph:
-        logger.info(f"Creating task graph for instruction: {instruction}")
-        planning_agent = self.agent_manager.get_agent("PlanningAgent")
+        planning_start_time = time.time()
+        planning_agent = self.agent_manager.get_agent("planning_agent")
         if planning_agent is None:
             logger.error("No planning agent found")
+            raise Exception("No planning agent found")
 
         if planning_agent:
             planning_agent.set_agent_manager(self.agent_manager)
@@ -66,7 +67,7 @@ class RequestManager:
             task_data = {
                 "task_id": "plan_" + str(uuid.uuid4()).split('-')[-1],
                 "request_id": request_id,
-                "agent_id": "PlanningAgent",
+                "agent_id": "planning_agent",
                 "task_name": "Planning",
                 "task_description": "Create a plan for the user request",
                 "task_type": "RequestPlanning",
@@ -74,8 +75,7 @@ class RequestManager:
                 "prompt": instruction,
             }
             task_graph = planning_agent.run(task_data)
-            logger.info("Task graph created successfully.")
-            logger.debug(f"TASK GRAPH: {task_graph.nodes}")
+            self.config.metrics_manager.update_metrics(request_id, {"planning_duration": time.time() - planning_start_time})
             return task_graph
         else:
             logger.error("Planning Agent not found in the agent registry.")
@@ -85,6 +85,7 @@ class RequestManager:
         if (task.status == TaskStatus.PENDING):
             try:
                 task.status = TaskStatus.RUNNING
+                task.start_time = time.time()
                 task_data = task.model_dump()
                 task_data["history"] = task_graph.get_task_history(task.task_id)
                 self.message_bus.publish(self, MessageType.TASK_ASSIGNMENT, task_data)
@@ -97,7 +98,7 @@ class RequestManager:
             task_graph = self.request_map.get(request_id).task_graph
             if task_graph is None:
                 logger.error(f"Request '{request_id}' not found.")
-                return
+                return {"status": "error", "error": f"Request '{request_id}' not found."}
 
             start_time = task_graph.start_time  # Add a start_time attribute to the task_graph
 
@@ -105,32 +106,32 @@ class RequestManager:
             completed_nodes = []
             failed_nodes = []
             for node_id in task_graph.nodes:
-                node = task_graph.nodes.get(node_id, None)
-                if node.status == TaskStatus.COMPLETED:
-                    completed_nodes.append(node)
+                task = task_graph.nodes.get(node_id, None)
+                if task.status == TaskStatus.COMPLETED:
+                    completed_nodes.append(task)
                     self.config.metrics_manager.delta_metrics(request_id, {"tasks_completed": 1})
-                    self.delegate_next_tasks(task_graph, node)
-                elif node.status in (TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED):
-                    failed_nodes.append(node)
+                    self.delegate_next_tasks(task_graph, task)
+                elif task.status in (TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED):
+                    failed_nodes.append(task)
 
             if task_graph.is_complete():
                 self.handle_request_completion(request_id)
-
+                
             if verbose:
+                completed = task_graph.is_complete()
                 num_nodes = len(task_graph.nodes)
                 num_completed = len(completed_nodes)
                 percent_completed = (num_completed / num_nodes) * 100 if num_nodes > 0 else 0
                 runtime_duration = time.time() - start_time
-                node_info = [(node.task_name, node.prompt_template_formatted) for node in task_graph.nodes]
 
                 verbose_output = {
+                    "status": completed,
                     "num_nodes": num_nodes,
                     "num_completed": num_completed,
                     "percent_completed": percent_completed,
                     "runtime_duration": runtime_duration,
                     "failed_nodes": [{"name": node.task_name, "prompt": node.prompt_template_formatted} for node in failed_nodes],
-                    "node_info": node_info,
-                    "graph_complete": task_graph.is_complete(),
+                    "node_info": task,
                 }
                 return verbose_output
 
@@ -162,13 +163,14 @@ class RequestManager:
                 return
 
             task_id = response.get("task_id")
-            node = task_graph.get_node_by_task_id(task_id)
-            if node is None:
+            task = task_graph.get_node_by_task_id(task_id)
+            if task is None:
                 logger.error(f"Task '{task_id}' not found in the task graph.")
                 return
             
-            node.result = response.get("result", None)
-            node.status = TaskStatus.COMPLETED
+            task.result = response.get("result", None)
+            task.status = TaskStatus.COMPLETED
+            task.duration = time.time() - task.start_time
             task_graph.history.append(response.get("result"))
 
             self.monitor_progress(request_id)
@@ -309,17 +311,17 @@ class RequestManager:
         try:
             task_graph = self.request_map[request_id].task_graph
             include_fields = {
-                'task_id',
                 'task_name',
                 'agent_id',
                 'task_type',
-                'prompt_template',
-                'prompt_args',
+                'prompt',
                 'status',
                 'inbound_edges',
                 'outbound_edges',
                 'result',
                 'stop_reason',
+                'start_time',
+                'duration'
             }
 
             nodes = {node_id: node.model_dump(include=include_fields) for node_id, node in task_graph.nodes.items()}

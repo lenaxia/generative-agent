@@ -82,19 +82,19 @@ class AgentManager(BaseModel):
         try:
             agents_to_register = [
                 {
-                    'name': 'TextSummarizerAgent',
+                    'name': 'text_summarizer_agent',
                     'class': TextSummarizerAgent
                 },
                 {
-                    'name': 'SearchAgent',
+                    'name': 'search_agent',
                     'class': SearchAgent
                 },
                 {
-                    'name': 'PlanningAgent',
+                    'name': 'planning_agent',
                     'class': PlanningAgent
                 },
                 {
-                    'name': 'WeatherAgent',
+                    'name': 'weather_agent',
                     'class': WeatherAgent
                 },
                 {
@@ -106,14 +106,12 @@ class AgentManager(BaseModel):
             registered_agents = []
     
             for agent in agents_to_register:
-                logger.info(f"Trying to register agent: {agent['name']}")
                 agent_config = self.config.agents.get(agent['name'], {}).get('config', {})
     
                 try:
-                    agent_instance = agent['class'](logger, self.llm_factory, self.message_bus, config=agent_config, agent_id=agent['name'])
+                    agent_instance = agent['class'](logger, self.llm_factory, self.message_bus, agent_id=agent['name'], config=agent_config)
                     self.register_agent(agent_instance)
                     registered_agents.append(agent_instance)
-                    logger.info(f"Successfully registered agent: {agent['name']}")
                 except Exception as e:
                     logger.error(f"Error registering agent '{agent['name']}': {e}")
                     continue

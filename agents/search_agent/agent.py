@@ -14,6 +14,7 @@ class SearchAgent(BaseAgent):
     def __init__(self, logger, llm_factory: LLMFactory, message_bus: MessageBus, agent_id: str, config: Dict = None):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.logger = logger
+        self.config = config
         self.search_tool = TavilySearchResults(max_results=4)
         self.agent_description = "An agent which can search the web for arbitrary information and return a summary. If there are more specialized agents available, prefer using those."
 
@@ -21,8 +22,8 @@ class SearchAgent(BaseAgent):
     def tools(self):
         return [self.search_tool]
 
-    def _select_llm_provider(self, llm_type: LLMType, **kwargs):
-        llm = self.llm_factory.create_chat_model(llm_type)
+    def _select_llm_provider(self):
+        llm = self.llm_factory.create_chat_model(self.config.get("llm_class", LLMType.DEFAULT))
         return llm
 
     def _run(self, input: AgentInput) -> Any:
@@ -30,7 +31,7 @@ class SearchAgent(BaseAgent):
         history_entries = [f"* {entry}" for entry in input.history]
         history_prompt = "This is the conversation so far:\n\n" + "\n".join(history_entries)
 
-        llm_provider = self._select_llm_provider(LLMType.DEFAULT)
+        llm_provider = self._select_llm_provider()
         config = {"configurable": {"thread_id": "abc123"}}
         graph = create_react_agent(llm_provider, tools=self.tools)
         inputs = {"messages": [("system", system_prompt), ("user", history_prompt), ("user", input.prompt)]}
