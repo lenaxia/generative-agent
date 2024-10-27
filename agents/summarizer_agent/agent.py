@@ -1,18 +1,19 @@
 from logging import Logger
 from langchain.tools import BaseTool
+from langchain.prompts import PromptTemplate
 from common.message_bus import MessageBus
 from agents.base_agent import BaseAgent, AgentInput
 
 from typing import List, TypedDict, Dict, Optional
 
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 
 from typing import Any, Dict, List
 from pydantic import BaseModel
+from langchain_core.output_parsers import PydanticOutputParser
 from llm_provider.factory import LLMFactory, LLMType
 from logging import Logger
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -48,7 +49,7 @@ class TextSummarizerAgent(BaseAgent):
         super().__init__(logger, llm_factory, message_bus, agent_id, config)
         self.config = config or {}
         self.chunk_size = self.config.get("chunk_size", 500)
-        self.max_summary_length = self.config.get("max_summary_length", 100)
+        self.target_summary_length = self.config.get("target_summary_length", 100)
         self.accuracy_threshold = self.config.get("accuracy_threshold", 0.8)
         self.completeness_threshold = self.config.get("completeness_threshold", 0.8)
         self.relevance_threshold = self.config.get("relevance_threshold", 0.25)
@@ -129,49 +130,44 @@ class TextSummarizerAgent(BaseAgent):
     def teardown(self):
         pass
 
-    def setup_graph(self):
+    def setup_graph(self): 
+        final_summary_parser = PydanticOutputParser(pydantic_object=TextSummarizeOutput)
+
         # Initial summary
-        summarize_prompt = ChatPromptTemplate(
-            [
-                ("human", f"Write a concise summary of the following in {self.max_summary_length} words or less: {{context}}"),
-            ]
+        summarize_prompt = PromptTemplate(
+            input_variables=["input", "target_summary_length"],
+            template="Write a concise summary of the following in {target_summary_length} words or less:\n\n{input}\n\nSummary:",
         )
+
         initial_summary_chain = summarize_prompt | self._select_llm_provider() | StrOutputParser()
 
         # Refining the summary with new docs
-        refine_template = """
-        Produce a final summary in {max_summary_length} words or less.
+        refine_template = PromptTemplate(
+            input_variables=["existing_answer", "context", "target_summary_length"],
+            template="Produce a final summary in {target_summary_length} words or less.\n\n"
+                    "Existing summary up to this point:\n{existing_answer}\n\n"
+                    "New context:\n------------\n{context}\n------------\n\n"
+                    "Given the new context, refine the original summary.\n\n"
+                    "Summary:"
+        )
 
-        Existing summary up to this point:
-        {existing_answer}
-
-        New context:
-        ------------
-        {context}
-        ------------
-
-        Given the new context, refine the original summary.
-        """
-        refine_prompt = ChatPromptTemplate([("human", refine_template)])
-
-        refine_summary_chain = refine_prompt | self._select_llm_provider() | StrOutputParser()
+        refine_summary_chain = refine_template | self._select_llm_provider() | StrOutputParser()
 
         def generate_initial_summary(state: SummarizationState, config: RunnableConfig):
             summary = initial_summary_chain.invoke(
-                state["contents"][0],
+                {"input": state["contents"][0], "target_summary_length": self.target_summary_length},
                 config,
             )
             return {"summary": summary, "index": 1}
-
-
+           
         def refine_summary(state: SummarizationState, config: RunnableConfig):
             content = state["contents"][state["index"]]
             summary = refine_summary_chain.invoke(
-                {"existing_answer": state["summary"], "context": content, "max_summary_length": self.max_summary_length},
+                {"existing_answer": state["summary"], "context": content, "target_summary_length": self.target_summary_length},
                 config,
             )
 
-            return{"summary": summary, "index": state["index"] + 1}
+            return {"summary": summary, "index": state["index"] + 1}
 
         def should_refine(state: SummarizationState) -> str:
             if state["index"] >= len(state["contents"]):
@@ -186,6 +182,7 @@ class TextSummarizerAgent(BaseAgent):
         graph.add_edge(START, "generate_initial_summary")
         graph.add_conditional_edges("generate_initial_summary", should_refine)
         graph.add_conditional_edges("refine_summary", should_refine)
+        graph.add_edge("refine_summary", END)
         self.app = graph.compile()
 
     def calculate_accuracy_scores(self, summary, original_text):

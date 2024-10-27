@@ -170,7 +170,7 @@ Here is the most recent {history_limit} messages in the channel for context when
         
         self.post_message_to_channel(self.config.slack_channel, str(response.text))
         
-        return response
+        return response.text
 
     def setup(self):
         pass

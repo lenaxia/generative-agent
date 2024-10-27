@@ -35,11 +35,12 @@ class RequestManager:
             task_graph = self.create_task_graph(request.prompt, request_id)
             task_graph.request_id = request_id
 
+            self.request_map[request_id] = Request(request, task_graph) 
+
             # Delegate the initial tasks
             for task in task_graph.get_entrypoint_nodes():
                 self.delegate_task(task_graph, task)
 
-            self.request_map[request_id] = Request(request, task_graph) 
             # TODO: This was causing some problems so commented it out for now.
             self.config.metrics_manager.update_metrics(request_id, {
                 "start_time": time.time(),
@@ -157,7 +158,7 @@ class RequestManager:
         """
         try:
             request_id = response.get("request_id")
-            request = self.request_map.get(request_id)
+            request = self.request_map[request_id]
             task_graph = request.task_graph
             
             if task_graph is None:

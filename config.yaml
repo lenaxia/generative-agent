@@ -50,5 +50,5 @@ agents:
     agent_class: TextSummarizerAgent
     config:
       llm_class: default
-      skip_if_text_shorter_than: 300
-      target_length: 200
+      skip_if_text_shorter_than: 600
+      target_summary_length: 300
