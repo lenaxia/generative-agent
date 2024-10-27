@@ -36,7 +36,7 @@ class PlanningAgent(BaseAgent):
         self.agent_manager = None
         self.logger.info(f"Initialized PlanningAgent with ID: {agent_id}")
         self.feedback_added = False
-        self.agent_description = "Generate a plan for completing the given task"
+        self.agent_description = "Generate a plan for completing the given task."
         self.config = config
 
     def set_agent_manager(self, agent_manager):
@@ -66,7 +66,8 @@ class PlanningAgent(BaseAgent):
         
         # TODO: Instead of just getting the agent names, also get the agent descriptions, so the LLM has more context on what each agent does
         #   and update the formatter above to properly format the agent name and description
-        agents = [agent for agent in self.agent_manager.get_agents()]
+        agents = [agent for agent in self.agent_manager.get_agents() if agent.agent_id != self.agent_id]
+        
         agents_prompt =  "\n".join([f"- {agent.agent_id} ({agent.agent_description})" for agent in agents])
         self.logger.debug(f"Agents for PlanningAgent: {agents_prompt}")
         
