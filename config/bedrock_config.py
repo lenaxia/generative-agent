@@ -30,4 +30,4 @@ class BedrockConfig(BaseConfig):
     def __init__(self, **data):
         super().__init__(**data)
         self.llm_config = BedrockModelConfig(**data)
-        self.provider_name: Optional[str] = "bedrock"
+        self.provider_name: str = "bedrock"

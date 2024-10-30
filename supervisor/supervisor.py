@@ -185,7 +185,11 @@ class Supervisor:
                     if len(action) < 5:
                         logger.warning("Invalid instruction. Please enter at least 5 characters.")
                         continue
-                    request = RequestMetadata(prompt=action)
+                    request = RequestMetadata(
+                        prompt=action,
+                        source_id="console",
+                        target_id="supervisor",
+                    )
                     request_id = self.request_manager.handle_request(request)
                     logger.info(f"New request '{request_id}' created and delegated.")
 

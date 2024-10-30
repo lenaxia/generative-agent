@@ -39,10 +39,7 @@ class TestSearchAgent(unittest.TestCase):
         output = {
             "agent": {
                 "messages": [
-                    {
-                        "role": "assistant",
-                        "content": "The capital of France is Paris."
-                    }
+                    AIMessage(content="The capital of France is Paris.")
                 ]
             }
         }
