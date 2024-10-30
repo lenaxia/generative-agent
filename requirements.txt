@@ -1,3 +1,5 @@
+slack_bolt
+aider-chat
 pydantic
 langchain
 langchain-openai
@@ -22,3 +24,4 @@ torch
 scipy>=1.13.0
 setuptools>=75.0.0
 rank_bm25
+
