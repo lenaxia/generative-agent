@@ -9,7 +9,6 @@ from supervisor.supervisor_config import SupervisorConfig
 from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from config.bedrock_config import BedrockConfig
-from agents.hello_world_agent.agent import HelloWorldAgent
 from agents.weather_agent.agent import WeatherAgent
 from agents.planning_agent.agent import PlanningAgent
 
@@ -25,7 +24,6 @@ class RequestManagerIntegrationTest(unittest.TestCase):
         self.message_bus = MessageBus()
         self.llm_factory = LLMFactory(self.llmconfigs)
         self.agent_manager = AgentManager(self.config, self.message_bus, self.llm_factory)
-        self.agent_manager.register_agent(HelloWorldAgent(self.logger, self.llm_factory, self.message_bus, agent_id="HelloWorldAgent"))
         self.agent_manager.register_agent(WeatherAgent(self.logger, self.llm_factory, self.message_bus, agent_id="WeatherAgent"))
         self.agent_manager.register_agent(PlanningAgent(self.logger, self.llm_factory, self.message_bus, agent_id="PlanningAgent"))
         self.request_manager = RequestManager(self.agent_manager, self.message_bus)

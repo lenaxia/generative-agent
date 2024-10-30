@@ -21,3 +21,4 @@ tensorboardX>=2.5
 torch
 scipy>=1.13.0
 setuptools>=75.0.0
+rank_bm25

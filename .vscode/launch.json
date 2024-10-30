@@ -14,6 +14,12 @@
             "module": "supervisor.supervisor"
         },
         {
+            "name": "Py: CodingAgentInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.coding_agent.integ_agent"
+        },
+        {
             "name": "Py: PlanningAgentTest",
             "type": "debugpy",
             "request": "launch",
@@ -36,6 +42,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "agents.summarizer_agent.integ_agent"
+        },
+        {
+            "name": "Py: SearchAgentInteg",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "agents.search_agent.integ_agent"
         },
         {
             "name": "Py: SearchAgentTest",

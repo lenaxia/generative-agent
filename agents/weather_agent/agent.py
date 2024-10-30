@@ -146,7 +146,7 @@ class WeatherAgent(BaseAgent):
             output = chunk
             self.logger.info(chunk)
 
-        return output['agent']['messages'][0].content
+        return output
 
     def _arun(self, instruction: str) -> Any:
         raise NotImplementedError("Asynchronous execution not supported.")
