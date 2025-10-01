@@ -1,0 +1,152 @@
+# MCP (Model Context Protocol) Server Configuration
+# This file defines MCP servers that provide external tools and capabilities
+
+mcp_servers:
+  # AWS Documentation Server
+  aws_docs:
+    command: "uvx"
+    args: ["awslabs.aws-documentation-mcp-server@latest"]
+    description: "AWS documentation and service information"
+    enabled: true
+    
+  # Web Search Server
+  web_search:
+    command: "npx"
+    args: ["@modelcontextprotocol/server-web-search"]
+    description: "Web search capabilities"
+    enabled: true
+    
+  # Weather Information Server
+  weather:
+    command: "npx"
+    args: ["@modelcontextprotocol/server-weather"]
+    description: "Weather information and forecasts"
+    enabled: false  # Disabled by default
+    
+  # File System Operations Server
+  filesystem:
+    command: "npx"
+    args: ["@modelcontextprotocol/server-filesystem"]
+    description: "File system operations"
+    enabled: false  # Disabled by default for security
+    
+  # GitHub Integration Server
+  github:
+    command: "npx"
+    args: ["@modelcontextprotocol/server-github"]
+    description: "GitHub repository integration"
+    enabled: false
+    environment:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"  # Environment variable
+    
+  # Slack Integration Server
+  slack:
+    command: "npx"
+    args: ["@modelcontextprotocol/server-slack"]
+    description: "Slack workspace integration"
+    enabled: false
+    environment:
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+      SLACK_USER_TOKEN: "${SLACK_USER_TOKEN}"
+
+# MCP Client Configuration
+mcp_client:
+  # Maximum number of concurrent MCP connections
+  max_connections: 10
+  
+  # Connection timeout in seconds
+  connection_timeout: 30
+  
+  # Tool execution timeout in seconds
+  execution_timeout: 60
+  
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    delay: 1.0
+    backoff_factor: 2.0
+  
+  # Logging configuration
+  logging:
+    level: "INFO"
+    log_tool_calls: true
+    log_server_errors: true
+
+# Role-based tool mapping
+# Defines which MCP tools are available to which agent roles
+role_tool_mapping:
+  planning:
+    # Planning agents get research and documentation tools
+    preferred_servers: ["aws_docs", "web_search", "github"]
+    tool_filters:
+      - "search*"
+      - "docs*"
+      - "documentation*"
+      - "research*"
+      
+  search:
+    # Search agents get web search capabilities
+    preferred_servers: ["web_search"]
+    tool_filters:
+      - "search*"
+      - "query*"
+      - "find*"
+      
+  weather:
+    # Weather agents get weather-specific tools
+    preferred_servers: ["weather"]
+    tool_filters:
+      - "weather*"
+      - "forecast*"
+      - "climate*"
+      
+  summarizer:
+    # Summarizer agents get content processing tools
+    preferred_servers: ["web_search", "filesystem"]
+    tool_filters:
+      - "read*"
+      - "content*"
+      - "document*"
+      - "text*"
+      
+  slack:
+    # Slack agents get communication tools
+    preferred_servers: ["slack"]
+    tool_filters:
+      - "slack*"
+      - "message*"
+      - "send*"
+      - "post*"
+      
+  coding:
+    # Coding agents get development tools
+    preferred_servers: ["github", "filesystem"]
+    tool_filters:
+      - "git*"
+      - "code*"
+      - "file*"
+      - "repository*"
+
+# Security configuration
+security:
+  # Allowed MCP server commands (whitelist)
+  allowed_commands:
+    - "uvx"
+    - "npx"
+    - "python"
+    - "python3"
+    - "node"
+  
+  # Blocked server arguments (blacklist)
+  blocked_args:
+    - "--unsafe"
+    - "--allow-all"
+    - "--disable-security"
+  
+  # Environment variable whitelist
+  allowed_env_vars:
+    - "GITHUB_TOKEN"
+    - "SLACK_BOT_TOKEN"
+    - "SLACK_USER_TOKEN"
+    - "OPENAI_API_KEY"
+    - "ANTHROPIC_API_KEY"
