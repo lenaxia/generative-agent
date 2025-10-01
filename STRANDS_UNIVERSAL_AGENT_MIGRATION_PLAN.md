@@ -83,7 +83,7 @@ This document provides a revised migration plan based on the **Universal Agent +
 
 ## Revised Architecture: Universal Agent + Enhanced TaskGraph
 
-### **New Architecture Components:**
+### **Current Architecture (Phase 3 Complete):**
 
 ```mermaid
 graph TD
@@ -113,6 +113,38 @@ graph TD
         LLM --> UA
     end
 ```
+
+### **Improved Architecture (Phase 6 - Option A):**
+
+```mermaid
+graph TD
+    subgraph "Universal Agent System"
+        UA[Universal Agent] --> PL[Prompt Library]
+        UA --> TR[Tool Registry]
+        UA --> MCP[MCP Servers]
+        UA --> LLM[Enhanced LLM Factory]
+    end
+    
+    subgraph "Enhanced State Management"
+        TC[TaskContext] --> TG[TaskGraph - Enhanced]
+        TC --> CH[Conversation History]
+        TC --> PS[Progressive Summary]
+        TC --> CP[Checkpoints]
+    end
+    
+    subgraph "Unified Orchestration Layer"
+        WE[WorkflowEngine] --> TC
+        WE --> UA
+        WE --> MB[Message Bus]
+    end
+    
+    subgraph "System Management"
+        S[Supervisor] --> WE
+        HB[Heartbeat] --> S
+    end
+```
+
+**Key Improvement**: Merge RequestManager + TaskScheduler → WorkflowEngine for simplified architecture
 
 ---
 
@@ -480,6 +512,93 @@ universal_agent:
 ### **Simplified Architecture:**
 - **Before**: 5 agent classes + complex orchestration
 - **After**: 1 Universal Agent + enhanced TaskGraph
+### **Phase 6: Architecture Optimization (Week 6)**
+
+#### **Epic 6.1: WorkflowEngine Consolidation**
+**Goal**: Merge RequestManager + TaskScheduler into unified WorkflowEngine for simplified architecture
+
+##### User Story 6.1.1: As a developer, I want a unified WorkflowEngine that combines request lifecycle and task scheduling
+- [ ] Analyze current RequestManager and TaskScheduler responsibilities
+- [ ] Design WorkflowEngine interface that preserves all capabilities
+- [ ] Merge request lifecycle management from RequestManager
+- [ ] Merge task scheduling and concurrency control from TaskScheduler
+- [ ] Preserve DAG execution, multi-threading, and task delegation
+- [ ] Maintain external state management through TaskContext
+- [ ] Write comprehensive tests for WorkflowEngine
+- [ ] Document WorkflowEngine architecture and usage
+
+```python
+# Unified WorkflowEngine Implementation
+class WorkflowEngine:
+    """Unified workflow management with DAG execution and state persistence."""
+    
+    def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus):
+        self.universal_agent = UniversalAgent(llm_factory)
+        self.active_workflows: Dict[str, TaskContext] = {}
+        self.max_concurrent_tasks = 5
+        self.running_tasks: Dict[str, TaskNode] = {}
+        self.message_bus = message_bus
+    
+    # Request lifecycle (from RequestManager)
+    def start_workflow(self, instruction: str) -> str:
+        """Create and start a new workflow from user instruction."""
+        workflow_id = self._generate_workflow_id()
+        task_context = self._create_task_plan(instruction, workflow_id)
+        self.active_workflows[workflow_id] = task_context
+        self._execute_dag_parallel(task_context)
+        return workflow_id
+    
+    # Task scheduling (from TaskScheduler)  
+    def _execute_dag_parallel(self, task_context: TaskContext):
+        """Execute DAG with parallel task execution and concurrency control."""
+        ready_tasks = task_context.get_ready_tasks()
+        for task in ready_tasks:
+            if len(self.running_tasks) < self.max_concurrent_tasks:
+                self._execute_task_async(task_context, task)
+    
+    # State management (enhanced)
+    def pause_workflow(self, workflow_id: str) -> Dict:
+        """Pause workflow and create comprehensive checkpoint."""
+        task_context = self.active_workflows[workflow_id]
+        return task_context.pause_execution()
+    
+    def resume_workflow(self, workflow_id: str, checkpoint: Dict):
+        """Resume workflow from checkpoint with full state restoration."""
+        task_context = TaskContext.from_checkpoint(checkpoint)
+        self.active_workflows[workflow_id] = task_context
+        task_context.resume_execution()
+        self._execute_dag_parallel(task_context)
+```
+
+##### User Story 6.1.2: As a developer, I want to migrate existing RequestManager and TaskScheduler to WorkflowEngine
+- [ ] Create migration script to preserve existing request contexts
+- [ ] Update Supervisor to use WorkflowEngine instead of RequestManager + TaskScheduler
+- [ ] Migrate existing tests to WorkflowEngine interface
+- [ ] Update configuration to support WorkflowEngine
+- [ ] Verify all existing functionality works with WorkflowEngine
+- [ ] Remove deprecated RequestManager and TaskScheduler files
+- [ ] Update documentation to reflect new architecture
+
+### **Benefits of WorkflowEngine Consolidation**
+
+#### **Simplified Architecture**
+- **Before**: Supervisor → RequestManager → TaskScheduler → UniversalAgent → StrandsAgent
+- **After**: Supervisor → WorkflowEngine → UniversalAgent → StrandsAgent
+
+#### **Preserved Capabilities**
+- **Task Delegation**: ✅ Role-based execution through Universal Agent
+- **Multi-threading**: ✅ Parallel DAG execution with concurrency control
+- **DAG Planning**: ✅ Full workflow orchestration with dependencies
+- **External State**: ✅ Pause/resume/persistence through TaskContext
+- **Error Handling**: ✅ Retry logic and failure recovery
+
+#### **Enhanced Benefits**
+- **Unified Interface**: Single component for workflow management
+- **Reduced Complexity**: Fewer inter-component dependencies
+- **Better Performance**: No communication overhead between RequestManager/TaskScheduler
+- **Clearer Responsibilities**: Workflow lifecycle in one place
+- **Easier Testing**: Single component to test instead of two
+
 
 ### **Enhanced Capabilities:**
 - **Pause/Resume**: Any task can be paused and resumed
@@ -514,12 +633,48 @@ universal_agent:
 
 ---
 
-## Timeline: 5-Week Implementation
 
-- **Week 1**: TaskGraph enhancement + TaskContext implementation
-- **Week 2**: Universal Agent + tool conversion
-- **Week 3**: Enhanced RequestManager + Task Scheduler
+
+## Timeline: 6-Week Implementation
+
+- **Week 1**: TaskGraph enhancement + TaskContext implementation ✅
+- **Week 2**: Universal Agent + tool conversion ✅
+- **Week 3**: Enhanced RequestManager + Task Scheduler ✅
 - **Week 4**: MCP integration + external tools
 - **Week 5**: Configuration, testing, and documentation
+- **Week 6**: WorkflowEngine consolidation + architecture optimization
 
-This revised plan leverages 90% of the existing, well-designed infrastructure while adding the Universal Agent paradigm and external state management. The result is a much simpler migration with enhanced capabilities.
+### **Implementation Status**
+
+#### **✅ Phases 1-3 Complete (Weeks 1-3)**
+- **TaskGraph**: Enhanced with checkpointing, StrandsAgent integration, and external state management
+- **TaskContext**: Implemented with conversation history, progressive summaries, and pause/resume
+- **Universal Agent**: Created with role-based execution and semantic model selection
+- **RequestManager**: Migrated to StrandsAgent with Universal Agent integration
+- **TaskScheduler**: Implemented with priority queuing, concurrency control, and message bus integration
+
+#### **🔄 Next Steps (Weeks 4-6)**
+- **Week 4**: MCP server integration for external tool capabilities
+- **Week 5**: Configuration system updates and comprehensive testing
+- **Week 6**: WorkflowEngine consolidation (merge RequestManager + TaskScheduler)
+
+### **Architecture Evolution**
+
+#### **Current (Phase 3 Complete)**
+```
+User → Supervisor → RequestManager → TaskScheduler → UniversalAgent → StrandsAgent
+```
+
+#### **Target (Phase 6 - Option A)**
+```
+User → Supervisor → WorkflowEngine → UniversalAgent → StrandsAgent
+```
+
+### **Critical Capabilities Preserved**
+- **Task Delegation**: ✅ Role-based execution through Universal Agent
+- **Multi-threading**: ✅ Parallel DAG execution with concurrency control
+- **DAG Planning**: ✅ Full workflow orchestration with dependencies
+- **External State**: ✅ Pause/resume/persistence through TaskContext
+- **Framework Flexibility**: ✅ Abstraction layer enables easy framework switching
+
+This revised plan leverages 90% of the existing, well-designed infrastructure while adding the Universal Agent paradigm and external state management. The final architecture optimization (Phase 6) provides a cleaner, more maintainable system while preserving all critical capabilities.
