@@ -518,14 +518,14 @@ universal_agent:
 **Goal**: Merge RequestManager + TaskScheduler into unified WorkflowEngine for simplified architecture
 
 ##### User Story 6.1.1: As a developer, I want a unified WorkflowEngine that combines request lifecycle and task scheduling
-- [ ] Analyze current RequestManager and TaskScheduler responsibilities
-- [ ] Design WorkflowEngine interface that preserves all capabilities
-- [ ] Merge request lifecycle management from RequestManager
-- [ ] Merge task scheduling and concurrency control from TaskScheduler
-- [ ] Preserve DAG execution, multi-threading, and task delegation
-- [ ] Maintain external state management through TaskContext
-- [ ] Write comprehensive tests for WorkflowEngine
-- [ ] Document WorkflowEngine architecture and usage
+- [ ] Extract `handle_request()`, `_create_task_plan()`, and `pause_request()`/`resume_request()` methods from RequestManager
+- [ ] Extract `schedule_task()`, `_process_task_queue()`, and concurrency control logic from TaskScheduler
+- [ ] Create WorkflowEngine class with unified interface: `start_workflow()`, `pause_workflow()`, `resume_workflow()`
+- [ ] Implement `_execute_dag_parallel()` method combining DAG traversal with priority-based task execution
+- [ ] Preserve agent_id → role mapping and LLMType optimization (STRONG for planning, WEAK for search/weather)
+- [ ] Maintain TaskContext integration for external state, conversation history, and checkpoints
+- [ ] Implement message bus subscriptions for TASK_RESPONSE and AGENT_ERROR events
+- [ ] Add workflow metrics combining request tracking and task queue statistics
 
 ```python
 # Unified WorkflowEngine Implementation
@@ -571,13 +571,14 @@ class WorkflowEngine:
 ```
 
 ##### User Story 6.1.2: As a developer, I want to migrate existing RequestManager and TaskScheduler to WorkflowEngine
-- [ ] Create migration script to preserve existing request contexts
-- [ ] Update Supervisor to use WorkflowEngine instead of RequestManager + TaskScheduler
-- [ ] Migrate existing tests to WorkflowEngine interface
-- [ ] Update configuration to support WorkflowEngine
-- [ ] Verify all existing functionality works with WorkflowEngine
-- [ ] Remove deprecated RequestManager and TaskScheduler files
-- [ ] Update documentation to reflect new architecture
+- [ ] Refactor `supervisor/request_manager.py` in place to become WorkflowEngine (preserve git history)
+- [ ] Move TaskScheduler's priority queue (`heapq` + `QueuedTask` dataclass) into WorkflowEngine
+- [ ] Integrate TaskScheduler's `max_concurrent_tasks` and `running_tasks` dict into WorkflowEngine
+- [ ] Combine RequestManager's `request_contexts` dict with TaskScheduler's task tracking
+- [ ] Update Supervisor's `__init__` to create WorkflowEngine instead of RequestManager
+- [ ] Migrate `tests/supervisor/test_strands_request_manager.py` and `test_task_scheduler.py` to `test_workflow_engine.py`
+- [ ] Update `supervisor.py` line 110 to use WorkflowEngine constructor
+- [ ] Delete `supervisor/task_scheduler.py` file after migration complete
 
 ### **Benefits of WorkflowEngine Consolidation**
 
@@ -585,19 +586,114 @@ class WorkflowEngine:
 - **Before**: Supervisor → RequestManager → TaskScheduler → UniversalAgent → StrandsAgent
 - **After**: Supervisor → WorkflowEngine → UniversalAgent → StrandsAgent
 
-#### **Preserved Capabilities**
-- **Task Delegation**: ✅ Role-based execution through Universal Agent
-- **Multi-threading**: ✅ Parallel DAG execution with concurrency control
-- **DAG Planning**: ✅ Full workflow orchestration with dependencies
-- **External State**: ✅ Pause/resume/persistence through TaskContext
-- **Error Handling**: ✅ Retry logic and failure recovery
+#### **Specific Capabilities Preserved**
+- **Task Delegation**: ✅ `_determine_role_from_agent_id()` mapping (planning_agent → planning, search_agent → search)
+- **Multi-threading**: ✅ `max_concurrent_tasks=5` with `running_tasks` dict and `heapq` priority queue
+- **DAG Planning**: ✅ `TaskGraph.get_ready_tasks()` and dependency resolution via `TaskContext`
+- **External State**: ✅ `pause_workflow()`/`resume_workflow()` using `TaskContext.create_checkpoint()`
+- **Error Handling**: ✅ `handle_task_error()` with `max_retries=3` and `retry_delay=1.0`
+- **LLM Optimization**: ✅ Semantic model selection (STRONG for planning, WEAK for search/weather, DEFAULT for summarizer/slack)
 
-#### **Enhanced Benefits**
-- **Unified Interface**: Single component for workflow management
-- **Reduced Complexity**: Fewer inter-component dependencies
-- **Better Performance**: No communication overhead between RequestManager/TaskScheduler
-- **Clearer Responsibilities**: Workflow lifecycle in one place
-- **Easier Testing**: Single component to test instead of two
+#### **Concrete Implementation Benefits**
+- **Single File**: One `supervisor/workflow_engine.py` instead of two separate files
+- **Unified State**: Combined `active_workflows` dict instead of separate `request_contexts` and `task_queue`
+- **Direct Communication**: No message bus overhead between request lifecycle and task scheduling
+
+### **Phase 7: Complete LangChain Removal (Week 7)**
+
+#### **Epic 7.1: Supervisor Migration to StrandsAgent-Only**
+**Goal**: Remove LangChain dependencies from Supervisor and AgentManager
+
+##### User Story 7.1.1: As a developer, I want Supervisor to work without AgentManager or LangChain dependencies
+- [ ] Refactor `supervisor/supervisor.py` to use WorkflowEngine instead of RequestManager + AgentManager
+- [ ] Remove AgentManager import and initialization from Supervisor.__init__()
+- [ ] Update Supervisor.initialize_components() to create WorkflowEngine(llm_factory, message_bus)
+- [ ] Remove agent registration logic (replaced by Universal Agent role system)
+- [ ] Update Supervisor.run() to use WorkflowEngine.start_workflow() instead of RequestManager.handle_request()
+- [ ] Remove `from supervisor.agent_manager import AgentManager` import
+- [ ] Write tests for LangChain-free Supervisor
+- [ ] Verify Supervisor can start without LangChain installed
+
+#### **Epic 7.2: Individual Agent Class Migration to @tool Functions**
+**Goal**: Convert remaining LangChain-based agent classes to StrandsAgent @tool functions
+
+##### User Story 7.2.1: As a developer, I want to convert PlanningAgent to @tool functions
+- [ ] Extract planning logic from `agents/planning_agent/agent.py` 
+- [ ] Create `@tool def create_task_plan(instruction: str) -> Dict` in `llm_provider/planning_tools.py`
+- [ ] Remove LangChain imports: `langchain.prompts.PromptTemplate`, `langchain_core.output_parsers.PydanticOutputParser`
+- [ ] Update planning prompt to work with StrandsAgent system prompts
+- [ ] Register planning tools in ToolRegistry
+- [ ] Write tests for planning @tool functions
+- [ ] Move `agents/planning_agent/` to `agents/deprecated/planning_agent/`
+
+##### User Story 7.2.2: As a developer, I want to convert SearchAgent to @tool functions  
+- [ ] Extract search logic from `agents/search_agent/agent.py`
+- [ ] Create `@tool def web_search(query: str, num_results: int = 5) -> Dict` in `llm_provider/search_tools.py`
+- [ ] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain_community.tools.tavily_search.TavilySearchResults`
+- [ ] Replace LangGraph `create_react_agent` with direct StrandsAgent tool usage
+- [ ] Register search tools in ToolRegistry
+- [ ] Write tests for search @tool functions
+- [ ] Move `agents/search_agent/` to `agents/deprecated/search_agent/`
+
+##### User Story 7.2.3: As a developer, I want to convert WeatherAgent to @tool functions
+- [ ] Extract weather logic from `agents/weather_agent/agent.py`
+- [ ] Create `@tool def get_weather(location: str) -> Dict` in `llm_provider/weather_tools.py`
+- [ ] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain.prompts.ChatPromptTemplate`
+- [ ] Replace LangGraph agent creation with direct StrandsAgent usage
+- [ ] Register weather tools in ToolRegistry
+- [ ] Write tests for weather @tool functions
+- [ ] Move `agents/weather_agent/` to `agents/deprecated/weather_agent/`
+
+##### User Story 7.2.4: As a developer, I want to convert SummarizerAgent to @tool functions
+- [ ] Extract summarization logic from `agents/summarizer_agent/agent.py`
+- [ ] Create `@tool def summarize_text(text: str, max_length: int = 200) -> str` in `llm_provider/summarizer_tools.py`
+- [ ] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain_core.output_parsers.PydanticOutputParser`
+- [ ] Replace LangGraph StateGraph with direct StrandsAgent execution
+- [ ] Register summarizer tools in ToolRegistry
+- [ ] Write tests for summarizer @tool functions
+- [ ] Move `agents/summarizer_agent/` to `agents/deprecated/summarizer_agent/`
+
+##### User Story 7.2.5: As a developer, I want to convert SlackAgent to @tool functions
+- [ ] Extract Slack integration from `agents/slack_agent/agent.py`
+- [ ] Create `@tool def send_slack_message(channel: str, message: str) -> Dict` in `llm_provider/slack_tools.py`
+- [ ] Remove LangChain imports: `langchain.output_parsers.PydanticOutputParser`, `langchain.prompts.PromptTemplate`
+- [ ] Register Slack tools in ToolRegistry
+- [ ] Write tests for Slack @tool functions
+- [ ] Move `agents/slack_agent/` to `agents/deprecated/slack_agent/`
+
+#### **Epic 7.3: LLMFactory LangChain Cleanup**
+**Goal**: Remove LangChain fallback code from LLMFactory
+
+##### User Story 7.3.1: As a developer, I want LLMFactory to be StrandsAgent-only
+- [ ] Remove LangChain imports from `llm_provider/factory.py` lines 7-11
+- [ ] Remove `create_provider()` method that uses LangChain models
+- [ ] Remove `create_chat_model()` method that creates LangChain models
+- [ ] Keep only `create_strands_model()` and `create_universal_agent()` methods
+- [ ] Remove `LANGCHAIN_AVAILABLE` flag and fallback logic
+- [ ] Update tests to remove LangChain mocking
+- [ ] Verify factory works with StrandsAgent-only imports
+
+#### **Epic 7.4: Configuration System Migration**
+**Goal**: Remove LangChain-specific configuration classes
+
+##### User Story 7.4.1: As a developer, I want configuration classes without LangChain dependencies
+- [ ] Remove LangChain imports from `config/anthropic_config.py` line 3
+- [ ] Remove LangChain imports from `config/bedrock_config.py` line 2
+- [ ] Update BaseConfig to not depend on LangChain callback managers
+- [ ] Create StrandsAgent-specific configuration schema
+- [ ] Update config loading in Supervisor to use StrandsAgent configs
+- [ ] Write tests for LangChain-free configuration
+- [ ] Document new configuration format
+
+### **Complete LangChain Removal Verification**
+- [ ] Run `grep -r "langchain" --include="*.py" .` and verify 0 results
+- [ ] Verify system starts without LangChain installed: `pip uninstall langchain langchain-core langchain-aws langchain-openai`
+- [ ] Run all tests with LangChain removed from environment
+- [ ] Update requirements.txt to remove all LangChain dependencies
+- [ ] Document complete migration from LangChain to StrandsAgent
+
+- **Consolidated Testing**: Merge 21 tests from two files into single comprehensive test suite
+- **Simplified Imports**: Supervisor only imports WorkflowEngine instead of RequestManager + TaskScheduler
 
 
 ### **Enhanced Capabilities:**
@@ -635,7 +731,7 @@ class WorkflowEngine:
 
 
 
-## Timeline: 6-Week Implementation
+## Timeline: 7-Week Implementation
 
 - **Week 1**: TaskGraph enhancement + TaskContext implementation ✅
 - **Week 2**: Universal Agent + tool conversion ✅
@@ -643,6 +739,7 @@ class WorkflowEngine:
 - **Week 4**: MCP integration + external tools
 - **Week 5**: Configuration, testing, and documentation
 - **Week 6**: WorkflowEngine consolidation + architecture optimization
+- **Week 7**: Complete LangChain removal + Supervisor migration
 
 ### **Implementation Status**
 

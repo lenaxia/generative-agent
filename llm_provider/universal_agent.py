@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.tool_registry import ToolRegistry
+from llm_provider.mcp_client import MCPClientManager
 from common.task_context import TaskContext
 
 # Import StrandsAgent with fallback for testing
@@ -37,15 +38,17 @@ class UniversalAgent:
     while leveraging the semantic model types and prompt library from StrandsAgent.
     """
     
-    def __init__(self, llm_factory: LLMFactory):
+    def __init__(self, llm_factory: LLMFactory, mcp_manager: Optional[MCPClientManager] = None):
         """
-        Initialize Universal Agent with an LLMFactory.
+        Initialize Universal Agent with an LLMFactory and optional MCP manager.
         
         Args:
             llm_factory: Enhanced LLMFactory instance
+            mcp_manager: Optional MCP client manager for external tools
         """
         self.llm_factory = llm_factory
         self.tool_registry = ToolRegistry()
+        self.mcp_manager = mcp_manager
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
@@ -81,6 +84,11 @@ class UniversalAgent:
         
         # Get tools from registry
         role_tools = self.tool_registry.get_tools(tools or [])
+        
+        # Add MCP tools if available
+        if self.mcp_manager:
+            mcp_tools = self.mcp_manager.get_tools_for_role(role)
+            role_tools.extend(mcp_tools)
         
         # Create StrandsAgent Agent
         agent = Agent(
@@ -177,6 +185,53 @@ class UniversalAgent:
         """
         self.tool_registry.remove_tool(tool_name)
     
+    def execute_mcp_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute an MCP tool with given parameters.
+        
+        Args:
+            tool_name: Name of the MCP tool to execute
+            parameters: Parameters to pass to the tool
+            
+        Returns:
+            Tool execution result
+            
+        Raises:
+            ValueError: If MCP manager not available or tool not found
+        """
+        if not self.mcp_manager:
+            raise ValueError("MCP manager not available")
+        
+        return self.mcp_manager.execute_tool(tool_name, parameters)
+    
+    def get_mcp_tools(self, role: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get available MCP tools for a role.
+        
+        Args:
+            role: Optional role to filter tools for (uses current role if not specified)
+            
+        Returns:
+            List of available MCP tools
+        """
+        if not self.mcp_manager:
+            return []
+        
+        target_role = role or self.current_role or "default"
+        return self.mcp_manager.get_tools_for_role(target_role)
+    
+    def get_mcp_status(self) -> Dict[str, Any]:
+        """
+        Get MCP integration status.
+        
+        Returns:
+            Dict containing MCP status information
+        """
+        if not self.mcp_manager:
+            return {"mcp_available": False, "servers": [], "tools": 0}
+        
+        return self.mcp_manager.get_server_status()
+    
     def get_role_configuration(self, role: str) -> Dict[str, Any]:
         """
         Get configuration information for a role.
@@ -248,7 +303,8 @@ class UniversalAgent:
             "has_active_agent": self.current_agent is not None,
             "available_roles": len(self.get_available_roles()),
             "available_tools": len(self.get_available_tools()),
-            "framework": self.llm_factory.get_framework()
+            "framework": self.llm_factory.get_framework(),
+            "mcp_status": self.get_mcp_status()
         }
     
     def __str__(self) -> str:

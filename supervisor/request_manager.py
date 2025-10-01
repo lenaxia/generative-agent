@@ -2,6 +2,8 @@ import logging
 import time
 import uuid
 from typing import Dict, Optional, List
+import yaml
+import os
 
 from common.task_graph import TaskGraph, TaskNode, TaskStatus, TaskDescription, TaskDependency
 from common.message_bus import MessageBus, MessageType
@@ -9,6 +11,7 @@ from common.request_model import Request, RequestMetadata
 from common.task_context import TaskContext, ExecutionState
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.universal_agent import UniversalAgent
+from llm_provider.mcp_client import MCPClientManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +24,27 @@ class RequestManager:
     Universal Agent approach for better performance and maintainability.
     """
     
-    def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus, 
-                 max_retries: int = 3, retry_delay: float = 1.0):
+    def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus,
+                 max_retries: int = 3, retry_delay: float = 1.0,
+                 mcp_config_path: Optional[str] = None):
         """
-        Initialize RequestManager with Universal Agent.
+        Initialize RequestManager with Universal Agent and MCP integration.
         
         Args:
             llm_factory: LLMFactory for creating Universal Agent
             message_bus: Message bus for task distribution
             max_retries: Maximum retry attempts for failed tasks
             retry_delay: Delay between retry attempts
+            mcp_config_path: Optional path to MCP configuration file
         """
         self.llm_factory = llm_factory
         self.message_bus = message_bus
-        self.universal_agent = UniversalAgent(llm_factory)
+        
+        # Initialize MCP manager
+        self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
+        
+        # Create Universal Agent with MCP support
+        self.universal_agent = UniversalAgent(llm_factory, mcp_manager=self.mcp_manager)
         
         # Request tracking
         self.request_contexts: Dict[str, TaskContext] = {}
@@ -47,7 +57,7 @@ class RequestManager:
         # Subscribe to incoming requests
         self.message_bus.subscribe(self, MessageType.INCOMING_REQUEST, self.handle_request)
         
-        logger.info("RequestManager initialized with Universal Agent (StrandsAgent framework)")
+        logger.info("RequestManager initialized with Universal Agent (StrandsAgent framework) and MCP integration")
     
     def handle_request(self, request: RequestMetadata) -> str:
         """
@@ -410,9 +420,92 @@ class RequestManager:
             "universal_agent_enabled": True,
             "has_llm_factory": self.llm_factory is not None,
             "has_universal_agent": self.universal_agent is not None,
+            "mcp_integration": self.universal_agent.get_mcp_status() if self.universal_agent else {"mcp_available": False},
             "active_contexts": len(self.request_contexts),
             "framework": self.llm_factory.get_framework() if self.llm_factory else None
         }
+    
+    def _initialize_mcp_manager(self, config_path: Optional[str] = None) -> Optional[MCPClientManager]:
+        """
+        Initialize MCP client manager from configuration.
+        
+        Args:
+            config_path: Optional path to MCP configuration file
+            
+        Returns:
+            MCPClientManager instance or None if MCP not configured
+        """
+        if not config_path:
+            # Try default config paths
+            default_paths = [
+                "config/mcp_config.yaml",
+                "mcp_config.yaml",
+                os.path.expanduser("~/.config/generative-agent/mcp_config.yaml")
+            ]
+            
+            for path in default_paths:
+                if os.path.exists(path):
+                    config_path = path
+                    break
+        
+        if not config_path or not os.path.exists(config_path):
+            logger.info("No MCP configuration found, MCP integration disabled")
+            return None
+        
+        try:
+            with open(config_path, 'r') as f:
+                config_data = yaml.safe_load(f)
+            
+            manager = MCPClientManager()
+            manager.load_servers_from_config(config_data)
+            
+            logger.info(
+                "config_path=<%s>, servers=<%d> | MCP manager initialized successfully",
+                config_path, len(manager.clients)
+            )
+            
+            return manager
+            
+        except Exception as e:
+            logger.error(
+                "config_path=<%s>, error=<%s> | Failed to initialize MCP manager",
+                config_path, str(e)
+            )
+            return None
+    
+    def get_mcp_tools(self, role: Optional[str] = None) -> List[Dict]:
+        """
+        Get available MCP tools for a role.
+        
+        Args:
+            role: Optional role to filter tools for
+            
+        Returns:
+            List of available MCP tools
+        """
+        if not self.mcp_manager:
+            return []
+        
+        return self.mcp_manager.get_tools_for_role(role or "default")
+    
+    def execute_mcp_tool(self, tool_name: str, parameters: Dict) -> Dict:
+        """
+        Execute an MCP tool with given parameters.
+        
+        Args:
+            tool_name: Name of the MCP tool to execute
+            parameters: Parameters to pass to the tool
+            
+        Returns:
+            Tool execution result
+            
+        Raises:
+            ValueError: If MCP manager not available or tool not found
+        """
+        if not self.mcp_manager:
+            raise ValueError("MCP integration not available")
+        
+        return self.mcp_manager.execute_tool(tool_name, parameters)
     
     def list_active_requests(self) -> List[str]:
         """
