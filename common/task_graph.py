@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import uuid
 import logging
 import time
@@ -34,6 +34,7 @@ class TaskResponse(BaseModel):
 class TaskDescription(BaseModel):
     task_name: str = Field(..., description="A friendly name for the task, e.g., 'ConvertSeattleToGPSCoords', 'MathCaclulationStep1'")
     agent_id: str = Field(..., description="Identifier of the agent responsible for executing the task")
+    tool_id: Optional[str] = Field(None, description="Identifier of the tool responsible for executing the task (for compatibility with TaskGraphV2)")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
     include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
@@ -42,6 +43,27 @@ class TaskDependency(BaseModel):
     source: str = Field(..., description="The task name that is the source of data")
     target: str = Field(..., description="The task name that is the target of data")
     condition: Optional[dict] = Field(None, description="Conditions for the dependency to be fulfilled")
+
+class TaskPlanOutput(BaseModel):
+    tasks: List[TaskDescription] = None
+    dependencies: Optional[List[TaskDependency]] = None
+
+    @field_validator('tasks')
+    def check_tasks(cls, tasks):
+        for task in tasks:
+            if not task.task_name or (not task.agent_id and not task.tool_id) or not task.prompt:
+                raise ValueError("All tasks must have agent_id/tool_id, task_name, and prompt.")
+        return tasks
+
+    @field_validator('dependencies')
+    def check_dependencies(cls, dependencies):
+        if dependencies is None or len(dependencies) == 0:
+            return dependencies  # Return as is if dependencies is None or empty
+
+        for dependency in dependencies:
+            if not dependency.source or not dependency.target:
+                raise ValueError("All dependencies must have source and target set.")
+        return dependencies
 
 class TaskNode(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the task")
@@ -147,11 +169,13 @@ class TaskGraph:
         # Create task nodes
         for task in tasks:
             task_id = 'task_' + str(uuid.uuid4()).split('-')[-1]  # Use only the last part of the UUID
+            # Handle both agent_id and tool_id for backward compatibility
+            agent_id = task.agent_id or task.tool_id or "unknown_agent"
             node = TaskNode(
                 task_id=task_id,
                 task_name=task.task_name,
                 request_id=self.request_id,
-                agent_id=task.agent_id,
+                agent_id=agent_id,
                 status=TaskStatus.PENDING,
                 task_type=task.task_type,
                 prompt=task.prompt,

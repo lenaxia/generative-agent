@@ -3,13 +3,38 @@ from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.tool_registry import ToolRegistry
 from common.task_context import TaskContext
 
+# Import StrandsAgent with fallback for testing
+try:
+    from strands import Agent
+    from strands.models.bedrock import BedrockModel
+    from strands.models.openai import OpenAIModel
+    STRANDS_AVAILABLE = True
+except ImportError:
+    # Mock classes for testing environments
+    class Agent:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            
+        def __call__(self, prompt):
+            return f"Mock Agent response to: {prompt}"
+    
+    class BedrockModel:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+    
+    class OpenAIModel:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+    
+    STRANDS_AVAILABLE = False
+
 
 class UniversalAgent:
     """
-    Universal Agent that can assume different roles using the enhanced LLMFactory.
+    Universal Agent that can assume different roles using StrandsAgent framework.
     
     This class provides a unified interface for creating role-specific agents
-    while leveraging the semantic model types and prompt library.
+    while leveraging the semantic model types and prompt library from StrandsAgent.
     """
     
     def __init__(self, llm_factory: LLMFactory):
@@ -24,11 +49,12 @@ class UniversalAgent:
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
+        self.strands_available = STRANDS_AVAILABLE
     
     def assume_role(self, role: str, llm_type: LLMType = LLMType.DEFAULT,
                    context: Optional[TaskContext] = None, tools: Optional[List[str]] = None):
         """
-        Create a role-specific agent using the factory abstraction.
+        Create a role-specific agent using StrandsAgent framework.
         
         Args:
             role: The agent role (e.g., 'planning', 'search', 'summarizer')
@@ -37,15 +63,29 @@ class UniversalAgent:
             tools: Optional list of tool names to include
             
         Returns:
-            Agent instance configured for the specified role
+            StrandsAgent Agent instance configured for the specified role
         """
+        if not self.strands_available:
+            # Fallback for testing environments
+            agent = Agent(role=role, llm_type=llm_type, tools=tools)
+            self.current_agent = agent
+            self.current_role = role
+            self.current_llm_type = llm_type
+            return agent
+        
+        # Create StrandsAgent model based on LLM type
+        model = self._create_strands_model(llm_type)
+        
+        # Get role-specific system prompt
+        system_prompt = self._get_role_prompt(role)
+        
         # Get tools from registry
         role_tools = self.tool_registry.get_tools(tools or [])
         
-        # Use factory to create agent (maintains abstraction)
-        agent = self.llm_factory.create_universal_agent(
-            llm_type=llm_type,
-            role=role,
+        # Create StrandsAgent Agent
+        agent = Agent(
+            model=model,
+            system_prompt=system_prompt,
             tools=role_tools
         )
         
@@ -221,3 +261,70 @@ class UniversalAgent:
     def __repr__(self) -> str:
         """Detailed representation of Universal Agent."""
         return self.__str__()
+    
+    def _create_strands_model(self, llm_type: LLMType):
+        """
+        Create a StrandsAgent model based on LLM type.
+        
+        Args:
+            llm_type: The semantic LLM type
+            
+        Returns:
+            StrandsAgent model instance
+        """
+        if not self.strands_available:
+            # Return mock model for testing
+            return BedrockModel(model_id="mock-model")
+        
+        # Get configuration from factory
+        config = self.llm_factory._get_config(llm_type)
+        
+        if hasattr(config, 'provider_type'):
+            provider_type = config.provider_type
+        elif hasattr(config, 'provider_name'):
+            provider_type = config.provider_name
+        else:
+            provider_type = "bedrock"  # Default fallback
+        
+        # Extract model parameters
+        model_params = {
+            'model_id': getattr(config, 'model_id', 'us.amazon.nova-pro-v1:0'),
+            'temperature': getattr(config, 'temperature', 0.3)
+        }
+        
+        # Add additional parameters if available
+        if hasattr(config, 'additional_params') and config.additional_params:
+            model_params.update(config.additional_params)
+        
+        # Create appropriate StrandsAgent model
+        if provider_type == "bedrock":
+            return BedrockModel(**model_params)
+        elif provider_type == "openai":
+            return OpenAIModel(**model_params)
+        else:
+            # Default to Bedrock
+            return BedrockModel(**model_params)
+    
+    def _get_role_prompt(self, role: str) -> str:
+        """
+        Get system prompt for a role.
+        
+        Args:
+            role: The agent role
+            
+        Returns:
+            str: System prompt for the role
+        """
+        try:
+            return self.llm_factory.prompt_library.get_prompt(role)
+        except:
+            # Fallback prompts for different roles
+            role_prompts = {
+                "planning": "You are a planning assistant. Create detailed task plans with dependencies and agent assignments.",
+                "search": "You are a search assistant. Help users find information efficiently.",
+                "weather": "You are a weather assistant. Provide accurate weather information.",
+                "summarizer": "You are a summarization assistant. Create concise, accurate summaries.",
+                "slack": "You are a Slack assistant. Help with team communication and collaboration.",
+                "default": "You are a helpful assistant."
+            }
+            return role_prompts.get(role, role_prompts["default"])

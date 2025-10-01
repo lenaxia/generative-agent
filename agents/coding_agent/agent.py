@@ -1,13 +1,13 @@
 from logging import Logger
 from abc import abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from anthropic import BaseModel
 from langchain.tools import BaseTool
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables.base import Runnable
 from langchain_core.output_parsers import PydanticOutputParser
 
-from common.task_graph_v2 import TaskPlanOutput
+from common.task_graph import TaskPlanOutput
 from agents.base_agent import AgentInput, BaseAgent
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus, MessageType

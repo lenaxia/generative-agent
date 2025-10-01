@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from agents.coding_agent.agent import CodingAgent
 from agents.coding_agent.tools.core import draft_code, retrieve_context, use_aider
 from agents.coding_agent.types import CodingState
-from common.task_graph_v2 import TaskPlanOutput
+from common.task_graph import TaskPlanOutput
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus
 from logging import Logger
