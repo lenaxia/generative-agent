@@ -4,7 +4,7 @@ from pydantic import Field
 from pydantic import BaseModel
 from langchain_core.language_models import BaseChatModel
 
-from common.task_graph_v2 import TaskNode
+from common.task_graph import TaskNode
 
 
 
