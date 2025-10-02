@@ -10,11 +10,44 @@ import os
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import logging
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
-def web_search(query: str, num_results: int = 5, search_depth: str = "basic") -> Dict[str, Any]:
+def _get_mock_results(query: str, num_results: int) -> List[Dict[str, Any]]:
+    """
+    Generate mock search results for testing/fallback purposes.
+    
+    Args:
+        query: The search query
+        num_results: Number of results to generate
+        
+    Returns:
+        List of mock search result dictionaries
+    """
+    mock_results = [
+        {
+            "title": f"Search Result 1 for '{query}'",
+            "url": "https://example.com/result1",
+            "content": f"This is a mock search result for the query '{query}'. In a real implementation, this would contain actual web search results.",
+            "published_date": datetime.now().isoformat(),
+            "score": 0.95
+        },
+        {
+            "title": f"Search Result 2 for '{query}'",
+            "url": "https://example.com/result2",
+            "content": f"Another mock search result providing information about '{query}'. This would be replaced with real search API results.",
+            "published_date": datetime.now().isoformat(),
+            "score": 0.87
+        }
+    ]
+    
+    return mock_results[:num_results]
+
+
+@tool
+def search_web(query: str, num_results: int = 5, search_depth: str = "basic") -> Dict[str, Any]:
     """
     Search the web for information - converted from SearchAgent.
     
@@ -31,27 +64,74 @@ def web_search(query: str, num_results: int = 5, search_depth: str = "basic") ->
     """
     logger.info(f"Performing web search for query: {query}")
     
-    # For now, return mock search results since we don't have Tavily API key
-    # In a real implementation, this would use a search API like Tavily, Bing, or Google
-    mock_results = [
-        {
-            "title": f"Search Result 1 for '{query}'",
-            "url": "https://example.com/result1",
-            "content": f"This is a mock search result for the query '{query}'. In a real implementation, this would contain actual web search results.",
-            "published_date": datetime.now().isoformat(),
-            "score": 0.95
-        },
-        {
-            "title": f"Search Result 2 for '{query}'",
-            "url": "https://example.com/result2", 
-            "content": f"Another mock search result providing information about '{query}'. This would be replaced with real search API results.",
-            "published_date": datetime.now().isoformat(),
-            "score": 0.87
-        }
-    ]
+    # Get Tavily API key - required for search functionality
+    tavily_api_key = os.getenv('TAVILY_API_KEY')
     
-    # Limit results to requested number
-    results = mock_results[:num_results]
+    if not tavily_api_key:
+        error_msg = "TAVILY_API_KEY environment variable is required for web search functionality. Please set your Tavily API key."
+        logger.error(error_msg)
+        return {
+            "query": query,
+            "num_results": 0,
+            "results": [],
+            "search_depth": search_depth,
+            "timestamp": datetime.now().isoformat(),
+            "error": error_msg,
+            "status": "failed"
+        }
+    
+    try:
+        from tavily import TavilyClient
+        
+        # Initialize Tavily client
+        tavily = TavilyClient(api_key=tavily_api_key)
+        
+        # Perform search with Tavily
+        search_response = tavily.search(
+            query=query,
+            max_results=num_results,
+            search_depth=search_depth,
+            include_answer=True,
+            include_raw_content=False
+        )
+        
+        # Convert Tavily results to our format
+        results = []
+        for result in search_response.get('results', []):
+            results.append({
+                "title": result.get('title', 'No title'),
+                "url": result.get('url', ''),
+                "content": result.get('content', ''),
+                "published_date": result.get('published_date', datetime.now().isoformat()),
+                "score": result.get('score', 0.0)
+            })
+        
+        logger.info(f"Tavily search completed: {len(results)} results for '{query}'")
+        
+    except ImportError as e:
+        error_msg = f"Tavily library not installed. Please install with: pip install tavily-python. Error: {e}"
+        logger.error(error_msg)
+        return {
+            "query": query,
+            "num_results": 0,
+            "results": [],
+            "search_depth": search_depth,
+            "timestamp": datetime.now().isoformat(),
+            "error": error_msg,
+            "status": "failed"
+        }
+    except Exception as e:
+        error_msg = f"Tavily search failed: {e}"
+        logger.error(error_msg)
+        return {
+            "query": query,
+            "num_results": 0,
+            "results": [],
+            "search_depth": search_depth,
+            "timestamp": datetime.now().isoformat(),
+            "error": error_msg,
+            "status": "failed"
+        }
     
     search_result = {
         "query": query,
@@ -83,7 +163,7 @@ def search_with_filters(query: str, filters: Dict[str, Any] = None, num_results:
     filters = filters or {}
     
     # Apply filters to search (mock implementation)
-    base_result = web_search(query, num_results)
+    base_result = search_web(query, num_results)
     
     # Add filter information to result
     base_result["filters_applied"] = filters
@@ -182,7 +262,7 @@ def summarize_search_results(search_results: Dict[str, Any], max_length: int = 2
     Summarize search results into a concise summary.
     
     Args:
-        search_results: Results from web_search or other search functions
+        search_results: Results from search_web or other search functions
         max_length: Maximum length of summary in words
         
     Returns:
@@ -276,7 +356,7 @@ def validate_search_query(query: str) -> Dict[str, Any]:
 
 # Tool registry for search tools
 SEARCH_TOOLS = {
-    "web_search": web_search,
+    "search_web": search_web,
     "search_with_filters": search_with_filters,
     "search_news": search_news,
     "search_academic": search_academic,
@@ -293,7 +373,7 @@ def get_search_tools() -> Dict[str, Any]:
 def get_search_tool_descriptions() -> Dict[str, str]:
     """Get descriptions of all search tools."""
     return {
-        "web_search": "Search the web for general information",
+        "search_web": "Search the web for general information",
         "search_with_filters": "Search the web with additional filters",
         "search_news": "Search for recent news articles",
         "search_academic": "Search for academic papers and scholarly content",

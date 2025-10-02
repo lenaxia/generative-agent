@@ -17,10 +17,23 @@ class LLMProviderConfig(BaseModel):
     name: str
     type: str
 
+class MCPConfig(BaseModel):
+    enabled: bool = False
+    config_file: str = "config/mcp_config.yaml"
+
+class FeatureFlags(BaseModel):
+    enable_universal_agent: bool = True
+    enable_mcp_integration: bool = False
+    enable_task_scheduling: bool = True
+    enable_pause_resume: bool = True
+    enable_heartbeat: bool = True
+
 class SupervisorConfig(BaseModel):
     logging: LoggingConfig = Field(..., description="Logging configuration")
     llm_providers: Dict[str, Dict] = {}
     agents: Dict[str, Dict] = {}
+    mcp: Optional[MCPConfig] = Field(default_factory=lambda: MCPConfig())
+    feature_flags: Optional[FeatureFlags] = Field(default_factory=lambda: FeatureFlags())
 
     max_retries: int = 3
     retry_delay: float = 0.1

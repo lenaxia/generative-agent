@@ -81,6 +81,7 @@ class TaskNode(BaseModel):
     include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
     start_time: Optional[float] = Field(None, description="The time that the task was started")
     duration: Optional[float] = Field(None, description="The number of seconds that it took to complete the task")
+    retry_count: int = Field(0, description="Number of times this task has been retried")
     
     # New fields for StrandsAgent integration
     role: Optional[str] = Field(None, description="Role for Universal Agent execution (e.g., 'planning', 'search', 'summarizer')")

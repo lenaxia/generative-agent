@@ -9,15 +9,18 @@ import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
+@tool
 def send_slack_message(channel: str, message: str, thread_ts: Optional[str] = None) -> Dict[str, Any]:
     """
-    Send a message to a Slack channel - converted from SlackAgent.
+    Send a message to a Slack channel using real Slack API.
     
-    This tool sends messages to Slack channels using the Slack API.
+    This tool sends messages to Slack channels using the Slack WebClient.
+    Requires SLACK_BOT_TOKEN environment variable.
     
     Args:
         channel: Slack channel name or ID (e.g., "#general" or "C1234567890")
@@ -30,28 +33,90 @@ def send_slack_message(channel: str, message: str, thread_ts: Optional[str] = No
     logger.info(f"Sending Slack message to channel: {channel}")
     
     if not message or not message.strip():
+        error_msg = "Message cannot be empty"
+        logger.error(error_msg)
         return {
             "status": "error",
-            "error": "Message cannot be empty",
+            "error": error_msg,
             "channel": channel,
             "timestamp": datetime.now().isoformat()
         }
     
-    # Mock Slack API call - in real implementation, this would use slack_sdk
-    # For now, return a successful mock response
-    mock_response = {
-        "status": "success",
-        "channel": channel,
-        "message": message,
-        "thread_ts": thread_ts,
-        "message_ts": str(datetime.now().timestamp()),
-        "timestamp": datetime.now().isoformat(),
-        "mock": True,  # Indicates this is a mock response
-        "note": "This is a mock response. In production, this would use the Slack API."
-    }
+    # Get required Slack tokens from environment variables
+    slack_bot_token = os.getenv('SLACK_BOT_TOKEN')
     
-    logger.info(f"Slack message sent successfully to {channel}")
-    return mock_response
+    if not slack_bot_token:
+        error_msg = "SLACK_BOT_TOKEN environment variable is required for Slack integration"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "error": error_msg,
+            "channel": channel,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    try:
+        from slack_sdk import WebClient
+        from slack_sdk.errors import SlackApiError
+        
+        # Initialize Slack WebClient
+        client = WebClient(token=slack_bot_token)
+        
+        # Send message to Slack
+        response = client.chat_postMessage(
+            channel=channel,
+            text=message,
+            thread_ts=thread_ts
+        )
+        
+        # Extract response data
+        slack_response = {
+            "status": "success",
+            "channel": response.get("channel"),
+            "message": message,
+            "message_ts": response.get("ts"),
+            "thread_ts": thread_ts,
+            "timestamp": datetime.now().isoformat(),
+            "slack_response": {
+                "ok": response.get("ok"),
+                "channel": response.get("channel"),
+                "ts": response.get("ts"),
+                "message": response.get("message", {})
+            }
+        }
+        
+        logger.info(f"Slack message sent successfully to {channel}, ts: {response.get('ts')}")
+        return slack_response
+        
+    except ImportError as e:
+        error_msg = f"Slack SDK not installed. Please install with: pip install slack-sdk. Error: {e}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "error": error_msg,
+            "channel": channel,
+            "timestamp": datetime.now().isoformat()
+        }
+    except SlackApiError as e:
+        error_msg = f"Slack API error: {e.response['error']}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "error": error_msg,
+            "slack_error": e.response["error"],
+            "status_code": e.response.status_code,
+            "channel": channel,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        error_msg = f"Failed to send Slack message: {e}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "error": error_msg,
+            "channel": channel,
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 def get_slack_channel_info(channel: str) -> Dict[str, Any]:

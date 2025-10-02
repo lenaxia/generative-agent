@@ -9,10 +9,12 @@ import requests
 from datetime import datetime
 from typing import Dict, Any, Optional
 import logging
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
+@tool
 def get_weather(location: str) -> Dict[str, Any]:
     """
     Get weather information for a location - converted from WeatherAgent.

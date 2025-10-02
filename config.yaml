@@ -11,9 +11,9 @@ llm_providers:
   bedrock:
     # Model mapping for semantic types
     models:
-      WEAK: "anthropic.claude-3-haiku-20240307-v1:0"
-      DEFAULT: "us.amazon.nova-pro-v1:0"
-      STRONG: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+      WEAK: "anthropic.claude-sonnet-4-20250514-v1:0"
+      DEFAULT: "anthropic.claude-sonnet-4-20250514-v1:0"
+      STRONG: "anthropic.claude-sonnet-4-20250514-v1:0"
     
     # Default parameters
     parameters:
@@ -54,9 +54,9 @@ task_graph:
   max_history_size: 1000          # Maximum number of history entries to keep
   enable_progressive_summary: true # Enable progressive summary functionality
   checkpoint_compression: true    # Compress checkpoint data
-    agent_timeout: 300      # 5 minutes
-    enable_caching: true
-    cache_ttl: 3600        # 1 hour
+  agent_timeout: 300              # 5 minutes
+  enable_caching: true
+  cache_ttl: 3600                 # 1 hour
 
 # Task Management Configuration
 task_management:
@@ -97,7 +97,7 @@ logging:
 
 # MCP Integration
 mcp:
-  enabled: true
+  enabled: false
   config_file: "config/mcp_config.yaml"
 
 # Heartbeat Configuration
@@ -118,7 +118,7 @@ heartbeat:
 # Feature Flags
 feature_flags:
   enable_universal_agent: true
-  enable_mcp_integration: true
+  enable_mcp_integration: false
   enable_task_scheduling: true
   enable_pause_resume: true
   enable_heartbeat: true
