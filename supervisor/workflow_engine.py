@@ -903,14 +903,6 @@ class WorkflowEngine:
     
     def get_queued_task_ids(self) -> List[str]:
         """Get list of queued task IDs."""
-    def get_metrics(self) -> Dict[str, Any]:
-        """
-        Backward compatibility method for get_workflow_metrics.
-        
-        Returns:
-            Dict: Workflow metrics
-        """
-        return self.get_workflow_metrics()
         return [task.task_id for task in self.task_queue]
     
     def start_workflow_engine(self):
