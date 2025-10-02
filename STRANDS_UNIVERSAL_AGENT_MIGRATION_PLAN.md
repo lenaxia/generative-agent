@@ -21,6 +21,7 @@ This document provides a revised migration plan based on the **Universal Agent +
 * Remember we are migrating AWAY from langchain TO strands agent
 * Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
 * Do not use fallbacks
+* Whenever you complete a phase, make sure to update this checklist
 
 ---
 
