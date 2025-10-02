@@ -1,31 +1,14 @@
 from enum import Enum
-from typing import Optional, Dict, List, Union, Type
+from typing import Optional, Dict, List, Union, Type, Any
 from config.base_config import BaseConfig
 
-# Import LangChain dependencies with fallback for testing
-try:
-    from langchain.prompts import ChatPromptTemplate
-    from langchain.tools import BaseTool
-    from langchain_openai import ChatOpenAI
-    from langchain_aws import ChatBedrock
-    from langchain_core.output_parsers import BaseOutputParser
-    LANGCHAIN_AVAILABLE = True
-except ImportError:
-    # Fallback for testing environments
-    ChatPromptTemplate = None
-    BaseTool = None
-    ChatOpenAI = None
-    ChatBedrock = None
-    BaseOutputParser = None
-    LANGCHAIN_AVAILABLE = False
-
-# Import StrandsAgent dependencies with fallback
+# Import StrandsAgent dependencies with fallback for testing
 try:
     from strands.models import BedrockModel, OpenAIModel
     from strands import Agent
     STRANDS_AVAILABLE = True
 except ImportError:
-    # Mock classes for testing
+    # Mock classes for testing when StrandsAgent is not available
     class BedrockModel:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
@@ -54,89 +37,27 @@ class LLMType(Enum):
 class LLMFactory:
     def __init__(self, configs: Dict[LLMType, List[BaseConfig]], framework: str = "strands"):
         """
-        Initialize LLMFactory with enhanced StrandsAgent support.
+        Initialize LLMFactory with StrandsAgent support only.
         
         Args:
             configs: Configuration mapping for different LLM types
-            framework: Framework to use ("strands" or "langchain")
+            framework: Framework to use (only "strands" supported)
         """
         self.configs = configs
-        self.framework = framework if framework in ["strands", "langchain"] else "strands"
+        self.framework = "strands"  # Only StrandsAgent framework supported
         self.prompt_library = PromptLibrary()
 
     def add_config(self, llm_type: LLMType, config: BaseConfig):
+        """Add a configuration for the specified LLM type."""
         if llm_type not in self.configs:
             self.configs[llm_type] = []
         self.configs[llm_type].append(config)
 
     def remove_config(self, llm_type: LLMType, name: str):
+        """Remove a configuration by name for the specified LLM type."""
         if llm_type not in self.configs:
             return
         self.configs[llm_type] = [config for config in self.configs[llm_type] if config.name != name]
-
-    def create_provider(self, llm_type: LLMType, name: Optional[str] = None, tools: Optional[List[Union[Type[BaseModel], BaseTool]]] = None, prompt_template: Optional[ChatPromptTemplate] = None, output_parser: Optional[BaseOutputParser] = None):
-        configs = self.configs.get(llm_type, [])
-        if not configs:
-            raise ValueError(f"No configurations found for LLMType '{llm_type}'")
-
-        if name:
-            config = next((c for c in configs if c.name == name), None)
-            if not config:
-                raise ValueError(f"No configuration found with name '{name}' for LLMType '{llm_type}'")
-        else:
-            config = configs[0]
-
-        llm_type = config.provider_name
-        llm_classes = {
-            'openai': ChatOpenAI,
-            'bedrock': ChatBedrock
-        }
-
-        if llm_type not in llm_classes:
-            raise ValueError(f"Unknown model type: {llm_type}")
-
-        llm_class = llm_classes[llm_type]
-        llm_config = config.llm_config.dict(exclude_unset=True)
-
-        model = llm_class(**llm_config)
-
-        if tools:
-            model = model.bind_tools(tools=tools)
-
-        if prompt_template:
-            model = prompt_template | model
-
-        if output_parser:
-            model = model | output_parser
-
-        return model
-
-    def create_chat_model(self, llm_type: LLMType, name: Optional[str] = None):
-        if not isinstance(llm_type, LLMType):
-            llm_type = LLMType.DEFAULT
-
-        configs = self.configs.get(llm_type, [])
-        if not configs:
-            raise ValueError(f"No configurations found for LLMType '{llm_type}'")
-
-        if name:
-            config = next((c for c in configs if c.name == name), None)
-            if not config:
-                raise ValueError(f"No configuration found with name '{name}' for LLMType '{llm_type}'")
-        else:
-            config = configs[0]
-
-        provider_type = config.get("type", None)
-        provider_classes = {
-            'openai': ChatOpenAI,
-            'bedrock': ChatBedrock
-        }
-
-        if provider_type not in provider_classes:
-            raise ValueError(f"Unknown provider type: {provider_type}")
-
-        config = config.get("config", {})
-        return provider_classes[provider_type](**config)
 
     def create_strands_model(self, llm_type: LLMType, name: Optional[str] = None):
         """
@@ -152,8 +73,6 @@ class LLMFactory:
         Raises:
             ValueError: If configuration not found or unsupported provider
         """
-        # Note: We use mock classes when StrandsAgent is not available for testing
-        
         config = self._get_config(llm_type, name)
         
         if hasattr(config, 'provider_type'):
@@ -193,8 +112,6 @@ class LLMFactory:
         Returns:
             StrandsAgent Agent instance
         """
-        # Note: We use mock classes when StrandsAgent is not available for testing
-        
         # Create the model
         model = self.create_strands_model(llm_type)
         
@@ -236,25 +153,51 @@ class LLMFactory:
         return config
 
     def get_framework(self) -> str:
-        """Get the current framework being used."""
+        """Get the current framework being used (always 'strands')."""
         return self.framework
-
-    def set_framework(self, framework: str):
-        """
-        Set the framework to use.
-        
-        Args:
-            framework: "strands" or "langchain"
-        """
-        if framework in ["strands", "langchain"]:
-            self.framework = framework
-        else:
-            raise ValueError(f"Unsupported framework: {framework}")
 
     def is_strands_available(self) -> bool:
         """Check if StrandsAgent is available."""
         return STRANDS_AVAILABLE
 
-    def is_langchain_available(self) -> bool:
-        """Check if LangChain is available."""
-        return LANGCHAIN_AVAILABLE
+    def get_available_llm_types(self) -> List[LLMType]:
+        """Get list of available LLM types with configurations."""
+        return list(self.configs.keys())
+
+    def get_config_count(self, llm_type: LLMType) -> int:
+        """Get number of configurations for the specified LLM type."""
+        return len(self.configs.get(llm_type, []))
+
+    def validate_configuration(self) -> Dict[str, Any]:
+        """
+        Validate the factory configuration.
+        
+        Returns:
+            Dict containing validation results
+        """
+        validation_result = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "llm_types": len(self.configs),
+            "total_configs": sum(len(configs) for configs in self.configs.values()),
+            "framework": self.framework,
+            "strands_available": STRANDS_AVAILABLE
+        }
+        
+        # Check if we have at least one configuration
+        if not self.configs:
+            validation_result["valid"] = False
+            validation_result["errors"].append("No LLM configurations found")
+        
+        # Check each LLM type has valid configurations
+        for llm_type, configs in self.configs.items():
+            if not configs:
+                validation_result["warnings"].append(f"No configurations for LLM type: {llm_type}")
+            
+            for config in configs:
+                if not hasattr(config, 'provider_type') and not hasattr(config, 'provider_name'):
+                    validation_result["errors"].append(f"Configuration missing provider type: {config}")
+                    validation_result["valid"] = False
+        
+        return validation_result
