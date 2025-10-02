@@ -48,6 +48,12 @@ universal_agent:
   # Performance settings
   performance:
     max_concurrent_agents: 5
+
+# TaskGraph Configuration
+task_graph:
+  max_history_size: 1000          # Maximum number of history entries to keep
+  enable_progressive_summary: true # Enable progressive summary functionality
+  checkpoint_compression: true    # Compress checkpoint data
     agent_timeout: 300      # 5 minutes
     enable_caching: true
     cache_ttl: 3600        # 1 hour
@@ -94,12 +100,28 @@ mcp:
   enabled: true
   config_file: "config/mcp_config.yaml"
 
+# Heartbeat Configuration
+heartbeat:
+  enabled: true
+  interval: 30                    # Heartbeat interval in seconds
+  health_check_interval: 60       # Health check interval in seconds
+  
+  # Maintenance settings
+  maintenance:
+    cleanup_old_workflows: true
+    workflow_retention_hours: 24
+    cleanup_old_logs: true
+    log_retention_days: 30
+    cleanup_old_checkpoints: true
+    checkpoint_retention_days: 7
+
 # Feature Flags
 feature_flags:
   enable_universal_agent: true
   enable_mcp_integration: true
   enable_task_scheduling: true
   enable_pause_resume: true
+  enable_heartbeat: true
 
 # Development Settings
 development:

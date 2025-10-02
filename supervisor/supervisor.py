@@ -4,6 +4,7 @@ import time
 from typing import Optional, List
 from pathlib import Path
 from supervisor.workflow_engine import WorkflowEngine
+from supervisor.heartbeat import Heartbeat
 from common.request_model import RequestMetadata
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
@@ -21,7 +22,6 @@ class Supervisor:
     # TODO: It should be able to do it mostly out of the box right now, but we should confirm whether or not we can nest supervisors, to basically do
     #       teams of teams. Each team would get its own MessageBus to communicate internally, and then the Supervisor would be responsible for communicating
     #       with the other teams and the top level supervisor.
-    # TODO: Need to add support for heartbeats
     config_file: Optional[str] = None
     config_manager: Optional[ConfigManager] = None
     config: Optional[SupervisorConfig] = None
@@ -29,6 +29,7 @@ class Supervisor:
     workflow_engine: Optional[WorkflowEngine] = None
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
+    heartbeat: Optional[Heartbeat] = None
 
     def __init__(self, config_file: Optional[str] = None):
         """
@@ -115,7 +116,19 @@ class Supervisor:
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
 
-        # Note: Message bus subscriptions are handled by RequestManager and TaskScheduler internally
+        # Initialize Heartbeat service
+        heartbeat_config = getattr(self.config, 'heartbeat', {})
+        heartbeat_interval = heartbeat_config.get('interval', 30) if isinstance(heartbeat_config, dict) else 30
+        health_check_interval = heartbeat_config.get('health_check_interval', 60) if isinstance(heartbeat_config, dict) else 60
+        
+        self.heartbeat = Heartbeat(
+            supervisor=self,
+            interval=heartbeat_interval,
+            health_check_interval=health_check_interval
+        )
+        logger.info(f"Heartbeat service initialized with {heartbeat_interval}s interval.")
+
+        # Note: Message bus subscriptions are handled by WorkflowEngine internally
         logger.info("Component initialization complete.")
 
     def start(self):
@@ -131,6 +144,11 @@ class Supervisor:
             
             self.workflow_engine.start_workflow_engine()
             logger.info("WorkflowEngine started.")
+            
+            # Start heartbeat service
+            if self.heartbeat:
+                self.heartbeat.start()
+                logger.info("Heartbeat service started.")
 
             logger.info("Supervisor started successfully.")
         except Exception as e:
@@ -144,6 +162,12 @@ class Supervisor:
         """
         try:
             logger.info("Stopping Supervisor...")
+            
+            # Stop heartbeat service first
+            if self.heartbeat:
+                self.heartbeat.stop()
+                logger.info("Heartbeat service stopped.")
+            
             self.workflow_engine.stop_workflow_engine()
             logger.info("WorkflowEngine stopped.")
             
@@ -221,9 +245,11 @@ class Supervisor:
         """
         try:
             status = {
+                "status": "running" if self.message_bus.is_running() else "stopped",
                 "running": self.message_bus.is_running(),
                 "workflow_engine": self.workflow_engine.get_workflow_metrics() if self.workflow_engine else None,
                 "universal_agent": self.workflow_engine.get_universal_agent_status() if self.workflow_engine else None,
+                "heartbeat": self.heartbeat.get_health_status() if self.heartbeat else None,
                 "metrics": self.metrics_manager.get_metrics(),
             }
             logger.info(f"Retrieved Supervisor status: {status}")
