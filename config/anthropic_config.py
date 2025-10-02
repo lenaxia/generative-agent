@@ -1,6 +1,5 @@
 import os
 from typing import Optional, Union, Tuple, Dict, List, Any, Mapping, Callable
-from langchain_core.callbacks.manager import BaseCallbackManager, Callbacks
 from .base_config import BaseConfig
 
 class AnthropicConfig(BaseConfig):
@@ -17,8 +16,9 @@ class AnthropicConfig(BaseConfig):
         timeout: Optional[float] = None,
         max_retries: Optional[int] = 2,
         api_base: Optional[str] = None,
-        callback_manager: Optional[BaseCallbackManager] = None,
-        callbacks: Optional[Callbacks] = None,
+        # Removed LangChain callback dependencies for StrandsAgent compatibility
+        # callback_manager: Optional[BaseCallbackManager] = None,
+        # callbacks: Optional[Callbacks] = None,
         custom_get_token_ids: Optional[Callable[[str], List[int]]] = None,
         default_headers: Optional[Mapping[str, str]] = None,
         default_request_timeout: Optional[float] = None,
@@ -37,19 +37,20 @@ class AnthropicConfig(BaseConfig):
             temperature=temperature,
             max_retries=max_retries,
             api_base=api_base,
-            rate_limiter=rate_limiter,
+            # rate_limiter=rate_limiter,  # Undefined variable removed
             stream_usage=stream_usage,
             streaming=False,
             **base_config_kwargs,
         )
         self.timeout = os.environ.get("ANTHROPIC_TIMEOUT", timeout)
-        self.cache = os.environ.get("ANTHROPIC_CACHE", cache)
-        self.callback_manager = os.environ.get("ANTHROPIC_CALLBACK_MANAGER", callback_manager)
-        self.callbacks = os.environ.get("ANTHROPIC_CALLBACKS", callbacks)
+        # self.cache = os.environ.get("ANTHROPIC_CACHE", cache)  # Undefined variable
+        # Removed LangChain callback dependencies
+        # self.callback_manager = os.environ.get("ANTHROPIC_CALLBACK_MANAGER", callback_manager)
+        # self.callbacks = os.environ.get("ANTHROPIC_CALLBACKS", callbacks)
         self.custom_get_token_ids = os.environ.get("ANTHROPIC_CUSTOM_GET_TOKEN_IDS", custom_get_token_ids)
         self.default_headers = os.environ.get("ANTHROPIC_DEFAULT_HEADERS", default_headers)
         self.default_request_timeout = os.environ.get("ANTHROPIC_DEFAULT_REQUEST_TIMEOUT", default_request_timeout)
-        self.disable_streaming = os.environ.get("ANTHROPIC_DISABLE_STREAMING", disable_streaming)
+        # self.disable_streaming = os.environ.get("ANTHROPIC_DISABLE_STREAMING", disable_streaming)  # Undefined variable
         self.metadata = os.environ.get("ANTHROPIC_METADATA", metadata)
         self.model_kwargs = os.environ.get("ANTHROPIC_MODEL_KWARGS", model_kwargs)
         self.tags = os.environ.get("ANTHROPIC_TAGS", tags)

@@ -1,5 +1,4 @@
 from typing import Optional, Dict, List, Mapping, Callable, Any
-from langchain_core.callbacks.manager import BaseCallbackManager, Callbacks
 
 from config.base_config import BaseConfig, ModelConfig
 
@@ -12,8 +11,9 @@ class BedrockModelConfig(ModelConfig):
     signature_version: Optional[str] = "v4"
     defaults_mode: Optional[str] = "auto"
     beta_use_converse_api: bool = False
-    callback_manager: Optional[BaseCallbackManager] = None
-    callbacks: Optional[Callbacks] = None
+    # Removed LangChain callback dependencies for StrandsAgent compatibility
+    # callback_manager: Optional[BaseCallbackManager] = None
+    # callbacks: Optional[Callbacks] = None
     credentials_profile_name: Optional[str] = None
     custom_get_token_ids: Optional[Callable[[str], List[int]]] = None
     default_headers: Optional[Mapping[str, str]] = None
