@@ -7,8 +7,7 @@ from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, List, Optional
 
 from supervisor.supervisor import Supervisor
-from supervisor.request_manager import RequestManager
-from supervisor.task_scheduler import TaskScheduler, TaskPriority
+from supervisor.workflow_engine import WorkflowEngine, TaskPriority, WorkflowState
 from llm_provider.universal_agent import UniversalAgent
 from llm_provider.factory import LLMFactory, LLMType
 from common.task_context import TaskContext, ExecutionState
@@ -109,15 +108,15 @@ task_scheduling:
             }
         ]
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             # Find matching phase and return expected output
             for phase in development_phases:
-                if phase["role"] in role and any(keyword in task_prompt.lower() 
+                if phase["role"] in role and any(keyword in instruction.lower() 
                                                for keyword in phase["prompt"].lower().split()[:3]):
                     return phase["expected_output"]
             return f"Development phase completed for role: {role}"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Execute the complete development workflow
@@ -131,11 +130,11 @@ task_scheduling:
                     target_id="supervisor"
                 )
                 
-                request_id = supervisor.request_manager.handle_request(request)
+                request_id = supervisor.workflow_engine.handle_request(request)
                 request_ids.append((request_id, phase["phase"]))
                 
                 # Verify each phase completes successfully
-                context = supervisor.request_manager.get_request_context(request_id)
+                context = supervisor.workflow_engine.get_request_context(request_id)
                 assert context is not None
                 assert context.execution_state in [ExecutionState.RUNNING, ExecutionState.COMPLETED]
             
@@ -179,15 +178,15 @@ task_scheduling:
             }
         ]
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             # Find matching support interaction
             for interaction in support_interactions:
-                if any(keyword in task_prompt.lower() 
+                if any(keyword in instruction.lower() 
                       for keyword in interaction["customer_query"].lower().split()[:3]):
                     return interaction["expected_response"]
             return f"Support ticket handled by {role} agent"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Process each support interaction
@@ -202,7 +201,7 @@ task_scheduling:
                 )
                 
                 ticket_start_time = time.time()
-                request_id = supervisor.request_manager.handle_request(request)
+                request_id = supervisor.workflow_engine.handle_request(request)
                 ticket_end_time = time.time()
                 
                 ticket_ids.append({
@@ -266,14 +265,14 @@ task_scheduling:
             }
         ]
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             # Find matching pipeline stage
             for stage in pipeline_stages:
-                if stage["stage"].replace("_", " ") in task_prompt.lower():
+                if stage["stage"].replace("_", " ") in instruction.lower():
                     return stage["expected_output"]
             return f"Pipeline stage completed by {role}"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Execute the data processing pipeline
@@ -289,7 +288,7 @@ task_scheduling:
                     target_id="supervisor"
                 )
                 
-                request_id = supervisor.request_manager.handle_request(request)
+                request_id = supervisor.workflow_engine.handle_request(request)
                 stage_end_time = time.time()
                 
                 stage_duration = stage_end_time - stage_start_time
@@ -348,18 +347,18 @@ task_scheduling:
             }
         ]
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             # Determine tenant based on context or prompt content
-            if "sales data" in task_prompt.lower():
+            if "sales data" in instruction.lower():
                 return "Sales analysis completed for Tenant A"
-            elif "customer feedback" in task_prompt.lower():
+            elif "customer feedback" in instruction.lower():
                 return "Customer feedback analysis completed for Tenant B"
-            elif "security audit" in task_prompt.lower():
+            elif "security audit" in instruction.lower():
                 return "Security audit review completed for Tenant C"
             else:
                 return f"Task completed for tenant request"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Process requests from all tenants
@@ -376,11 +375,11 @@ task_scheduling:
                         target_id="supervisor"
                     )
                     
-                    request_id = supervisor.request_manager.handle_request(request)
+                    request_id = supervisor.workflow_engine.handle_request(request)
                     tenant_results[tenant_id].append(request_id)
                     
                     # Verify tenant isolation
-                    context = supervisor.request_manager.get_request_context(request_id)
+                    context = supervisor.workflow_engine.get_request_context(request_id)
                     assert context is not None
                     
                     # Each tenant should have separate contexts
@@ -393,7 +392,7 @@ task_scheduling:
             all_contexts = []
             for tenant_id, request_ids in tenant_results.items():
                 for request_id in request_ids:
-                    context = supervisor.request_manager.get_request_context(request_id)
+                    context = supervisor.workflow_engine.get_request_context(request_id)
                     all_contexts.append(context.context_id)
             
             # All contexts should be unique (proper isolation)
@@ -410,12 +409,12 @@ task_scheduling:
         processed_items = []
         checkpoint_intervals = [5, 10, 15]  # Create checkpoints at these intervals
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             item_num = len(processed_items)
             processed_items.append(item_num)
             return f"Document {item_num} processed: Key information extracted and categorized"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Start batch processing
@@ -425,8 +424,8 @@ task_scheduling:
                 target_id="supervisor"
             )
             
-            request_id = supervisor.request_manager.handle_request(batch_request)
-            context = supervisor.request_manager.get_request_context(request_id)
+            request_id = supervisor.workflow_engine.handle_request(batch_request)
+            context = supervisor.workflow_engine.get_request_context(request_id)
             
             # Simulate processing with periodic checkpoints
             checkpoints = []
@@ -436,7 +435,7 @@ task_scheduling:
                 time.sleep(0.1)
                 
                 # Create checkpoint
-                checkpoint = supervisor.request_manager.pause_request(request_id)
+                checkpoint = supervisor.workflow_engine.pause_request(request_id)
                 checkpoints.append({
                     "interval": checkpoint_interval,
                     "checkpoint": checkpoint,
@@ -444,7 +443,7 @@ task_scheduling:
                 })
                 
                 # Resume processing
-                supervisor.request_manager.resume_request(request_id, checkpoint)
+                supervisor.workflow_engine.resume_request(request_id, checkpoint)
             
             # Verify checkpoints were created successfully
             assert len(checkpoints) == len(checkpoint_intervals)
@@ -484,15 +483,15 @@ task_scheduling:
             }
         ]
         
-        def mock_execute_side_effect(task_prompt, role, llm_type, context):
+        def mock_execute_side_effect(instruction, role, llm_type, context):
             # Find matching API scenario
             for scenario in api_scenarios:
-                if any(keyword in task_prompt.lower() 
+                if any(keyword in instruction.lower() 
                       for keyword in scenario["request"].lower().split()[:3]):
                     return scenario["mock_response"]
             return f"API integration completed for {role}"
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.side_effect = mock_execute_side_effect
             
             # Test each API integration scenario
@@ -507,7 +506,7 @@ task_scheduling:
                     target_id="supervisor"
                 )
                 
-                request_id = supervisor.request_manager.handle_request(request)
+                request_id = supervisor.workflow_engine.handle_request(request)
                 api_end_time = time.time()
                 
                 api_duration = api_end_time - api_start_time
@@ -556,7 +555,7 @@ task_scheduling:
             }
         ]
         
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.return_value = "Edge case handled successfully"
             
             for edge_case in edge_cases:
@@ -573,10 +572,10 @@ task_scheduling:
                 if should_handle:
                     # Should handle gracefully without exceptions
                     try:
-                        request_id = supervisor.request_manager.handle_request(request)
+                        request_id = supervisor.workflow_engine.handle_request(request)
                         
                         if request_id:  # Some edge cases might return None gracefully
-                            context = supervisor.request_manager.get_request_context(request_id)
+                            context = supervisor.workflow_engine.get_request_context(request_id)
                             assert context is not None or case_name == "empty_prompt"
                         
                     except Exception as e:
@@ -584,7 +583,7 @@ task_scheduling:
                 else:
                     # Should raise appropriate exception
                     with pytest.raises(Exception):
-                        supervisor.request_manager.handle_request(request)
+                        supervisor.workflow_engine.handle_request(request)
     
     def test_system_recovery_after_failures(self, supervisor):
         """Test system recovery capabilities after various failure scenarios."""
@@ -616,7 +615,7 @@ task_scheduling:
             failure_count = 0
             max_failures = 2
             
-            def mock_execute_side_effect(task_prompt, role, llm_type, context):
+            def mock_execute_side_effect(instruction, role, llm_type, context):
                 nonlocal failure_count
                 
                 if failure_count < max_failures:
@@ -633,7 +632,7 @@ task_scheduling:
                 # After failures, succeed
                 return f"Recovery successful after {failure_count} failures"
             
-            with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+            with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
                 mock_execute.side_effect = mock_execute_side_effect
                 
                 request = RequestMetadata(
@@ -644,28 +643,28 @@ task_scheduling:
                 
                 if scenario["should_recover"]:
                     # Should eventually succeed after retries
-                    request_id = supervisor.request_manager.handle_request(request)
+                    request_id = supervisor.workflow_engine.handle_request(request)
                     
                     # Verify recovery
                     if request_id:  # Some failures might be handled gracefully
-                        context = supervisor.request_manager.get_request_context(request_id)
+                        context = supervisor.workflow_engine.get_request_context(request_id)
                         assert context is not None
                 else:
                     # Should fail permanently
                     with pytest.raises(Exception):
-                        supervisor.request_manager.handle_request(request)
+                        supervisor.workflow_engine.handle_request(request)
     
     def test_production_readiness_checklist(self, supervisor):
         """Test production readiness checklist items."""
         production_checks = [
             ("configuration_loaded", lambda: supervisor.config is not None),
             ("llm_factory_initialized", lambda: supervisor.llm_factory is not None),
-            ("universal_agent_ready", lambda: supervisor.request_manager.universal_agent is not None),
-            ("task_scheduler_ready", lambda: supervisor.task_scheduler is not None),
+            ("universal_agent_ready", lambda: supervisor.workflow_engine.universal_agent is not None),
+            ("workflow_engine_ready", lambda: supervisor.workflow_engine is not None),
             ("message_bus_ready", lambda: supervisor.message_bus is not None),
             ("metrics_available", lambda: supervisor.metrics_manager is not None),
-            ("error_handling_configured", lambda: supervisor.request_manager.max_retries > 0),
-            ("checkpoint_system_ready", lambda: supervisor.task_scheduler.checkpoint_interval > 0)
+            ("error_handling_configured", lambda: supervisor.workflow_engine.max_retries > 0),
+            ("checkpoint_system_ready", lambda: supervisor.workflow_engine.checkpoint_interval > 0)
         ]
         
         # Verify each production readiness check
@@ -677,7 +676,7 @@ task_scheduling:
                 pytest.fail(f"Production readiness check {check_name} failed: {e}")
         
         # Test system can handle production-like load
-        with patch.object(supervisor.request_manager.universal_agent, 'execute_task') as mock_execute:
+        with patch.object(supervisor.workflow_engine.universal_agent, 'execute_task') as mock_execute:
             mock_execute.return_value = "Production load test completed"
             
             # Submit production-like load
@@ -694,7 +693,7 @@ task_scheduling:
             request_ids = []
             
             for request in production_requests:
-                request_id = supervisor.request_manager.handle_request(request)
+                request_id = supervisor.workflow_engine.handle_request(request)
                 request_ids.append(request_id)
             
             end_time = time.time()
@@ -707,7 +706,7 @@ task_scheduling:
             # Verify all requests have valid contexts
             for request_id in request_ids:
                 if request_id:
-                    context = supervisor.request_manager.get_request_context(request_id)
+                    context = supervisor.workflow_engine.get_request_context(request_id)
                     assert context is not None
 
 

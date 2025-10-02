@@ -62,8 +62,8 @@ Based on the test execution results, the current test suite has several issues t
   - [ ] [`tests/integration/test_advanced_end_to_end_scenarios.py`](tests/integration/test_advanced_end_to_end_scenarios.py) - Cannot import `RequestManager`
   - [ ] [`tests/integration/test_migration_validation.py`](tests/integration/test_migration_validation.py) - Cannot import `RequestManager`
   - [ ] [`tests/integration/test_real_world_scenarios.py`](tests/integration/test_real_world_scenarios.py) - Cannot import `RequestManager`
-- [ ] **Common Tests**: Missing imports for new architecture
-  - [ ] [`tests/common/test_comprehensive_task_context.py`](tests/common/test_comprehensive_task_context.py) - Cannot import `ConversationHistory`
+- [ ] **Common Tests**: Test expectations don't match actual implementation
+  - [ ] [`tests/common/test_comprehensive_task_context.py`](tests/common/test_comprehensive_task_context.py) - Test expects separate ConversationHistory/ProgressiveSummary classes, but actual implementation uses TaskGraph's built-in functionality
 
 #### ✅ **Working Tests (Keep and Enhance)**
 - [x] [`tests/supervisor/test_workflow_engine.py`](tests/supervisor/test_workflow_engine.py) - Core WorkflowEngine tests
@@ -220,9 +220,11 @@ Based on the test execution results, the current test suite has several issues t
 - [ ] Replace `RequestManager` with `WorkflowEngine`
 - [ ] Update deprecated imports to use new StrandsAgent components
 
-**Fix Missing Dependencies**
-- [ ] Add missing `ConversationHistory` and other TaskContext components
-- [ ] Update test fixtures to use new architecture
+**Fix Test Expectations**
+- [ ] Update test to use actual TaskContext API (TaskGraph-based implementation)
+- [ ] Fix method names: `add_summary()` not `update_progressive_summary()`, `get_metadata(key)` not `get_all_metadata()`
+- [ ] Fix ExecutionState values: `IDLE` not `PENDING`
+- [ ] Fix TaskGraph method names: `get_node_by_task_id()` not `get_node()`
 - [ ] Ensure all mocks are compatible with StrandsAgent
 
 **Validate Test Execution**

@@ -189,15 +189,16 @@ graph TD
 ```python
 # Enhanced TaskContext leveraging existing TaskGraph
 class TaskContext:
-    def __init__(self, task_graph: TaskGraph):
-        self.task_graph = task_graph  # Leverage existing implementation
-        self.conversation_history = ConversationHistory()
-        self.progressive_summary = ProgressiveSummary()
-        self.checkpoints = []
-        self.metadata = {}
+    def __init__(self, task_graph: TaskGraph, context_id: Optional[str] = None):
+        self.task_graph = task_graph  # Leverage existing TaskGraph implementation
+        self.context_id = context_id or f"ctx_{str(uuid.uuid4()).split('-')[-1]}"
+        self.execution_state = ExecutionState.IDLE
+        # Conversation history and progressive summaries are managed by TaskGraph
+        # Metadata is managed by TaskGraph
+        # Checkpoints are created from TaskGraph state + execution context
     
-    def create_checkpoint(self):
-        """Leverage existing TaskGraph + add conversation state"""
+    def create_checkpoint(self) -> Dict:
+        """Create checkpoint from TaskGraph state + execution context"""
         checkpoint = {
             'task_graph_state': self.task_graph.to_dict(),
             'conversation_history': self.conversation_history.to_dict(),
