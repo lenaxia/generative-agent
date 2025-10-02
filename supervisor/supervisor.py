@@ -4,7 +4,7 @@ import time
 from typing import Optional, List
 from pathlib import Path
 from supervisor.request_manager import RequestManager, RequestMetadata
-from supervisor.agent_manager import AgentManager
+from supervisor.task_scheduler import TaskScheduler
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
@@ -27,8 +27,9 @@ class Supervisor:
     config: Optional[SupervisorConfig] = None
     message_bus: Optional[MessageBus] = None
     request_manager: Optional[RequestManager] = None
-    agent_manager: Optional[AgentManager] = None
+    task_scheduler: Optional[TaskScheduler] = None
     metrics_manager: Optional[MetricsManager] = None
+    llm_factory: Optional[LLMFactory] = None
 
     def __init__(self, config_file: Optional[str] = None):
         """
@@ -78,8 +79,8 @@ class Supervisor:
         Initializes all components of the supervisor.
 
         This includes setting up logging, initializing the message bus, populating
-        the LLM factory with configurations, initializing the agent manager,
-        initializing the request manager, and initializing the metrics manager.
+        the LLM factory with configurations, initializing the request manager with
+        Universal Agent, initializing the task scheduler, and initializing the metrics manager.
 
         It also sets up subscriptions to TASK_RESPONSE and AGENT_ERROR messages.
 
@@ -94,46 +95,47 @@ class Supervisor:
         logger.info("Message bus initialized.")
 
         logger.info("Initializing LLM factory...")
-        llm_factory = LLMFactory({})
+        self.llm_factory = LLMFactory({})
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
             llm_class = LLMType[provider_config.get("llm_class", LLMType.DEFAULT).upper()]
-            llm_factory.add_config(llm_class, provider_config)
+            self.llm_factory.add_config(llm_class, provider_config)
             
-        # TODO: We need to restructure how we pass configs and instances of supervisor and the other modules to each other. 
-        #       Right now its a mess, and very inconsistent, we need a way that any module can easily talk to or get information from
-        #       other modules easily.
-        self.agent_manager = AgentManager(self.config, self.message_bus, llm_factory)
-        logger.info("Agent manager initialized.")
+        logger.info("LLM factory initialized with Universal Agent support.")
 
-        self.request_manager = RequestManager(self.agent_manager, self.message_bus)
-        logger.info("Request manager initialized.")
+        # Initialize RequestManager with LLMFactory (Universal Agent architecture)
+        self.request_manager = RequestManager(self.llm_factory, self.message_bus)
+        logger.info("Request manager initialized with Universal Agent.")
+
+        # Initialize TaskScheduler for advanced task management
+        self.task_scheduler = TaskScheduler(
+            request_manager=self.request_manager,
+            message_bus=self.message_bus,
+            max_concurrent_tasks=5,
+            checkpoint_interval=300
+        )
+        logger.info("Task scheduler initialized.")
 
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
 
-        self.message_bus.subscribe(self, MessageType.TASK_RESPONSE, self.request_manager.handle_task_response)
-        logger.info("Subscribed to TASK_RESPONSE messages.")
-
-        self.message_bus.subscribe(self, MessageType.AGENT_ERROR, self.request_manager.handle_agent_error)
-        logger.info("Subscribed to AGENT_ERROR messages.")
-
+        # Note: Message bus subscriptions are handled by RequestManager and TaskScheduler internally
         logger.info("Component initialization complete.")
 
     def start(self):
         """
-        Starts the Supervisor by registering agents and starting the message bus.
+        Starts the Supervisor by starting the message bus and task scheduler.
 
         This method can be invoked multiple times without causing any issues.
         """
         try:
             logger.info("Starting Supervisor...")
-            self.agent_manager.register_agents()
-            logger.info("Agents registered.")
             self.message_bus.start()
             logger.info("Message bus started.")
-
+            
+            self.task_scheduler.start()
+            logger.info("Task scheduler started.")
 
             logger.info("Supervisor started successfully.")
         except Exception as e:
@@ -141,12 +143,15 @@ class Supervisor:
 
     def stop(self):
         """
-        Stops the Supervisor by stopping the message bus.
+        Stops the Supervisor by stopping the task scheduler and message bus.
 
         This method can be invoked multiple times without causing any issues.
         """
         try:
             logger.info("Stopping Supervisor...")
+            self.task_scheduler.stop()
+            logger.info("Task scheduler stopped.")
+            
             self.message_bus.stop()
             logger.info("Message bus stopped.")
             logger.info("Supervisor stopped successfully.")
@@ -222,7 +227,8 @@ class Supervisor:
         try:
             status = {
                 "running": self.message_bus.is_running(),
-                #"requests": self.request_manager.get_request_status(),
+                "task_scheduler": self.task_scheduler.get_metrics() if self.task_scheduler else None,
+                "universal_agent": self.request_manager.get_universal_agent_status() if self.request_manager else None,
                 "metrics": self.metrics_manager.get_metrics(),
             }
             logger.info(f"Retrieved Supervisor status: {status}")
