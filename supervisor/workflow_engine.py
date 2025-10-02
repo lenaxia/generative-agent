@@ -93,11 +93,10 @@ class WorkflowEngine:
         # Create Universal Agent with MCP support
         self.universal_agent = UniversalAgent(llm_factory, mcp_manager=self.mcp_manager)
         
-        # Workflow tracking (consolidated from RequestManager + TaskScheduler)
+        # Workflow tracking
         self.active_workflows: Dict[str, TaskContext] = {}
-        self.request_map: Dict[str, Request] = {}  # For backward compatibility
         
-        # Task scheduling (integrated from TaskScheduler)
+        # Task scheduling
         self.task_queue: List[QueuedTask] = []
         self.running_tasks: Dict[str, Dict] = {}
         self.max_concurrent_tasks = max_concurrent_tasks
@@ -113,13 +112,10 @@ class WorkflowEngine:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         
-        # Subscribe to workflow events (consolidated subscriptions)
+        # Subscribe to workflow events
         self.message_bus.subscribe(self, MessageType.INCOMING_REQUEST, self.handle_request)
         self.message_bus.subscribe(self, MessageType.TASK_RESPONSE, self.handle_task_completion)
         self.message_bus.subscribe(self, MessageType.AGENT_ERROR, self.handle_task_error_event)
-        
-        # Backward compatibility
-        self.request_contexts = self.active_workflows
         
         logger.info("WorkflowEngine initialized with Universal Agent, task scheduling, and MCP integration")
     
@@ -151,18 +147,16 @@ class WorkflowEngine:
             str: Request ID for tracking
         """
         try:
-            request_id = 'req_' + str(uuid.uuid4()).split('-')[-1]
+            request_id = 'wf_' + str(uuid.uuid4()).split('-')[-1]
             request_time = time.time()
             
-            logger.info(f"Handling request '{request_id}' with Universal Agent")
+            logger.info(f"Handling workflow '{request_id}' with Universal Agent")
             
             # Create task plan using Universal Agent with planning role
             task_context = self._create_task_plan(request.prompt, request_id)
             
-            # Store the task context and create compatibility request
+            # Store the workflow context
             self.active_workflows[request_id] = task_context
-            self.request_contexts = self.active_workflows  # Backward compatibility
-            self.request_map[request_id] = Request(request, task_context.task_graph)
             
             # Start execution and workflow state
             task_context.start_execution()
@@ -174,27 +168,26 @@ class WorkflowEngine:
             # Execute DAG with parallel task processing
             self._execute_dag_parallel(task_context)
             
-            logger.info(f"Request '{request_id}' created and workflow started")
+            logger.info(f"Workflow '{request_id}' created and started")
             return request_id
             
         except Exception as e:
-            logger.error(f"Error handling request: {e}")
+            logger.error(f"Error handling workflow request: {e}")
             
             # Create a failed task context for error tracking
             try:
                 # Create minimal task context for error tracking
                 task_graph = TaskGraph()
                 task_context = TaskContext(task_graph, request_id=request_id)
-                task_context.fail_execution(f"Request failed: {str(e)}")
+                task_context.fail_execution(f"Workflow failed: {str(e)}")
                 
-                # Store the failed context
+                # Store the failed workflow context
                 self.active_workflows[request_id] = task_context
-                self.request_contexts = self.active_workflows  # Backward compatibility
                 
-                return request_id  # Return ID even for failed requests for tracking
+                return request_id  # Return ID even for failed workflows for tracking
                 
             except Exception as context_error:
-                logger.error(f"Error creating failed request context: {context_error}")
+                logger.error(f"Error creating failed workflow context: {context_error}")
                 return None
     
     def pause_workflow(self, workflow_id: Optional[str] = None) -> Dict:
@@ -765,7 +758,6 @@ class WorkflowEngine:
             
             # Workflow tracking metrics (from RequestManager)
             "active_workflows": len(self.active_workflows),
-            "total_workflows_processed": len(self.request_map),
             
             # Priority distribution
             "queue_priorities": [task.priority.name for task in self.task_queue],
@@ -851,7 +843,7 @@ class WorkflowEngine:
                 for priority in TaskPriority
             },
             "running_by_priority": {
-                priority.name: len([info for info in self.running_tasks.values()
+                priority.name: len([info for info in self.running_tasks.values() 
                                   if info["priority"] == priority])
                 for priority in TaskPriority
             }
@@ -885,11 +877,9 @@ class WorkflowEngine:
         
         for request_id in to_remove:
             del self.active_workflows[request_id]
-            if request_id in self.request_map:
-                del self.request_map[request_id]
         
         if to_remove:
-            logger.info(f"Cleaned up {len(to_remove)} completed requests")
+            logger.info(f"Cleaned up {len(to_remove)} completed workflows")
     
     def clear_queue(self):
         """Clear all queued tasks (running tasks continue)."""
@@ -1002,7 +992,3 @@ class WorkflowEngine:
         except Exception as e:
             logger.error(f"Error executing MCP tool '{tool_name}': {e}")
             return {"error": str(e)}
-
-
-# Backward compatibility alias
-RequestManager = WorkflowEngine

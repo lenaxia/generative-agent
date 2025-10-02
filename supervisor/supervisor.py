@@ -3,7 +3,8 @@ import sys
 import time
 from typing import Optional, List
 from pathlib import Path
-from supervisor.request_manager import RequestManager, RequestMetadata
+from supervisor.workflow_engine import WorkflowEngine
+from common.request_model import RequestMetadata
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
@@ -25,8 +26,7 @@ class Supervisor:
     config_manager: Optional[ConfigManager] = None
     config: Optional[SupervisorConfig] = None
     message_bus: Optional[MessageBus] = None
-    request_manager: Optional[RequestManager] = None
-    task_scheduler: Optional[RequestManager] = None  # Alias for WorkflowEngine
+    workflow_engine: Optional[WorkflowEngine] = None
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
 
@@ -104,17 +104,13 @@ class Supervisor:
         logger.info("LLM factory initialized with Universal Agent support.")
 
         # Initialize WorkflowEngine (consolidated RequestManager + TaskScheduler)
-        self.request_manager = RequestManager(
+        self.workflow_engine = WorkflowEngine(
             llm_factory=self.llm_factory,
             message_bus=self.message_bus,
             max_concurrent_tasks=5,
             checkpoint_interval=300
         )
         logger.info("WorkflowEngine initialized (consolidated RequestManager + TaskScheduler).")
-
-        # Create TaskScheduler alias for backward compatibility
-        self.task_scheduler = self.request_manager
-        logger.info("TaskScheduler alias created for backward compatibility.")
 
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
@@ -133,7 +129,7 @@ class Supervisor:
             self.message_bus.start()
             logger.info("Message bus started.")
             
-            self.request_manager.start_workflow_engine()
+            self.workflow_engine.start_workflow_engine()
             logger.info("WorkflowEngine started.")
 
             logger.info("Supervisor started successfully.")
@@ -148,7 +144,7 @@ class Supervisor:
         """
         try:
             logger.info("Stopping Supervisor...")
-            self.request_manager.stop_workflow_engine()
+            self.workflow_engine.stop_workflow_engine()
             logger.info("WorkflowEngine stopped.")
             
             self.message_bus.stop()
@@ -194,12 +190,12 @@ class Supervisor:
                         source_id="console",
                         target_id="supervisor",
                     )
-                    request_id = self.request_manager.handle_request(request)
+                    request_id = self.workflow_engine.handle_request(request)
                     logger.info(f"New request '{request_id}' created and delegated.")
 
                     request_completed = False
                     while not request_completed:
-                        progress_info = self.request_manager.monitor_progress(request_id)
+                        progress_info = self.workflow_engine.get_request_status(request_id)
                         if progress_info is None:
                             request_completed = True
                         else:
