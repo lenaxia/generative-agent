@@ -22,6 +22,7 @@ This document provides a revised migration plan based on the **Universal Agent +
 * Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
 * Do not use fallbacks
 * Whenever you complete a phase, make sure to update this checklist
+* Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed
 
 ---
 
@@ -394,13 +395,13 @@ class EnhancedRequestManager(RequestManager):
 **Goal**: Create task scheduler for pause/resume functionality
 
 ##### User Story 3.2.1: As a developer, I want a task scheduler that supports pause/resume
-- [ ] Design TaskScheduler that works with existing RequestManager
-- [ ] Implement task queue management
-- [ ] Add pause/resume functionality using TaskContext checkpoints
-- [ ] Integrate with existing message bus for task distribution
-- [ ] Add task priority and scheduling logic
-- [ ] Write tests for task scheduling functionality
-- [ ] Document task scheduler usage
+- [x] Design TaskScheduler that works with existing RequestManager
+- [x] Implement task queue management
+- [x] Add pause/resume functionality using TaskContext checkpoints
+- [x] Integrate with existing message bus for task distribution
+- [x] Add task priority and scheduling logic
+- [x] Write tests for task scheduling functionality
+- [x] Document task scheduler usage
 
 ### **Phase 4: MCP Integration (Week 4)**
 
