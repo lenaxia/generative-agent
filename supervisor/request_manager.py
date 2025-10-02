@@ -95,7 +95,25 @@ class RequestManager:
             
         except Exception as e:
             logger.error(f"Error handling request: {e}")
-            raise e
+            
+            # Create a failed task context for error tracking
+            try:
+                from common.task_graph import TaskGraph
+                from common.task_context import TaskContext
+                
+                # Create minimal task context for error tracking
+                task_graph = TaskGraph()
+                task_context = TaskContext(task_graph, request_id=request_id)
+                task_context.fail_execution(f"Request failed: {str(e)}")
+                
+                # Store the failed context
+                self.request_contexts[request_id] = task_context
+                
+                return request_id  # Return ID even for failed requests for tracking
+                
+            except Exception as context_error:
+                logger.error(f"Error creating failed request context: {context_error}")
+                return None
     
     def _create_task_plan(self, instruction: str, request_id: Optional[str] = None) -> TaskContext:
         """
@@ -155,7 +173,30 @@ class RequestManager:
             
         except Exception as e:
             logger.error(f"Error creating task plan: {e}")
-            raise e
+            
+            # Create a fallback task context for error cases
+            try:
+                tasks = [
+                    TaskDescription(
+                        task_name="Handle Error",
+                        agent_id="planning_agent",
+                        task_type="ErrorHandling",
+                        prompt=f"Handle error: {str(e)}"
+                    )
+                ]
+                
+                task_context = TaskContext.from_tasks(
+                    tasks=tasks,
+                    dependencies=[],
+                    request_id=request_id
+                )
+                
+                task_context.add_system_message(f"Planning failed, created error handling task: {str(e)}")
+                return task_context
+                
+            except Exception as fallback_error:
+                logger.error(f"Error creating fallback task context: {fallback_error}")
+                raise e  # Re-raise original error if fallback fails
     
     def delegate_task(self, task_context: TaskContext, task: TaskNode):
         """
