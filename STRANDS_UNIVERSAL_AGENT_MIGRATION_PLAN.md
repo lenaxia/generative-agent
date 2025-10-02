@@ -520,14 +520,14 @@ universal_agent:
 **Goal**: Merge RequestManager + TaskScheduler into unified WorkflowEngine for simplified architecture
 
 ##### User Story 6.1.1: As a developer, I want a unified WorkflowEngine that combines request lifecycle and task scheduling
-- [ ] Extract `handle_request()`, `_create_task_plan()`, and `pause_request()`/`resume_request()` methods from RequestManager
-- [ ] Extract `schedule_task()`, `_process_task_queue()`, and concurrency control logic from TaskScheduler
-- [ ] Create WorkflowEngine class with unified interface: `start_workflow()`, `pause_workflow()`, `resume_workflow()`
-- [ ] Implement `_execute_dag_parallel()` method combining DAG traversal with priority-based task execution
-- [ ] Preserve agent_id → role mapping and LLMType optimization (STRONG for planning, WEAK for search/weather)
-- [ ] Maintain TaskContext integration for external state, conversation history, and checkpoints
-- [ ] Implement message bus subscriptions for TASK_RESPONSE and AGENT_ERROR events
-- [ ] Add workflow metrics combining request tracking and task queue statistics
+- [x] Extract `handle_request()`, `_create_task_plan()`, and `pause_request()`/`resume_request()` methods from RequestManager
+- [x] Extract `schedule_task()`, `_process_task_queue()`, and concurrency control logic from TaskScheduler
+- [x] Create WorkflowEngine class with unified interface: `start_workflow()`, `pause_workflow()`, `resume_workflow()`
+- [x] Implement `_execute_dag_parallel()` method combining DAG traversal with priority-based task execution
+- [x] Preserve agent_id → role mapping and LLMType optimization (STRONG for planning, WEAK for search/weather)
+- [x] Maintain TaskContext integration for external state, conversation history, and checkpoints
+- [x] Implement message bus subscriptions for TASK_RESPONSE and AGENT_ERROR events
+- [x] Add workflow metrics combining request tracking and task queue statistics
 
 ```python
 # Unified WorkflowEngine Implementation
@@ -573,14 +573,14 @@ class WorkflowEngine:
 ```
 
 ##### User Story 6.1.2: As a developer, I want to migrate existing RequestManager and TaskScheduler to WorkflowEngine
-- [ ] Refactor `supervisor/request_manager.py` in place to become WorkflowEngine (preserve git history)
-- [ ] Move TaskScheduler's priority queue (`heapq` + `QueuedTask` dataclass) into WorkflowEngine
-- [ ] Integrate TaskScheduler's `max_concurrent_tasks` and `running_tasks` dict into WorkflowEngine
-- [ ] Combine RequestManager's `request_contexts` dict with TaskScheduler's task tracking
-- [ ] Update Supervisor's `__init__` to create WorkflowEngine instead of RequestManager
-- [ ] Migrate `tests/supervisor/test_strands_request_manager.py` and `test_task_scheduler.py` to `test_workflow_engine.py`
-- [ ] Update `supervisor.py` line 110 to use WorkflowEngine constructor
-- [ ] Delete `supervisor/task_scheduler.py` file after migration complete
+- [x] Refactor `supervisor/request_manager.py` in place to become WorkflowEngine (preserve git history)
+- [x] Move TaskScheduler's priority queue (`heapq` + `QueuedTask` dataclass) into WorkflowEngine
+- [x] Integrate TaskScheduler's `max_concurrent_tasks` and `running_tasks` dict into WorkflowEngine
+- [x] Combine RequestManager's `request_contexts` dict with TaskScheduler's task tracking
+- [x] Update Supervisor's `__init__` to create WorkflowEngine instead of RequestManager
+- [x] Migrate `tests/supervisor/test_strands_request_manager.py` and `test_task_scheduler.py` to `test_workflow_engine.py`
+- [x] Update `supervisor.py` line 110 to use WorkflowEngine constructor
+- [x] Delete `supervisor/task_scheduler.py` file after migration complete
 
 ### **Benefits of WorkflowEngine Consolidation**
 
