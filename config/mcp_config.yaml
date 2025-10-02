@@ -7,14 +7,14 @@ mcp_servers:
     command: "uvx"
     args: ["awslabs.aws-documentation-mcp-server@latest"]
     description: "AWS documentation and service information"
-    enabled: true
+    enabled: false  # Disabled due to npm authentication issues
     
   # Web Search Server
   web_search:
     command: "npx"
     args: ["@modelcontextprotocol/server-web-search"]
     description: "Web search capabilities"
-    enabled: true
+    enabled: false  # Disabled due to npm package availability issues
     
   # Weather Information Server
   weather:

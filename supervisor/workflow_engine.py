@@ -392,49 +392,41 @@ class WorkflowEngine:
             TaskContext: Task context with planned tasks
         """
         try:
-            # Use Universal Agent with planning role and strong model
-            planning_prompt = f"""
-            Create a detailed task plan for the following instruction: {instruction}
+            # Use existing planning tools via Universal Agent
+            # This follows the architecture: WorkflowEngine → Universal Agent → @tool functions
+            from llm_provider.planning_tools import create_task_plan
             
-            Return a structured plan with tasks, dependencies, and agent assignments.
-            Each task should specify:
-            - task_id: unique identifier
-            - task_name: descriptive name
-            - task_description: what needs to be done
-            - agent_id: which agent should handle this (planning_agent, search_agent, weather_agent, summarizer_agent, slack_agent)
-            - dependencies: list of task_ids this task depends on
-            """
-            
-            # Execute planning with strong model for complex reasoning
-            plan_result = self.universal_agent.execute_task(
-                task_prompt=planning_prompt,
-                role="planning",
-                llm_type=LLMType.STRONG,
-                context=None
-            )
-            
-            # For now, create a simple task structure
-            # In a full implementation, this would parse the plan_result
-            tasks = [
-                TaskDescription(
-                    task_name="Execute Request",
-                    agent_id="planning_agent",
-                    task_type="RequestExecution",
-                    prompt=instruction
-                )
+            # Available agents for planning tool
+            available_agents = [
+                "planning_agent (Task planning and complex reasoning)",
+                "search_agent (Web search and information retrieval)",
+                "weather_agent (Weather information and forecasts)",
+                "summarizer_agent (Text summarization and key point extraction)",
+                "slack_agent (Slack messaging and team communication)"
             ]
             
-            # Create TaskContext from tasks
-            task_context = TaskContext.from_tasks(
-                tasks=tasks,
-                dependencies=[],
+            # Use the existing planning tool to create TaskGraph
+            planning_result = create_task_plan(
+                instruction=instruction,
+                available_agents=available_agents,
                 request_id=request_id
             )
             
-            # Add planning result to conversation history
-            task_context.add_system_message(f"Planning completed: {plan_result}")
+            # Extract TaskGraph from planning result
+            task_graph = planning_result.get("task_graph")
+            tasks = planning_result.get("tasks", [])
+            dependencies = planning_result.get("dependencies", [])
             
-            return task_context
+            if task_graph and tasks:
+                # Convert TaskGraph to TaskContext using from_tasks method
+                task_context = TaskContext.from_tasks(
+                    tasks=tasks,
+                    dependencies=dependencies,
+                    request_id=request_id
+                )
+                return task_context
+            else:
+                raise ValueError("Planning tool did not return valid tasks and task_graph")
             
         except Exception as e:
             logger.error(f"Error creating task plan: {e}")
@@ -490,7 +482,7 @@ class WorkflowEngine:
             
             # Execute task using Universal Agent
             result = self.universal_agent.execute_task(
-                task_prompt=execution_config.get("prompt", getattr(task, "prompt", "No prompt available")),
+                instruction=execution_config.get("prompt", getattr(task, "prompt", "No prompt available")),
                 role=role,
                 llm_type=llm_type,
                 context=task_context
@@ -559,6 +551,107 @@ class WorkflowEngine:
             "default": LLMType.DEFAULT     # Default fallback
         }
         return role_to_llm_type.get(role, LLMType.DEFAULT)
+    
+    def _is_simple_request(self, instruction: str) -> bool:
+        """
+        Determine if a request is simple enough to skip complex planning.
+        
+        Args:
+            instruction: The user instruction
+            
+        Returns:
+            bool: True if request is simple
+        """
+        simple_patterns = [
+            "what is", "calculate", "compute", "add", "subtract", "multiply", "divide",
+            "weather in", "search for", "summarize", "send message"
+        ]
+        
+        instruction_lower = instruction.lower()
+        return any(pattern in instruction_lower for pattern in simple_patterns)
+    
+    def _parse_planning_result(self, plan_result: str, instruction: str, request_id: str) -> TaskContext:
+        """
+        Parse the LLM planning result into a structured TaskContext.
+        
+        Args:
+            plan_result: JSON string from planning agent
+            instruction: Original user instruction
+            request_id: Request ID for tracking
+            
+        Returns:
+            TaskContext: Parsed task context with TaskGraph
+        """
+        try:
+            import json
+            
+            # Try to parse the JSON from the planning result
+            # The LLM might include extra text, so extract JSON
+            plan_data = None
+            
+            # Look for JSON in the response
+            if '{' in plan_result and '}' in plan_result:
+                start_idx = plan_result.find('{')
+                end_idx = plan_result.rfind('}') + 1
+                json_str = plan_result[start_idx:end_idx]
+                plan_data = json.loads(json_str)
+            else:
+                raise ValueError("No JSON found in planning result")
+            
+            # Convert to TaskDescription objects
+            tasks = []
+            for task_data in plan_data.get("tasks", []):
+                task = TaskDescription(
+                    task_id=task_data.get("task_id", f"task_{len(tasks)+1}"),
+                    task_name=task_data.get("task_name", "Unnamed Task"),
+                    agent_id=task_data.get("agent_id", "planning_agent"),
+                    task_type=task_data.get("task_type", "Execution"),
+                    prompt=task_data.get("prompt", instruction),
+                    request_id=request_id
+                )
+                tasks.append(task)
+            
+            # Convert to TaskDependency objects
+            dependencies = []
+            for dep_data in plan_data.get("dependencies", []):
+                dependency = TaskDependency(
+                    source=dep_data.get("source"),
+                    target=dep_data.get("target")
+                )
+                dependencies.append(dependency)
+            
+            # Create TaskContext from parsed data
+            task_context = TaskContext.from_tasks(
+                tasks=tasks,
+                dependencies=dependencies,
+                request_id=request_id
+            )
+            
+            logger.info(f"Successfully parsed planning result into {len(tasks)} tasks with {len(dependencies)} dependencies")
+            return task_context
+            
+        except Exception as e:
+            logger.error(f"Failed to parse planning result: {e}")
+            logger.debug(f"Planning result was: {plan_result}")
+            
+            # Fallback: create a single task for direct execution
+            tasks = [
+                TaskDescription(
+                    task_name="Execute Request (Fallback)",
+                    agent_id="planning_agent",
+                    task_type="DirectExecution",
+                    prompt=instruction,
+                    request_id=request_id
+                )
+            ]
+            
+            task_context = TaskContext.from_tasks(
+                tasks=tasks,
+                dependencies=[],
+                request_id=request_id
+            )
+            
+            return task_context
     
     # ==================== ERROR HANDLING AND RECOVERY ====================
     
@@ -915,13 +1008,19 @@ class WorkflowEngine:
         Initialize MCP client manager from configuration.
         
         Args:
-            config_path: Optional path to MCP configuration file
+            config_path: Optional path to MCP configuration file.
+                        If None, MCP integration is explicitly disabled.
             
         Returns:
             MCPClientManager instance or None if MCP not configured
         """
+        # If config_path is explicitly None, MCP integration is disabled
+        if config_path is None:
+            logger.info("MCP integration explicitly disabled")
+            return None
+            
+        # If config_path is empty string, try default paths
         if not config_path:
-            # Try default config paths
             default_paths = [
                 "config/mcp_config.yaml",
                 "mcp_config.yaml",

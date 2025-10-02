@@ -85,6 +85,27 @@ cp config.yaml.example config.yaml
 
 ### Basic Usage
 
+**Command Line Interface (Recommended):**
+
+```bash
+# Interactive mode
+python cli.py
+
+# Show system status
+python cli.py --status
+
+# Execute a single workflow
+python cli.py --workflow "Search for weather in Seattle and create a summary"
+
+# Use custom config file
+python cli.py --config custom.yaml
+
+# Verbose logging
+python cli.py --verbose
+```
+
+**Programmatic Usage:**
+
 ```python
 from supervisor.supervisor import Supervisor
 
@@ -247,6 +268,38 @@ python -m pytest tests/llm_provider/ -v  # Universal Agent tests
 python -m pytest tests/supervisor/ -v   # WorkflowEngine tests
 ```
 
+## Command Line Interface
+
+The system includes a modern CLI with multiple usage modes:
+
+### Interactive Mode
+```bash
+python cli.py
+```
+Starts an interactive session where you can:
+- Execute workflows with the Universal Agent
+- Check system status and health
+- Monitor workflow progress in real-time
+
+### Single Command Mode
+```bash
+# Execute a workflow and exit
+python cli.py --workflow "Plan a machine learning project"
+
+# Check system status
+python cli.py --status
+
+# Use custom configuration
+python cli.py --config production.yaml
+```
+
+### CLI Features
+- **Real-time Status**: Live system health and workflow monitoring
+- **Multiple LLM Providers**: Supports Bedrock, Anthropic, and OpenAI
+- **Role-based Execution**: Automatic role selection (planning, search, weather, etc.)
+- **Error Handling**: Graceful error recovery and user feedback
+- **Flexible Configuration**: Custom config files and verbose logging
+
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
@@ -395,6 +448,3 @@ The migration maintained 100% functionality while achieving:
 - Production-ready features (health monitoring, deployment guides)
 - Comprehensive documentation and testing
 
-## System Status: PRODUCTION READY ✅
-
-The system is fully functional, thoroughly tested, and ready for production use with comprehensive documentation, health monitoring, and deployment guides.

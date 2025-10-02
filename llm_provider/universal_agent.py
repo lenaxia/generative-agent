@@ -4,30 +4,11 @@ from llm_provider.tool_registry import ToolRegistry
 from llm_provider.mcp_client import MCPClientManager
 from common.task_context import TaskContext
 
-# Import StrandsAgent with fallback for testing
-try:
-    from strands import Agent
-    from strands.models.bedrock import BedrockModel
-    from strands.models.openai import OpenAIModel
-    STRANDS_AVAILABLE = True
-except ImportError:
-    # Mock classes for testing environments
-    class Agent:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-            
-        def __call__(self, prompt):
-            return f"Mock Agent response to: {prompt}"
-    
-    class BedrockModel:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-    
-    class OpenAIModel:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-    
-    STRANDS_AVAILABLE = False
+# Import StrandsAgent - hard dependency, no fallbacks
+from strands import Agent
+from strands.models.bedrock import BedrockModel
+from strands.models.openai import OpenAIModel
+from strands_tools import calculator, file_read, shell
 
 
 class UniversalAgent:
@@ -52,7 +33,6 @@ class UniversalAgent:
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
-        self.strands_available = STRANDS_AVAILABLE
     
     def assume_role(self, role: str, llm_type: LLMType = LLMType.DEFAULT,
                    context: Optional[TaskContext] = None, tools: Optional[List[str]] = None):
@@ -68,22 +48,22 @@ class UniversalAgent:
         Returns:
             StrandsAgent Agent instance configured for the specified role
         """
-        if not self.strands_available:
-            # Fallback for testing environments
-            agent = Agent(role=role, llm_type=llm_type, tools=tools)
-            self.current_agent = agent
-            self.current_role = role
-            self.current_llm_type = llm_type
-            return agent
-        
         # Create StrandsAgent model based on LLM type
         model = self._create_strands_model(llm_type)
         
         # Get role-specific system prompt
         system_prompt = self._get_role_prompt(role)
         
-        # Get tools from registry
+        # Get tools from registry and add built-in tools
         role_tools = self.tool_registry.get_tools(tools or [])
+        
+        # Add common Strands tools
+        common_tools = [calculator, file_read, shell]
+        role_tools.extend(common_tools)
+        
+        # Add role-specific @tool functions
+        role_specific_tools = self._get_role_specific_tools(role)
+        role_tools.extend(role_specific_tools)
         
         # Add MCP tools if available
         if self.mcp_manager:
@@ -104,283 +84,217 @@ class UniversalAgent:
         
         return agent
     
-    def execute_task(self, task_prompt: str, role: Optional[str] = None, 
-                    llm_type: Optional[LLMType] = None, tools: Optional[List[str]] = None,
-                    context: Optional[TaskContext] = None) -> str:
-        """
-        Execute a task with the specified or current role configuration.
-        
-        Args:
-            task_prompt: The task prompt to execute
-            role: Optional role to assume (uses current if not specified)
-            llm_type: Optional LLM type (uses current if not specified)
-            tools: Optional tools to use
-            context: Optional task context
-            
-        Returns:
-            str: Task execution result
-        """
-        # Use provided role or current role
-        if role and role != self.current_role:
-            self.assume_role(role, llm_type or self.current_llm_type or LLMType.DEFAULT, context, tools)
-        elif not self.current_agent:
-            # No current agent, create default
-            self.assume_role(role or "default", llm_type or LLMType.DEFAULT, context, tools)
-        
-        # Execute the task
-        try:
-            if hasattr(self.current_agent, '__call__') and callable(self.current_agent):
-                return self.current_agent(task_prompt)
-        except (AttributeError, TypeError):
-            pass
-        
-        try:
-            if hasattr(self.current_agent, 'run') and callable(self.current_agent.run):
-                return self.current_agent.run(task_prompt)
-        except (AttributeError, TypeError):
-            pass
-        
-        try:
-            if hasattr(self.current_agent, 'execute') and callable(self.current_agent.execute):
-                return self.current_agent.execute(task_prompt)
-        except (AttributeError, TypeError):
-            pass
-        
-        # Fallback for mock objects in testing
-        return f"Mock execution of '{task_prompt}' with role '{self.current_role}'"
-    
-    def get_current_role(self) -> Optional[str]:
-        """Get the current agent role."""
-        return self.current_role
-    
-    def get_current_llm_type(self) -> Optional[LLMType]:
-        """Get the current LLM type."""
-        return self.current_llm_type
-    
-    def get_available_roles(self) -> List[str]:
-        """Get list of available roles from the prompt library."""
-        return self.llm_factory.prompt_library.list_roles()
-    
-    def get_available_tools(self) -> List[str]:
-        """Get list of available tools from the tool registry."""
-        return self.tool_registry.list_tools()
-    
-    def add_tool(self, tool_name: str, tool_func: callable, description: str = ""):
-        """
-        Add a tool to the tool registry.
-        
-        Args:
-            tool_name: Name of the tool
-            tool_func: Tool function
-            description: Tool description
-        """
-        self.tool_registry.add_tool(tool_name, tool_func, description)
-    
-    def remove_tool(self, tool_name: str):
-        """
-        Remove a tool from the tool registry.
-        
-        Args:
-            tool_name: Name of the tool to remove
-        """
-        self.tool_registry.remove_tool(tool_name)
-    
-    def execute_mcp_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute an MCP tool with given parameters.
-        
-        Args:
-            tool_name: Name of the MCP tool to execute
-            parameters: Parameters to pass to the tool
-            
-        Returns:
-            Tool execution result
-            
-        Raises:
-            ValueError: If MCP manager not available or tool not found
-        """
-        if not self.mcp_manager:
-            raise ValueError("MCP manager not available")
-        
-        return self.mcp_manager.execute_tool(tool_name, parameters)
-    
-    def get_mcp_tools(self, role: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        Get available MCP tools for a role.
-        
-        Args:
-            role: Optional role to filter tools for (uses current role if not specified)
-            
-        Returns:
-            List of available MCP tools
-        """
-        if not self.mcp_manager:
-            return []
-        
-        target_role = role or self.current_role or "default"
-        return self.mcp_manager.get_tools_for_role(target_role)
-    
-    def get_mcp_status(self) -> Dict[str, Any]:
-        """
-        Get MCP integration status.
-        
-        Returns:
-            Dict containing MCP status information
-        """
-        if not self.mcp_manager:
-            return {"mcp_available": False, "servers": [], "tools": 0}
-        
-        return self.mcp_manager.get_server_status()
-    
-    def get_role_configuration(self, role: str) -> Dict[str, Any]:
-        """
-        Get configuration information for a role.
-        
-        Args:
-            role: The role to get configuration for
-            
-        Returns:
-            Dict containing role configuration
-        """
-        return {
-            "role": role,
-            "prompt": self.llm_factory.prompt_library.get_prompt(role),
-            "available_tools": self.tool_registry.get_tools_for_role(role),
-            "recommended_llm_type": self._get_recommended_llm_type(role)
-        }
-    
-    def _get_recommended_llm_type(self, role: str) -> LLMType:
-        """
-        Get recommended LLM type for a role based on complexity.
-        
-        Args:
-            role: The agent role
-            
-        Returns:
-            LLMType: Recommended semantic model type
-        """
-        # Map roles to appropriate model types for cost/performance optimization
-        role_to_llm_type = {
-            "planning": LLMType.STRONG,    # Complex reasoning needs powerful model
-            "analysis": LLMType.STRONG,    # Complex analysis needs powerful model
-            "coding": LLMType.STRONG,      # Code generation needs powerful model
-            "search": LLMType.WEAK,        # Simple search can use cheaper model
-            "weather": LLMType.WEAK,       # Simple lookup
-            "summarizer": LLMType.DEFAULT, # Balanced model for text processing
-            "slack": LLMType.DEFAULT,      # Conversational tasks
-            "default": LLMType.DEFAULT     # Default fallback
-        }
-        return role_to_llm_type.get(role, LLMType.DEFAULT)
-    
-    def optimize_for_cost(self):
-        """Switch to cost-optimized model selection."""
-        if self.current_role:
-            # Use WEAK model for cost optimization
-            self.assume_role(self.current_role, LLMType.WEAK)
-    
-    def optimize_for_performance(self):
-        """Switch to performance-optimized model selection."""
-        if self.current_role:
-            # Use STRONG model for performance optimization
-            self.assume_role(self.current_role, LLMType.STRONG)
-    
-    def reset(self):
-        """Reset the agent to initial state."""
-        self.current_agent = None
-        self.current_role = None
-        self.current_llm_type = None
-    
-    def get_status(self) -> Dict[str, Any]:
-        """
-        Get current status of the Universal Agent.
-        
-        Returns:
-            Dict containing current status information
-        """
-        return {
-            "current_role": self.current_role,
-            "current_llm_type": self.current_llm_type.value if self.current_llm_type else None,
-            "has_active_agent": self.current_agent is not None,
-            "available_roles": len(self.get_available_roles()),
-            "available_tools": len(self.get_available_tools()),
-            "framework": self.llm_factory.get_framework(),
-            "mcp_status": self.get_mcp_status()
-        }
-    
-    def __str__(self) -> str:
-        """String representation of Universal Agent."""
-        status = self.get_status()
-        return (f"UniversalAgent(role={status['current_role']}, "
-                f"llm_type={status['current_llm_type']}, "
-                f"framework={status['framework']})")
-    
-    def __repr__(self) -> str:
-        """Detailed representation of Universal Agent."""
-        return self.__str__()
-    
     def _create_strands_model(self, llm_type: LLMType):
         """
         Create a StrandsAgent model based on LLM type.
         
         Args:
-            llm_type: The semantic LLM type
+            llm_type: Semantic model type
             
         Returns:
             StrandsAgent model instance
         """
-        if not self.strands_available:
-            # Return mock model for testing
-            return BedrockModel(model_id="mock-model")
-        
-        # Get configuration from factory
-        config = self.llm_factory._get_config(llm_type)
-        
-        if hasattr(config, 'provider_type'):
-            provider_type = config.provider_type
-        elif hasattr(config, 'provider_name'):
-            provider_type = config.provider_name
-        else:
-            provider_type = "bedrock"  # Default fallback
-        
-        # Extract model parameters
-        model_params = {
-            'model_id': getattr(config, 'model_id', 'us.amazon.nova-pro-v1:0'),
-            'temperature': getattr(config, 'temperature', 0.3)
+        # Map LLM types to model configurations from config
+        model_mapping = {
+            LLMType.WEAK: "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            LLMType.DEFAULT: "us.anthropic.claude-sonnet-4-20250514-v1:0", 
+            LLMType.STRONG: "us.anthropic.claude-sonnet-4-20250514-v1:0"
         }
         
-        # Add additional parameters if available
-        if hasattr(config, 'additional_params') and config.additional_params:
-            model_params.update(config.additional_params)
+        model_id = model_mapping.get(llm_type, model_mapping[LLMType.DEFAULT])
         
-        # Create appropriate StrandsAgent model
-        if provider_type == "bedrock":
-            return BedrockModel(**model_params)
-        elif provider_type == "openai":
-            return OpenAIModel(**model_params)
-        else:
-            # Default to Bedrock
-            return BedrockModel(**model_params)
+        # Create Bedrock model with proper configuration
+        return BedrockModel(
+            model_id=model_id,
+            region_name="us-west-2",
+            temperature=0.3,
+            max_tokens=4096
+        )
     
     def _get_role_prompt(self, role: str) -> str:
         """
-        Get system prompt for a role.
+        Get role-specific system prompt.
+        
+        Args:
+            role: Agent role
+            
+        Returns:
+            str: System prompt for the role
+        """
+        role_prompts = {
+            "planning": """You are a planning specialist agent. Your role is to:
+1. Break down complex tasks into manageable steps
+2. Create detailed task plans with dependencies
+3. Identify required resources and constraints
+4. Provide structured planning output
+Focus on creating clear, actionable plans.""",
+            
+            "search": """You are a search specialist agent. Your role is to:
+1. Perform web searches for information
+2. Find relevant and accurate information
+3. Summarize search results clearly
+4. Provide source citations
+Focus on finding the most relevant and up-to-date information.""",
+            
+            "weather": """You are a weather information specialist agent. Your role is to:
+1. Retrieve current weather conditions
+2. Provide weather forecasts
+3. Explain weather patterns and phenomena
+4. Give location-specific weather data
+Focus on providing accurate, current weather information.""",
+            
+            "summarizer": """You are a text summarization specialist agent. Your role is to:
+1. Create concise summaries of long texts
+2. Extract key points and main ideas
+3. Maintain important context and details
+4. Provide structured summary output
+Focus on creating clear, comprehensive summaries.""",
+            
+            "slack": """You are a Slack integration specialist agent. Your role is to:
+1. Send messages to Slack channels
+2. Format messages appropriately for Slack
+3. Handle Slack-specific formatting and mentions
+4. Manage Slack workspace interactions
+Focus on effective Slack communication.""",
+            
+            "coding": """You are a coding specialist agent. Your role is to:
+1. Write clean, efficient code
+2. Debug and fix code issues
+3. Explain code functionality
+4. Follow best practices and patterns
+Focus on producing high-quality, maintainable code.""",
+            
+            "analysis": """You are an analysis specialist agent. Your role is to:
+1. Analyze data and information thoroughly
+2. Identify patterns and insights
+3. Provide detailed analytical reports
+4. Make data-driven recommendations
+Focus on comprehensive, accurate analysis."""
+        }
+        
+        return role_prompts.get(role, 
+            "You are a helpful AI assistant. Provide accurate, helpful responses to user queries.")
+    
+    def execute_task(self, instruction: str, role: str = "default", 
+                    llm_type: LLMType = LLMType.DEFAULT,
+                    context: Optional[TaskContext] = None) -> str:
+        """
+        Execute a task with the specified role and model type.
+        
+        Args:
+            instruction: Task instruction
+            role: Agent role to assume
+            llm_type: Model type for optimization
+            context: Optional task context
+            
+        Returns:
+            str: Task result
+        """
+        # Assume the specified role
+        agent = self.assume_role(role, llm_type, context)
+        
+        # Execute the task
+        try:
+            response = agent(instruction)
+            return str(response) if response else "No response generated"
+        except Exception as e:
+            return f"Error executing task: {str(e)}"
+    
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Get current Universal Agent status.
+        
+        Returns:
+            Dict: Status information
+        """
+        return {
+            "universal_agent_enabled": True,
+            "has_llm_factory": self.llm_factory is not None,
+            "has_universal_agent": True,
+            "mcp_integration": {
+                "mcp_available": self.mcp_manager is not None,
+                "registered_servers": self.mcp_manager.get_registered_servers() if self.mcp_manager else [],
+                "total_tools": len(self.mcp_manager.get_all_tools()) if self.mcp_manager else 0,
+                "server_configs": self.mcp_manager.get_server_configs() if self.mcp_manager else {}
+            },
+            "current_role": self.current_role,
+            "current_llm_type": self.current_llm_type.value if self.current_llm_type else None,
+            "framework": "strands"
+        }
+    
+    def get_available_roles(self) -> List[str]:
+        """
+        Get list of available agent roles.
+        
+        Returns:
+            List[str]: Available roles
+        """
+        return ["planning", "search", "weather", "summarizer", "slack", "coding", "analysis", "default"]
+    
+    def get_mcp_status(self) -> Dict[str, Any]:
+        """
+        Get MCP integration status for heartbeat monitoring.
+        
+        Returns:
+            Dict: MCP status information
+        """
+        if self.mcp_manager:
+            return {
+                "mcp_available": True,
+                "registered_servers": self.mcp_manager.get_registered_servers(),
+                "total_tools": len(self.mcp_manager.get_all_tools()),
+                "server_configs": self.mcp_manager.get_server_configs()
+            }
+        else:
+            return {
+                "mcp_available": False,
+                "registered_servers": [],
+                "total_tools": 0,
+                "server_configs": {}
+            }
+    
+    def _get_role_specific_tools(self, role: str) -> list:
+        """
+        Get role-specific @tool functions for the Universal Agent.
         
         Args:
             role: The agent role
             
         Returns:
-            str: System prompt for the role
+            List of @tool functions for the role
         """
+        role_tools = []
+        
         try:
-            return self.llm_factory.prompt_library.get_prompt(role)
-        except:
-            # Fallback prompts for different roles
-            role_prompts = {
-                "planning": "You are a planning assistant. Create detailed task plans with dependencies and agent assignments.",
-                "search": "You are a search assistant. Help users find information efficiently.",
-                "weather": "You are a weather assistant. Provide accurate weather information.",
-                "summarizer": "You are a summarization assistant. Create concise, accurate summaries.",
-                "slack": "You are a Slack assistant. Help with team communication and collaboration.",
-                "default": "You are a helpful assistant."
-            }
-            return role_prompts.get(role, role_prompts["default"])
+            if role == "weather":
+                from llm_provider.weather_tools import get_weather
+                # Convert function to @tool format if needed
+                role_tools.append(get_weather)
+                
+            elif role == "search":
+                from llm_provider.search_tools import search_web
+                role_tools.append(search_web)
+                
+            elif role == "summarizer":
+                from llm_provider.summarizer_tools import summarize_text
+                role_tools.append(summarize_text)
+                
+            elif role == "slack":
+                from llm_provider.slack_tools import send_slack_message
+                role_tools.append(send_slack_message)
+                
+            elif role == "planning":
+                from llm_provider.planning_tools import create_task_plan, validate_task_plan
+                role_tools.extend([create_task_plan, validate_task_plan])
+                
+        except ImportError as e:
+            # If tools don't exist or have import issues, log and continue
+            logger.warning(f"Could not load tools for role '{role}': {e}")
+        
+        return role_tools
+    
+    def reset(self):
+        """Reset the Universal Agent state."""
+        self.current_agent = None
+        self.current_role = None
+        self.current_llm_type = None

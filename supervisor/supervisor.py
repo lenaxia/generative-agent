@@ -99,17 +99,29 @@ class Supervisor:
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
-            llm_class = LLMType[provider_config.get("llm_class", LLMType.DEFAULT).upper()]
+            llm_class_str = provider_config.get("llm_class", "DEFAULT")
+            if isinstance(llm_class_str, str):
+                llm_class = LLMType[llm_class_str.upper()]
+            else:
+                # If it's already an LLMType enum, use it directly
+                llm_class = llm_class_str
             self.llm_factory.add_config(llm_class, provider_config)
             
         logger.info("LLM factory initialized with Universal Agent support.")
 
         # Initialize WorkflowEngine (consolidated RequestManager + TaskScheduler)
+        # Pass MCP config path only if MCP integration is enabled
+        mcp_config_path = None
+        if (hasattr(self.config, 'mcp') and self.config.mcp and self.config.mcp.enabled) or \
+           (hasattr(self.config, 'feature_flags') and self.config.feature_flags and self.config.feature_flags.enable_mcp_integration):
+            mcp_config_path = self.config.mcp.config_file if hasattr(self.config, 'mcp') and self.config.mcp else 'config/mcp_config.yaml'
+        
         self.workflow_engine = WorkflowEngine(
             llm_factory=self.llm_factory,
             message_bus=self.message_bus,
             max_concurrent_tasks=5,
-            checkpoint_interval=300
+            checkpoint_interval=300,
+            mcp_config_path=mcp_config_path
         )
         logger.info("WorkflowEngine initialized (consolidated RequestManager + TaskScheduler).")
 
@@ -178,24 +190,23 @@ class Supervisor:
             logger.error(f"Error stopping Supervisor: {e}")
 
     def run(self):
-        
         """
-        Runs the Supervisor by starting the message bus and registering agents.
-        Then enters an infinite loop to process user instructions.
+        Runs the Supervisor with the WorkflowEngine and Universal Agent.
+        Enters an interactive loop to process user workflows.
 
-        The user can enter one of the following instructions:
+        The user can enter one of the following commands:
 
-        *   instruction: A task instruction that will be delegated to the appropriate agents.
-        *   status: Retrieves the Supervisor status.
+        *   workflow: A workflow instruction that will be executed by the Universal Agent.
+        *   status: Retrieves the Supervisor and WorkflowEngine status.
         *   stop: Stops the Supervisor and exits the program.
 
-        The Supervisor will display the progress of the tasks and notify the user when a task is completed or failed.
+        The Supervisor will display workflow progress and notify when workflows complete or fail.
         """
         try:
             logger.info("Running Supervisor...")
             self.start()
             while True:
-                action = input("Enter action (instruction, status, stop): ").strip().lower()
+                action = input("Enter action (workflow, status, stop): ").strip().lower()
                 if action == "stop":
                     self.stop()
                     break
@@ -214,18 +225,18 @@ class Supervisor:
                         source_id="console",
                         target_id="supervisor",
                     )
-                    request_id = self.workflow_engine.handle_request(request)
-                    logger.info(f"New request '{request_id}' created and delegated.")
+                    workflow_id = self.workflow_engine.start_workflow(action)
+                    logger.info(f"New workflow '{workflow_id}' started.")
 
-                    request_completed = False
-                    while not request_completed:
-                        progress_info = self.workflow_engine.get_request_status(request_id)
+                    workflow_completed = False
+                    while not workflow_completed:
+                        progress_info = self.workflow_engine.get_request_status(workflow_id)
                         if progress_info is None:
-                            request_completed = True
+                            workflow_completed = True
                         else:
-                            logger.info(f"Request '{request_id}' Status: {progress_info}")
+                            logger.info(f"Workflow '{workflow_id}' Status: {progress_info}")
                             if progress_info.get("status", False):
-                                request_completed = True
+                                workflow_completed = True
                             else:
                                 time.sleep(5)  # Wait for 5 seconds before checking progress again
         except KeyboardInterrupt:

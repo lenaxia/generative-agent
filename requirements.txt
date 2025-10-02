@@ -1,8 +1,10 @@
-slack_bolt
+# Slack integration
+slack_bolt>=1.18.0
+slack_sdk>=3.27.0
 aider-chat
 pydantic
-# StrandsAgent framework (replaces LangChain)
-strands>=1.0.0
+strands-agents>=1.10.0
+strands-agents-tools>=0.2.9
 sympy
 typing
 pandas
@@ -20,4 +22,5 @@ torch
 scipy>=1.13.0
 setuptools>=75.0.0
 rank_bm25
+tavily-python>=0.3.0
 

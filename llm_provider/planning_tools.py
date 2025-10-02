@@ -63,13 +63,41 @@ def create_task_plan(instruction: str, available_agents: List[str] = None, reque
             "slack_agent (Send messages to Slack channels)"
         ]
     
-    # Create a simple task plan - this would normally use the LLM
-    # For now, create a basic single-task plan
+    # Intelligently determine the best agent based on the instruction
+    def determine_best_agent(instruction: str) -> str:
+        instruction_lower = instruction.lower()
+        
+        # Weather patterns
+        if any(word in instruction_lower for word in ["weather", "temperature", "forecast", "rain", "snow", "sunny", "cloudy"]):
+            return "weather_agent"
+        
+        # Math/calculation patterns
+        elif any(word in instruction_lower for word in ["calculate", "compute", "add", "subtract", "multiply", "divide", "what is", "+", "-", "*", "/"]):
+            return "planning_agent"  # Planning agent has calculator tools
+        
+        # Search patterns
+        elif any(word in instruction_lower for word in ["search", "find", "look up", "google", "information about"]):
+            return "search_agent"
+        
+        # Summarization patterns
+        elif any(word in instruction_lower for word in ["summarize", "summary", "key points", "tldr"]):
+            return "summarizer_agent"
+        
+        # Slack patterns
+        elif any(word in instruction_lower for word in ["slack", "send message", "notify", "message"]):
+            return "slack_agent"
+        
+        # Default to search agent for general tasks
+        else:
+            return "search_agent"
+    
+    # Create intelligent task plan
+    best_agent = determine_best_agent(instruction)
     tasks = [
         TaskDescription(
             task_id="task_1",
             task_name=f"Execute: {instruction[:50]}...",
-            agent_id="search_agent",  # Default to search agent for general tasks
+            agent_id=best_agent,
             task_type="execution",
             prompt=instruction,
             status="pending"
