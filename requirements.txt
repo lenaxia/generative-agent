@@ -1,12 +1,8 @@
 slack_bolt
 aider-chat
 pydantic
-langchain
-langchain-openai
-langchain-anthropic
-langchain-aws
-langchain-community
-langgraph
+# StrandsAgent framework (replaces LangChain)
+strands>=1.0.0
 sympy
 typing
 pandas
