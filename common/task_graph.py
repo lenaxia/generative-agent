@@ -147,7 +147,7 @@ class TaskGraph:
     progressive_summary: List[str] = Field(default_factory=list, description="Progressive summary of task execution")
     metadata: Dict = Field(default_factory=dict, description="Additional metadata for the task graph")
 
-    def __init__(self, tasks: List[TaskDescription], dependencies: Optional[List[Dict]] = None, request_id: Optional[str] = ""):
+    def __init__(self, tasks: List[TaskDescription], dependencies: Optional[List[Dict]] = None, request_id: Optional[str] = "", max_history_size: int = 1000):
         self.nodes = {}
         self.edges = []
         self.task_name_map = {}
@@ -155,6 +155,7 @@ class TaskGraph:
         self.request_id = request_id
         self.history = list()
         self.graph_id = 'graph_' + str(uuid.uuid4()).split('-')[-1]
+        self.max_history_size = max_history_size  # Configurable max history size
         
         # Initialize new fields for external state management
         self.conversation_history = []
@@ -286,8 +287,13 @@ class TaskGraph:
 
         history = []
         if node.include_full_history:
-            # TODO: Make max history size configurable when including full history
-            history = self.history
+            # Use configurable max history size when including full history
+            if len(self.history) > self.max_history_size:
+                # Keep the most recent entries within the limit
+                history = self.history[-self.max_history_size:]
+                logger.debug(f"History truncated to {self.max_history_size} entries for task {task_id}")
+            else:
+                history = self.history
         else:
             for edge in node.inbound_edges:
                 parent_node = self.get_node_by_task_id(edge.source_id)
