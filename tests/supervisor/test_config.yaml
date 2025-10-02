@@ -1,0 +1,10 @@
+logging:
+  log_level: INFO
+  log_file: test.log
+
+llm_providers:
+  default:
+    llm_class: DEFAULT
+    provider_type: bedrock
+    model_id: us.amazon.nova-pro-v1:0
+    temperature: 0.3

@@ -3,8 +3,7 @@ import time
 from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, List, Optional
 
-from supervisor.request_manager import RequestManager  # Will become WorkflowEngine
-from supervisor.task_scheduler import TaskScheduler, TaskPriority, QueuedTask
+from supervisor.workflow_engine import WorkflowEngine, TaskPriority, QueuedTask
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.universal_agent import UniversalAgent
 from common.task_context import TaskContext, ExecutionState
@@ -35,8 +34,7 @@ class TestWorkflowEngine:
     @pytest.fixture
     def workflow_engine(self, mock_llm_factory, mock_message_bus):
         """Create a WorkflowEngine for testing."""
-        # For now, this is still RequestManager, but will become WorkflowEngine
-        return RequestManager(mock_llm_factory, mock_message_bus)
+        return WorkflowEngine(mock_llm_factory, mock_message_bus)
     
     def test_workflow_engine_initialization(self, workflow_engine, mock_llm_factory, mock_message_bus):
         """Test WorkflowEngine initialization with unified interface."""
@@ -46,7 +44,7 @@ class TestWorkflowEngine:
         assert workflow_engine.universal_agent is not None
         
         # Verify workflow tracking
-        assert hasattr(workflow_engine, 'request_contexts')  # Will become active_workflows
+        assert hasattr(workflow_engine, 'active_workflows')
         
         # Verify configuration
         assert workflow_engine.max_retries > 0
@@ -65,13 +63,13 @@ class TestWorkflowEngine:
                 target_id="supervisor"
             )
             
-            workflow_id = workflow_engine.handle_request(request)  # Will become start_workflow
+            workflow_id = workflow_engine.handle_request(request)
             
             assert workflow_id is not None
-            assert workflow_id.startswith('req_')  # Will become 'wf_'
+            assert workflow_id.startswith('wf_')
             
             # Verify workflow context was created
-            context = workflow_engine.get_request_context(workflow_id)  # Will become get_workflow_context
+            context = workflow_engine.get_request_context(workflow_id)
             assert context is not None
             assert context.execution_state == ExecutionState.RUNNING
     
@@ -89,8 +87,8 @@ class TestWorkflowEngine:
             
             workflow_id = workflow_engine.handle_request(request)
             
-            # Test pause_workflow (currently pause_request)
-            checkpoint = workflow_engine.pause_request(workflow_id)  # Will become pause_workflow
+            # Test pause_workflow
+            checkpoint = workflow_engine.pause_workflow(workflow_id)
             
             assert checkpoint is not None
             assert 'context_id' in checkpoint
@@ -113,10 +111,10 @@ class TestWorkflowEngine:
             )
             
             workflow_id = workflow_engine.handle_request(request)
-            checkpoint = workflow_engine.pause_request(workflow_id)
+            checkpoint = workflow_engine.pause_workflow(workflow_id)
             
-            # Test resume_workflow (currently resume_request)
-            success = workflow_engine.resume_request(workflow_id, checkpoint)  # Will become resume_workflow
+            # Test resume_workflow
+            success = workflow_engine.resume_workflow(workflow_id, checkpoint)
             
             assert success == True
             
@@ -170,27 +168,17 @@ class TestWorkflowEngine:
             ua_status = workflow_engine.get_universal_agent_status()
             
             assert ua_status is not None
-            assert 'active_contexts' in ua_status  # Will become 'active_workflows'
+            assert 'active_contexts' in ua_status
             assert ua_status['active_contexts'] >= 3
             
             # Verify workflow status tracking
-            active_requests = workflow_engine.list_active_requests()  # Will become list_active_workflows
+            active_requests = workflow_engine.list_active_requests()
             assert len(active_requests) >= 3
     
     def test_concurrency_control_integration(self, workflow_engine):
         """Test concurrency control integration (max_concurrent_tasks logic)."""
-        # This tests the future integration of TaskScheduler's concurrency control
-        # Currently this is separate, but will be integrated in WorkflowEngine
-        
-        # Create a TaskScheduler to test the logic that will be integrated
-        task_scheduler = TaskScheduler(
-            request_manager=workflow_engine,
-            message_bus=workflow_engine.message_bus,
-            max_concurrent_tasks=2  # Low limit for testing
-        )
-        
-        # Test concurrency control
-        task_scheduler.start()
+        # Test concurrency control integration in WorkflowEngine
+        workflow_engine.start_workflow_engine()
         
         # Create mock tasks
         mock_tasks = []
@@ -202,15 +190,15 @@ class TestWorkflowEngine:
         
         # Schedule tasks (should respect concurrency limit)
         for task in mock_tasks:
-            task_scheduler.schedule_task(Mock(), task)
+            workflow_engine.schedule_task(Mock(), task)
         
         # Process queue
-        task_scheduler._process_task_queue()
+        workflow_engine._process_task_queue()
         
         # Should only run max_concurrent_tasks at once
-        assert len(task_scheduler.running_tasks) <= task_scheduler.max_concurrent_tasks
+        assert len(workflow_engine.running_tasks) <= workflow_engine.max_concurrent_tasks
         
-        task_scheduler.stop()
+        workflow_engine.stop_workflow_engine()
     
     def test_message_bus_event_handling(self, workflow_engine):
         """Test message bus event handling for workflow events."""
@@ -252,10 +240,10 @@ class TestWorkflowEngine:
             workflow_id = workflow_engine.handle_request(request)
             
             # Test state tracking
-            status = workflow_engine.get_request_status(workflow_id)  # Will become get_workflow_status
+            status = workflow_engine.get_request_status(workflow_id)
             
             assert status is not None
-            assert 'request_id' in status  # Will become 'workflow_id'
+            assert 'request_id' in status
             assert 'execution_state' in status
             assert 'performance_metrics' in status
             
@@ -301,14 +289,14 @@ class TestWorkflowEngine:
                 workflow_ids.append(workflow_id)
             
             # Verify workflows were created
-            initial_count = len(workflow_engine.request_contexts)  # Will become active_workflows
+            initial_count = len(workflow_engine.active_workflows)
             assert initial_count >= 5
             
             # Test cleanup
-            workflow_engine.cleanup_completed_requests(max_age_seconds=0)  # Will become cleanup_completed_workflows
+            workflow_engine.cleanup_completed_requests(max_age_seconds=0)
             
             # Verify cleanup executed without errors
-            final_count = len(workflow_engine.request_contexts)
+            final_count = len(workflow_engine.active_workflows)
             assert final_count <= initial_count
     
     def test_workflow_engine_consolidation_benefits(self, workflow_engine):
@@ -316,13 +304,13 @@ class TestWorkflowEngine:
         # Test unified interface benefits
         
         # 1. Single point of workflow management
-        assert hasattr(workflow_engine, 'handle_request')  # Will become start_workflow
-        assert hasattr(workflow_engine, 'pause_request')   # Will become pause_workflow
-        assert hasattr(workflow_engine, 'resume_request')  # Will become resume_workflow
+        assert hasattr(workflow_engine, 'handle_request')
+        assert hasattr(workflow_engine, 'pause_workflow')
+        assert hasattr(workflow_engine, 'resume_workflow')
         
         # 2. Integrated state management
-        assert hasattr(workflow_engine, 'request_contexts')  # Will become active_workflows
-        assert hasattr(workflow_engine, 'get_request_status')  # Will become get_workflow_status
+        assert hasattr(workflow_engine, 'active_workflows')
+        assert hasattr(workflow_engine, 'get_request_status')
         
         # 3. Universal Agent integration
         assert hasattr(workflow_engine, 'universal_agent')
@@ -359,52 +347,42 @@ class TestWorkflowEngineConsolidation:
     
     def test_consolidated_functionality_requirements(self, mock_llm_factory, mock_message_bus):
         """Test that consolidated WorkflowEngine meets all requirements."""
-        # Create both components to test consolidation requirements
-        request_manager = RequestManager(mock_llm_factory, mock_message_bus)
-        task_scheduler = TaskScheduler(request_manager, mock_message_bus, max_concurrent_tasks=5)
+        # Create WorkflowEngine to test consolidated functionality
+        workflow_engine = WorkflowEngine(mock_llm_factory, mock_message_bus, max_concurrent_tasks=5)
         
-        # Test RequestManager functionality that should be preserved
-        rm_capabilities = [
-            'handle_request',      # → start_workflow
-            'pause_request',       # → pause_workflow  
-            'resume_request',      # → resume_workflow
-            'delegate_task',       # → _execute_dag_parallel (internal)
-            'get_request_status',  # → get_workflow_status
-            'get_request_context', # → get_workflow_context
-            'handle_task_error',   # → preserved
-            '_determine_role_from_agent_id',  # → preserved
-            '_determine_llm_type_for_role'    # → preserved
+        # Test consolidated functionality that should be preserved
+        wf_capabilities = [
+            'handle_request',
+            'pause_workflow',
+            'resume_workflow',
+            'delegate_task',
+            'get_request_status',
+            'get_request_context',
+            'handle_task_error',
+            '_determine_role_from_agent_id',
+            '_determine_llm_type_for_role',
+            'schedule_task',
+            '_process_task_queue',
+            'start_workflow_engine',
+            'stop_workflow_engine',
+            'pause_request',
+            'resume_request',
+            'get_workflow_metrics',
+            'handle_task_completion'
         ]
         
-        for capability in rm_capabilities:
-            assert hasattr(request_manager, capability), f"RequestManager missing {capability}"
-        
-        # Test TaskScheduler functionality that should be integrated
-        ts_capabilities = [
-            'schedule_task',         # → integrated into _execute_dag_parallel
-            '_process_task_queue',   # → integrated into _execute_dag_parallel
-            'start',                 # → integrated into start_workflow
-            'stop',                  # → integrated into stop_workflow
-            'pause',                 # → integrated into pause_workflow
-            'resume',                # → integrated into resume_workflow
-            'get_metrics',           # → integrated into get_workflow_metrics
-            'handle_task_completion', # → preserved
-            'handle_task_error'      # → consolidated with RequestManager version
-        ]
-        
-        for capability in ts_capabilities:
-            assert hasattr(task_scheduler, capability), f"TaskScheduler missing {capability}"
+        for capability in wf_capabilities:
+            assert hasattr(workflow_engine, capability), f"WorkflowEngine missing {capability}"
         
         # Test data structures that should be consolidated
-        assert hasattr(request_manager, 'request_contexts')  # → active_workflows
-        assert hasattr(task_scheduler, 'task_queue')         # → integrated into WorkflowEngine
-        assert hasattr(task_scheduler, 'running_tasks')      # → integrated into WorkflowEngine
-        assert hasattr(task_scheduler, 'max_concurrent_tasks')  # → preserved
+        assert hasattr(workflow_engine, 'active_workflows')
+        assert hasattr(workflow_engine, 'task_queue')
+        assert hasattr(workflow_engine, 'running_tasks')
+        assert hasattr(workflow_engine, 'max_concurrent_tasks')
     
     def test_priority_queue_integration(self, mock_llm_factory, mock_message_bus):
-        """Test priority queue integration from TaskScheduler."""
-        request_manager = RequestManager(mock_llm_factory, mock_message_bus)
-        task_scheduler = TaskScheduler(request_manager, mock_message_bus)
+        """Test priority queue integration in WorkflowEngine."""
+        workflow_engine = WorkflowEngine(mock_llm_factory, mock_message_bus)
         
         # Test priority queue functionality
         mock_context = Mock(spec=TaskContext)
@@ -414,39 +392,28 @@ class TestWorkflowEngineConsolidation:
         mock_task2.task_id = "low_priority_task"
         
         # Schedule tasks with different priorities
-        task_scheduler.schedule_task(mock_context, mock_task1, TaskPriority.HIGH)
-        task_scheduler.schedule_task(mock_context, mock_task2, TaskPriority.LOW)
+        workflow_engine.schedule_task(mock_context, mock_task1, TaskPriority.HIGH)
+        workflow_engine.schedule_task(mock_context, mock_task2, TaskPriority.LOW)
         
         # Verify priority queue ordering
-        assert len(task_scheduler.task_queue) == 2
+        assert len(workflow_engine.task_queue) == 2
         
         # High priority task should be first
-        first_task = task_scheduler.task_queue[0]
+        first_task = workflow_engine.task_queue[0]
         assert first_task.priority == TaskPriority.HIGH
     
     def test_message_bus_subscription_consolidation(self, mock_llm_factory, mock_message_bus):
-        """Test consolidated message bus subscriptions."""
-        request_manager = RequestManager(mock_llm_factory, mock_message_bus)
-        task_scheduler = TaskScheduler(request_manager, mock_message_bus)
+        """Test consolidated message bus subscriptions in WorkflowEngine."""
+        workflow_engine = WorkflowEngine(mock_llm_factory, mock_message_bus)
         
-        # Verify RequestManager subscriptions
-        rm_calls = mock_message_bus.subscribe.call_args_list
-        rm_message_types = [call[0][1] for call in rm_calls if len(call[0]) > 1]
+        # Verify WorkflowEngine subscriptions
+        wf_calls = mock_message_bus.subscribe.call_args_list
+        wf_message_types = [call[0][1] for call in wf_calls if len(call[0]) > 1]
         
-        # Should subscribe to INCOMING_REQUEST
-        assert MessageType.INCOMING_REQUEST in rm_message_types
-        
-        # Reset mock for TaskScheduler
-        mock_message_bus.subscribe.reset_mock()
-        
-        # TaskScheduler should subscribe to TASK_RESPONSE and AGENT_ERROR
-        ts_calls = mock_message_bus.subscribe.call_args_list
-        ts_message_types = [call[0][1] for call in ts_calls if len(call[0]) > 1]
-        
-        # Verify TaskScheduler subscriptions
-        expected_ts_types = [MessageType.TASK_RESPONSE, MessageType.AGENT_ERROR]
-        for msg_type in expected_ts_types:
-            assert msg_type in ts_message_types or len(ts_calls) == 2  # Allow for different subscription patterns
+        # Should subscribe to all necessary message types
+        expected_types = [MessageType.INCOMING_REQUEST, MessageType.TASK_RESPONSE, MessageType.AGENT_ERROR]
+        for msg_type in expected_types:
+            assert msg_type in wf_message_types or len(wf_calls) >= 3  # Allow for different subscription patterns
 
 
 if __name__ == "__main__":
