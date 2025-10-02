@@ -4,7 +4,6 @@ import time
 from typing import Optional, List
 from pathlib import Path
 from supervisor.request_manager import RequestManager, RequestMetadata
-from supervisor.task_scheduler import TaskScheduler
 from supervisor.metrics_manager import MetricsManager
 from supervisor.config_manager import ConfigManager
 from supervisor.logging_config import configure_logging
@@ -27,7 +26,7 @@ class Supervisor:
     config: Optional[SupervisorConfig] = None
     message_bus: Optional[MessageBus] = None
     request_manager: Optional[RequestManager] = None
-    task_scheduler: Optional[TaskScheduler] = None
+    task_scheduler: Optional[RequestManager] = None  # Alias for WorkflowEngine
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
 
@@ -104,18 +103,18 @@ class Supervisor:
             
         logger.info("LLM factory initialized with Universal Agent support.")
 
-        # Initialize RequestManager with LLMFactory (Universal Agent architecture)
-        self.request_manager = RequestManager(self.llm_factory, self.message_bus)
-        logger.info("Request manager initialized with Universal Agent.")
-
-        # Initialize TaskScheduler for advanced task management
-        self.task_scheduler = TaskScheduler(
-            request_manager=self.request_manager,
+        # Initialize WorkflowEngine (consolidated RequestManager + TaskScheduler)
+        self.request_manager = RequestManager(
+            llm_factory=self.llm_factory,
             message_bus=self.message_bus,
             max_concurrent_tasks=5,
             checkpoint_interval=300
         )
-        logger.info("Task scheduler initialized.")
+        logger.info("WorkflowEngine initialized (consolidated RequestManager + TaskScheduler).")
+
+        # Create TaskScheduler alias for backward compatibility
+        self.task_scheduler = self.request_manager
+        logger.info("TaskScheduler alias created for backward compatibility.")
 
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
@@ -134,8 +133,8 @@ class Supervisor:
             self.message_bus.start()
             logger.info("Message bus started.")
             
-            self.task_scheduler.start()
-            logger.info("Task scheduler started.")
+            self.request_manager.start_workflow_engine()
+            logger.info("WorkflowEngine started.")
 
             logger.info("Supervisor started successfully.")
         except Exception as e:
@@ -149,8 +148,8 @@ class Supervisor:
         """
         try:
             logger.info("Stopping Supervisor...")
-            self.task_scheduler.stop()
-            logger.info("Task scheduler stopped.")
+            self.request_manager.stop_workflow_engine()
+            logger.info("WorkflowEngine stopped.")
             
             self.message_bus.stop()
             logger.info("Message bus stopped.")
