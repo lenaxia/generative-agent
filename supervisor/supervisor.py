@@ -222,8 +222,8 @@ class Supervisor:
         try:
             status = {
                 "running": self.message_bus.is_running(),
-                "task_scheduler": self.task_scheduler.get_metrics() if self.task_scheduler else None,
-                "universal_agent": self.request_manager.get_universal_agent_status() if self.request_manager else None,
+                "workflow_engine": self.workflow_engine.get_workflow_metrics() if self.workflow_engine else None,
+                "universal_agent": self.workflow_engine.get_universal_agent_status() if self.workflow_engine else None,
                 "metrics": self.metrics_manager.get_metrics(),
             }
             logger.info(f"Retrieved Supervisor status: {status}")
