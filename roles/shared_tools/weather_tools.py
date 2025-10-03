@@ -210,6 +210,7 @@ def zipcode_to_coordinates(zipcode: str, country_code: str = "US") -> Dict[str, 
         raise
 
 
+@tool
 def get_weather_forecast(location: str, days: int = 7) -> Dict[str, Any]:
     """
     Get extended weather forecast for a location.

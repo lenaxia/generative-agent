@@ -15,6 +15,7 @@ from common.task_context import TaskContext, ExecutionState
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.universal_agent import UniversalAgent
 from llm_provider.mcp_client import MCPClientManager
+from llm_provider.role_registry import RoleRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,9 @@ class WorkflowEngine:
     def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus,
                  max_retries: int = 3, retry_delay: float = 1.0,
                  max_concurrent_tasks: int = 5, checkpoint_interval: int = 300,
-                 mcp_config_path: Optional[str] = None):
+                 mcp_config_path: Optional[str] = None, roles_directory: str = "roles"):
         """
-        Initialize WorkflowEngine with Universal Agent, task scheduling, and MCP integration.
+        Initialize WorkflowEngine with Universal Agent, task scheduling, and dynamic role support.
         
         Args:
             llm_factory: LLMFactory for creating Universal Agent
@@ -83,6 +84,7 @@ class WorkflowEngine:
             max_concurrent_tasks: Maximum concurrent task execution
             checkpoint_interval: Checkpoint creation interval in seconds
             mcp_config_path: Optional path to MCP configuration file
+            roles_directory: Directory containing role definitions
         """
         self.llm_factory = llm_factory
         self.message_bus = message_bus
@@ -90,8 +92,11 @@ class WorkflowEngine:
         # Initialize MCP manager
         self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
         
-        # Create Universal Agent with MCP support
-        self.universal_agent = UniversalAgent(llm_factory, mcp_manager=self.mcp_manager)
+        # Initialize role registry
+        self.role_registry = RoleRegistry(roles_directory)
+        
+        # Create Universal Agent with MCP and role support
+        self.universal_agent = UniversalAgent(llm_factory, role_registry=self.role_registry, mcp_manager=self.mcp_manager)
         
         # Workflow tracking
         self.active_workflows: Dict[str, TaskContext] = {}
@@ -390,70 +395,38 @@ class WorkflowEngine:
             
         Returns:
             TaskContext: Task context with planned tasks
+            
+        Raises:
+            Exception: If task planning fails - no fallbacks, return error to user
         """
-        try:
-            # Use existing planning tools via Universal Agent
-            # This follows the architecture: WorkflowEngine → Universal Agent → @tool functions
-            from llm_provider.planning_tools import create_task_plan
-            
-            # Available agents for planning tool
-            available_agents = [
-                "planning_agent (Task planning and complex reasoning)",
-                "search_agent (Web search and information retrieval)",
-                "weather_agent (Weather information and forecasts)",
-                "summarizer_agent (Text summarization and key point extraction)",
-                "slack_agent (Slack messaging and team communication)"
-            ]
-            
-            # Use the existing planning tool to create TaskGraph
-            planning_result = create_task_plan(
-                instruction=instruction,
-                available_agents=available_agents,
-                request_id=request_id
-            )
-            
-            # Extract TaskGraph from planning result
-            task_graph = planning_result.get("task_graph")
-            tasks = planning_result.get("tasks", [])
-            dependencies = planning_result.get("dependencies", [])
-            
-            if task_graph and tasks:
-                # Convert TaskGraph to TaskContext using from_tasks method
-                task_context = TaskContext.from_tasks(
-                    tasks=tasks,
-                    dependencies=dependencies,
-                    request_id=request_id
-                )
-                return task_context
-            else:
-                raise ValueError("Planning tool did not return valid tasks and task_graph")
-            
-        except Exception as e:
-            logger.error(f"Error creating task plan: {e}")
-            
-            # Create a fallback task context for error cases
-            try:
-                tasks = [
-                    TaskDescription(
-                        task_name="Handle Error",
-                        agent_id="planning_agent", 
-                        task_type="ErrorHandling",
-                        prompt=f"Handle error: {str(e)}"
-                    )
-                ]
-                
-                task_context = TaskContext.from_tasks(
-                    tasks=tasks,
-                    dependencies=[],
-                    request_id=request_id
-                )
-                
-                task_context.add_system_message(f"Planning failed, created error handling task: {str(e)}")
-                return task_context
-                
-            except Exception as fallback_error:
-                logger.error(f"Error creating fallback task context: {fallback_error}")
-                raise e  # Re-raise original error if fallback fails
+        # Use existing planning tools via Universal Agent
+        # This follows the architecture: WorkflowEngine → Universal Agent → @tool functions
+        from llm_provider.planning_tools import create_task_plan
+        
+        # Use the dynamic planning tool to create TaskGraph
+        planning_result = create_task_plan(
+            instruction=instruction,
+            llm_factory=self.llm_factory,
+            request_id=request_id
+        )
+        
+        # Extract TaskGraph from planning result
+        task_graph = planning_result.get("task_graph")
+        tasks = planning_result.get("tasks", [])
+        dependencies = planning_result.get("dependencies", [])
+        
+        if not task_graph or not tasks:
+            raise ValueError("Planning tool did not return valid tasks and task_graph")
+        
+        # Convert TaskGraph to TaskContext using from_tasks method
+        task_context = TaskContext.from_tasks(
+            tasks=tasks,
+            dependencies=dependencies,
+            request_id=request_id
+        )
+        
+        logger.info(f"Successfully created task plan with {len(tasks)} tasks")
+        return task_context
     
     def delegate_task(self, task_context: TaskContext, task: TaskNode):
         """
@@ -471,19 +444,28 @@ class WorkflowEngine:
             task.status = TaskStatus.RUNNING
             task.start_time = time.time()
             
-            # Determine role and LLM type from agent_id
-            role = self._determine_role_from_agent_id(task.agent_id)
-            llm_type = self._determine_llm_type_for_role(role)
+            # Use agent_id as role name directly (selected by planning LLM)
+            role_name = task.agent_id
             
-            logger.info(f"Delegating task '{task.task_id}' to role '{role}' with model type '{llm_type.value}'")
+            # Get LLM type from task node (set by planning LLM)
+            llm_type_str = getattr(task, 'llm_type', 'DEFAULT')
+            try:
+                from llm_provider.factory import LLMType
+                llm_type = LLMType(llm_type_str)
+            except (ValueError, AttributeError):
+                logger.warning(f"Invalid LLM type '{llm_type_str}' for task '{task.task_id}', using DEFAULT")
+                llm_type = LLMType.DEFAULT
+            
+            logger.info(f"Delegating task '{task.task_id}' to role '{role_name}' with model type '{llm_type.value}'")
             
             # Prepare task execution context
             execution_config = task_context.prepare_task_execution(task.task_id)
             
             # Execute task using Universal Agent
+            # If role is "None", Universal Agent will handle dynamic role generation
             result = self.universal_agent.execute_task(
                 instruction=execution_config.get("prompt", getattr(task, "prompt", "No prompt available")),
-                role=role,
+                role=role_name,
                 llm_type=llm_type,
                 context=task_context
             )
@@ -511,46 +493,29 @@ class WorkflowEngine:
             logger.error(f"Error delegating task '{task.task_id}': {e}")
             self.handle_task_error(task_context, task, str(e))
     
-    def _determine_role_from_agent_id(self, agent_id: str) -> str:
+    def _get_llm_type_for_role(self, role_name: str) -> LLMType:
         """
-        Map existing agent_id values to roles for Universal Agent.
+        Get LLM type from role definition, defaulting to DEFAULT if not specified.
         
         Args:
-            agent_id: The agent ID from the task
+            role_name: The role name
             
         Returns:
-            str: The corresponding role name
+            LLMType: Appropriate semantic model type
         """
-        agent_to_role_map = {
-            "planning_agent": "planning",
-            "search_agent": "search", 
-            "weather_agent": "weather",
-            "summarizer_agent": "summarizer",
-            "slack_agent": "slack"
-        }
-        return agent_to_role_map.get(agent_id, "default")
-    
-    def _determine_llm_type_for_role(self, role: str) -> LLMType:
-        """
-        Map roles to appropriate LLM types for cost/performance optimization.
+        # Try to get from role definition first
+        role_def = self.role_registry.get_role(role_name)
+        if role_def and 'model_config' in role_def.config:
+            model_type = role_def.config['model_config'].get('model_type')
+            if model_type:
+                try:
+                    return LLMType(model_type.upper())
+                except ValueError:
+                    logger.warning(f"Invalid model type '{model_type}' in role '{role_name}', using DEFAULT")
         
-        Args:
-            role: The agent role
-            
-        Returns:
-            LLMType: Recommended semantic model type
-        """
-        role_to_llm_type = {
-            "planning": LLMType.STRONG,    # Complex reasoning needs powerful model
-            "analysis": LLMType.STRONG,    # Complex analysis needs powerful model
-            "coding": LLMType.STRONG,      # Code generation needs powerful model
-            "search": LLMType.WEAK,        # Simple search can use cheaper model
-            "weather": LLMType.WEAK,       # Simple lookup
-            "summarizer": LLMType.DEFAULT, # Balanced model for text processing
-            "slack": LLMType.DEFAULT,      # Conversational tasks
-            "default": LLMType.DEFAULT     # Default fallback
-        }
-        return role_to_llm_type.get(role, LLMType.DEFAULT)
+        # Default to DEFAULT model type - let planning agent decide complexity
+        logger.info(f"No model type specified for role '{role_name}', using DEFAULT")
+        return LLMType.DEFAULT
     
     def _is_simple_request(self, instruction: str) -> bool:
         """

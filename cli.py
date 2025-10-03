@@ -180,7 +180,7 @@ def run_interactive_mode(supervisor: Supervisor):
         print("💬 Default: Enter any text to execute as a workflow")
         print("🔧 Slash commands:")
         print("  /status   - Show system status and metrics")
-        print("  /stop     - Stop the system and exit")
+        print("  /exit     - Exit the system and exit")
         print("  /help     - Show this help message")
         print("=" * 60)
         
@@ -192,7 +192,7 @@ def run_interactive_mode(supervisor: Supervisor):
                 if user_input.startswith("/"):
                     command = user_input[1:].lower()
                     
-                    if command == "stop":
+                    if command == "exit":
                         logger.info("Stopping system...")
                         supervisor.stop()
                         logger.info("✅ System stopped successfully")
@@ -204,7 +204,7 @@ def run_interactive_mode(supervisor: Supervisor):
                     elif command == "help":
                         print("\n🔧 Available Commands:")
                         print("  /status   - Show system status and metrics")
-                        print("  /stop     - Stop the system and exit")
+                        print("  /exit     - Stop the system and exit")
                         print("  /help     - Show this help message")
                         print("💬 Default: Any other text will be executed as a workflow")
                         

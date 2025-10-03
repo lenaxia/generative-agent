@@ -37,6 +37,7 @@ class TaskDescription(BaseModel):
     tool_id: Optional[str] = Field(None, description="Identifier of the tool responsible for executing the task (for compatibility with TaskGraphV2)")
     task_type: str = Field(..., description="Type of the task, e.g., 'fetch_data', 'process_data'")
     prompt: str = Field(..., description="The entire prompt to be sent to the agent. This should contain enough information for the agent to act. Do not use placeholders or templating")
+    llm_type: Optional[str] = Field("DEFAULT", description="LLM type for task execution: WEAK, DEFAULT, or STRONG")
     include_full_history: bool = Field(False, description="This should only be true when a full task history is absolutely needed. Most of the time it should be false and only inbound edge results will be included")
 
 class TaskDependency(BaseModel):
@@ -181,7 +182,8 @@ class TaskGraph:
                 status=TaskStatus.PENDING,
                 task_type=task.task_type,
                 prompt=task.prompt,
-                include_full_history=task.include_full_history
+                include_full_history=task.include_full_history,
+                llm_type=getattr(task, 'llm_type', 'DEFAULT')  # Transfer llm_type from TaskDescription
             )
             self.nodes[task_id] = node
             self.task_name_map[task.task_name] = task_id

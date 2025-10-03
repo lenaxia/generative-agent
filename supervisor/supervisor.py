@@ -99,13 +99,52 @@ class Supervisor:
 
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
-            llm_class_str = provider_config.get("llm_class", "DEFAULT")
-            if isinstance(llm_class_str, str):
-                llm_class = LLMType[llm_class_str.upper()]
+            # Handle the new YAML structure: llm_providers.bedrock.models.WEAK/DEFAULT/STRONG
+            if 'models' in provider_config:
+                # New structure: bedrock/openai with models mapping
+                models = provider_config['models']
+                parameters = provider_config.get('parameters', {})
+                
+                for llm_type_str, model_id in models.items():
+                    try:
+                        llm_type = LLMType[llm_type_str.upper()]
+                        
+                        # Create appropriate config object based on provider
+                        if provider_name.lower() == 'bedrock':
+                            from config.bedrock_config import BedrockConfig
+                            config_obj = BedrockConfig(
+                                name=f"{provider_name}_{llm_type_str}",
+                                model_id=model_id,
+                                region=parameters.get('region', 'us-west-2'),
+                                temperature=parameters.get('temperature', 0.3),
+                                max_tokens=parameters.get('max_tokens', 4096)
+                            )
+                        elif provider_name.lower() == 'openai':
+                            from config.openai_config import OpenAIConfig
+                            config_obj = OpenAIConfig(
+                                name=f"{provider_name}_{llm_type_str}",
+                                model_id=model_id,
+                                temperature=parameters.get('temperature', 0.3),
+                                max_tokens=parameters.get('max_tokens', 4096)
+                            )
+                        else:
+                            logger.warning(f"Unknown provider type: {provider_name}")
+                            continue
+                            
+                        self.llm_factory.add_config(llm_type, config_obj)
+                        logger.info(f"Added {llm_type.value} config for {provider_name}: {model_id}")
+                        
+                    except KeyError:
+                        logger.warning(f"Unknown LLM type: {llm_type_str}")
+                        continue
             else:
-                # If it's already an LLMType enum, use it directly
-                llm_class = llm_class_str
-            self.llm_factory.add_config(llm_class, provider_config)
+                # Legacy structure: direct provider config with llm_class
+                llm_class_str = provider_config.get("llm_class", "DEFAULT")
+                if isinstance(llm_class_str, str):
+                    llm_class = LLMType[llm_class_str.upper()]
+                else:
+                    llm_class = llm_class_str
+                self.llm_factory.add_config(llm_class, provider_config)
             
         logger.info("LLM factory initialized with Universal Agent support.")
 

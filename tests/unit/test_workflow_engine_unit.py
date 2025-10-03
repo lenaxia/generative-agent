@@ -120,7 +120,7 @@ class TestWorkflowEngineUnit:
             assert len(engine.running_tasks) == 0
             
             # Verify Universal Agent was created
-            mock_ua_class.assert_called_once_with(mock_llm_factory, mcp_manager=engine.mcp_manager)
+            mock_ua_class.assert_called_once_with(mock_llm_factory, role_registry=engine.role_registry, mcp_manager=engine.mcp_manager)
             
             # Verify message bus subscriptions
             expected_calls = [

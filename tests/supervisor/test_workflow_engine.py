@@ -351,6 +351,7 @@ class TestWorkflowEngineConsolidation:
         workflow_engine = WorkflowEngine(mock_llm_factory, mock_message_bus, max_concurrent_tasks=5)
         
         # Test consolidated functionality that should be preserved
+        # Note: _determine_role_from_agent_id and _determine_llm_type_for_role were removed in new architecture
         wf_capabilities = [
             'handle_request',
             'pause_workflow',
@@ -359,8 +360,6 @@ class TestWorkflowEngineConsolidation:
             'get_request_status',
             'get_request_context',
             'handle_task_error',
-            '_determine_role_from_agent_id',
-            '_determine_llm_type_for_role',
             'schedule_task',
             '_process_task_queue',
             'start_workflow_engine',

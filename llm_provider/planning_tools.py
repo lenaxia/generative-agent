@@ -1,13 +1,15 @@
 """
-Planning tools for StrandsAgent - converted from PlanningAgent.
+Planning tools for StrandsAgent with Dynamic Role Support.
 
-These tools replace the LangChain-based PlanningAgent with @tool decorated functions
-that can be used by the Universal Agent for task planning and decomposition.
+These tools create task graphs using dynamically loaded roles instead of hardcoded agents.
+The planning LLM selects appropriate roles based on available role definitions.
 """
 
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, field_validator
 from common.task_graph import TaskGraph, TaskDescription, TaskDependency
+from llm_provider.role_registry import RoleRegistry
+from llm_provider.factory import LLMFactory, LLMType
 import json
 import logging
 
@@ -37,80 +39,49 @@ class PlanningOutput(BaseModel):
         return dependencies
 
 
-def create_task_plan(instruction: str, available_agents: List[str] = None, request_id: str = "default") -> Dict[str, Any]:
+def create_task_plan(instruction: str, llm_factory: LLMFactory = None, request_id: str = "default") -> Dict[str, Any]:
     """
-    Create a task plan from user instruction - converted from PlanningAgent.
+    Create a task plan using dynamic role selection via LLM.
     
-    This tool breaks down complex tasks into a sequence of smaller subtasks
-    and creates a task graph to accomplish the given instruction.
+    This tool uses an LLM to intelligently break down tasks and select
+    appropriate roles from the dynamic role registry.
     
     Args:
         instruction: The user instruction to create a plan for
-        available_agents: List of available agent IDs and descriptions
+        llm_factory: LLM factory for role selection (injected by system)
         request_id: Request ID for tracking
         
     Returns:
         Dict containing the task graph with tasks and dependencies
     """
-    logger.info(f"Creating task plan for instruction: {instruction}")
+    logger.info(f"Creating dynamic task plan for instruction: {instruction}")
     
-    # Default available agents if none provided
-    if available_agents is None:
-        available_agents = [
-            "search_agent (Search the web for information)",
-            "weather_agent (Get weather information for locations)",
-            "summarizer_agent (Summarize text content)",
-            "slack_agent (Send messages to Slack channels)"
+    # Get available roles from registry
+    role_registry = RoleRegistry.get_global_registry()
+    available_roles = role_registry.get_role_summaries()
+    
+    if not available_roles:
+        logger.warning("No roles available, creating generic task")
+        # Fallback to generic task if no roles available
+        tasks = [
+            TaskDescription(
+                task_id="task_1",
+                task_name=f"Execute: {instruction[:50]}...",
+                agent_id="default",
+                task_type="execution",
+                prompt=instruction,
+                status="pending"
+            )
         ]
-    
-    # Intelligently determine the best agent based on the instruction
-    def determine_best_agent(instruction: str) -> str:
-        instruction_lower = instruction.lower()
-        
-        # Weather patterns
-        if any(word in instruction_lower for word in ["weather", "temperature", "forecast", "rain", "snow", "sunny", "cloudy"]):
-            return "weather_agent"
-        
-        # Math/calculation patterns
-        elif any(word in instruction_lower for word in ["calculate", "compute", "add", "subtract", "multiply", "divide", "what is", "+", "-", "*", "/"]):
-            return "planning_agent"  # Planning agent has calculator tools
-        
-        # Search patterns
-        elif any(word in instruction_lower for word in ["search", "find", "look up", "google", "information about"]):
-            return "search_agent"
-        
-        # Summarization patterns
-        elif any(word in instruction_lower for word in ["summarize", "summary", "key points", "tldr"]):
-            return "summarizer_agent"
-        
-        # Slack patterns
-        elif any(word in instruction_lower for word in ["slack", "send message", "notify", "message"]):
-            return "slack_agent"
-        
-        # Default to search agent for general tasks
-        else:
-            return "search_agent"
-    
-    # Create intelligent task plan
-    best_agent = determine_best_agent(instruction)
-    tasks = [
-        TaskDescription(
-            task_id="task_1",
-            task_name=f"Execute: {instruction[:50]}...",
-            agent_id=best_agent,
-            task_type="execution",
-            prompt=instruction,
-            status="pending"
-        )
-    ]
-    
-    # No dependencies for single task
-    dependencies = []
+        dependencies = []
+    else:
+        # Use LLM to create intelligent task plan with role selection
+        tasks, dependencies = _create_llm_task_plan(instruction, available_roles, llm_factory)
     
     # Create task graph
     task_graph = TaskGraph(tasks=tasks, dependencies=dependencies, request_id=request_id)
     
-    logger.info(f"Created task plan with {len(tasks)} tasks and {len(dependencies)} dependencies")
+    logger.info(f"Created dynamic task plan with {len(tasks)} tasks and {len(dependencies)} dependencies")
     
     return {
         "task_graph": task_graph,
@@ -118,6 +89,121 @@ def create_task_plan(instruction: str, available_agents: List[str] = None, reque
         "dependencies": dependencies,
         "request_id": request_id
     }
+
+
+def _create_llm_task_plan(instruction: str, available_roles: List[Dict], llm_factory: LLMFactory) -> tuple:
+    """Use LLM to create intelligent task plan with role selection."""
+    
+    # Format roles for LLM prompt
+    roles_text = "\n".join([
+        f"- {role['name']}: {role['description']}\n  When to use: {role['when_to_use']}"
+        for role in available_roles
+    ])
+    
+    # Create planning prompt with EBNF grammar for strict JSON output
+    planning_prompt = f"""
+You are a planning agent responsible for breaking down complex tasks into subtasks and selecting appropriate roles.
+
+Task: {instruction}
+
+Available roles:
+{roles_text}
+
+Create a task plan by:
+1. Breaking down the task into logical subtasks (if needed)
+2. Selecting the most appropriate role for each subtask from the available roles
+3. If NO appropriate role exists for a subtask, use "None" as the agent_id - this will trigger dynamic role generation
+4. Assign appropriate LLM type based on task complexity: "WEAK" for simple tasks, "DEFAULT" for moderate tasks, "STRONG" for complex reasoning tasks
+5. Creating dependencies between tasks if needed
+
+For simple tasks, you may create just one task. For complex tasks, break them down.
+
+IMPORTANT:
+- Only use roles from the available roles list above
+- If no suitable role exists for a task, use agent_id: "None"
+- Always include llm_type field for each task
+
+OUTPUT MUST CONFORM TO THIS EBNF GRAMMAR FOR JSON:
+
+json        = element ;
+element     = ws , value , ws ;
+value       = object | array | string | number | "true" | "false" | "null" ;
+object      = "{{"  , ws , "}}" | "{{"  , members , "}}" ;
+members     = member , {{ "," , member }} ;
+member      = ws , string , ws , ":" , element ;
+array       = "[" , ws , "]" | "[" , elements , "]" ;
+elements    = element , {{ "," , element }} ;
+string      = "\\"" , characters , "\\"" ;
+ws          = {{ " " | "\\n" | "\\r" | "\\t" }} ;
+
+Your response MUST be valid JSON conforming to this grammar. No markdown, no code blocks, no additional text.
+
+Required JSON structure:
+{{
+    "tasks": [
+        {{
+            "task_id": "task_1",
+            "task_name": "Descriptive name for the task",
+            "agent_id": "selected_role_name_or_None",
+            "task_type": "execution",
+            "prompt": "Specific instruction for this subtask",
+            "llm_type": "WEAK|DEFAULT|STRONG",
+            "status": "pending"
+        }}
+    ],
+    "dependencies": [
+        {{"source": "Descriptive name for the task", "target": "Another task name"}}
+    ]
+}}
+"""
+    
+    try:
+        # Use Universal Agent for planning instead of direct StrandsAgent
+        if llm_factory:
+            # Create Universal Agent for planning
+            from llm_provider.universal_agent import UniversalAgent
+            from llm_provider.role_registry import RoleRegistry
+            
+            # Create temporary Universal Agent for planning
+            role_registry = RoleRegistry.get_global_registry()
+            universal_agent = UniversalAgent(llm_factory, role_registry)
+            
+            # Use Universal Agent with planning role
+            response = universal_agent.execute_task(
+                instruction=planning_prompt,
+                role="planning",
+                llm_type=LLMType.STRONG
+            )
+            
+            # Parse JSON response directly (EBNF grammar should ensure pure JSON)
+            plan_data = json.loads(response.strip())
+            
+            # Create task objects
+            tasks = [TaskDescription(**task) for task in plan_data.get("tasks", [])]
+            
+            # Create dependency objects, filtering out invalid fields
+            dependencies = []
+            for dep in plan_data.get("dependencies", []):
+                # Only include valid TaskDependency fields (source, target, condition)
+                valid_dep = {
+                    "source": dep.get("source"),
+                    "target": dep.get("target")
+                }
+                if "condition" in dep:
+                    valid_dep["condition"] = dep["condition"]
+                dependencies.append(TaskDependency(**valid_dep))
+            
+            return tasks, dependencies
+            
+        else:
+            raise ValueError("No LLM factory available for task planning")
+            
+    except Exception as e:
+        logger.error(f"LLM task planning failed: {e}")
+        raise e  # Re-raise the error instead of using fallback
+
+
+# Removed fallback functions - no more fallbacks, proper error handling instead
 
 
 def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

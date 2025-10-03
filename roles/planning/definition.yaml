@@ -1,0 +1,53 @@
+# Planning Role Definition
+
+# Role Metadata
+role:
+  name: "planning"
+  version: "1.0.0"
+  description: "Specialized role for task planning and decomposition"
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Break down complex tasks into manageable steps
+    - Create detailed task plans with dependencies
+    - Identify required resources and constraints
+    - Provide structured planning output
+    - Coordinate multi-step workflows
+
+# Model Parameters
+model_config:
+  temperature: 0.3              # Balanced for creative planning
+  max_tokens: 4096             # Standard token limit
+  max_context: 128000          # Large context for complex planning
+  top_p: 0.9                   # Focused sampling
+
+# Prompts
+prompts:
+  system: |
+    You are a planning specialist agent. Your role is to:
+    1. Break down complex tasks into manageable steps
+    2. Create detailed task plans with dependencies
+    3. Identify required resources and constraints
+    4. Provide structured planning output
+    Focus on creating clear, actionable plans.
+
+# Tool Configuration
+tools:
+  # Automatic tool selection via LLM
+  automatic: true
+  
+  # Manually specified shared tools
+  shared:
+    - "create_task_plan"
+    - "analyze_task_dependencies"
+    - "validate_task_plan"
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 10
+  timeout_seconds: 300
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

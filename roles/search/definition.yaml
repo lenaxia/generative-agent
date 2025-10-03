@@ -1,0 +1,53 @@
+# Search Role Definition
+
+# Role Metadata
+role:
+  name: "search"
+  version: "1.0.0"
+  description: "Specialized role for web search and information retrieval"
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Search the web for information
+    - Find relevant and accurate information
+    - Summarize search results clearly
+    - Provide source citations
+    - Research topics and gather data
+
+# Model Parameters
+model_config:
+  temperature: 0.2              # Low temperature for factual searches
+  max_tokens: 2048             # Moderate token limit for search results
+  max_context: 64000           # Standard context for search tasks
+  top_p: 0.9                   # Focused sampling
+
+# Prompts
+prompts:
+  system: |
+    You are a search specialist agent. Your role is to:
+    1. Perform web searches for information
+    2. Find relevant and accurate information
+    3. Summarize search results clearly
+    4. Provide source citations
+    Focus on finding the most relevant and up-to-date information.
+
+# Tool Configuration
+tools:
+  # Automatic tool selection via LLM
+  automatic: true
+  
+  # Manually specified shared tools
+  shared:
+    - "web_search"
+    - "search_with_filters"
+    - "format_output"
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 8
+  timeout_seconds: 240
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

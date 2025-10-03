@@ -21,13 +21,29 @@ class TestPlanningTools:
     """Test planning tools functionality."""
 
     def test_create_task_plan_basic(self):
-        """Test basic task plan creation."""
-        instruction = "Search for information about Python programming"
-        result = create_task_plan(instruction)
+        """Test basic task plan creation with mock LLM factory."""
+        from unittest.mock import Mock, patch
+        from llm_provider.factory import LLMFactory
         
-        assert "task_graph" in result
-        assert "tasks" in result
-        assert "dependencies" in result
+        # Create mock LLM factory
+        mock_factory = Mock(spec=LLMFactory)
+        mock_model = Mock()
+        mock_factory.create_strands_model.return_value = mock_model
+        
+        # Mock the StrandsAgent to return our desired JSON response
+        with patch('strands.Agent') as mock_agent_class:
+            mock_agent = Mock()
+            mock_response = Mock()
+            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Search for Python info", "agent_id": "search", "task_type": "execution", "prompt": "Search for information about Python programming", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
+            mock_agent.return_value = mock_response
+            mock_agent_class.return_value = mock_agent
+            
+            instruction = "Search for information about Python programming"
+            result = create_task_plan(instruction, mock_factory)
+            
+            assert "task_graph" in result
+            assert "tasks" in result
+            assert "dependencies" in result
         assert "request_id" in result
         
         # Check task graph
@@ -38,26 +54,39 @@ class TestPlanningTools:
         # Check task details - get the first (and only) task node
         task_node = list(task_graph.nodes.values())[0]
         task = result["tasks"][0]  # Get from the tasks list in result
-        assert task.task_name.startswith("Execute:")
-        assert task.agent_id == "search_agent"
+        assert task.task_name == "Search for Python info"
+        assert task.agent_id == "search"
         assert task.task_type == "execution"
         assert task.prompt == instruction
 
     def test_create_task_plan_with_custom_agents(self):
-        """Test task plan creation with custom available agents."""
-        instruction = "Get weather for Seattle"
-        available_agents = [
-            "weather_agent (Get weather information)",
-            "search_agent (Search for information)"
-        ]
+        """Test task plan creation with mock LLM factory."""
+        from unittest.mock import Mock, patch
+        from llm_provider.factory import LLMFactory
         
-        result = create_task_plan(instruction, available_agents, "test_request")
+        # Create mock LLM factory
+        mock_factory = Mock(spec=LLMFactory)
+        mock_model = Mock()
+        mock_factory.create_strands_model.return_value = mock_model
         
-        assert result["request_id"] == "test_request"
-        assert len(result["tasks"]) == 1
-        
-        task = result["tasks"][0]
-        assert task.prompt == instruction
+        # Mock the StrandsAgent to return our desired JSON response
+        with patch('strands.Agent') as mock_agent_class:
+            mock_agent = Mock()
+            mock_response = Mock()
+            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Get weather info", "agent_id": "weather", "task_type": "execution", "prompt": "Get weather for Seattle", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
+            mock_agent.return_value = mock_response
+            mock_agent_class.return_value = mock_agent
+            
+            instruction = "Get weather for Seattle"
+            result = create_task_plan(instruction, mock_factory, "test_request")
+            
+            assert result["request_id"] == "test_request"
+            assert len(result["tasks"]) == 1
+            
+            task = result["tasks"][0]
+            assert task.prompt == instruction
+            assert task.agent_id == "weather"
+            assert task.llm_type == "WEAK"
 
     def test_analyze_task_dependencies_empty(self):
         """Test dependency analysis with empty task list."""
@@ -251,17 +280,37 @@ class TestPlanningTools:
 
     def test_create_task_plan_integration_with_task_graph(self):
         """Test that created task plan integrates properly with TaskGraph."""
-        instruction = "Analyze market trends"
-        result = create_task_plan(instruction, request_id="integration_test")
+        from unittest.mock import Mock, patch
+        from llm_provider.factory import LLMFactory
         
-        task_graph = result["task_graph"]
+        # Create mock LLM factory
+        mock_factory = Mock(spec=LLMFactory)
+        mock_model = Mock()
+        mock_factory.create_strands_model.return_value = mock_model
         
-        # Verify TaskGraph methods work
-        assert task_graph.get_entrypoint_nodes() is not None
-        assert task_graph.get_terminal_nodes() is not None
-        
-        # Verify task graph has correct request_id
-        assert task_graph.request_id == "integration_test"
+        # Mock the StrandsAgent to return our desired JSON response
+        with patch('strands.Agent') as mock_agent_class:
+            mock_agent = Mock()
+            mock_response = Mock()
+            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Analyze market trends", "agent_id": "analysis", "task_type": "execution", "prompt": "Analyze market trends", "llm_type": "DEFAULT", "status": "pending"}], "dependencies": []}'
+            mock_agent.return_value = mock_response
+            mock_agent_class.return_value = mock_agent
+            
+            instruction = "Analyze market trends"
+            result = create_task_plan(instruction, mock_factory, "integration_test")
+            
+            task_graph = result["task_graph"]
+            
+            # Verify TaskGraph methods work
+            assert task_graph.get_entrypoint_nodes() is not None
+            assert task_graph.get_terminal_nodes() is not None
+            
+            # Verify task graph has correct request_id
+            assert task_graph.request_id == "integration_test"
+            
+            # Verify llm_type is properly transferred
+            node = list(task_graph.nodes.values())[0]
+            assert node.llm_type == "DEFAULT"
 
     def test_planning_tools_no_langchain_dependencies(self):
         """Test that planning tools don't import LangChain."""

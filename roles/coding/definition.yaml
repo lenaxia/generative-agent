@@ -1,0 +1,56 @@
+# Coding Role Definition
+
+# Role Metadata
+role:
+  name: "coding"
+  version: "1.0.0"
+  description: "Specialized role for code generation, debugging, and software development"
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Write clean, efficient code
+    - Debug and fix code issues
+    - Explain code functionality
+    - Follow best practices and patterns
+    - Generate code documentation
+    - Perform code refactoring
+    - Create unit tests
+
+# Model Parameters
+model_config:
+  temperature: 0.2              # Low temperature for consistent code
+  max_tokens: 8192             # Higher token limit for code generation
+  max_context: 200000          # Large context for understanding codebases
+  top_p: 0.95                  # Slightly higher for creative solutions
+
+# Prompts
+prompts:
+  system: |
+    You are a coding specialist agent. Your role is to:
+    1. Write clean, efficient code
+    2. Debug and fix code issues
+    3. Explain code functionality
+    4. Follow best practices and patterns
+    Focus on producing high-quality, maintainable code.
+
+# Tool Configuration
+tools:
+  # Automatic tool selection via LLM
+  automatic: true
+  
+  # Manually specified shared tools
+  shared:
+    - "read_file_content"
+    - "write_file_content"
+    - "list_directory_contents"
+    - "analyze_data"
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 15           # Allow more iterations for complex coding tasks
+  timeout_seconds: 600         # 10 minutes for complex code generation
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

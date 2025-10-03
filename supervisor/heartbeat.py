@@ -293,9 +293,15 @@ class Heartbeat:
             health_results['mcp_servers'] = mcp_status
             
             # Determine overall health
+            # Only consider 'unhealthy' status as problematic, not 'disabled' services
             overall_health = "healthy"
             for component, status in health_results.items():
-                if status.get('status') != 'healthy':
+                component_status = status.get('status')
+                if component_status == 'unhealthy':
+                    overall_health = "degraded"
+                    break
+                elif component_status not in ['healthy', 'disabled']:
+                    # Handle any unexpected status as degraded
                     overall_health = "degraded"
                     break
             

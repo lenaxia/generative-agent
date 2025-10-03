@@ -34,20 +34,31 @@ llm_providers:
 
 # Universal Agent Configuration
 universal_agent:
-  # Role to LLM type mapping
-  role_llm_mapping:
-    planning: "STRONG"      # Complex reasoning
-    analysis: "STRONG"      # Complex analysis
-    coding: "STRONG"        # Code generation
-    search: "WEAK"          # Simple search
-    weather: "WEAK"         # Simple lookup
-    summarizer: "DEFAULT"   # Text processing
-    slack: "DEFAULT"        # Conversational
-    default: "DEFAULT"      # Fallback
-  
   # Performance settings
   performance:
     max_concurrent_agents: 5
+
+# Dynamic Role System Configuration
+role_system:
+  # Directory containing role definitions
+  roles_directory: "roles"
+  
+  # Role registry settings
+  registry:
+    auto_refresh: true           # Automatically refresh roles on startup
+    cache_definitions: true      # Cache role definitions in memory
+    validate_on_load: true       # Validate role definitions when loading
+  
+  # Shared tools configuration
+  shared_tools:
+    directory: "roles/shared_tools"
+    auto_discover: true          # Automatically discover @tool functions
+    
+  # Role selection settings
+  selection:
+    use_llm_selection: true      # Use LLM for intelligent role selection
+    fallback_role: "default"     # Fallback when no role matches
+    selection_model: "WEAK"      # Model type for role selection (cost optimization)
 
 # TaskGraph Configuration
 task_graph:
