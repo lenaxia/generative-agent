@@ -14,6 +14,7 @@ The StrandsAgent Universal Agent System is a modern, production-ready workflow m
 - **📊 Health Monitoring**: Real-time system health and performance monitoring
 - **🏗️ Simplified Architecture**: Clean, modular design with minimal dependencies
 - **🔧 Production Ready**: Comprehensive documentation, deployment guides, and monitoring
+- **🔄 Task Result Sharing**: Intelligent predecessor result passing eliminates duplicate work
 
 ## Architecture
 
@@ -332,8 +333,9 @@ This system has been successfully migrated from LangChain to StrandsAgent. Key i
 - **90% Code Reuse**: Leveraged existing TaskGraph, MessageBus, and configuration
 - **Simplified Testing**: Fewer components to test and mock
 - **Better Performance**: Reduced overhead from multiple agent instances
-- **Enhanced Capabilities**: Pause/resume, external state, MCP integration
+- **Enhanced Capabilities**: Pause/resume, external state, MCP integration, task result sharing
 - **Cleaner Codebase**: Removed complex orchestration and coupling
+- **Efficiency Improvements**: Task result sharing eliminates duplicate work between dependent tasks
 
 ## Project Structure
 

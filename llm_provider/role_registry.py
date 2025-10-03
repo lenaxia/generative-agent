@@ -12,6 +12,11 @@ import importlib.util
 import inspect
 import logging
 
+# Import ProgrammaticRole for type hints (avoid circular import)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from llm_provider.programmatic_role import ProgrammaticRole
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,13 +38,20 @@ class RoleRegistry:
     
     def __init__(self, roles_directory: str = "roles"):
         """
-        Initialize the role registry.
+        Initialize the role registry with support for both LLM and programmatic roles.
         
         Args:
             roles_directory: Path to the roles directory
         """
         self.roles_directory = Path(roles_directory)
-        self.roles: Dict[str, RoleDefinition] = {}
+        
+        # Enhanced role storage for hybrid architecture
+        self.llm_roles: Dict[str, RoleDefinition] = {}  # YAML-based roles
+        self.programmatic_roles: Dict[str, 'ProgrammaticRole'] = {}  # Python-based roles
+        self.role_types: Dict[str, str] = {}  # Role type mapping
+        
+        # Backward compatibility - keep existing interface
+        self.roles: Dict[str, RoleDefinition] = self.llm_roles  # Alias for backward compatibility
         self.shared_tools: Dict[str, Callable] = {}
         
         # Load shared tools first
@@ -56,21 +68,22 @@ class RoleRegistry:
         return cls._global_registry
     
     def refresh(self):
-        """Refresh role registry by discovering and loading all roles from filesystem."""
+        """Refresh role registry by discovering and loading all LLM roles from filesystem."""
         logger.info("Refreshing role registry...")
         
         discovered_roles = self._discover_roles()
-        logger.info(f"Discovered {len(discovered_roles)} roles: {discovered_roles}")
+        logger.info(f"Discovered {len(discovered_roles)} LLM roles: {discovered_roles}")
         
         for role_name in discovered_roles:
             try:
                 role_def = self._load_role(role_name)
-                self.roles[role_name] = role_def
-                logger.info(f"Loaded role '{role_name}' with {len(role_def.custom_tools)} custom tools")
+                self.llm_roles[role_name] = role_def
+                self.role_types[role_name] = "llm"
+                logger.info(f"Loaded LLM role '{role_name}' with {len(role_def.custom_tools)} custom tools")
             except Exception as e:
                 logger.error(f"Failed to load role '{role_name}': {e}")
         
-        logger.info(f"Role registry refreshed with {len(self.roles)} roles")
+        logger.info(f"Role registry refreshed with {len(self.llm_roles)} LLM roles and {len(self.programmatic_roles)} programmatic roles")
     
     def _discover_roles(self) -> List[str]:
         """Discover all available role definitions."""
@@ -298,3 +311,169 @@ class RoleRegistry:
             'roles_with_custom_tools': sum(1 for role_def in self.roles.values() if role_def.custom_tools),
             'average_tools_per_role': total_custom_tools / len(self.roles) if self.roles else 0
         }
+    # Enhanced methods for hybrid execution architecture
+    
+    def register_programmatic_role(self, role: 'ProgrammaticRole'):
+        """
+        Register a programmatic role for direct execution.
+        
+        Args:
+            role: ProgrammaticRole instance to register
+        """
+        if not hasattr(role, 'name') or not hasattr(role, 'execute'):
+            raise TypeError("Object must be a ProgrammaticRole instance")
+            
+        self.programmatic_roles[role.name] = role
+        self.role_types[role.name] = "programmatic"
+        logger.info(f"Registered programmatic role: {role.name}")
+    
+    def register_llm_role(self, name: str, definition: RoleDefinition):
+        """
+        Register an LLM-based role.
+        
+        Args:
+            name: Role name
+            definition: RoleDefinition instance
+        """
+        self.llm_roles[name] = definition
+        self.role_types[name] = "llm"
+        logger.info(f"Registered LLM role: {name}")
+    
+    def get_role_type(self, role_name: str) -> str:
+        """
+        Get the execution type for a role.
+        
+        Args:
+            role_name: Name of the role
+            
+        Returns:
+            "programmatic" or "llm" (defaults to "llm" for unknown roles)
+        """
+        return self.role_types.get(role_name, "llm")
+    
+    def get_all_roles(self) -> Dict[str, str]:
+        """
+        Get all roles with their types.
+        
+        Returns:
+            Dict mapping role names to their execution types
+        """
+        return self.role_types.copy()
+    
+    def is_programmatic_role(self, role_name: str) -> bool:
+        """
+        Check if a role uses programmatic execution.
+        
+        Args:
+            role_name: Name of the role to check
+            
+        Returns:
+            True if role is programmatic, False otherwise
+        """
+        return role_name in self.programmatic_roles
+    
+    def get_programmatic_role(self, role_name: str) -> Optional['ProgrammaticRole']:
+        """
+        Get a programmatic role by name.
+        
+        Args:
+            role_name: Name of the programmatic role
+            
+        Returns:
+            ProgrammaticRole instance or None if not found
+        """
+        return self.programmatic_roles.get(role_name)
+    
+    def list_programmatic_roles(self) -> Dict[str, 'ProgrammaticRole']:
+        """
+        Get all programmatic roles.
+        
+        Returns:
+            Dict of all programmatic roles
+        """
+        return self.programmatic_roles.copy()
+    
+    def get_role_metrics(self, role_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get execution metrics for a programmatic role.
+        
+        Args:
+            role_name: Name of the programmatic role
+            
+        Returns:
+            Metrics dict or None if role not found
+        """
+        role = self.programmatic_roles.get(role_name)
+        return role.get_metrics() if role else None
+    
+    def validate_programmatic_role(self, role_name: str) -> Dict[str, Any]:
+        """
+        Validate a programmatic role.
+        
+        Args:
+            role_name: Name of the programmatic role to validate
+            
+        Returns:
+            Validation result with status and any errors
+        """
+        if role_name not in self.programmatic_roles:
+            return {
+                "valid": False,
+                "errors": [f"Programmatic role '{role_name}' not found"],
+                "warnings": [],
+                "role_type": "programmatic"
+            }
+        
+        role = self.programmatic_roles[role_name]
+        errors = []
+        warnings = []
+        
+        # Check required attributes
+        if not hasattr(role, 'name') or not role.name:
+            errors.append("Role missing name attribute")
+        
+        if not hasattr(role, 'description') or not role.description:
+            warnings.append("Role missing description")
+        
+        if not hasattr(role, 'execute') or not callable(role.execute):
+            errors.append("Role missing execute method")
+        
+        if not hasattr(role, 'parse_instruction') or not callable(role.parse_instruction):
+            errors.append("Role missing parse_instruction method")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "role_name": role_name,
+            "role_type": "programmatic"
+        }
+    
+    def get_enhanced_statistics(self) -> Dict[str, Any]:
+        """
+        Get enhanced registry statistics including programmatic roles.
+        
+        Returns:
+            Enhanced statistics about the role registry
+        """
+        base_stats = self.get_statistics()
+        
+        # Add programmatic role statistics
+        programmatic_stats = {
+            'total_programmatic_roles': len(self.programmatic_roles),
+            'total_llm_roles': len(self.llm_roles),
+            'role_type_distribution': {
+                'programmatic': len(self.programmatic_roles),
+                'llm': len(self.llm_roles)
+            },
+            'programmatic_role_metrics': {
+                name: role.get_metrics() 
+                for name, role in self.programmatic_roles.items()
+            }
+        }
+        
+        # Merge with base statistics
+        enhanced_stats = {**base_stats, **programmatic_stats}
+        enhanced_stats['total_all_roles'] = len(self.llm_roles) + len(self.programmatic_roles)
+        
+        return enhanced_stats

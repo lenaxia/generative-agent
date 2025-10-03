@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 
 # Import tool functions
 from llm_provider.planning_tools import create_task_plan, analyze_task_dependencies
-from roles.shared_tools.search_tools import search_web
+from roles.shared_tools.web_search import web_search
 from roles.shared_tools.weather_tools import get_weather, get_weather_forecast
 from roles.shared_tools.summarizer_tools import summarize_text
 from roles.shared_tools.slack_tools import send_slack_message
@@ -73,7 +73,7 @@ class TestToolFunctionsUnit:
             
             # Test search_web (actual function name)
             search_query = "Python testing best practices"
-            search_results = search_web(search_query, num_results=5)
+            search_results = web_search(search_query, num_results=5)
             
             # Verify search results structure
             assert isinstance(search_results, dict)
@@ -212,7 +212,7 @@ class TestToolFunctionsUnit:
             mock_get.side_effect = Exception("Network error")
             
             try:
-                result = search_web("test query")
+                result = web_search("test query")
                 # If no exception, should return dict with error status
                 assert isinstance(result, dict)
                 assert result.get("status") == "failed" or "error" in result
@@ -254,7 +254,7 @@ class TestToolFunctionsUnit:
         
         # Test search tools with invalid input
         try:
-            result = search_web("")  # Empty query
+            result = web_search("")  # Empty query
             assert isinstance(result, dict)
             # Should handle empty query gracefully
         except (ValueError, TypeError):
@@ -283,7 +283,7 @@ class TestToolFunctionsUnit:
             assert isinstance(plan_result, dict)
             
             # Test search tools return types
-            search_result = search_web("test query")
+            search_result = web_search("test query")
             assert isinstance(search_result, dict)
             
             # Note: summarize_search_results function not available in current implementation

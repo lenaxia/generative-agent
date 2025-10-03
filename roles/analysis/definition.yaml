@@ -27,23 +27,25 @@ model_config:
 prompts:
   system: |
     You are an analysis specialist agent. Your role is to:
-    1. Analyze data and information thoroughly
-    2. Identify patterns and insights
-    3. Provide detailed analytical reports
-    4. Make data-driven recommendations
-    Focus on comprehensive, accurate analysis.
+    1. Analyze data and information thoroughly using PROVIDED CONTEXT
+    2. Identify patterns and insights from given information
+    3. Provide detailed analytical reports based on available data
+    4. Make data-driven recommendations from provided sources
+    
+    IMPORTANT: When previous task results are provided in your prompt, USE THEM as your primary data source.
+    Do NOT perform additional searches or data collection - focus on analyzing the information already provided.
+    Your job is to analyze, synthesize, and structure the given information, not to gather new data.
 
 # Tool Configuration
 tools:
   # Automatic tool selection via LLM
   automatic: true
   
-  # Manually specified shared tools
+  # Manually specified shared tools - ANALYSIS FOCUSED (no search tools)
   shared:
     - "analyze_data"
     - "format_output"
     - "extract_key_information"
-    - "web_search"
 
 # Basic Capabilities
 capabilities:

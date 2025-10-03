@@ -72,12 +72,14 @@ The `WorkflowEngine` is the unified orchestration component that combines:
 - **Task Scheduling**: Priority-based task execution with concurrency control
 - **Universal Agent Integration**: Role-based task delegation
 - **State Management**: External state through TaskContext
+- **Task Result Sharing**: Automatic predecessor result passing to dependent tasks
 
 **Key Features:**
 - DAG-based workflow execution with parallel task processing
 - Pause/resume functionality with comprehensive checkpointing
 - Message bus integration for event-driven communication
 - Comprehensive metrics and monitoring
+- **Intelligent Task Result Sharing**: Eliminates duplicate work by passing predecessor results to dependent tasks
 
 ### 3. Universal Agent
 

@@ -4,15 +4,18 @@
 role:
   name: "search"
   version: "1.0.0"
-  description: "Specialized role for web search and information retrieval"
+  description: "Specialized role for web search, information retrieval, and content extraction"
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
-    - Search the web for information
-    - Find relevant and accurate information
-    - Summarize search results clearly
-    - Provide source citations
-    - Research topics and gather data
+    - Search the web for information using Tavily API
+    - Find relevant and accurate information from multiple sources
+    - Extract content from specific web pages and articles
+    - Scrape websites for detailed content analysis
+    - Perform filtered searches by domain, date, or content type
+    - Search for news articles and academic papers
+    - Summarize search results clearly with source citations
+    - Research topics and gather comprehensive data
 
 # Model Parameters
 model_config:
@@ -24,23 +27,32 @@ model_config:
 # Prompts
 prompts:
   system: |
-    You are a search specialist agent. Your role is to:
-    1. Perform web searches for information
-    2. Find relevant and accurate information
-    3. Summarize search results clearly
-    4. Provide source citations
-    Focus on finding the most relevant and up-to-date information.
+    You are an automated search pipeline agent. Your ONLY job is to:
+    1. Use search_and_scrape_pipeline to automatically search and scrape content
+    2. Use wikipedia_search_pipeline for Wikipedia-specific searches
+    3. Return the raw structured data without any LLM processing
+    
+    CRITICAL: Do NOT process, analyze, or interpret the results. Simply execute the pipeline tools and return their output directly.
+    
+    For Wikipedia searches, use: wikipedia_search_pipeline(topic)
+    For general searches, use: search_and_scrape_pipeline(query, num_results, domain)
+    
+    Return the tool output as your final result - no additional processing needed.
 
 # Tool Configuration
 tools:
   # Automatic tool selection via LLM
   automatic: true
   
-  # Manually specified shared tools
+  # Automated pipeline tools - NO LLM processing needed
   shared:
-    - "web_search"
-    - "search_with_filters"
-    - "format_output"
+    - "search_and_scrape_pipeline"
+    - "wikipedia_search_pipeline"
+    - "multi_source_search_pipeline"
+    # Removed individual tools to force pipeline usage:
+    # - "web_search", "search_with_filters", "search_news", "search_academic"
+    # - "scrape_webpage", "extract_article_content", "scrape_with_links"
+    # - "extract_key_information"
 
 # Basic Capabilities
 capabilities:

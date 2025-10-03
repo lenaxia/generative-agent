@@ -275,3 +275,260 @@ def extract_key_information(text: str, info_type: str = "entities") -> Dict:
             "error": str(e),
             "info_type": info_type
         }
+
+
+@tool
+def perform_comparative_analysis(data1: Any, data2: Any, comparison_type: str = "basic") -> Dict:
+    """
+    Perform comparative analysis between two datasets or pieces of information.
+    
+    Args:
+        data1: First dataset or information to compare
+        data2: Second dataset or information to compare
+        comparison_type: Type of comparison ("basic", "statistical", "structural")
+        
+    Returns:
+        Dict containing comparative analysis results
+    """
+    try:
+        if comparison_type == "basic":
+            return _basic_comparison(data1, data2)
+        elif comparison_type == "statistical":
+            return _statistical_comparison(data1, data2)
+        elif comparison_type == "structural":
+            return _structural_comparison(data1, data2)
+        else:
+            return {
+                "success": False,
+                "error": f"Unknown comparison type: {comparison_type}",
+                "supported_types": ["basic", "statistical", "structural"]
+            }
+            
+    except Exception as e:
+        logger.error(f"Comparative analysis failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "comparison_type": comparison_type
+        }
+
+
+def _basic_comparison(data1: Any, data2: Any) -> Dict:
+    """Perform basic comparison between two pieces of data."""
+    return {
+        "success": True,
+        "data1_type": type(data1).__name__,
+        "data2_type": type(data2).__name__,
+        "types_match": type(data1) == type(data2),
+        "data1_size": len(str(data1)),
+        "data2_size": len(str(data2)),
+        "size_difference": len(str(data1)) - len(str(data2)),
+        "are_equal": data1 == data2,
+        "comparison_timestamp": datetime.now().isoformat()
+    }
+
+
+def _statistical_comparison(data1: Any, data2: Any) -> Dict:
+    """Perform statistical comparison between numerical datasets."""
+    try:
+        # Extract numerical values
+        nums1 = []
+        nums2 = []
+        
+        if isinstance(data1, list):
+            nums1 = [x for x in data1 if isinstance(x, (int, float))]
+        elif isinstance(data1, (int, float)):
+            nums1 = [data1]
+            
+        if isinstance(data2, list):
+            nums2 = [x for x in data2 if isinstance(x, (int, float))]
+        elif isinstance(data2, (int, float)):
+            nums2 = [data2]
+        
+        if not nums1 or not nums2:
+            return {
+                "success": False,
+                "error": "Insufficient numerical data for statistical comparison"
+            }
+        
+        return {
+            "success": True,
+            "dataset1": {
+                "count": len(nums1),
+                "mean": statistics.mean(nums1),
+                "median": statistics.median(nums1),
+                "std_dev": statistics.stdev(nums1) if len(nums1) > 1 else 0
+            },
+            "dataset2": {
+                "count": len(nums2),
+                "mean": statistics.mean(nums2),
+                "median": statistics.median(nums2),
+                "std_dev": statistics.stdev(nums2) if len(nums2) > 1 else 0
+            },
+            "comparison": {
+                "mean_difference": statistics.mean(nums1) - statistics.mean(nums2),
+                "median_difference": statistics.median(nums1) - statistics.median(nums2),
+                "size_difference": len(nums1) - len(nums2)
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Statistical comparison failed: {e}"
+        }
+
+
+def _structural_comparison(data1: Any, data2: Any) -> Dict:
+    """Compare the structure of two complex data objects."""
+    def get_structure_signature(obj):
+        if isinstance(obj, dict):
+            return {k: get_structure_signature(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [get_structure_signature(obj[0])] if obj else []
+        else:
+            return type(obj).__name__
+    
+    struct1 = get_structure_signature(data1)
+    struct2 = get_structure_signature(data2)
+    
+    return {
+        "success": True,
+        "structure1": struct1,
+        "structure2": struct2,
+        "structures_match": struct1 == struct2,
+        "data1_complexity": _calculate_complexity(data1),
+        "data2_complexity": _calculate_complexity(data2)
+    }
+
+
+def _calculate_complexity(data: Any) -> int:
+    """Calculate complexity score for data structure."""
+    if isinstance(data, dict):
+        return 1 + sum(_calculate_complexity(v) for v in data.values())
+    elif isinstance(data, list):
+        return 1 + sum(_calculate_complexity(item) for item in data[:5])  # Sample first 5
+    else:
+        return 1
+
+
+@tool
+def generate_insights(data: Any, focus_area: str = "patterns") -> Dict:
+    """
+    Generate insights and observations from data.
+    
+    Args:
+        data: Data to analyze for insights
+        focus_area: Area to focus on ("patterns", "trends", "anomalies", "relationships")
+        
+    Returns:
+        Dict containing generated insights
+    """
+    try:
+        insights = []
+        
+        if focus_area == "patterns":
+            insights = _identify_patterns(data)
+        elif focus_area == "trends":
+            insights = _identify_trends(data)
+        elif focus_area == "anomalies":
+            insights = _identify_anomalies(data)
+        elif focus_area == "relationships":
+            insights = _identify_relationships(data)
+        else:
+            return {
+                "success": False,
+                "error": f"Unknown focus area: {focus_area}",
+                "supported_areas": ["patterns", "trends", "anomalies", "relationships"]
+            }
+        
+        return {
+            "success": True,
+            "focus_area": focus_area,
+            "insights": insights,
+            "insight_count": len(insights),
+            "analysis_timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Insight generation failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "focus_area": focus_area
+        }
+
+
+def _identify_patterns(data: Any) -> List[str]:
+    """Identify patterns in data."""
+    patterns = []
+    
+    if isinstance(data, list):
+        if len(data) > 1:
+            patterns.append(f"Dataset contains {len(data)} items")
+            if all(isinstance(x, type(data[0])) for x in data):
+                patterns.append(f"All items are of type {type(data[0]).__name__}")
+            if isinstance(data[0], (int, float)):
+                if all(x > 0 for x in data):
+                    patterns.append("All values are positive")
+                elif all(x < 0 for x in data):
+                    patterns.append("All values are negative")
+    
+    elif isinstance(data, dict):
+        patterns.append(f"Dictionary with {len(data)} keys")
+        if data:
+            value_types = [type(v).__name__ for v in data.values()]
+            if len(set(value_types)) == 1:
+                patterns.append(f"All values are of type {value_types[0]}")
+    
+    return patterns or ["No clear patterns identified"]
+
+
+def _identify_trends(data: Any) -> List[str]:
+    """Identify trends in data."""
+    trends = []
+    
+    if isinstance(data, list) and len(data) > 2:
+        if all(isinstance(x, (int, float)) for x in data):
+            if all(data[i] <= data[i+1] for i in range(len(data)-1)):
+                trends.append("Data shows consistent upward trend")
+            elif all(data[i] >= data[i+1] for i in range(len(data)-1)):
+                trends.append("Data shows consistent downward trend")
+            else:
+                trends.append("Data shows mixed trend pattern")
+    
+    return trends or ["No clear trends identified"]
+
+
+def _identify_anomalies(data: Any) -> List[str]:
+    """Identify anomalies or outliers in data."""
+    anomalies = []
+    
+    if isinstance(data, list) and len(data) > 3:
+        if all(isinstance(x, (int, float)) for x in data):
+            mean_val = statistics.mean(data)
+            std_dev = statistics.stdev(data) if len(data) > 1 else 0
+            
+            if std_dev > 0:
+                outliers = [x for x in data if abs(x - mean_val) > 2 * std_dev]
+                if outliers:
+                    anomalies.append(f"Found {len(outliers)} statistical outliers")
+    
+    return anomalies or ["No significant anomalies detected"]
+
+
+def _identify_relationships(data: Any) -> List[str]:
+    """Identify relationships within data."""
+    relationships = []
+    
+    if isinstance(data, dict):
+        # Look for key-value relationships
+        numeric_values = [v for v in data.values() if isinstance(v, (int, float))]
+        if len(numeric_values) > 1:
+            relationships.append(f"Contains {len(numeric_values)} numerical relationships")
+        
+        string_values = [v for v in data.values() if isinstance(v, str)]
+        if len(string_values) > 1:
+            relationships.append(f"Contains {len(string_values)} textual relationships")
+    
+    return relationships or ["No clear relationships identified"]

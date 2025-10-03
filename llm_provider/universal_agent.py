@@ -181,15 +181,85 @@ Focus on comprehensive, accurate analysis."""
         return role_prompts.get(role, 
             "You are a helpful AI assistant. Provide accurate, helpful responses to user queries.")
     
-    def execute_task(self, instruction: str, role: str = "default", 
+    def execute_task(self, instruction: str, role: str = "default",
                     llm_type: LLMType = LLMType.DEFAULT,
                     context: Optional[TaskContext] = None) -> str:
         """
-        Execute a task with the specified role and model type.
+        Execute a task with hybrid execution path selection.
+        
+        Determines whether to use programmatic or LLM-based execution
+        based on the role type for optimal performance.
         
         Args:
             instruction: Task instruction
             role: Agent role to assume
+            llm_type: Model type for optimization
+            context: Optional task context
+            
+        Returns:
+            str: Task result
+        """
+        # Determine execution path based on role type
+        if self.is_programmatic_role(role):
+            return self.execute_programmatic_task(instruction, role, context)
+        else:
+            return self.execute_llm_task(instruction, role, llm_type, context)
+    
+    def is_programmatic_role(self, role: str) -> bool:
+        """
+        Check if role should use programmatic execution.
+        
+        Args:
+            role: Role name to check
+            
+        Returns:
+            bool: True if role uses programmatic execution
+        """
+        return self.role_registry.is_programmatic_role(role)
+    
+    def get_role_type(self, role: str) -> str:
+        """
+        Get the execution type for a role.
+        
+        Args:
+            role: Role name
+            
+        Returns:
+            str: "programmatic" or "llm"
+        """
+        return self.role_registry.get_role_type(role)
+    
+    def execute_programmatic_task(self, instruction: str, role: str, context: Optional[TaskContext] = None) -> str:
+        """
+        Execute task using programmatic role (no LLM processing).
+        
+        Args:
+            instruction: Task instruction
+            role: Programmatic role name
+            context: Optional task context
+            
+        Returns:
+            str: Serialized task result
+        """
+        try:
+            programmatic_role = self.role_registry.get_programmatic_role(role)
+            if not programmatic_role:
+                return f"Programmatic role '{role}' not found"
+            
+            result = programmatic_role.execute(instruction, context)
+            return self._serialize_result(result)
+            
+        except Exception as e:
+            logger.error(f"Programmatic execution failed for role '{role}': {e}")
+            return f"Programmatic execution error: {str(e)}"
+    
+    def execute_llm_task(self, instruction: str, role: str, llm_type: LLMType, context: Optional[TaskContext] = None) -> str:
+        """
+        Execute task using LLM-based role (current implementation).
+        
+        Args:
+            instruction: Task instruction
+            role: LLM role name
             llm_type: Model type for optimization
             context: Optional task context
             
@@ -615,3 +685,40 @@ Focus on comprehensive, accurate analysis."""
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
+        
+        # Execute the task
+        try:
+            response = agent(instruction)
+            return str(response) if response else "No response generated"
+        except Exception as e:
+            logger.error(f"LLM task execution failed for role '{role}': {e}")
+            return f"LLM execution error: {str(e)}"
+    
+    def register_programmatic_role(self, name: str, role_instance: 'ProgrammaticRole'):
+        """
+        Register a programmatic role for direct execution.
+        
+        Args:
+            name: Role name
+            role_instance: ProgrammaticRole instance
+        """
+        self.role_registry.register_programmatic_role(role_instance)
+        logger.info(f"Registered programmatic role: {name}")
+    
+    def _serialize_result(self, result: Any) -> str:
+        """
+        Serialize programmatic results to string format.
+        
+        Args:
+            result: Result data from programmatic execution
+            
+        Returns:
+            str: Serialized result
+        """
+        if isinstance(result, str):
+            return result
+        elif isinstance(result, (dict, list)):
+            import json
+            return json.dumps(result, indent=2, default=str)
+        else:
+            return str(result)

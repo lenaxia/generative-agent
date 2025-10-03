@@ -458,13 +458,32 @@ class WorkflowEngine:
             
             logger.info(f"Delegating task '{task.task_id}' to role '{role_name}' with model type '{llm_type.value}'")
             
-            # Prepare task execution context
+            # Prepare task execution context with predecessor results
             execution_config = task_context.prepare_task_execution(task.task_id)
             
-            # Execute task using Universal Agent
+            # Get predecessor results from TaskGraph history
+            predecessor_results = task_context.task_graph.get_task_history(task.task_id)
+            
+            # Enhanced prompt with predecessor results
+            base_prompt = execution_config.get("prompt", getattr(task, "prompt", "No prompt available"))
+            
+            # Only add predecessor context if there are meaningful results
+            # Filter out empty results and "The beginning" placeholder
+            meaningful_results = [result for result in predecessor_results
+                                if result and result.strip() and result != "The beginning"]
+            
+            if meaningful_results:
+                enhanced_prompt = f"""Previous task results available for context:
+{chr(10).join(f"- {result}" for result in meaningful_results)}
+
+Current task: {base_prompt}"""
+            else:
+                enhanced_prompt = base_prompt
+            
+            # Execute task using Universal Agent with enhanced context
             # If role is "None", Universal Agent will handle dynamic role generation
             result = self.universal_agent.execute_task(
-                instruction=execution_config.get("prompt", getattr(task, "prompt", "No prompt available")),
+                instruction=enhanced_prompt,
                 role=role_name,
                 llm_type=llm_type,
                 context=task_context

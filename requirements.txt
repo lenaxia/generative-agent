@@ -23,6 +23,7 @@ scipy>=1.13.0
 setuptools>=75.0.0
 rank_bm25
 tavily-python>=0.3.0
+readability-lxml>=0.8.1
 
 
 # Testing dependencies
