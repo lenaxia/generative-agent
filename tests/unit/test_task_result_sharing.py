@@ -258,6 +258,35 @@ class TestTaskResultSharing:
 class TestTaskResultSharingIntegration:
     """Integration tests for task result sharing with real TaskGraph operations."""
     
+    @pytest.fixture
+    def mock_llm_factory(self):
+        """Create mock LLM factory."""
+        factory = Mock(spec=LLMFactory)
+        return factory
+    
+    @pytest.fixture
+    def mock_message_bus(self):
+        """Create mock message bus."""
+        return Mock(spec=MessageBus)
+    
+    @pytest.fixture
+    def mock_universal_agent(self):
+        """Create mock universal agent."""
+        agent = Mock(spec=UniversalAgent)
+        return agent
+    
+    @pytest.fixture
+    def workflow_engine(self, mock_llm_factory, mock_message_bus, mock_universal_agent):
+        """Create WorkflowEngine with mocked dependencies."""
+        engine = WorkflowEngine(
+            llm_factory=mock_llm_factory,
+            message_bus=mock_message_bus,
+            max_concurrent_tasks=2,
+            checkpoint_interval=60
+        )
+        engine.universal_agent = mock_universal_agent
+        return engine
+    
     def test_real_task_graph_result_sharing(self):
         """Test result sharing using real TaskGraph operations."""
         # Create real TaskGraph with dependencies

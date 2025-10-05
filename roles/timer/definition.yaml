@@ -1,0 +1,60 @@
+# Timer Role Definition
+
+# Role Metadata
+role:
+  name: "timer"
+  version: "1.0.0"
+  description: "Set timers, alarms, and reminders"
+  fast_reply: true  # Enable fast-path routing for timer operations
+  execution_type: "programmatic"  # Uses programmatic execution path
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Set countdown timers
+    - Create alarms for specific times
+    - Manage recurring reminders
+    - Cancel or modify existing timers
+    - Get status of active timers
+
+# Model Parameters
+model_config:
+  temperature: 0.1              # Very low temperature for precise timing
+  max_tokens: 512              # Small token limit for simple timer operations
+  max_context: 8000            # Minimal context needed for timer operations
+  top_p: 0.9                   # Focused sampling for accurate timing
+
+# Prompts
+prompts:
+  system: |
+    You are a timer and alarm specialist. Handle timing operations:
+    - Set countdown timers with clear duration parsing
+    - Create alarms for specific times with proper time zone handling
+    - Manage recurring reminders efficiently
+    - Provide clear confirmations and status updates
+    - Handle timer cancellations and modifications
+    
+    Always confirm timer details and provide clear feedback about
+    successful operations or any timing conflicts.
+
+# Tool Configuration
+tools:
+  # Use shared timer tools for timing functionality
+  automatic: false
+  
+  # Manually specified shared tools for timer functionality
+  shared:
+    - "timer_set"
+    - "timer_cancel"
+    - "timer_list"
+    - "alarm_set"
+    - "alarm_cancel"
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 2
+  timeout_seconds: 30
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

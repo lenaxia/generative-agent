@@ -21,6 +21,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from supervisor.supervisor import Supervisor
+from supervisor.workflow_duration_logger import WorkflowSource
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -202,6 +203,11 @@ class IntelligentSlackBot:
             
             # Start workflow with Universal Agent
             workflow_id = self.supervisor.workflow_engine.start_workflow(context_message)
+            
+            # Update workflow source to Slack (duration tracking is handled in workflow engine)
+            self.supervisor.workflow_engine.update_workflow_source(
+                workflow_id, WorkflowSource.SLACK, user_id=user_id, channel_id=channel
+            )
             
             # Wait for completion with more frequent checks and immediate response
             max_wait = 30  # 30 seconds timeout

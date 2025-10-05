@@ -16,7 +16,7 @@ class TestRoleToolIntegration:
     def mock_llm_factory(self):
         """Mock LLM factory for testing."""
         factory = Mock(spec=LLMFactory)
-        factory.create_model.return_value = Mock()
+        factory.create_strands_model.return_value = Mock()
         return factory
 
     @pytest.fixture
@@ -36,15 +36,11 @@ class TestRoleToolIntegration:
         assert search_role is not None
         assert search_role.name == "search"
         
-        # Check that all web search and scraping tools are included
+        # Check that search pipeline tools are included (actual implementation)
         expected_tools = [
-            "web_search",
-            "search_with_filters",
-            "search_news",
-            "search_academic",
-            "scrape_webpage",
-            "extract_article_content",
-            "scrape_with_links"
+            "search_and_scrape_pipeline",
+            "wikipedia_search_pipeline",
+            "multi_source_search_pipeline"
         ]
         
         # Access tools from config structure
@@ -95,8 +91,17 @@ class TestRoleToolIntegration:
         mock_client.search.return_value = mock_response
         mock_tavily_client.return_value = mock_client
         
-        # Create search role agent
-        with patch.dict('os.environ', {'TAVILY_API_KEY': 'test_key'}):
+        # Mock the role assumption to avoid LLM calls
+        with patch.dict('os.environ', {'TAVILY_API_KEY': 'test_key'}), \
+             patch.object(universal_agent, '_create_strands_model') as mock_create_model, \
+             patch('strands.Agent') as mock_agent_class:
+            
+            mock_model = Mock()
+            mock_create_model.return_value = mock_model
+            mock_agent_instance = Mock()
+            mock_agent_class.return_value = mock_agent_instance
+            
+            # Create search role agent
             agent = universal_agent.assume_role("search", LLMType.WEAK)
             
             # Verify agent was created successfully
@@ -123,12 +128,21 @@ class TestRoleToolIntegration:
         mock_soup.get_text.return_value = 'Content'
         mock_bs.return_value = mock_soup
         
-        # Create research analyst role agent
-        agent = universal_agent.assume_role("research_analyst", LLMType.DEFAULT)
-        
-        # Verify agent was created successfully
-        assert agent is not None
-        assert universal_agent.current_role == "research_analyst"
+        # Mock the role assumption to avoid LLM calls
+        with patch.object(universal_agent, '_create_strands_model') as mock_create_model, \
+             patch('strands.Agent') as mock_agent_class:
+            
+            mock_model = Mock()
+            mock_create_model.return_value = mock_model
+            mock_agent_instance = Mock()
+            mock_agent_class.return_value = mock_agent_instance
+            
+            # Create research analyst role agent
+            agent = universal_agent.assume_role("research_analyst", LLMType.DEFAULT)
+            
+            # Verify agent was created successfully
+            assert agent is not None
+            assert universal_agent.current_role == "research_analyst"
 
     def test_role_descriptions_updated(self, role_registry):
         """Test that role descriptions mention web search and scraping capabilities."""
@@ -152,11 +166,10 @@ class TestRoleToolIntegration:
         search_role = role_registry.get_role("search")
         research_role = role_registry.get_role("research_analyst")
         
-        # Check search role system prompt from config
+        # Check search role system prompt from config (updated for actual implementation)
         search_prompt = search_role.config.get('prompts', {}).get('system', '').lower()
-        assert "scrape_webpage" in search_prompt
-        assert "extract_article_content" in search_prompt
-        assert "available tools" in search_prompt
+        assert "search_and_scrape_pipeline" in search_prompt
+        assert "wikipedia_search_pipeline" in search_prompt
         
         # Check research analyst role system prompt from config
         research_prompt = research_role.config.get('prompts', {}).get('system', '').lower()

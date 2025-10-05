@@ -54,6 +54,10 @@ class RoleRegistry:
         self.roles: Dict[str, RoleDefinition] = self.llm_roles  # Alias for backward compatibility
         self.shared_tools: Dict[str, Callable] = {}
         
+        # Performance optimization: Track initialization state
+        self._is_initialized = False
+        self._fast_reply_roles_cache: Optional[List[RoleDefinition]] = None
+        
         # Load shared tools first
         self._load_shared_tools()
         
@@ -83,7 +87,24 @@ class RoleRegistry:
             except Exception as e:
                 logger.error(f"Failed to load role '{role_name}': {e}")
         
+        # Mark as initialized and clear cache
+        self._is_initialized = True
+        self._fast_reply_roles_cache = None
+        
         logger.info(f"Role registry refreshed with {len(self.llm_roles)} LLM roles and {len(self.programmatic_roles)} programmatic roles")
+    
+    def initialize_once(self):
+        """
+        Initialize the role registry only if not already initialized.
+        This method provides performance optimization by avoiding repeated initialization.
+        """
+        if self._is_initialized:
+            logger.debug("Role registry already initialized, skipping")
+            return
+        
+        logger.info("Performing one-time role registry initialization...")
+        self.refresh()
+        logger.info("Role registry initialization completed")
     
     def _discover_roles(self) -> List[str]:
         """Discover all available role definitions."""
@@ -477,3 +498,59 @@ class RoleRegistry:
         enhanced_stats['total_all_roles'] = len(self.llm_roles) + len(self.programmatic_roles)
         
         return enhanced_stats
+    
+    # Fast-reply role methods for fast-path routing
+    
+    def get_fast_reply_roles(self) -> List[RoleDefinition]:
+        """
+        Return roles marked with fast_reply: true that provide meaningful direct output.
+        Uses caching for performance optimization.
+        
+        Returns:
+            List[RoleDefinition]: Roles suitable for fast-reply execution
+        """
+        # Use cached result if available
+        if self._fast_reply_roles_cache is not None:
+            logger.debug("Returning cached fast-reply roles")
+            return self._fast_reply_roles_cache
+        
+        # Compute and cache the result
+        logger.debug("Computing fast-reply roles")
+        fast_reply_roles = [role for role in self.llm_roles.values()
+                           if role.config.get('role', {}).get('fast_reply', False)]
+        
+        self._fast_reply_roles_cache = fast_reply_roles
+        logger.info(f"Cached {len(fast_reply_roles)} fast-reply roles")
+        
+        return fast_reply_roles
+    
+    def is_fast_reply_role(self, role_name: str) -> bool:
+        """
+        Check if role supports fast replies.
+        
+        Args:
+            role_name: Name of the role to check
+            
+        Returns:
+            bool: True if role supports fast replies
+        """
+        role = self.get_role(role_name)
+        if role is None:
+            return False
+        return role.config.get('role', {}).get('fast_reply', False)
+    
+    def get_fast_reply_role_summaries(self) -> List[Dict[str, str]]:
+        """
+        Get summaries of fast-reply roles for routing prompts.
+        
+        Returns:
+            List of role summaries with name and description
+        """
+        fast_roles = self.get_fast_reply_roles()
+        return [
+            {
+                "name": role.name,
+                "description": role.config.get('role', {}).get('description', 'No description available')
+            }
+            for role in fast_roles
+        ]

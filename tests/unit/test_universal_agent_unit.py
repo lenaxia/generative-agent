@@ -147,10 +147,10 @@ class TestUniversalAgentUnit:
                 max_tokens=4096
             )
             
-            # Verify agent creation with search prompt
+            # Verify agent creation with modern search pipeline prompt
             call_args = mock_agent_class.call_args
-            assert "search specialist agent" in call_args[1]['system_prompt']
-            assert "Perform web searches" in call_args[1]['system_prompt']
+            assert "automated search pipeline agent" in call_args[1]['system_prompt']
+            assert "search_and_scrape_pipeline" in call_args[1]['system_prompt']
             
             # Verify state tracking
             assert universal_agent.current_role == "search"

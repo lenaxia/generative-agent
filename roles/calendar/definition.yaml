@@ -1,0 +1,58 @@
+# Calendar Role Definition
+
+# Role Metadata
+role:
+  name: "calendar"
+  version: "1.0.0"
+  description: "Manage calendar events, appointments, and scheduling"
+  fast_reply: true  # Enable fast-path routing for calendar operations
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Add, update, or delete calendar events
+    - Check availability and schedule conflicts
+    - Manage recurring appointments
+    - Set reminders and notifications
+    - Query calendar information
+
+# Model Parameters
+model_config:
+  temperature: 0.2              # Low temperature for accurate scheduling
+  max_tokens: 1024             # Moderate token limit for calendar operations
+  max_context: 16000           # Sufficient context for calendar queries
+  top_p: 0.9                   # Focused sampling for accurate scheduling
+
+# Prompts
+prompts:
+  system: |
+    You are a calendar management specialist. Handle calendar operations efficiently:
+    - Add, update, and delete calendar events
+    - Check availability and schedule conflicts
+    - Provide clear confirmations for all actions
+    - Handle time zones and recurring events properly
+    - Suggest optimal meeting times when requested
+    
+    Always confirm event details before making changes and provide clear feedback
+    about successful operations or any conflicts that arise.
+
+# Tool Configuration
+tools:
+  # Use shared calendar tools for calendar functionality
+  automatic: false
+  
+  # Manually specified shared tools for calendar functionality
+  shared:
+    - "calendar_get_events"
+    - "calendar_add_event" 
+    - "calendar_update_event"
+    - "calendar_delete_event"
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 3
+  timeout_seconds: 60
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

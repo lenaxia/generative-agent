@@ -1,30 +1,49 @@
 from enum import Enum
 from typing import Optional, Dict, List, Union, Type, Any
+import logging
+import hashlib
 from config.base_config import BaseConfig
 
 # Import StrandsAgent dependencies with fallback for testing
 try:
-    from strands.models import BedrockModel, OpenAIModel
+    from strands.models.bedrock import BedrockModel
     from strands import Agent
     STRANDS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     # Mock classes for testing when StrandsAgent is not available
     class BedrockModel:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-    
-    class OpenAIModel:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
     
     class Agent:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
+        
+        def __call__(self, instruction):
+            return f"Mock agent response to: {instruction}"
     
     STRANDS_AVAILABLE = False
 
+# Try to import OpenAI model separately since it might not be available
+try:
+    from strands.models.openai import OpenAIModel
+    OPENAI_AVAILABLE = True
+except ImportError:
+    class OpenAIModel:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+    OPENAI_AVAILABLE = False
+
 from pydantic import BaseModel
 from llm_provider.prompt_library import PromptLibrary
+
+logger = logging.getLogger(__name__)
+
+# Log import status after logger is defined
+if STRANDS_AVAILABLE:
+    logger.info("Successfully imported Strands components")
+else:
+    logger.warning("Strands import failed, using mock components")
 
 class LLMType(Enum):
     DEFAULT = 'default'
@@ -37,7 +56,7 @@ class LLMType(Enum):
 class LLMFactory:
     def __init__(self, configs: Dict[LLMType, List[BaseConfig]], framework: str = "strands"):
         """
-        Initialize LLMFactory with StrandsAgent support only.
+        Initialize LLMFactory with StrandsAgent support and performance caching.
         
         Args:
             configs: Configuration mapping for different LLM types
@@ -46,6 +65,13 @@ class LLMFactory:
         self.configs = configs
         self.framework = "strands"  # Only StrandsAgent framework supported
         self.prompt_library = PromptLibrary()
+        
+        # Performance optimization: Model and agent caching
+        self._model_cache: Dict[str, Any] = {}
+        self._agent_cache: Dict[str, Any] = {}
+        self._is_warmed = False
+        
+        logger.info("LLMFactory initialized with caching enabled")
 
     def add_config(self, llm_type: LLMType, config: BaseConfig):
         """Add a configuration for the specified LLM type."""
@@ -61,17 +87,46 @@ class LLMFactory:
 
     def create_strands_model(self, llm_type: LLMType, name: Optional[str] = None):
         """
-        Create a StrandsAgent model instance.
+        Create a StrandsAgent model instance with caching for performance.
         
         Args:
             llm_type: The semantic LLM type (DEFAULT, STRONG, WEAK, etc.)
             name: Optional specific configuration name
             
         Returns:
-            StrandsAgent model instance
+            StrandsAgent model instance (cached if available)
             
         Raises:
             ValueError: If configuration not found or unsupported provider
+        """
+        # Create cache key based on llm_type and name
+        cache_key = f"{llm_type.value}_{name or 'default'}"
+        
+        # Return cached model if available
+        if cache_key in self._model_cache:
+            logger.debug(f"Returning cached model for {cache_key}")
+            return self._model_cache[cache_key]
+        
+        # Create new model
+        logger.debug(f"Creating new model for {cache_key}")
+        model = self._create_new_model(llm_type, name)
+        
+        # Cache the model
+        self._model_cache[cache_key] = model
+        logger.info(f"Cached new model for {cache_key}")
+        
+        return model
+    
+    def _create_new_model(self, llm_type: LLMType, name: Optional[str] = None):
+        """
+        Internal method to create a new model instance.
+        
+        Args:
+            llm_type: The semantic LLM type
+            name: Optional specific configuration name
+            
+        Returns:
+            New StrandsAgent model instance
         """
         config = self._get_config(llm_type, name)
         
@@ -96,34 +151,154 @@ class LLMFactory:
         if provider_type == "bedrock":
             return BedrockModel(**model_params)
         elif provider_type == "openai":
-            return OpenAIModel(**model_params)
+            if OPENAI_AVAILABLE:
+                return OpenAIModel(**model_params)
+            else:
+                raise ValueError("OpenAI model requested but not available in Strands installation")
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")
 
-    def create_universal_agent(self, llm_type: LLMType, role: str, tools: Optional[List] = None):
+    def create_universal_agent(self, llm_type: LLMType, role: str, tools: Optional[List] = None, role_registry=None):
         """
-        Create a Universal Agent using StrandsAgent framework.
+        Create a Universal Agent using StrandsAgent framework with caching.
         
         Args:
             llm_type: The semantic LLM type for model selection
             role: The agent role (determines system prompt)
             tools: Optional list of tools for the agent
+            role_registry: Optional role registry for getting role-specific prompts
             
         Returns:
-            StrandsAgent Agent instance
+            StrandsAgent Agent instance (cached if available)
         """
-        # Create the model
+        # Create cache key including role and tools hash for proper isolation
+        tools_hash = self._hash_tools(tools or [])
+        cache_key = f"{llm_type.value}_{role}_{tools_hash}"
+        
+        # Return cached agent if available
+        if cache_key in self._agent_cache:
+            logger.debug(f"Returning cached agent for {cache_key}")
+            return self._agent_cache[cache_key]
+        
+        # Create new agent
+        logger.debug(f"Creating new agent for {cache_key}")
+        
+        # Create the model (will use model cache)
         model = self.create_strands_model(llm_type)
         
         # Get the appropriate prompt for the role
-        system_prompt = self.prompt_library.get_prompt(role)
+        if role_registry:
+            # Use role-specific system prompt from role definition
+            role_def = role_registry.get_role(role)
+            if role_def:
+                prompts = role_def.config.get('prompts', {})
+                system_prompt = prompts.get('system', 'You are a helpful AI assistant.')
+            else:
+                system_prompt = self.prompt_library.get_prompt(role)
+        else:
+            # Fallback to prompt library
+            system_prompt = self.prompt_library.get_prompt(role)
         
-        # Create and return the agent
-        return Agent(
+        # Create the agent
+        agent = Agent(
             model=model,
             system_prompt=system_prompt,
             tools=tools or []
         )
+        
+        # Cache the agent
+        self._agent_cache[cache_key] = agent
+        logger.info(f"Cached new agent for {cache_key}")
+        
+        return agent
+    
+    def _hash_tools(self, tools: List) -> str:
+        """
+        Create a hash of the tools list for caching purposes.
+        
+        Args:
+            tools: List of tools
+            
+        Returns:
+            Hash string representing the tools
+        """
+        if not tools:
+            return "no_tools"
+        
+        # Create a stable hash based on tool names/types
+        tool_names = []
+        for tool in tools:
+            if hasattr(tool, '__name__'):
+                tool_names.append(tool.__name__)
+            elif hasattr(tool, '_tool_name'):
+                tool_names.append(tool._tool_name)
+            else:
+                tool_names.append(str(type(tool).__name__))
+        
+        # Sort for consistent hashing
+        tool_names.sort()
+        tools_str = "_".join(tool_names)
+        
+        return hashlib.md5(tools_str.encode()).hexdigest()[:8]
+    
+    def warm_models(self):
+        """
+        Pre-create commonly used models to avoid cold start delays.
+        This should be called during application startup.
+        """
+        if self._is_warmed:
+            logger.debug("Models already warmed, skipping")
+            return
+        
+        logger.info("Warming up commonly used models...")
+        
+        try:
+            # Pre-warm WEAK model for routing (most critical for performance)
+            if LLMType.WEAK in self.configs:
+                self.create_strands_model(LLMType.WEAK)
+                logger.info("Warmed WEAK model for routing")
+            
+            # Pre-warm DEFAULT model for general tasks
+            if LLMType.DEFAULT in self.configs:
+                self.create_strands_model(LLMType.DEFAULT)
+                logger.info("Warmed DEFAULT model for general tasks")
+            
+            # Pre-warm STRONG model if available
+            if LLMType.STRONG in self.configs:
+                self.create_strands_model(LLMType.STRONG)
+                logger.info("Warmed STRONG model for complex tasks")
+            
+            self._is_warmed = True
+            logger.info(f"Model warming completed. Cached {len(self._model_cache)} models")
+            
+        except Exception as e:
+            logger.warning(f"Model warming failed: {e}")
+            # Don't fail startup if warming fails
+    
+    def clear_cache(self):
+        """
+        Clear all cached models and agents.
+        Useful for testing or memory management.
+        """
+        self._model_cache.clear()
+        self._agent_cache.clear()
+        self._is_warmed = False
+        logger.info("Cleared all model and agent caches")
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about cached models and agents.
+        
+        Returns:
+            Dict with cache statistics
+        """
+        return {
+            "models_cached": len(self._model_cache),
+            "agents_cached": len(self._agent_cache),
+            "is_warmed": self._is_warmed,
+            "model_cache_keys": list(self._model_cache.keys()),
+            "agent_cache_keys": list(self._agent_cache.keys())
+        }
 
     def _get_config(self, llm_type: LLMType, name: Optional[str] = None) -> BaseConfig:
         """

@@ -5,6 +5,7 @@ role:
   name: "weather"
   version: "1.0.0"
   description: "Specialized role for weather information retrieval and forecasting"
+  fast_reply: true  # Enable fast-path routing for weather queries
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -33,6 +34,8 @@ prompts:
     
     Focus on providing accurate, current weather information with proper source attribution.
     Always use the available weather tools to get real-time data from reliable sources.
+
+    Always respond in natural language as your output will be converted to text to speech.
 
 # Tool Configuration
 tools:

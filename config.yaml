@@ -105,6 +105,32 @@ logging:
     llm_provider: "DEBUG"
     supervisor: "INFO"
     universal_agent: "INFO"
+    workflow_duration_logger: "INFO"
+
+# Workflow Duration Logging Configuration
+workflow_duration_logging:
+  enabled: true
+  log_file: "logs/workflow_durations.jsonl"
+  max_log_file_size_mb: 100
+  enable_console_logging: true
+  
+  # Performance monitoring settings
+  performance_monitoring:
+    track_cli_workflows: true
+    track_slack_workflows: true
+    track_api_workflows: true
+    
+  # Analytics and reporting
+  analytics:
+    enable_performance_summary: true
+    summary_interval_hours: 24
+    retention_days: 30
+    
+  # Log rotation settings
+  rotation:
+    enabled: true
+    backup_count: 5
+    compress_backups: true
 
 # MCP Integration
 mcp:
@@ -133,6 +159,17 @@ feature_flags:
   enable_task_scheduling: true
   enable_pause_resume: true
   enable_heartbeat: true
+
+# Fast-Path Routing Configuration
+fast_path:
+  enabled: true
+  confidence_threshold: 0.7  # Minimum confidence for fast-path routing
+  max_response_time: 3       # Target response time in seconds
+  fallback_on_error: true    # Fall back to planning on fast-path errors
+  
+  # Logging and monitoring
+  log_routing_decisions: true
+  track_performance_metrics: true
 
 # Development Settings
 development:

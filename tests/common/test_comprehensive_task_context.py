@@ -213,7 +213,7 @@ class TestComprehensiveTaskContext:
         """Test performance metrics tracking."""
         # Start execution and simulate some work
         task_context.start_execution()
-        time.sleep(0.1)  # Simulate work
+        # time.sleep(0.1)  # Removed for faster tests
         
         # Get performance metrics
         metrics = task_context.get_performance_metrics()

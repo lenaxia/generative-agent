@@ -75,8 +75,8 @@ class TestProgrammaticRoleBase:
         
         class MetricsTestRole(ProgrammaticRole):
             def execute(self, instruction: str, context: Optional[TaskContext] = None) -> Any:
-                # Simulate some work
-                time.sleep(0.01)
+                # Simulate some work - removed sleep for performance
+                # time.sleep(0.01)
                 self.execution_count += 1
                 self.total_execution_time += 0.01
                 return {"result": "success"}

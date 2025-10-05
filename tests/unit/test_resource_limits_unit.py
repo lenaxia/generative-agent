@@ -207,8 +207,12 @@ class TestResourceLimitsUnit:
         restored_conversation = restored_context.get_conversation_history()
         assert len(restored_conversation) == 500
 
-    def test_concurrent_access_safety(self, workflow_engine):
+    @patch('supervisor.workflow_engine.WorkflowEngine.start_workflow')
+    def test_concurrent_access_safety(self, mock_start_workflow, workflow_engine):
         """Test system handles concurrent access safely."""
+        # Mock start_workflow to return unique IDs without real LLM calls
+        mock_start_workflow.side_effect = lambda prompt: f"wf_mock_{hash(prompt) % 10000:04d}"
+        
         results = []
         errors = []
         
@@ -235,14 +239,19 @@ class TestResourceLimitsUnit:
             thread.join(timeout=5.0)  # 5 second timeout per thread
         
         # Verify results
-        # Some workflows may succeed, some may fail due to concurrency
+        # All workflows should succeed with mocked implementation
         total_attempts = len(results) + len(errors)
-        assert total_attempts <= 5  # Should not exceed number of threads
+        assert total_attempts == 5  # All threads should complete
+        assert len(results) == 5  # All should succeed with mocks
+        assert len(errors) == 0  # No errors expected with mocks
         
-        # If any succeeded, they should have valid workflow IDs
+        # All should have valid workflow IDs
         for workflow_id in results:
-            if workflow_id is not None:
-                assert workflow_id.startswith('wf_')
+            assert workflow_id is not None
+            assert workflow_id.startswith('wf_mock_')
+        
+        # Verify all calls were made
+        assert mock_start_workflow.call_count == 5
 
     def test_queue_overflow_handling(self, workflow_engine):
         """Test system handles task queue overflow gracefully."""

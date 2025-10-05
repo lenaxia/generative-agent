@@ -155,12 +155,25 @@ class Supervisor:
            (hasattr(self.config, 'feature_flags') and self.config.feature_flags and self.config.feature_flags.enable_mcp_integration):
             mcp_config_path = self.config.mcp.config_file if hasattr(self.config, 'mcp') and self.config.mcp else 'config/mcp_config.yaml'
         
+        # Get fast-path configuration from config
+        fast_path_config = None
+        if hasattr(self.config, 'fast_path') and self.config.fast_path:
+            fast_path_config = {
+                'enabled': getattr(self.config.fast_path, 'enabled', True),
+                'confidence_threshold': getattr(self.config.fast_path, 'confidence_threshold', 0.7),
+                'max_response_time': getattr(self.config.fast_path, 'max_response_time', 3000),
+                'fallback_on_error': getattr(self.config.fast_path, 'fallback_on_error', True),
+                'log_routing_decisions': getattr(self.config.fast_path, 'log_routing_decisions', True),
+                'track_performance_metrics': getattr(self.config.fast_path, 'track_performance_metrics', True)
+            }
+        
         self.workflow_engine = WorkflowEngine(
             llm_factory=self.llm_factory,
             message_bus=self.message_bus,
             max_concurrent_tasks=5,
             checkpoint_interval=300,
-            mcp_config_path=mcp_config_path
+            mcp_config_path=mcp_config_path,
+            fast_path_config=fast_path_config
         )
         logger.info("WorkflowEngine initialized (consolidated RequestManager + TaskScheduler).")
 

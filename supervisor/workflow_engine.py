@@ -16,6 +16,8 @@ from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.universal_agent import UniversalAgent
 from llm_provider.mcp_client import MCPClientManager
 from llm_provider.role_registry import RoleRegistry
+from llm_provider.request_router import RequestRouter, FastPathRoutingConfig
+from supervisor.workflow_duration_logger import get_duration_logger, WorkflowSource, WorkflowType
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +74,10 @@ class WorkflowEngine:
     def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus,
                  max_retries: int = 3, retry_delay: float = 1.0,
                  max_concurrent_tasks: int = 5, checkpoint_interval: int = 300,
-                 mcp_config_path: Optional[str] = None, roles_directory: str = "roles"):
+                 mcp_config_path: Optional[str] = None, roles_directory: str = "roles",
+                 fast_path_config: Optional[Dict[str, Any]] = None):
         """
-        Initialize WorkflowEngine with Universal Agent, task scheduling, and dynamic role support.
+        Initialize WorkflowEngine with Universal Agent, task scheduling, and fast-path routing support.
         
         Args:
             llm_factory: LLMFactory for creating Universal Agent
@@ -85,6 +88,7 @@ class WorkflowEngine:
             checkpoint_interval: Checkpoint creation interval in seconds
             mcp_config_path: Optional path to MCP configuration file
             roles_directory: Directory containing role definitions
+            fast_path_config: Optional fast-path routing configuration
         """
         self.llm_factory = llm_factory
         self.message_bus = message_bus
@@ -92,14 +96,35 @@ class WorkflowEngine:
         # Initialize MCP manager
         self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
         
-        # Initialize role registry
+        # Initialize role registry with performance optimization
         self.role_registry = RoleRegistry(roles_directory)
+        # Set this as the global registry to ensure consistency across the system
+        RoleRegistry._global_registry = self.role_registry
+        # Use initialize_once for performance - avoid repeated loading
+        self.role_registry.initialize_once()
         
-        # Create Universal Agent with MCP and role support
+        # Get fast-reply roles count for logging (uses cache)
+        fast_reply_roles = self.role_registry.get_fast_reply_roles()
+        logger.info(f"Initialized with {len(fast_reply_roles)} fast-reply roles: {[r.name for r in fast_reply_roles]}")
+        
+        # Create Universal Agent with MCP and role support first
         self.universal_agent = UniversalAgent(llm_factory, role_registry=self.role_registry, mcp_manager=self.mcp_manager)
+        
+        # Performance optimization: Warm up models for faster routing
+        logger.info("Warming up LLM models for optimal performance...")
+        try:
+            llm_factory.warm_models()
+            logger.info("Model warming completed successfully")
+        except Exception as e:
+            logger.warning(f"Model warming failed (non-critical): {e}")
+        
+        # Initialize fast-path routing with UniversalAgent
+        self.fast_path_config = FastPathRoutingConfig.from_dict(fast_path_config or {})
+        self.request_router = RequestRouter(llm_factory, self.role_registry, self.universal_agent)
         
         # Workflow tracking
         self.active_workflows: Dict[str, TaskContext] = {}
+        self.fast_reply_results: Dict[str, Dict[str, Any]] = {}  # Store fast reply results
         
         # Task scheduling
         self.task_queue: List[QueuedTask] = []
@@ -139,11 +164,21 @@ class WorkflowEngine:
             str: Workflow ID for tracking
         """
         request = RequestMetadata(prompt=instruction, source_id=source_id, target_id=target_id)
-        return self.handle_request(request)
+        workflow_id = self.handle_request(request)
+        
+        # Update workflow source to CLI for workflows started via start_workflow
+        if workflow_id and hasattr(self, 'duration_logger'):
+            try:
+                if workflow_id in self.duration_logger.active_workflows:
+                    self.duration_logger.active_workflows[workflow_id].source = WorkflowSource.CLI
+            except Exception as e:
+                logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
+        
+        return workflow_id
     
     def handle_request(self, request: RequestMetadata) -> str:
         """
-        Handle incoming request using Universal Agent and TaskContext.
+        Enhanced request handling with fast-path routing.
         
         Args:
             request: The incoming request metadata
@@ -151,11 +186,104 @@ class WorkflowEngine:
         Returns:
             str: Request ID for tracking
         """
+        # Fast-path routing (if enabled)
+        if self.fast_path_config.enabled:
+            routing_result = self.request_router.route_request(request.prompt)
+            
+            if (routing_result["route"] != "PLANNING" and
+                routing_result.get("confidence", 0) >= self.fast_path_config.confidence_threshold):
+                
+                # Fast-path execution
+                return self._handle_fast_reply(request, routing_result)
+        
+        # Existing complex workflow path (unchanged)
+        return self._handle_complex_workflow(request)
+    
+    def _handle_fast_reply(self, request: RequestMetadata, routing_result: Dict) -> str:
+        """Execute fast-reply using existing Universal Agent."""
+        try:
+            request_id = 'fr_' + str(uuid.uuid4()).split('-')[-1]  # Fast-reply ID
+            role = routing_result["route"]
+            
+            logger.info(f"Fast-reply '{request_id}' via {role} role (confidence: {routing_result['confidence']:.2f})")
+            
+            # Start duration tracking at the beginning of execution
+            duration_logger = get_duration_logger()
+            duration_logger.start_workflow_tracking(
+                workflow_id=request_id,
+                source=WorkflowSource.CLI,  # Will be updated by caller if needed
+                workflow_type=WorkflowType.FAST_REPLY,
+                instruction=request.prompt
+            )
+            
+            # Direct Universal Agent execution (no TaskContext needed)
+            result = self.universal_agent.execute_task(
+                instruction=request.prompt,
+                role=role,
+                llm_type=LLMType.WEAK,  # Fast model for quick responses
+                context=None  # No TaskContext for single-step execution
+            )
+            
+            logger.info(f"Fast-reply '{request_id}' completed in {role} role")
+            
+            # Complete duration tracking
+            duration_logger.complete_workflow_tracking(
+                workflow_id=request_id,
+                success=True,
+                role=role,
+                confidence=routing_result.get('confidence')
+            )
+            
+            # Store the result for later retrieval and return the request_id
+            self._store_fast_reply_result(
+                request_id,
+                result,
+                role=role,
+                confidence=routing_result.get('confidence')
+            )
+            return request_id
+            
+        except Exception as e:
+            logger.error(f"Fast-reply execution failed: {e}")
+            # Graceful fallback to complex workflow
+            logger.info("Falling back to complex workflow due to fast-reply failure")
+            return self._handle_complex_workflow(request)
+    
+    def _store_fast_reply_result(self, request_id: str, result: str, role: str = None, confidence: float = None, execution_time_ms: float = None):
+        """
+        Store fast reply result for later retrieval.
+        
+        Args:
+            request_id: The fast reply request ID
+            result: The execution result
+            role: The role used for execution
+            confidence: The routing confidence
+            execution_time_ms: Execution time in milliseconds
+        """
+        self.fast_reply_results[request_id] = {
+            "result": result,
+            "role": role,
+            "confidence": confidence,
+            "execution_time_ms": execution_time_ms,
+            "timestamp": time.time()
+        }
+    
+    def _handle_complex_workflow(self, request: RequestMetadata) -> str:
+        """Existing complex workflow handling with duration tracking"""
         try:
             request_id = 'wf_' + str(uuid.uuid4()).split('-')[-1]
             request_time = time.time()
             
             logger.info(f"Handling workflow '{request_id}' with Universal Agent")
+            
+            # Start duration tracking at the beginning of execution
+            duration_logger = get_duration_logger()
+            duration_logger.start_workflow_tracking(
+                workflow_id=request_id,
+                source=WorkflowSource.CLI,  # Will be updated by caller if needed
+                workflow_type=WorkflowType.COMPLEX_WORKFLOW,
+                instruction=request.prompt
+            )
             
             # Create task plan using Universal Agent with planning role
             task_context = self._create_task_plan(request.prompt, request_id)
@@ -857,17 +985,68 @@ Current task: {base_prompt}"""
             Dict: Request status information
         """
         try:
+            # Check if it's a fast reply
+            if request_id in self.fast_reply_results:
+                fast_reply = self.fast_reply_results[request_id]
+                
+                # Complete duration tracking if not already done
+                if hasattr(self, 'duration_logger') and request_id in self.duration_logger.active_workflows:
+                    try:
+                        self.duration_logger.complete_workflow_tracking(
+                            workflow_id=request_id,
+                            success=True,
+                            role=fast_reply.get("role"),
+                            confidence=fast_reply.get("confidence")
+                        )
+                    except Exception as e:
+                        logger.debug(f"Duration tracking already completed for {request_id}: {e}")
+                
+                return {
+                    "request_id": request_id,
+                    "execution_state": "COMPLETED",
+                    "is_completed": True,
+                    "result": fast_reply["result"],
+                    "role": fast_reply["role"],
+                    "confidence": fast_reply["confidence"],
+                    "execution_time_ms": fast_reply.get("execution_time_ms", 0)
+                }
+            
+            # Check regular workflows
             task_context = self.active_workflows.get(request_id)
             if not task_context:
                 return {"error": f"Request '{request_id}' not found"}
             
+            is_completed = task_context.is_completed()
+            
+            # Complete duration tracking for complex workflows when they finish
+            if is_completed and hasattr(self, 'duration_logger') and request_id in self.duration_logger.active_workflows:
+                try:
+                    # Get task count and success status
+                    task_statuses = {
+                        node_id: node.status.value
+                        for node_id, node in task_context.task_graph.nodes.items()
+                    }
+                    task_count = len(task_statuses)
+                    failed_tasks = [status for status in task_statuses.values() if status == "FAILED"]
+                    success = len(failed_tasks) == 0
+                    error_message = f"{len(failed_tasks)} tasks failed" if failed_tasks else None
+                    
+                    self.duration_logger.complete_workflow_tracking(
+                        workflow_id=request_id,
+                        success=success,
+                        error_message=error_message,
+                        task_count=task_count
+                    )
+                except Exception as e:
+                    logger.debug(f"Duration tracking already completed for {request_id}: {e}")
+            
             return {
                 "request_id": request_id,
                 "execution_state": task_context.execution_state.value,
-                "is_completed": task_context.is_completed(),
+                "is_completed": is_completed,
                 "performance_metrics": task_context.get_performance_metrics(),
                 "task_statuses": {
-                    node_id: node.status.value 
+                    node_id: node.status.value
                     for node_id, node in task_context.task_graph.nodes.items()
                 }
             }
@@ -1075,3 +1254,81 @@ Current task: {base_prompt}"""
         except Exception as e:
             logger.error(f"Error executing MCP tool '{tool_name}': {e}")
             return {"error": str(e)}
+    
+    # ==================== ROLE-BASED TASK DELEGATION ====================
+    
+    def _determine_role_from_agent_id(self, agent_id: str) -> str:
+        """
+        Determine role from legacy agent ID for backward compatibility.
+        
+        Args:
+            agent_id: Legacy agent ID (e.g., 'planning_agent', 'search_agent')
+            
+        Returns:
+            str: Role name (e.g., 'planning', 'search')
+        """
+        # Map legacy agent IDs to roles
+        agent_to_role_mapping = {
+            "planning_agent": "planning",
+            "search_agent": "search",
+            "weather_agent": "weather",
+            "summarizer_agent": "summarizer",
+            "slack_agent": "slack",
+            "coding_agent": "coding",
+            "analysis_agent": "analysis",
+            "research_agent": "research_analyst"
+        }
+        
+        # Remove '_agent' suffix if present
+        if agent_id.endswith('_agent'):
+            role = agent_id[:-6]  # Remove '_agent'
+        else:
+            role = agent_id
+            
+        return agent_to_role_mapping.get(agent_id, role)
+    
+    def update_workflow_source(self, workflow_id: str, source: WorkflowSource, user_id: str = None, channel_id: str = None):
+        """
+        Update the source of an active workflow (for Slack vs CLI differentiation).
+        
+        Args:
+            workflow_id: The workflow ID to update
+            source: The workflow source (CLI, SLACK, API)
+            user_id: Optional user ID for Slack workflows
+            channel_id: Optional channel ID for Slack workflows
+        """
+        if hasattr(self, 'duration_logger') and workflow_id in self.duration_logger.active_workflows:
+            try:
+                workflow_metrics = self.duration_logger.active_workflows[workflow_id]
+                workflow_metrics.source = source
+                if user_id:
+                    workflow_metrics.user_id = user_id
+                if channel_id:
+                    workflow_metrics.channel_id = channel_id
+                logger.debug(f"Updated workflow {workflow_id} source to {source.value}")
+            except Exception as e:
+                logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
+    
+    def _determine_llm_type_for_role(self, role: str) -> LLMType:
+        """
+        Determine optimal LLM type for a given role.
+        
+        Args:
+            role: Role name
+            
+        Returns:
+            LLMType: Optimal LLM type for the role
+        """
+        # Map roles to optimal LLM types
+        role_llm_mapping = {
+            "planning": LLMType.STRONG,
+            "analysis": LLMType.STRONG,
+            "research_analyst": LLMType.STRONG,
+            "coding": LLMType.STRONG,
+            "search": LLMType.WEAK,
+            "weather": LLMType.WEAK,
+            "summarizer": LLMType.DEFAULT,
+            "slack": LLMType.DEFAULT
+        }
+        
+        return role_llm_mapping.get(role, LLMType.DEFAULT)

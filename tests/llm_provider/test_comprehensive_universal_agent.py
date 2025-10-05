@@ -30,7 +30,7 @@ class TestComprehensiveUniversalAgent:
     @pytest.fixture
     def universal_agent(self, mock_llm_factory, mock_mcp_manager):
         """Create a UniversalAgent for testing."""
-        return UniversalAgent(mock_llm_factory, mock_mcp_manager)
+        return UniversalAgent(mock_llm_factory, mcp_manager=mock_mcp_manager)
     
     @pytest.fixture
     def sample_task_context(self):

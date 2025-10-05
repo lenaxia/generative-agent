@@ -128,7 +128,7 @@ class TestDataCollectionRole:
         """Test parallel data collection for efficiency."""
         # Mock multiple sources with different response times
         def mock_collect_with_delay(source, data_types):
-            time.sleep(0.01)  # Simulate network delay
+            # time.sleep(0.01)  # Removed for faster tests
             return [{"data": f"Data from {source}", "source": source}]
         
         data_collection_role.data_sources.collect_from_source.side_effect = mock_collect_with_delay

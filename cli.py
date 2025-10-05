@@ -11,6 +11,8 @@ import time
 import logging
 import argparse
 from pathlib import Path
+import readline
+import os
 
 # Add project root to Python path
 project_root = Path(__file__).parent
@@ -18,6 +20,7 @@ sys.path.insert(0, str(project_root))
 
 from supervisor.supervisor import Supervisor
 from common.request_model import RequestMetadata
+from supervisor.workflow_duration_logger import WorkflowSource
 
 # Configure logging for CLI
 logging.basicConfig(
@@ -25,6 +28,71 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("cli")
+
+
+def setup_readline():
+    """Setup readline for command history and cursor navigation."""
+    try:
+        # Set up history file
+        history_file = os.path.expanduser("~/.generative_agent_history")
+        
+        # Load existing history
+        if os.path.exists(history_file):
+            readline.read_history_file(history_file)
+        
+        # Set history length
+        readline.set_history_length(1000)
+        
+        # Enable tab completion (basic)
+        readline.parse_and_bind("tab: complete")
+        
+        # Enable emacs-style key bindings (default)
+        readline.parse_and_bind("set editing-mode emacs")
+        
+        # Save history on exit
+        import atexit
+        atexit.register(lambda: readline.write_history_file(history_file))
+        
+        logger.debug("Readline setup completed with history file: %s", history_file)
+        
+    except Exception as e:
+        logger.warning("Could not setup readline: %s", e)
+
+
+def show_command_history():
+    """Show the command history."""
+    try:
+        history_length = readline.get_current_history_length()
+        if history_length == 0:
+            print("📝 No command history available")
+            return
+        
+        print(f"\n📝 Command History (last {min(history_length, 20)} commands):")
+        print("-" * 50)
+        
+        # Show last 20 commands
+        start_idx = max(1, history_length - 19)
+        for i in range(start_idx, history_length + 1):
+            try:
+                cmd = readline.get_history_item(i)
+                if cmd:
+                    print(f"{i:3d}: {cmd}")
+            except:
+                continue
+        print("-" * 50)
+        
+    except Exception as e:
+        logger.warning("Could not show command history: %s", e)
+        print("❌ Could not retrieve command history")
+
+
+def clear_command_history():
+    """Clear the command history."""
+    try:
+        readline.clear_history()
+        logger.debug("Command history cleared")
+    except Exception as e:
+        logger.warning("Could not clear command history: %s", e)
 
 
 def main():
@@ -94,6 +162,8 @@ Examples:
 
 def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
     """Execute a single workflow and exit."""
+    workflow_id = None
+    
     try:
         logger.info("Starting system...")
         supervisor.start()
@@ -102,8 +172,12 @@ def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
         workflow_id = supervisor.workflow_engine.start_workflow(workflow_instruction)
         logger.info(f"✅ Workflow '{workflow_id}' started")
         
+        # Update workflow source to CLI (duration tracking is handled in workflow engine)
+        supervisor.workflow_engine.update_workflow_source(workflow_id, WorkflowSource.CLI)
+        
         # Monitor workflow progress
         workflow_completed = False
+        
         while not workflow_completed:
             progress_info = supervisor.workflow_engine.get_request_status(workflow_id)
             if progress_info is None:
@@ -111,8 +185,13 @@ def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
                 logger.info("✅ Workflow completed")
             else:
                 logger.info(f"Workflow Status: {progress_info}")
-                # Fixed: Check "is_completed" instead of "status"
-                if progress_info.get("is_completed", False):
+                
+                # Check for errors
+                if progress_info.get("error"):
+                    workflow_completed = True
+                    logger.error(f"❌ Workflow failed: {progress_info.get('error')}")
+                # Check "is_completed" instead of "status"
+                elif progress_info.get("is_completed", False):
                     workflow_completed = True
                     logger.info("✅ Workflow completed successfully")
                 else:
@@ -175,6 +254,9 @@ def run_interactive_mode(supervisor: Supervisor):
         supervisor.start()
         logger.info("✅ System started successfully")
         
+        # Setup readline for command history and cursor navigation
+        setup_readline()
+        
         print("\n🚀 StrandsAgent Universal Agent System - Interactive Mode")
         print("=" * 60)
         print("💬 Default: Enter any text to execute as a workflow")
@@ -182,6 +264,12 @@ def run_interactive_mode(supervisor: Supervisor):
         print("  /status   - Show system status and metrics")
         print("  /exit     - Exit the system and exit")
         print("  /help     - Show this help message")
+        print("  /history  - Show command history")
+        print("  /clear    - Clear command history")
+        print("📝 Navigation:")
+        print("  ↑/↓ arrows - Navigate command history")
+        print("  ←/→ arrows - Move cursor within current line")
+        print("  Ctrl+A/E  - Move to beginning/end of line")
         print("=" * 60)
         
         while True:
@@ -206,7 +294,20 @@ def run_interactive_mode(supervisor: Supervisor):
                         print("  /status   - Show system status and metrics")
                         print("  /exit     - Stop the system and exit")
                         print("  /help     - Show this help message")
+                        print("  /history  - Show command history")
+                        print("  /clear    - Clear command history")
+                        print("📝 Navigation:")
+                        print("  ↑/↓ arrows - Navigate command history")
+                        print("  ←/→ arrows - Move cursor within current line")
+                        print("  Ctrl+A/E  - Move to beginning/end of line")
                         print("💬 Default: Any other text will be executed as a workflow")
+                    
+                    elif command == "history":
+                        show_command_history()
+                    
+                    elif command == "clear":
+                        clear_command_history()
+                        print("✅ Command history cleared")
                         
                     else:
                         print(f"❌ Unknown command: {user_input}")
@@ -225,21 +326,35 @@ def run_interactive_mode(supervisor: Supervisor):
                     workflow_id = supervisor.workflow_engine.start_workflow(workflow_instruction)
                     logger.info(f"✅ Workflow '{workflow_id}' started")
                     
+                    # Update workflow source to CLI (duration tracking is handled in workflow engine)
+                    supervisor.workflow_engine.update_workflow_source(workflow_id, WorkflowSource.CLI)
+                    
                     # Monitor progress
                     workflow_completed = False
-                    while not workflow_completed:
-                        progress_info = supervisor.workflow_engine.get_request_status(workflow_id)
-                        if progress_info is None:
-                            workflow_completed = True
-                            logger.info("✅ Workflow completed")
-                        else:
-                            logger.info(f"📊 Workflow Status: {progress_info}")
-                            # Fixed: Check "is_completed" instead of "status"
-                            if progress_info.get("is_completed", False):
+                    
+                    try:
+                        while not workflow_completed:
+                            progress_info = supervisor.workflow_engine.get_request_status(workflow_id)
+                            if progress_info is None:
                                 workflow_completed = True
-                                logger.info("✅ Workflow completed successfully")
+                                logger.info("✅ Workflow completed")
                             else:
-                                time.sleep(3)  # Check every 3 seconds
+                                logger.info(f"📊 Workflow Status: {progress_info}")
+                                
+                                # Check for errors
+                                if progress_info.get("error"):
+                                    workflow_completed = True
+                                    logger.error(f"❌ Workflow failed: {progress_info.get('error')}")
+                                # Check "is_completed" instead of "status"
+                                elif progress_info.get("is_completed", False):
+                                    workflow_completed = True
+                                    logger.info("✅ Workflow completed successfully")
+                                else:
+                                    time.sleep(3)  # Check every 3 seconds
+                        
+                    except KeyboardInterrupt:
+                        logger.info("⚠️ Workflow interrupted by user")
+                        continue  # Continue the interactive loop
                         
                 # Handle empty input
                 else:

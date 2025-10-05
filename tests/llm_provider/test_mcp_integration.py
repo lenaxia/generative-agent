@@ -28,7 +28,7 @@ class TestUniversalAgentMCPIntegration:
     @pytest.fixture
     def universal_agent(self, mock_llm_factory, mock_mcp_manager):
         """Create a UniversalAgent with MCP integration."""
-        return UniversalAgent(mock_llm_factory, mock_mcp_manager)
+        return UniversalAgent(mock_llm_factory, mcp_manager=mock_mcp_manager)
     
     def test_universal_agent_with_mcp_tools(self, universal_agent):
         """Test Universal Agent with MCP tools integration."""

@@ -162,7 +162,7 @@ class TestTaskGraphCheckpoints(unittest.TestCase):
     def test_multiple_checkpoints_chronological(self):
         """Test that multiple checkpoints maintain chronological order."""
         checkpoint1 = self.task_graph.create_checkpoint()
-        time.sleep(0.01)  # Ensure different timestamps
+        # time.sleep(0.01)  # Removed for faster tests - use counter instead
         
         task1_id = self.task_graph.task_name_map["task1"]
         self.task_graph.mark_task_completed(task1_id, "Task 1 result")

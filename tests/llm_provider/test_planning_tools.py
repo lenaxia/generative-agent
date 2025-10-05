@@ -30,13 +30,11 @@ class TestPlanningTools:
         mock_model = Mock()
         mock_factory.create_strands_model.return_value = mock_model
         
-        # Mock the StrandsAgent to return our desired JSON response
-        with patch('strands.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_response = Mock()
-            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Search for Python info", "agent_id": "search", "task_type": "execution", "prompt": "Search for information about Python programming", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
-            mock_agent.return_value = mock_response
-            mock_agent_class.return_value = mock_agent
+        # Mock the universal agent execute_task method to return JSON string
+        with patch('llm_provider.universal_agent.UniversalAgent') as mock_ua_class:
+            mock_ua = Mock()
+            mock_ua.execute_task.return_value = '{"tasks": [{"task_id": "task_1", "task_name": "Search for Python info", "agent_id": "search", "task_type": "execution", "prompt": "Search for information about Python programming", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
+            mock_ua_class.return_value = mock_ua
             
             instruction = "Search for information about Python programming"
             result = create_task_plan(instruction, mock_factory)
@@ -44,7 +42,7 @@ class TestPlanningTools:
             assert "task_graph" in result
             assert "tasks" in result
             assert "dependencies" in result
-        assert "request_id" in result
+            assert "request_id" in result
         
         # Check task graph
         task_graph = result["task_graph"]
@@ -69,13 +67,11 @@ class TestPlanningTools:
         mock_model = Mock()
         mock_factory.create_strands_model.return_value = mock_model
         
-        # Mock the StrandsAgent to return our desired JSON response
-        with patch('strands.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_response = Mock()
-            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Get weather info", "agent_id": "weather", "task_type": "execution", "prompt": "Get weather for Seattle", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
-            mock_agent.return_value = mock_response
-            mock_agent_class.return_value = mock_agent
+        # Mock the universal agent execute_task method to return JSON string
+        with patch('llm_provider.universal_agent.UniversalAgent') as mock_ua_class:
+            mock_ua = Mock()
+            mock_ua.execute_task.return_value = '{"tasks": [{"task_id": "task_1", "task_name": "Get weather info", "agent_id": "weather", "task_type": "execution", "prompt": "Get weather for Seattle", "llm_type": "WEAK", "status": "pending"}], "dependencies": []}'
+            mock_ua_class.return_value = mock_ua
             
             instruction = "Get weather for Seattle"
             result = create_task_plan(instruction, mock_factory, "test_request")
@@ -278,39 +274,40 @@ class TestPlanningTools:
             assert isinstance(desc, str)
             assert len(desc) > 0
 
-    def test_create_task_plan_integration_with_task_graph(self):
+    @patch('llm_provider.universal_agent.UniversalAgent.execute_task')
+    def test_create_task_plan_integration_with_task_graph(self, mock_execute_task):
         """Test that created task plan integrates properly with TaskGraph."""
-        from unittest.mock import Mock, patch
+        from unittest.mock import Mock
         from llm_provider.factory import LLMFactory
         
         # Create mock LLM factory
         mock_factory = Mock(spec=LLMFactory)
-        mock_model = Mock()
-        mock_factory.create_strands_model.return_value = mock_model
+        mock_factory.get_framework.return_value = 'strands'
         
-        # Mock the StrandsAgent to return our desired JSON response
-        with patch('strands.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_response = Mock()
-            mock_response.content = '{"tasks": [{"task_id": "task_1", "task_name": "Analyze market trends", "agent_id": "analysis", "task_type": "execution", "prompt": "Analyze market trends", "llm_type": "DEFAULT", "status": "pending"}], "dependencies": []}'
-            mock_agent.return_value = mock_response
-            mock_agent_class.return_value = mock_agent
-            
-            instruction = "Analyze market trends"
-            result = create_task_plan(instruction, mock_factory, "integration_test")
-            
-            task_graph = result["task_graph"]
-            
-            # Verify TaskGraph methods work
-            assert task_graph.get_entrypoint_nodes() is not None
-            assert task_graph.get_terminal_nodes() is not None
-            
-            # Verify task graph has correct request_id
-            assert task_graph.request_id == "integration_test"
-            
-            # Verify llm_type is properly transferred
-            node = list(task_graph.nodes.values())[0]
-            assert node.llm_type == "DEFAULT"
+        # Mock the UniversalAgent.execute_task to return planning JSON
+        mock_execute_task.return_value = '{"tasks": [{"task_id": "task_1", "task_name": "Analyze market trends", "agent_id": "analysis", "task_type": "execution", "prompt": "Analyze market trends", "llm_type": "DEFAULT", "status": "pending"}], "dependencies": []}'
+        
+        instruction = "Analyze market trends"
+        result = create_task_plan(instruction, mock_factory, "integration_test")
+        
+        # Verify mock was called correctly
+        mock_execute_task.assert_called_once()
+        call_args = mock_execute_task.call_args
+        assert call_args[1]['role'] == 'planning'
+        assert call_args[1]['llm_type'].value == 'strong'
+        
+        task_graph = result["task_graph"]
+        
+        # Verify TaskGraph methods work
+        assert task_graph.get_entrypoint_nodes() is not None
+        assert task_graph.get_terminal_nodes() is not None
+        
+        # Verify task graph has correct request_id
+        assert task_graph.request_id == "integration_test"
+        
+        # Verify llm_type is properly transferred
+        node = list(task_graph.nodes.values())[0]
+        assert node.llm_type == "DEFAULT"
 
     def test_planning_tools_no_langchain_dependencies(self):
         """Test that planning tools don't import LangChain."""

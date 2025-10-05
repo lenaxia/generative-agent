@@ -47,7 +47,7 @@ class UniversalAgent:
         Create a role-specific agent using dynamic role definitions.
         
         Args:
-            role: The role name (e.g., 'research_analyst', 'code_reviewer') or "None" for dynamic generation
+            role: The role name (e.g., 'research_analyst', 'code_reviewer')
             llm_type: Semantic model type for performance/cost optimization
             context: Optional TaskContext for state management
             tools: Optional list of additional tool names to include
@@ -55,18 +55,24 @@ class UniversalAgent:
         Returns:
             StrandsAgent Agent instance configured for the specified role
         """
-        # Handle dynamic role generation for None or missing roles
+        # Handle None or missing roles by falling back to default
         if role == "None" or role is None:
-            logger.info("Dynamic role generation requested for None role")
-            return self._create_dynamic_role_agent(llm_type, context)
+            logger.info("None role requested, falling back to default role")
+            role = "default"
         
         # Load role definition
         role_def = self.role_registry.get_role(role)
         if not role_def:
-            logger.info(f"Role '{role}' not found in registry, generating dynamic role")
-            return self._create_dynamic_role_agent(llm_type, context, role)
+            logger.warning(f"Role '{role}' not found in registry, falling back to default role")
+            role = "default"
+            role_def = self.role_registry.get_role(role)
+            
+            # If default role also doesn't exist, create a basic agent
+            if not role_def:
+                logger.warning("Default role not found, creating basic agent")
+                return self._create_basic_agent(llm_type, context, tools)
         
-        # Create model with role-specific configuration
+        # Create model with role-specific configuration (use LLM Factory caching)
         model = self._create_model_for_role(role_def, llm_type)
         
         # Get system prompt from role definition
@@ -332,6 +338,7 @@ Focus on comprehensive, accurate analysis."""
     def _create_model_for_role(self, role_def: RoleDefinition, llm_type: LLMType) -> BedrockModel:
         """
         Create model with role-specific configuration merged with model capabilities.
+        Uses LLM Factory caching for performance.
         
         Args:
             role_def: Role definition containing model config
@@ -340,13 +347,17 @@ Focus on comprehensive, accurate analysis."""
         Returns:
             Configured StrandsAgent model
         """
-        # Get role model config
+        # Use LLM Factory caching for base model creation
+        base_model = self.llm_factory.create_strands_model(llm_type)
+        
+        # Get role model config for any customizations
         role_model_config = role_def.config.get('model_config', {})
         
-        # Get base model configuration
-        base_model = self._create_strands_model(llm_type)
+        # If no role-specific config, return cached model directly
+        if not role_model_config:
+            return base_model
         
-        # Merge configurations (role preferences with model limits)
+        # Merge configurations (role preferences with model limits) if needed
         merged_config = self._merge_model_configs(role_model_config, base_model)
         
         return merged_config
@@ -428,162 +439,32 @@ Focus on comprehensive, accurate analysis."""
         
         return tools
     
-    def _create_dynamic_role_agent(self, llm_type: LLMType, task_context: Optional[TaskContext] = None,
-                                 suggested_role: Optional[str] = None) -> Agent:
+    def _create_basic_agent(self, llm_type: LLMType, context: Optional[TaskContext] = None,
+                           tools: Optional[List[str]] = None) -> Agent:
         """
-        Create a dynamic role agent by using LLM to generate role definition and select tools.
-        
-        This uses the LLM to:
-        1. Analyze the task at hand
-        2. Select appropriate tools from shared tools
-        3. Generate a custom system prompt for the dynamic role
+        Create a basic agent with default configuration.
         
         Args:
             llm_type: LLM type for the agent
-            task_context: Optional task context for task analysis
-            suggested_role: Optional suggested role name for context
+            context: Optional task context
+            tools: Optional list of additional tool names
             
         Returns:
-            Agent configured with dynamically generated role
+            Agent configured with basic settings
         """
         model = self._create_strands_model(llm_type)
         
-        # Get task information for dynamic role generation
-        task_info = self._extract_task_info(task_context, suggested_role)
-        
-        # Get all available shared tools
-        all_shared_tools = self.role_registry.get_all_shared_tools()
-        
-        if all_shared_tools and self.llm_factory:
-            # Use LLM to generate dynamic role
-            dynamic_role_config = self._generate_dynamic_role_config(task_info, all_shared_tools)
-            
-            # Create agent with dynamic configuration
-            selected_tools = self._get_selected_tools(dynamic_role_config.get('selected_tools', []), all_shared_tools)
-            system_prompt = dynamic_role_config.get('system_prompt', self._get_default_system_prompt())
-            
-            # Add built-in tools
-            from strands_tools import calculator, file_read, shell
-            all_tools = [calculator, file_read, shell] + selected_tools
-            
-            agent = Agent(
-                model=model,
-                system_prompt=system_prompt,
-                tools=all_tools
-            )
-            
-            # Store current configuration
-            self.current_agent = agent
-            self.current_role = f"dynamic_{suggested_role or 'generated'}"
-            self.current_llm_type = llm_type
-            
-            logger.info(f"Created dynamic role agent with {len(selected_tools)} selected tools and custom system prompt")
-            return agent
-        else:
-            # Fallback to basic tools if no LLM factory or shared tools available
-            logger.warning("No LLM factory or shared tools available, using basic dynamic agent")
-            return self._create_basic_dynamic_agent(llm_type)
-    
-    def _extract_task_info(self, task_context: Optional[TaskContext], suggested_role: Optional[str]) -> str:
-        """Extract task information for dynamic role generation."""
-        task_info_parts = []
-        
-        if suggested_role:
-            task_info_parts.append(f"Suggested role context: {suggested_role}")
-        
-        if task_context and hasattr(task_context, 'task_graph'):
-            # Get current task details from context
-            pending_tasks = [node for node in task_context.task_graph.nodes.values()
-                           if node.status.value == 'PENDING']
-            if pending_tasks:
-                current_task = pending_tasks[0]
-                task_info_parts.append(f"Current task: {current_task.task_name}")
-                task_info_parts.append(f"Task prompt: {current_task.prompt}")
-                task_info_parts.append(f"Task type: {current_task.task_type}")
-        
-        return " | ".join(task_info_parts) if task_info_parts else "General assistance task"
-    
-    def _generate_dynamic_role_config(self, task_info: str, available_tools: Dict[str, Any]) -> Dict[str, Any]:
-        """Use LLM to generate dynamic role configuration."""
-        try:
-            # Create tool descriptions for LLM
-            tools_description = "\n".join([
-                f"- {name}: {getattr(tool, '__doc__', 'Tool function').split('.')[0] if tool.__doc__ else 'Tool function'}"
-                for name, tool in available_tools.items()
-            ])
-            
-            prompt = f"""
-            You are tasked with creating a dynamic role for an AI agent based on the following task information:
-            
-            Task Information: {task_info}
-            
-            Available Tools:
-            {tools_description}
-            
-            Please analyze the task and provide:
-            1. A list of the most useful tools for this task (maximum 5 tools)
-            2. A custom system prompt that would help an AI agent excel at this specific task
-            
-            Respond in JSON format:
-            {{
-                "selected_tools": ["tool1", "tool2", "tool3"],
-                "system_prompt": "You are a specialized AI agent for... [detailed prompt based on the task]"
-            }}
-            
-            Focus on selecting tools that are directly relevant to the task and creating a system prompt that gives the agent clear guidance on how to approach this type of work.
-            """
-            
-            # Use lightweight model for role generation
-            model = self.llm_factory.create_strands_model(LLMType.DEFAULT)
-            response = model.invoke(prompt)
-            
-            # Parse JSON response
-            import json
-            role_config = json.loads(response.content.strip())
-            
-            # Validate and clean up the response
-            selected_tools = role_config.get('selected_tools', [])
-            # Filter to only include tools that actually exist
-            valid_tools = [tool for tool in selected_tools if tool in available_tools][:5]
-            
-            system_prompt = role_config.get('system_prompt', self._get_default_system_prompt())
-            
-            return {
-                'selected_tools': valid_tools,
-                'system_prompt': system_prompt
-            }
-            
-        except Exception as e:
-            logger.warning(f"Dynamic role generation failed: {e}, using fallback")
-            # Fallback to basic tool selection
-            return {
-                'selected_tools': list(available_tools.keys())[:3],
-                'system_prompt': self._get_default_system_prompt()
-            }
-    
-    def _get_selected_tools(self, tool_names: List[str], available_tools: Dict[str, Any]) -> List[Any]:
-        """Get tool functions from tool names."""
-        selected_tools = []
-        for tool_name in tool_names:
-            if tool_name in available_tools:
-                selected_tools.append(available_tools[tool_name])
-        return selected_tools
-    
-    def _get_default_system_prompt(self) -> str:
-        """Get default system prompt for dynamic roles."""
-        return """You are a helpful AI assistant with access to specialized tools.
-        Analyze the task at hand and use the most appropriate tools to complete it effectively.
-        Provide clear, accurate, and helpful responses."""
-    
-    def _create_basic_dynamic_agent(self, llm_type: LLMType) -> Agent:
-        """Create a basic dynamic agent when advanced generation fails."""
-        model = self._create_strands_model(llm_type)
+        # Use default system prompt
+        system_prompt = """You are a helpful AI assistant. Analyze the task at hand and use the most appropriate tools to complete it effectively. Provide clear, accurate, and helpful responses."""
         
         # Use basic tools only
         from strands_tools import calculator, file_read, shell
         basic_tools = [calculator, file_read, shell]
         
-        system_prompt = self._get_default_system_prompt()
+        # Add any additional tools from registry if specified
+        if tools:
+            additional_tools = self.tool_registry.get_tools(tools)
+            basic_tools.extend(additional_tools)
         
         agent = Agent(
             model=model,
@@ -593,106 +474,19 @@ Focus on comprehensive, accurate analysis."""
         
         # Store current configuration
         self.current_agent = agent
-        self.current_role = "dynamic_basic"
+        self.current_role = "basic"
         self.current_llm_type = llm_type
         
-        logger.info("Created basic dynamic role agent with built-in tools only")
+        logger.info(f"Created basic agent with {len(basic_tools)} tools")
         return agent
     
-    def _select_tools_for_unknown_role(self, task_context: Optional[TaskContext] = None) -> List:
-        """
-        Intelligently select tools for unknown roles using LLM.
-        
-        This provides the performance benefit explanation:
-        - Predefined roles: Fast execution with pre-selected tools
-        - Unknown roles: Slower but intelligent tool selection as fallback
-        """
-        tools = [calculator, file_read, shell]  # Always include basics
-        
-        try:
-            # Get task information for intelligent tool selection
-            task_info = "general assistance"
-            if task_context and hasattr(task_context, 'task_graph'):
-                # Get task details from context if available
-                pending_tasks = [node for node in task_context.task_graph.nodes.values()
-                               if node.status == 'PENDING']
-                if pending_tasks:
-                    task_info = pending_tasks[0].prompt or "general assistance"
-            
-            # Get all available shared tools
-            all_shared_tools = self.role_registry.get_all_shared_tools()
-            
-            if all_shared_tools and self.llm_factory:
-                # Use LLM to select appropriate tools
-                selected_tool_names = self._llm_select_tools_for_task(task_info, all_shared_tools)
-                
-                # Add selected shared tools
-                for tool_name in selected_tool_names:
-                    tool = self.role_registry.get_shared_tool(tool_name)
-                    if tool:
-                        tools.append(tool)
-                
-                logger.info(f"Fallback: Selected {len(selected_tool_names)} tools for unknown role: {selected_tool_names}")
-            else:
-                logger.info("Fallback: Using basic tools only (no LLM factory or shared tools available)")
-                
-        except Exception as e:
-            logger.warning(f"Tool selection failed for unknown role, using basic tools: {e}")
-        
-        return tools
     
-    def _llm_select_tools_for_task(self, task_info: str, available_tools: Dict[str, Callable]) -> List[str]:
-        """Use LLM to select appropriate tools for a task."""
-        try:
-            # Create tool selection prompt
-            tools_description = "\n".join([
-                f"- {name}: {getattr(tool, '__doc__', 'No description').split('.')[0] if tool.__doc__ else 'Tool function'}"
-                for name, tool in available_tools.items()
-            ])
-            
-            prompt = f"""
-            Task: {task_info}
-            
-            Available tools:
-            {tools_description}
-            
-            Select the most useful tools for this task. Consider what the task might need.
-            Return only tool names, one per line, maximum 5 tools.
-            """
-            
-            # Use lightweight model for tool selection
-            model = self.llm_factory.create_chat_model(LLMType.WEAK)
-            response = model.invoke(prompt)
-            
-            # Parse tool names from response
-            selected_tools = []
-            for line in response.content.split('\n'):
-                tool_name = line.strip()
-                if tool_name and tool_name in available_tools:
-                    selected_tools.append(tool_name)
-                    if len(selected_tools) >= 5:  # Limit to 5 tools for performance
-                        break
-            
-            return selected_tools
-            
-        except Exception as e:
-            logger.warning(f"LLM tool selection failed: {e}")
-            # Fallback to basic tool selection
-            return list(available_tools.keys())[:3]  # Just take first 3 tools
     
     def reset(self):
         """Reset the Universal Agent state."""
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
-        
-        # Execute the task
-        try:
-            response = agent(instruction)
-            return str(response) if response else "No response generated"
-        except Exception as e:
-            logger.error(f"LLM task execution failed for role '{role}': {e}")
-            return f"LLM execution error: {str(e)}"
     
     def register_programmatic_role(self, name: str, role_instance: 'ProgrammaticRole'):
         """
