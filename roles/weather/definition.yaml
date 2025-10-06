@@ -48,17 +48,10 @@ lifecycle:
         uses_parameters: ["location", "timeframe"]
       - name: "validate_location"
         uses_parameters: ["location"]
-    data_injection: true  # Inject results into LLM context
+    data_injection: true  
     
   post_processing:
-    enabled: true
-    functions:
-      - name: "format_for_tts"
-        description: "Format response for text-to-speech"
-      - name: "pii_scrubber"
-        description: "Remove sensitive data"
-      - name: "audit_log"
-        description: "Log interaction for compliance"
+    enabled: false
 
 # Enhanced system prompt with pre-processed data
 prompts:

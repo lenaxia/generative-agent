@@ -112,7 +112,7 @@ class RequestRouter:
             execution_time_ms = (time.time() - start_time) * 1000
             parsed_result["execution_time_ms"] = execution_time_ms
             
-            logger.info(f"Enhanced routing: '{parsed_result['route']}' with confidence {parsed_result['confidence']:.2f} and {len(parsed_result.get('parameters', {}))} parameters")
+            logger.info(f"Enhanced routing: '{parsed_result['route']}' with confidence {parsed_result['confidence']:.2f} and {len(parsed_result.get('parameters', {}))} parameters in {execution_time_ms:.1f}ms")
             return parsed_result
             
         except Exception as e:

@@ -5,6 +5,7 @@ from llm_provider.mcp_client import MCPClientManager
 from llm_provider.role_registry import RoleRegistry, RoleDefinition
 from common.task_context import TaskContext
 import logging
+import time
 
 # Import StrandsAgent - hard dependency, no fallbacks
 from strands import Agent
@@ -655,10 +656,13 @@ Focus on comprehensive, accurate analysis."""
             # 1. Pre-processing phase
             pre_data = {}
             if self._has_pre_processing(role_def):
+                pre_start_time = time.time()
                 logger.info(f"Running pre-processing for {role}")
                 pre_data = await self._run_pre_processors(
                     role_def, lifecycle_functions, instruction, context, extracted_parameters or {}
                 )
+                pre_execution_time = (time.time() - pre_start_time) * 1000
+                logger.info(f"Pre-processing for {role} completed in {pre_execution_time:.1f}ms")
             
             # 2. LLM execution phase (if needed)
             llm_result = None
@@ -670,13 +674,16 @@ Focus on comprehensive, accurate analysis."""
             # 3. Post-processing phase
             final_result = llm_result or self._format_pre_data_result(pre_data)
             if self._has_post_processing(role_def):
+                post_start_time = time.time()
                 logger.info(f"Running post-processing for {role}")
                 final_result = await self._run_post_processors(
                     role_def, lifecycle_functions, final_result, context, pre_data
                 )
+                post_execution_time = (time.time() - post_start_time) * 1000
+                logger.info(f"Post-processing for {role} completed in {post_execution_time:.1f}ms")
             
             execution_time = time.time() - start_time
-            logger.info(f"Hybrid role {role} completed in {execution_time:.3f}s")
+            logger.info(f"Hybrid role {role} completed in {execution_time:.3f}s ({execution_time*1000:.1f}ms)")
             return final_result
             
         except Exception as e:
@@ -702,16 +709,20 @@ Focus on comprehensive, accurate analysis."""
             
             processor = lifecycle_functions.get(func_name)
             if processor:
+                func_start_time = time.time()
                 try:
                     # Extract relevant parameters for this function
                     func_parameters = {k: v for k, v in parameters.items() if k in func_params}
                     
                     result = await processor(instruction, context, func_parameters)
                     results[func_name] = result
-                    logger.debug(f"Pre-processor '{func_name}' completed successfully")
+                    
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.debug(f"Pre-processor '{func_name}' completed in {func_execution_time:.1f}ms")
                     
                 except Exception as e:
-                    logger.error(f"Pre-processor '{func_name}' failed: {e}")
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.error(f"Pre-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}")
                     results[func_name] = {"error": str(e)}
             else:
                 logger.warning(f"Pre-processor function '{func_name}' not found")
@@ -731,12 +742,16 @@ Focus on comprehensive, accurate analysis."""
             
             processor = lifecycle_functions.get(func_name)
             if processor:
+                func_start_time = time.time()
                 try:
                     current_result = await processor(current_result, context, pre_data)
-                    logger.debug(f"Post-processor '{func_name}' completed successfully")
+                    
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.debug(f"Post-processor '{func_name}' completed in {func_execution_time:.1f}ms")
                     
                 except Exception as e:
-                    logger.error(f"Post-processor '{func_name}' failed: {e}")
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.error(f"Post-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}")
                     # Continue with current result on post-processor failure
             else:
                 logger.warning(f"Post-processor function '{func_name}' not found")
