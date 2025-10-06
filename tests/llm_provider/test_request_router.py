@@ -59,6 +59,16 @@ class TestRequestRouter:
         }
         
         registry.get_fast_reply_roles.return_value = [weather_role, calendar_role]
+        
+        # Mock parameter schemas for enhanced routing
+        registry.get_role_parameters.return_value = {
+            "location": {
+                "type": "string",
+                "required": True,
+                "description": "Location for weather lookup"
+            }
+        }
+        
         return registry
     
     @pytest.fixture
@@ -78,14 +88,23 @@ class TestRequestRouter:
         assert router.universal_agent == mock_universal_agent
     
     def test_route_request_weather_query(self, request_router):
-        """Test routing a weather query to fast-reply."""
-        # Mock the UniversalAgent response properly
-        request_router.universal_agent.execute_task.return_value = '{"route": "weather", "confidence": 0.9}'
+        """Test routing a weather query to fast-reply with parameter extraction."""
+        # Mock the UniversalAgent response with parameters
+        request_router.universal_agent.execute_task.return_value = '''
+        {
+            "route": "weather",
+            "confidence": 0.9,
+            "parameters": {
+                "location": "today"
+            }
+        }
+        '''
         
         result = request_router.route_request("What's the weather like today?")
         
         assert result["route"] == "weather"
         assert result["confidence"] == 0.9
+        assert "parameters" in result
         assert "error" not in result
         
         # Verify UniversalAgent was called correctly
@@ -94,22 +113,38 @@ class TestRequestRouter:
     def test_route_request_complex_planning(self, request_router):
         """Test routing a complex request to planning."""
         # Mock the UniversalAgent response properly
-        request_router.universal_agent.execute_task.return_value = '{"route": "PLANNING", "confidence": 0.8}'
+        request_router.universal_agent.execute_task.return_value = '''
+        {
+            "route": "PLANNING",
+            "confidence": 0.8,
+            "parameters": {}
+        }
+        '''
         
         result = request_router.route_request("Create a comprehensive project plan with multiple phases")
         
         assert result["route"] == "PLANNING"
         assert result["confidence"] == 0.8
+        assert "parameters" in result
     
     def test_route_request_low_confidence(self, request_router):
-        """Test routing with low confidence defaults to planning."""
+        """Test routing with low confidence still returns the route."""
         # Mock the UniversalAgent response properly
-        request_router.universal_agent.execute_task.return_value = '{"route": "weather", "confidence": 0.3}'
+        request_router.universal_agent.execute_task.return_value = '''
+        {
+            "route": "weather",
+            "confidence": 0.3,
+            "parameters": {
+                "location": "unknown"
+            }
+        }
+        '''
         
         result = request_router.route_request("Maybe weather related?")
         
         assert result["route"] == "weather"
         assert result["confidence"] == 0.3
+        assert "parameters" in result
     
     def test_parse_routing_response_valid_json(self, request_router):
         """Test parsing valid JSON routing response."""
@@ -200,8 +235,9 @@ class TestRequestRouter:
         
         assert result["route"] == "PLANNING"
         assert result["confidence"] == 0.0
+        assert result["parameters"] == {}
         assert "error" in result
-        assert "UniversalAgent execution failed" in result["error"]
+        assert "UniversalAgent execution failed" in str(result["error"])
     
     def test_route_request_agent_execution_error(self, request_router):
         """Test handling of agent execution errors."""
@@ -212,8 +248,9 @@ class TestRequestRouter:
         
         assert result["route"] == "PLANNING"
         assert result["confidence"] == 0.0
+        assert result["parameters"] == {}
         assert "error" in result
-        assert "Agent execution failed" in result["error"]
+        assert "Agent execution failed" in str(result["error"])
 
 
 class TestRequestRouterIntegration:
@@ -247,6 +284,10 @@ class TestRequestRouterEdgeCases:
         weather_role.config = {"role": {"description": "Weather information", "fast_reply": True}}
         
         mock_registry.get_fast_reply_roles.return_value = [weather_role]
+        mock_registry.get_role_parameters.return_value = {
+            "location": {"type": "string", "required": True}
+        }
+        
         return RequestRouter(mock_factory, mock_registry, mock_universal_agent)
     
     def test_empty_instruction(self, request_router):
@@ -288,10 +329,20 @@ class TestRequestRouterEdgeCases:
         """Test routing with unicode characters in instruction."""
         unicode_instruction = "What's the weather in 北京?"
         
-        # Mock the UniversalAgent response properly
-        request_router.universal_agent.execute_task.return_value = '{"route": "weather", "confidence": 0.9}'
+        # Mock the UniversalAgent response properly with parameters
+        request_router.universal_agent.execute_task.return_value = '''
+        {
+            "route": "weather",
+            "confidence": 0.9,
+            "parameters": {
+                "location": "北京"
+            }
+        }
+        '''
         
         result = request_router.route_request(unicode_instruction)
         
         assert result["route"] == "weather"
         assert result["confidence"] == 0.9
+        assert "parameters" in result
+        assert result["parameters"]["location"] == "北京"
