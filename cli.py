@@ -324,7 +324,6 @@ def run_interactive_mode(supervisor: Supervisor):
                     # Execute workflow
                     logger.info(f"🔄 Starting workflow: {workflow_instruction}")
                     workflow_id = supervisor.workflow_engine.start_workflow(workflow_instruction)
-                    logger.info(f"✅ Workflow '{workflow_id}' started")
                     
                     # Update workflow source to CLI (duration tracking is handled in workflow engine)
                     supervisor.workflow_engine.update_workflow_source(workflow_id, WorkflowSource.CLI)

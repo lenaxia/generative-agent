@@ -45,13 +45,20 @@ lifecycle:
     enabled: true
     functions:
       - name: "fetch_weather_data"
-        uses_parameters: ["location", "timeframe"]
+        uses_parameters: ["location", "timeframe", "format"]
       - name: "validate_location"
         uses_parameters: ["location"]
     data_injection: true  
     
   post_processing:
-    enabled: false
+    enabled: true
+    functions:
+      - name: "format_for_tts"
+        description: "Format response for text-to-speech"
+      - name: "pii_scrubber"
+        description: "Remove sensitive data"
+      - name: "audit_log"
+        description: "Log interaction for compliance"
 
 # Enhanced system prompt with pre-processed data
 prompts:
@@ -65,6 +72,12 @@ prompts:
     - Location resolved: {location_resolved}
     - Data timestamp: {data_timestamp}
     - Timeframe requested: {timeframe_requested}
+    - Format requested: {format_requested}
+    
+    Provide a {format_requested} weather response:
+    - brief: Concise summary with key conditions
+    - detailed: Comprehensive analysis with all metrics
+    - forecast: Extended forecast information
     
     Interpret and explain this weather data in a natural, conversational way.
     Focus on what the user needs to know about the weather conditions.

@@ -30,6 +30,7 @@ async def fetch_weather_data(instruction: str, context: TaskContext,
     """
     location = parameters.get("location")
     timeframe = parameters.get("timeframe", "current")
+    format_requested = parameters.get("format", "brief")
     
     if not location:
         raise ValueError("Location parameter is required for weather data")
@@ -50,7 +51,8 @@ async def fetch_weather_data(instruction: str, context: TaskContext,
             "location_resolved": weather_result.get("location", location),
             "coordinates": weather_result.get("coordinates", {}),
             "data_timestamp": datetime.now().isoformat(),
-            "timeframe_requested": timeframe
+            "timeframe_requested": timeframe,
+            "format_requested": format_requested
         }
         
     except Exception as e:
