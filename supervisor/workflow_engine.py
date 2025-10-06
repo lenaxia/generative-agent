@@ -230,14 +230,14 @@ class WorkflowEngine:
             
             if execution_type == "hybrid":
                 # Execute hybrid role with pre-extracted parameters
-                import asyncio
-                result = asyncio.run(self.universal_agent.execute_task(
+                # execute_task is now synchronous and handles async internally
+                result = self.universal_agent.execute_task(
                     instruction=request.prompt,
                     role=role,
                     llm_type=LLMType.WEAK,
                     context=None,
                     extracted_parameters=parameters
-                ))
+                )
             else:
                 # Existing LLM execution path with parameter context injection
                 if parameters:
