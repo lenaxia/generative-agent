@@ -11,7 +11,7 @@ llm_providers:
   bedrock:
     # Model mapping for semantic types
     models:
-      WEAK: "anthropic.claude-sonnet-4-20250514-v1:0"
+      WEAK: "anthropic.claude-3-haiku-20240307-v1:0"      # Faster model for routing
       DEFAULT: "anthropic.claude-sonnet-4-20250514-v1:0"
       STRONG: "anthropic.claude-sonnet-4-20250514-v1:0"
     
@@ -20,6 +20,13 @@ llm_providers:
       temperature: 0.3
       max_tokens: 4096
       region: "us-west-2"
+    
+    # Agent pool configuration
+    agent_pool:
+      enabled: true
+      warm_on_startup: true
+      max_pool_size: 10
+      cleanup_interval: 3600  # 1 hour
 
   # OpenAI Configuration (optional)
   openai:
@@ -164,8 +171,19 @@ feature_flags:
 fast_path:
   enabled: true
   confidence_threshold: 0.7  # Minimum confidence for fast-path routing
-  max_response_time: 3       # Target response time in seconds
+  max_response_time: 3.0     # Realistic target with Agent pooling only
   fallback_on_error: true    # Fall back to planning on fast-path errors
+  
+  # Performance optimizations
+  performance:
+    agent_pool_warming: true      # Pre-warm Agent pool at startup
+    skip_telemetry: false         # Keep telemetry for monitoring
+    minimal_logging: false        # Keep logging for debugging
+    
+  # Monitoring
+  monitoring:
+    track_agent_pool_efficiency: true
+    track_context_switch_performance: true
   
   # Logging and monitoring
   log_routing_decisions: true

@@ -70,10 +70,12 @@ class TestRequestRouter:
     
     def test_init(self, mock_llm_factory, mock_role_registry):
         """Test RequestRouter initialization."""
-        router = RequestRouter(mock_llm_factory, mock_role_registry)
+        mock_universal_agent = Mock()
+        router = RequestRouter(mock_llm_factory, mock_role_registry, mock_universal_agent)
         
         assert router.llm_factory == mock_llm_factory
         assert router.role_registry == mock_role_registry
+        assert router.universal_agent == mock_universal_agent
     
     def test_route_request_weather_query(self, request_router):
         """Test routing a weather query to fast-reply."""
@@ -91,27 +93,23 @@ class TestRequestRouter:
     
     def test_route_request_complex_planning(self, request_router):
         """Test routing a complex request to planning."""
-        with patch('llm_provider.request_router.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_agent.return_value = '{"route": "PLANNING", "confidence": 0.8}'
-            mock_agent_class.return_value = mock_agent
-            
-            result = request_router.route_request("Create a comprehensive project plan with multiple phases")
-            
-            assert result["route"] == "PLANNING"
-            assert result["confidence"] == 0.8
+        # Mock the UniversalAgent response properly
+        request_router.universal_agent.execute_task.return_value = '{"route": "PLANNING", "confidence": 0.8}'
+        
+        result = request_router.route_request("Create a comprehensive project plan with multiple phases")
+        
+        assert result["route"] == "PLANNING"
+        assert result["confidence"] == 0.8
     
     def test_route_request_low_confidence(self, request_router):
         """Test routing with low confidence defaults to planning."""
-        with patch('llm_provider.request_router.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_agent.return_value = '{"route": "weather", "confidence": 0.3}'
-            mock_agent_class.return_value = mock_agent
-            
-            result = request_router.route_request("Maybe weather related?")
-            
-            assert result["route"] == "weather"
-            assert result["confidence"] == 0.3
+        # Mock the UniversalAgent response properly
+        request_router.universal_agent.execute_task.return_value = '{"route": "weather", "confidence": 0.3}'
+        
+        result = request_router.route_request("Maybe weather related?")
+        
+        assert result["route"] == "weather"
+        assert result["confidence"] == 0.3
     
     def test_parse_routing_response_valid_json(self, request_router):
         """Test parsing valid JSON routing response."""
@@ -207,17 +205,15 @@ class TestRequestRouter:
     
     def test_route_request_agent_execution_error(self, request_router):
         """Test handling of agent execution errors."""
-        with patch('llm_provider.request_router.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_agent.side_effect = Exception("Agent execution failed")
-            mock_agent_class.return_value = mock_agent
-            
-            result = request_router.route_request("Test instruction")
-            
-            assert result["route"] == "PLANNING"
-            assert result["confidence"] == 0.0
-            assert "error" in result
-            assert "Agent execution failed" in result["error"]
+        # Mock the UniversalAgent to raise an exception
+        request_router.universal_agent.execute_task.side_effect = Exception("Agent execution failed")
+        
+        result = request_router.route_request("Test instruction")
+        
+        assert result["route"] == "PLANNING"
+        assert result["confidence"] == 0.0
+        assert "error" in result
+        assert "Agent execution failed" in result["error"]
 
 
 class TestRequestRouterIntegration:
@@ -243,6 +239,7 @@ class TestRequestRouterEdgeCases:
         """Create minimal RequestRouter for edge case testing."""
         mock_factory = Mock()
         mock_registry = Mock()
+        mock_universal_agent = Mock()
         
         # Create mock fast-reply roles for edge case testing
         weather_role = Mock()
@@ -250,7 +247,7 @@ class TestRequestRouterEdgeCases:
         weather_role.config = {"role": {"description": "Weather information", "fast_reply": True}}
         
         mock_registry.get_fast_reply_roles.return_value = [weather_role]
-        return RequestRouter(mock_factory, mock_registry)
+        return RequestRouter(mock_factory, mock_registry, mock_universal_agent)
     
     def test_empty_instruction(self, request_router):
         """Test routing with empty instruction."""
@@ -291,12 +288,10 @@ class TestRequestRouterEdgeCases:
         """Test routing with unicode characters in instruction."""
         unicode_instruction = "What's the weather in 北京?"
         
-        with patch('llm_provider.request_router.Agent') as mock_agent_class:
-            mock_agent = Mock()
-            mock_agent.return_value = '{"route": "weather", "confidence": 0.9}'
-            mock_agent_class.return_value = mock_agent
-            
-            result = request_router.route_request(unicode_instruction)
-            
-            assert result["route"] == "weather"
-            assert result["confidence"] == 0.9
+        # Mock the UniversalAgent response properly
+        request_router.universal_agent.execute_task.return_value = '{"route": "weather", "confidence": 0.9}'
+        
+        result = request_router.route_request(unicode_instruction)
+        
+        assert result["route"] == "weather"
+        assert result["confidence"] == 0.9

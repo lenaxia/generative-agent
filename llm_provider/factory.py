@@ -71,7 +71,11 @@ class LLMFactory:
         self._agent_cache: Dict[str, Any] = {}
         self._is_warmed = False
         
-        logger.info("LLMFactory initialized with caching enabled")
+        # Enhanced caching infrastructure for agent pooling
+        self._agent_pool: Dict[str, Any] = {}  # Provider-based Agent pool
+        self._pool_stats = {'hits': 0, 'misses': 0, 'created': 0}
+        
+        logger.info("LLMFactory initialized with caching and agent pooling enabled")
 
     def add_config(self, llm_type: LLMType, config: BaseConfig):
         """Add a configuration for the specified LLM type."""
@@ -376,3 +380,92 @@ class LLMFactory:
                     validation_result["valid"] = False
         
         return validation_result
+    
+    def get_agent(self, llm_type: LLMType, provider: str = None) -> Any:
+        """
+        Get cached Agent for provider/model combination.
+        
+        Args:
+            llm_type: Semantic model type (WEAK, DEFAULT, STRONG)
+            provider: Provider name (defaults to primary provider)
+            
+        Returns:
+            Cached Agent instance ready for context switching
+        """
+        # Create pool key based on infrastructure, not business logic
+        provider = provider or self._get_default_provider()
+        pool_key = f"{provider}_{llm_type.value}"
+        
+        # Return cached Agent if available
+        if pool_key in self._agent_pool:
+            self._pool_stats['hits'] += 1
+            logger.debug(f"⚡ Agent pool hit for {pool_key}")
+            return self._agent_pool[pool_key]
+        
+        # Create new Agent with cached model
+        self._pool_stats['misses'] += 1
+        logger.info(f"🔧 Creating new Agent for {pool_key}")
+        
+        model = self.create_strands_model(llm_type)
+        agent = Agent(model=model)  # Minimal Agent creation
+        
+        # Cache the Agent
+        self._agent_pool[pool_key] = agent
+        self._pool_stats['created'] += 1
+        logger.info(f"✅ Cached new Agent for {pool_key}")
+        
+        return agent
+    
+    def warm_agent_pool(self):
+        """Pre-warm Agent pool for common provider/model combinations."""
+        logger.info("🔥 Warming Agent pool...")
+        
+        common_combinations = [
+            (LLMType.WEAK, 'bedrock'),    # Fast routing and simple tasks
+            (LLMType.DEFAULT, 'bedrock'), # Standard tasks
+            (LLMType.STRONG, 'bedrock'),  # Complex planning
+        ]
+        
+        for llm_type, provider in common_combinations:
+            try:
+                agent = self.get_agent(llm_type, provider)
+                logger.info(f"✅ Pre-warmed {provider}_{llm_type.value}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}")
+        
+        logger.info(f"🔥 Agent pool warmed: {len(self._agent_pool)} agents ready")
+    
+    def get_pool_stats(self) -> Dict[str, Any]:
+        """Get Agent pool performance statistics."""
+        total_requests = self._pool_stats['hits'] + self._pool_stats['misses']
+        hit_rate = (self._pool_stats['hits'] / total_requests * 100) if total_requests > 0 else 0
+        
+        return {
+            'pool_size': len(self._agent_pool),
+            'hit_rate_percent': round(hit_rate, 2),
+            'total_requests': total_requests,
+            **self._pool_stats
+        }
+    
+    def _get_default_provider(self) -> str:
+        """Get the default provider from available configurations."""
+        # Return the first available provider type
+        for llm_type, configs in self.configs.items():
+            if configs:
+                config = configs[0]
+                if hasattr(config, 'provider_type'):
+                    return config.provider_type
+                elif hasattr(config, 'provider_name'):
+                    return config.provider_name
+        
+        # Fallback to bedrock if no provider found
+        return "bedrock"
+    
+    def clear_agent_pool(self):
+        """
+        Clear all cached agents in the pool.
+        Useful for testing or memory management.
+        """
+        self._agent_pool.clear()
+        self._pool_stats = {'hits': 0, 'misses': 0, 'created': 0}
+        logger.info("Cleared agent pool and reset statistics")

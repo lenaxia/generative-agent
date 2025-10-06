@@ -36,11 +36,8 @@ tools:
   # Automatic tool selection via LLM
   automatic: true
   
-  # Manually specified shared tools
-  shared:
-    - "create_task_plan"
-    - "analyze_task_dependencies"
-    - "validate_task_plan"
+  # Custom tools are automatically loaded from tools.py
+  # No shared tools needed - planning tools are custom to this role
 
 # Basic Capabilities
 capabilities:

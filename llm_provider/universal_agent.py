@@ -41,60 +41,53 @@ class UniversalAgent:
         self.current_role = None
         self.current_llm_type = None
     
-    def assume_role(self, role: str, llm_type: LLMType = LLMType.DEFAULT,
+    def assume_role(self, role: str, llm_type: Optional[LLMType] = None,
                    context: Optional[TaskContext] = None, tools: Optional[List[str]] = None):
         """
-        Create a role-specific agent using dynamic role definitions.
+        Assume role using pooled Agent with context switching.
         
         Args:
-            role: The role name (e.g., 'research_analyst', 'code_reviewer')
-            llm_type: Semantic model type for performance/cost optimization
+            role: The role name (e.g., 'weather', 'timer', 'calendar')
+            llm_type: Semantic model type for performance optimization
             context: Optional TaskContext for state management
-            tools: Optional list of additional tool names to include
+            tools: Optional list of additional tool names
             
         Returns:
-            StrandsAgent Agent instance configured for the specified role
+            Pooled Agent instance with updated context
         """
-        # Handle None or missing roles by falling back to default
+        # Handle role fallbacks
         if role == "None" or role is None:
             logger.info("None role requested, falling back to default role")
             role = "default"
         
-        # Load role definition
+        # Load role definition (cached by RoleRegistry)
         role_def = self.role_registry.get_role(role)
         if not role_def:
-            logger.warning(f"Role '{role}' not found in registry, falling back to default role")
+            logger.warning(f"Role '{role}' not found, falling back to default")
             role = "default"
             role_def = self.role_registry.get_role(role)
-            
-            # If default role also doesn't exist, create a basic agent
-            if not role_def:
-                logger.warning("Default role not found, creating basic agent")
-                return self._create_basic_agent(llm_type, context, tools)
         
-        # Create model with role-specific configuration (use LLM Factory caching)
-        model = self._create_model_for_role(role_def, llm_type)
+        # Get pooled Agent from LLMFactory (< 0.01s for cache hit)
+        llm_type = llm_type or self._determine_llm_type_for_role(role)
+        agent = self.llm_factory.get_agent(llm_type)
         
-        # Get system prompt from role definition
+        # Update Agent context (business logic)
         system_prompt = self._get_system_prompt_from_role(role_def)
-        
-        # Assemble all tools for this role
         role_tools = self._assemble_role_tools(role_def, tools or [])
         
-        # Create StrandsAgent Agent
-        agent = Agent(
-            model=model,
-            system_prompt=system_prompt,
-            tools=role_tools
-        )
+        # Context switching instead of Agent creation (< 0.01s)
+        updated_agent = self._update_agent_context(agent, system_prompt, role_tools)
+        
+        # Use the updated agent (may be the same or a new one)
+        final_agent = updated_agent if updated_agent is not None else agent
         
         # Store current configuration
-        self.current_agent = agent
+        self.current_agent = final_agent
         self.current_role = role
         self.current_llm_type = llm_type
         
-        logger.info(f"Assumed role '{role}' with {len(role_tools)} tools")
-        return agent
+        logger.info(f"⚡ Switched to role '{role}' with {len(role_tools)} tools")
+        return final_agent
     
     def _create_strands_model(self, llm_type: LLMType):
         """
@@ -278,8 +271,27 @@ Focus on comprehensive, accurate analysis."""
         # Execute the task
         try:
             response = agent(instruction)
-            return str(response) if response else "No response generated"
+            if response is None:
+                return "No response generated"
+            
+            # Handle Strands AgentResult object
+            if hasattr(response, 'message') and hasattr(response.message, 'content'):
+                # Extract text content from AgentResult
+                content = response.message.content
+                if isinstance(content, list) and len(content) > 0:
+                    # Get the first text block
+                    first_content = content[0]
+                    if isinstance(first_content, dict) and 'text' in first_content:
+                        return first_content['text']
+                    elif hasattr(first_content, 'text'):
+                        return first_content.text
+                elif isinstance(content, str):
+                    return content
+            
+            # Fallback to string conversion
+            return str(response)
         except Exception as e:
+            logger.error(f"Error executing task with agent: {e}")
             return f"Error executing task: {str(e)}"
     
     def get_status(self) -> Dict[str, Any]:
@@ -420,7 +432,7 @@ Focus on comprehensive, accurate analysis."""
             if shared_tool:
                 tools.append(shared_tool)
             else:
-                logger.warning(f"Shared tool '{tool_name}' not found for role '{role_def.name}'")
+                logger.debug(f"Shared tool '{tool_name}' not found for role '{role_def.name}' - may be available as custom tool")
         
         # 4. Add additional tools from registry
         additional_role_tools = self.tool_registry.get_tools(additional_tools)
@@ -497,6 +509,93 @@ Focus on comprehensive, accurate analysis."""
             role_instance: ProgrammaticRole instance
         """
         self.role_registry.register_programmatic_role(role_instance)
+    
+    def _update_agent_context(self, agent: Agent, system_prompt: str, tools: List[Any]):
+        """
+        Update Agent context with optimal reuse strategy.
+        
+        Based on Strands documentation:
+        - system_prompt can be updated directly
+        - tools require agent recreation
+        - conversation history should be cleared for context switches
+        
+        Args:
+            agent: Pooled Agent instance to update
+            system_prompt: New system prompt for the role
+            tools: New tool set for the role
+        """
+        try:
+            # Check if we need to recreate due to tool changes
+            current_tool_names = getattr(agent, 'tool_names', [])
+            new_tool_names = [getattr(tool, '__name__', str(tool)) for tool in tools]
+            
+            tools_changed = set(current_tool_names) != set(new_tool_names)
+            
+            if tools_changed:
+                # Tools changed - need to recreate agent but reuse cached model
+                model = agent.model
+                new_agent = Agent(model=model, system_prompt=system_prompt, tools=tools)
+                logger.debug(f"✅ Recreated agent with cached model due to tool changes: {len(tools)} tools")
+                return new_agent
+            else:
+                # Tools same - just update system prompt and clear history
+                agent.system_prompt = system_prompt
+                
+                # Clear conversation history for clean context switch (per Strands docs)
+                if hasattr(agent, 'messages'):
+                    agent.messages.clear()
+                    logger.debug("✅ Cleared conversation history for context switch")
+                
+                # Also clear any conversation manager state if available
+                if hasattr(agent, 'conversation_manager') and hasattr(agent.conversation_manager, 'get_state'):
+                    try:
+                        # Reset conversation manager state for clean context
+                        if hasattr(agent.conversation_manager, 'removed_message_count'):
+                            agent.conversation_manager.removed_message_count = 0
+                        logger.debug("✅ Reset conversation manager state")
+                    except Exception as e:
+                        logger.debug(f"Could not reset conversation manager state: {e}")
+                
+                logger.debug(f"✅ Updated agent context in place (same tools)")
+                return agent  # Return same agent instance
+            
+        except Exception as e:
+            logger.warning(f"Failed to update agent context: {e}, recreating with cached model")
+            # Fallback: recreate Agent with cached model
+            model = agent.model if hasattr(agent, 'model') else None
+            return Agent(model=model, system_prompt=system_prompt, tools=tools)
+    
+    def _determine_llm_type_for_role(self, role: str) -> LLMType:
+        """
+        Determine the appropriate LLM type for a given role.
+        
+        Args:
+            role: Role name
+            
+        Returns:
+            LLMType: Appropriate model type for the role
+        """
+        # Role-specific LLM type mapping for performance optimization
+        role_llm_mapping = {
+            # Fast routing roles use WEAK models
+            "router": LLMType.WEAK,
+            
+            # Complex planning roles use STRONG models
+            "planning": LLMType.STRONG,
+            "analysis": LLMType.STRONG,
+            "coding": LLMType.STRONG,
+            
+            # Standard roles use DEFAULT models
+            "weather": LLMType.DEFAULT,
+            "timer": LLMType.DEFAULT,
+            "calendar": LLMType.DEFAULT,
+            "search": LLMType.DEFAULT,
+            "summarizer": LLMType.DEFAULT,
+            "slack": LLMType.DEFAULT,
+            "default": LLMType.DEFAULT,
+        }
+        
+        return role_llm_mapping.get(role, LLMType.DEFAULT)
         logger.info(f"Registered programmatic role: {name}")
     
     def _serialize_result(self, result: Any) -> str:

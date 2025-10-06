@@ -89,25 +89,20 @@ class TestUniversalAgentUnit:
     def test_assume_role_planning(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume planning role with STRONG LLM."""
         with patch('llm_provider.universal_agent.Agent') as mock_agent_class, \
-             patch('llm_provider.universal_agent.BedrockModel') as mock_model_class, \
              patch('llm_provider.universal_agent.calculator') as mock_calc, \
              patch('llm_provider.universal_agent.file_read') as mock_file, \
              patch('llm_provider.universal_agent.shell') as mock_shell:
             
+            # Mock the LLM factory to return a mock model
             mock_model_instance = Mock()
-            mock_model_class.return_value = mock_model_instance
+            universal_agent.llm_factory.create_strands_model.return_value = mock_model_instance
             mock_agent_class.return_value = mock_strands_agent
             
             # Execute
             agent = universal_agent.assume_role("planning", LLMType.STRONG)
             
-            # Verify model creation
-            mock_model_class.assert_called_once_with(
-                model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-                region_name="us-west-2",
-                temperature=0.3,
-                max_tokens=4096
-            )
+            # Verify model creation through factory
+            universal_agent.llm_factory.create_strands_model.assert_called_once_with(LLMType.STRONG)
             
             # Verify agent creation with planning prompt
             mock_agent_class.assert_called_once()
@@ -129,23 +124,18 @@ class TestUniversalAgentUnit:
 
     def test_assume_role_search(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume search role with WEAK LLM."""
-        with patch('llm_provider.universal_agent.Agent') as mock_agent_class, \
-             patch('llm_provider.universal_agent.BedrockModel') as mock_model_class:
+        with patch('llm_provider.universal_agent.Agent') as mock_agent_class:
             
+            # Mock the LLM factory to return a mock model
             mock_model_instance = Mock()
-            mock_model_class.return_value = mock_model_instance
+            universal_agent.llm_factory.create_strands_model.return_value = mock_model_instance
             mock_agent_class.return_value = mock_strands_agent
             
             # Execute
             agent = universal_agent.assume_role("search", LLMType.WEAK)
             
-            # Verify model creation with WEAK LLM type
-            mock_model_class.assert_called_once_with(
-                model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-                region_name="us-west-2",
-                temperature=0.3,
-                max_tokens=4096
-            )
+            # Verify model creation through factory
+            universal_agent.llm_factory.create_strands_model.assert_called_once_with(LLMType.WEAK)
             
             # Verify agent creation with modern search pipeline prompt
             call_args = mock_agent_class.call_args

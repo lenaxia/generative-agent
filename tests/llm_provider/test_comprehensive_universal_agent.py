@@ -58,11 +58,10 @@ class TestComprehensiveUniversalAgent:
     def test_role_assumption_and_model_selection(self, universal_agent):
         """Test role assumption with semantic model selection."""
         # Test planning role (should use STRONG model)
-        with patch.object(universal_agent, '_create_strands_model') as mock_create, \
-             patch('llm_provider.universal_agent.Agent') as mock_agent_class:
+        with patch('llm_provider.universal_agent.Agent') as mock_agent_class:
             
             mock_model = Mock()
-            mock_create.return_value = mock_model
+            universal_agent.llm_factory.create_strands_model.return_value = mock_model
             mock_agent_instance = Mock()
             mock_agent_class.return_value = mock_agent_instance
             
@@ -73,15 +72,14 @@ class TestComprehensiveUniversalAgent:
                 tools=[]
             )
             
-            # Verify strong model was requested for planning
-            mock_create.assert_called_with(LLMType.STRONG)
+            # Verify agent was obtained from pool with STRONG model type
+            universal_agent.llm_factory.get_agent.assert_called_with(LLMType.STRONG)
         
         # Test search role (should use WEAK model)
-        with patch.object(universal_agent, '_create_strands_model') as mock_create, \
-             patch('llm_provider.universal_agent.Agent') as mock_agent_class:
+        with patch('llm_provider.universal_agent.Agent') as mock_agent_class:
             
             mock_model = Mock()
-            mock_create.return_value = mock_model
+            universal_agent.llm_factory.create_strands_model.return_value = mock_model
             mock_agent_instance = Mock()
             mock_agent_class.return_value = mock_agent_instance
             
@@ -92,8 +90,8 @@ class TestComprehensiveUniversalAgent:
                 tools=[]
             )
             
-            # Verify weak model was requested for search
-            mock_create.assert_called_with(LLMType.WEAK)
+            # Verify agent was obtained from pool with WEAK model type
+            universal_agent.llm_factory.get_agent.assert_called_with(LLMType.WEAK)
     
     def test_task_execution_with_context(self, universal_agent, sample_task_context):
         """Test task execution with TaskContext integration."""

@@ -72,6 +72,16 @@ class RequestRouter:
         import time
         start_time = time.time()
         
+        # Handle None or empty instruction
+        if instruction is None:
+            logger.error("Received None instruction for routing")
+            return {
+                "route": "PLANNING",
+                "confidence": 0.0,
+                "error": "No instruction provided",
+                "execution_time_ms": 0.1
+            }
+        
         try:
             # Check cache first for performance
             cache_key = self._create_cache_key(instruction)
@@ -145,8 +155,13 @@ class RequestRouter:
             Cache key string
         """
         import hashlib
+        # Handle None instruction
+        if instruction is None:
+            logger.warning("Received None instruction for cache key generation")
+            instruction = ""
+        
         # Normalize instruction for better cache hits
-        normalized = instruction.lower().strip()
+        normalized = str(instruction).lower().strip()
         # Create hash for consistent key
         return hashlib.md5(normalized.encode()).hexdigest()[:16]
     

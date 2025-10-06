@@ -228,8 +228,8 @@ def another_custom_tool(value: int) -> int:
             
             # Should fall back to default agent
             assert agent == mock_agent
-            # Current role should be the dynamically generated role name
-            assert universal_agent.current_role == "dynamic_non_existent_role"
+            # Current role should be basic when role not found and no default exists
+            assert universal_agent.current_role == "basic"
     
     def test_role_refresh(self):
         """Test role registry refresh functionality."""

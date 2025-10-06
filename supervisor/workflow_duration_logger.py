@@ -225,6 +225,11 @@ class WorkflowDurationLogger:
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     backup_path = f"{self.log_file_path}.{timestamp}"
                     os.rename(self.log_file_path, backup_path)
+                    
+                    # Create new empty log file
+                    with open(self.log_file_path, 'w', encoding='utf-8') as f:
+                        pass  # Create empty file
+                    
                     self.logger.info(f"Rotated log file to {backup_path}")
         except Exception as e:
             self.logger.error(f"Failed to rotate log file: {e}")
@@ -255,7 +260,8 @@ class WorkflowDurationLogger:
         except Exception as e:
             self.logger.error(f"Failed to read recent metrics: {e}")
         
-        return metrics
+        # Return in reverse order (most recent first)
+        return list(reversed(metrics))
     
     def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
         """

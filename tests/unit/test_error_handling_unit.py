@@ -169,18 +169,17 @@ class TestErrorHandlingUnit:
             # Execute workflow that should fail
             workflow_id = workflow_engine.start_workflow("This will fail")
             
-            # The actual implementation returns None for failed workflows
-            # This is the actual behavior we should test for
-            assert workflow_id is None
+            # The actual implementation returns workflow ID even for failed workflows for tracking
+            assert workflow_id is not None
+            assert workflow_id.startswith("wf_")
 
     def test_universal_agent_model_creation_failure(self, universal_agent):
         """Test Universal Agent handles model creation failures."""
-        with patch('llm_provider.universal_agent.BedrockModel') as mock_model_class:
-            # Setup model creation to fail
-            mock_model_class.side_effect = Exception("Model initialization failed")
-            
-            with pytest.raises(Exception, match="Model initialization failed"):
-                universal_agent.assume_role("planning", LLMType.STRONG)
+        # Setup LLM factory to fail when creating model
+        universal_agent.llm_factory.create_strands_model.side_effect = Exception("Model initialization failed")
+        
+        with pytest.raises(Exception, match="Model initialization failed"):
+            universal_agent.assume_role("planning", LLMType.STRONG)
 
     def test_task_context_invalid_task_operations(self):
         """Test TaskContext handles invalid task operations."""

@@ -138,9 +138,9 @@ class TestWorkflowDurationLogger:
     def teardown_method(self):
         """Cleanup test environment."""
         # Clean up temp files
-        if os.path.exists(self.log_file):
-            os.remove(self.log_file)
-        os.rmdir(self.temp_dir)
+        import shutil
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
     
     def test_logger_initialization(self):
         """Test logger initialization."""

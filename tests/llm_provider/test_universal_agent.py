@@ -25,16 +25,17 @@ class TestUniversalAgent(unittest.TestCase):
     
     def test_assume_role_basic(self):
         """Test basic role assumption functionality."""
-        with patch.object(self.universal_agent, '_create_strands_model') as mock_model, \
-             patch('llm_provider.universal_agent.Agent') as mock_agent_class:
+        with patch.object(self.universal_agent.llm_factory, 'get_agent') as mock_get_agent, \
+             patch.object(self.universal_agent, '_update_agent_context') as mock_update_context:
             
-            mock_model.return_value = Mock()
             mock_agent_instance = Mock()
-            mock_agent_class.return_value = mock_agent_instance
+            mock_get_agent.return_value = mock_agent_instance
             
             agent = self.universal_agent.assume_role("planning", LLMType.STRONG)
             
-            # Verify agent was created and stored
+            # Verify agent was obtained from pool and stored
+            mock_get_agent.assert_called_once_with(LLMType.STRONG)
+            mock_update_context.assert_called_once()
             self.assertEqual(self.universal_agent.current_agent, mock_agent_instance)
             self.assertEqual(self.universal_agent.current_role, "planning")
             self.assertEqual(self.universal_agent.current_llm_type, LLMType.STRONG)
@@ -42,12 +43,11 @@ class TestUniversalAgent(unittest.TestCase):
     
     def test_assume_role_with_tools(self):
         """Test role assumption with specific tools."""
-        with patch.object(self.universal_agent, '_create_strands_model') as mock_model, \
-             patch('llm_provider.universal_agent.Agent') as mock_agent_class:
+        with patch.object(self.universal_agent.llm_factory, 'get_agent') as mock_get_agent, \
+             patch.object(self.universal_agent, '_update_agent_context') as mock_update_context:
             
-            mock_model.return_value = Mock()
             mock_agent_instance = Mock()
-            mock_agent_class.return_value = mock_agent_instance
+            mock_get_agent.return_value = mock_agent_instance
             
             agent = self.universal_agent.assume_role(
                 "search",
@@ -55,9 +55,10 @@ class TestUniversalAgent(unittest.TestCase):
                 tools=["tool1", "tool2"]
             )
             
-            # Verify agent was created
+            # Verify agent was obtained from pool
+            mock_get_agent.assert_called_once_with(LLMType.WEAK)
+            mock_update_context.assert_called_once()
             self.assertEqual(agent, mock_agent_instance)
-            mock_agent_class.assert_called_once()
     
     def test_execute_task_with_current_agent(self):
         """Test task execution with current agent."""
@@ -157,12 +158,11 @@ class TestUniversalAgent(unittest.TestCase):
         context = TaskContext(task_graph=task_graph)
         
         # Test role assumption with context
-        with patch.object(self.universal_agent, '_create_strands_model') as mock_model, \
-             patch('llm_provider.universal_agent.Agent') as mock_agent_class:
+        with patch.object(self.universal_agent.llm_factory, 'get_agent') as mock_get_agent, \
+             patch.object(self.universal_agent, '_update_agent_context') as mock_update_context:
             
-            mock_model.return_value = Mock()
             mock_agent_instance = Mock()
-            mock_agent_class.return_value = mock_agent_instance
+            mock_get_agent.return_value = mock_agent_instance
             
             agent = self.universal_agent.assume_role(
                 "planning",
@@ -170,7 +170,9 @@ class TestUniversalAgent(unittest.TestCase):
                 context=context
             )
             
-            # Should work without errors
+            # Should work without errors and use agent pooling
+            mock_get_agent.assert_called_once_with(LLMType.DEFAULT)
+            mock_update_context.assert_called_once()
             self.assertEqual(agent, mock_agent_instance)
     
     def test_reset(self):

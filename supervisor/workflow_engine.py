@@ -310,8 +310,8 @@ class WorkflowEngine:
             # Create a failed task context for error tracking
             try:
                 # Create minimal task context for error tracking
-                task_graph = TaskGraph()
-                task_context = TaskContext(task_graph, request_id=request_id)
+                task_graph = TaskGraph(tasks=[])  # Empty task list for error tracking
+                task_context = TaskContext(task_graph, context_id=request_id)
                 task_context.fail_execution(f"Workflow failed: {str(e)}")
                 
                 # Store the failed workflow context
