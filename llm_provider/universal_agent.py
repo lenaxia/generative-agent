@@ -265,11 +265,15 @@ Focus on comprehensive, accurate analysis."""
         Returns:
             str: Task result
         """
+        # DEBUG: Add logging to trace the None issue
+        logger.debug(f"DEBUG: execute_llm_task called with instruction={repr(instruction)}, role={role}")
+        
         # Assume the specified role
         agent = self.assume_role(role, llm_type, context)
         
         # Execute the task
         try:
+            logger.debug(f"DEBUG: About to call agent with instruction={repr(instruction)}")
             response = agent(instruction)
             if response is None:
                 return "No response generated"

@@ -217,6 +217,7 @@ class WorkflowEngine:
             )
             
             # Direct Universal Agent execution (no TaskContext needed)
+            logger.debug(f"DEBUG: Executing fast-reply with instruction: {repr(request.prompt)}")
             result = self.universal_agent.execute_task(
                 instruction=request.prompt,
                 role=role,
