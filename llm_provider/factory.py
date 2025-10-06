@@ -141,10 +141,29 @@ class LLMFactory:
         else:
             raise ValueError("Configuration missing provider type information")
         
-        # Extract model parameters
+        # Extract model parameters from configuration
+        # Try multiple possible locations for model_id
+        model_id = None
+        if hasattr(config, 'model_id') and config.model_id:
+            model_id = config.model_id
+        elif hasattr(config, 'llm_config') and hasattr(config.llm_config, 'model') and config.llm_config.model:
+            model_id = config.llm_config.model
+        elif hasattr(config, 'llm_config') and hasattr(config.llm_config, 'model_id') and config.llm_config.model_id:
+            model_id = config.llm_config.model_id
+        
+        if model_id is None:
+            raise ValueError(f"Configuration missing model_id: {config}")
+        
+        # Extract temperature from config or llm_config
+        temperature = 0.3  # default
+        if hasattr(config, 'temperature') and config.temperature:
+            temperature = config.temperature
+        elif hasattr(config, 'llm_config') and hasattr(config.llm_config, 'temperature') and config.llm_config.temperature:
+            temperature = config.llm_config.temperature
+        
         model_params = {
-            'model_id': getattr(config, 'model_id', None),
-            'temperature': getattr(config, 'temperature', 0.3)
+            'model_id': model_id,
+            'temperature': temperature
         }
         
         # Add additional parameters if available

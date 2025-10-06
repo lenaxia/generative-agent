@@ -114,7 +114,7 @@ class Supervisor:
                             from config.bedrock_config import BedrockConfig
                             config_obj = BedrockConfig(
                                 name=f"{provider_name}_{llm_type_str}",
-                                model_id=model_id,
+                                model=model_id,  # BedrockModelConfig expects 'model', not 'model_id'
                                 region=parameters.get('region', 'us-west-2'),
                                 temperature=parameters.get('temperature', 0.3),
                                 max_tokens=parameters.get('max_tokens', 4096)
