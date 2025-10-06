@@ -9,12 +9,14 @@ The StrandsAgent Universal Agent System is a modern, production-ready workflow m
 ## Key Features
 
 - **🤖 Universal Agent**: Single agent interface with role-based specialization
+- **🔄 Hybrid Role Lifecycle**: Pre/post processing hooks with parameter extraction
 - **⏸️ Pause/Resume**: Complete workflow state management with checkpointing
 - **🔌 MCP Integration**: Seamless integration with external tool ecosystems
 - **📊 Health Monitoring**: Real-time system health and performance monitoring
 - **🏗️ Simplified Architecture**: Clean, modular design with minimal dependencies
 - **🔧 Production Ready**: Comprehensive documentation, deployment guides, and monitoring
 - **🔄 Task Result Sharing**: Intelligent predecessor result passing eliminates duplicate work
+- **⚡ Enhanced Performance**: Reduced LLM calls and improved caching with structured parameters
 
 ## Architecture
 
@@ -121,13 +123,31 @@ supervisor.start()
 
 ## Universal Agent Roles
 
-The Universal Agent can assume different roles for specialized tasks:
+The Universal Agent supports three execution types for maximum flexibility:
 
+### LLM Roles (Traditional)
 - **Planning**: Complex task planning and dependency analysis (uses STRONG models)
 - **Search**: Web search and information retrieval (uses WEAK models)
-- **Weather**: Weather data lookup and forecasting (uses WEAK models)
 - **Summarizer**: Text summarization and key point extraction (uses DEFAULT models)
 - **Slack**: Team communication and messaging (uses DEFAULT models)
+
+### Hybrid Roles (New Architecture) 🆕
+- **Weather**: Enhanced weather role with pre-processing data fetching and post-processing formatting
+  - Pre-processing: Fetches weather data before LLM call
+  - LLM processing: Interprets pre-fetched data
+  - Post-processing: TTS formatting, PII scrubbing, audit logging
+  - Parameter extraction: Automatic location, timeframe, and format detection
+
+### Programmatic Roles
+- **Data Collection**: Direct programmatic execution without LLM processing
+- **Search Data Collector**: Specialized search result processing
+
+### Hybrid Role Benefits
+- **33% fewer LLM calls**: Pre-processing eliminates tool calls during LLM execution
+- **Enhanced caching**: Structured parameters enable better cache hit rates
+- **Better security**: Built-in PII scrubbing and audit logging
+- **Consistent formatting**: Post-processing ensures uniform output
+- **Comprehensive monitoring**: Detailed timing for all lifecycle phases
 
 ## Configuration
 
@@ -305,12 +325,37 @@ python cli.py --config production.yaml
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **[API Reference](docs/API_REFERENCE.md)**: Complete API documentation
-- **[Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md)**: System design and patterns
-- **[Configuration Guide](docs/CONFIGURATION_GUIDE.md)**: Configuration options and examples
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)**: Common issues and solutions
-- **[Tool Development Guide](docs/TOOL_DEVELOPMENT_GUIDE.md)**: Creating new @tool functions
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Production deployment instructions
+- **[API Reference](docs/02_API_REFERENCE.md)**: Complete API documentation
+- **[Architecture Overview](docs/01_ARCHITECTURE_OVERVIEW.md)**: System design and patterns
+- **[Configuration Guide](docs/04_CONFIGURATION_GUIDE.md)**: Configuration options and examples
+- **[Troubleshooting Guide](docs/03_TROUBLESHOOTING_GUIDE.md)**: Common issues and solutions
+- **[Tool Development Guide](docs/05_TOOL_DEVELOPMENT_GUIDE.md)**: Creating new @tool functions
+- **[Deployment Guide](docs/07_DEPLOYMENT_GUIDE.md)**: Production deployment instructions
+- **[Hybrid Role Lifecycle Design](docs/14_HYBRID_ROLE_LIFECYCLE_DESIGN.md)**: 🆕 Complete hybrid role architecture specification
+- **[Hybrid Role Migration Guide](docs/HYBRID_ROLE_MIGRATION_GUIDE.md)**: 🆕 Step-by-step guide for creating hybrid roles
+
+### New Hybrid Role Architecture 🆕
+
+The system now supports **Hybrid Role Lifecycle Architecture** that unifies LLM and programmatic execution:
+
+#### Key Features
+- **Parameter Extraction**: Single LLM call extracts both route and parameters
+- **Pre-processing Hooks**: Fetch data before LLM execution (eliminates tool calls)
+- **Post-processing Hooks**: Format results, scrub PII, audit logging
+- **Data Injection**: Pre-processed data injected into LLM context
+- **Enhanced Caching**: Structured parameters enable semantic caching
+
+#### Example: Enhanced Weather Role
+```bash
+# Request: "What's the weather in Seattle?"
+# 1. Enhanced routing extracts: {"location": "Seattle", "timeframe": "current"}
+# 2. Pre-processing fetches weather data from API
+# 3. LLM interprets pre-fetched data (no tool calls needed)
+# 4. Post-processing formats for TTS and logs interaction
+# Result: 33% fewer LLM calls, faster execution, better monitoring
+```
+
+See [`examples/hybrid_role_example.py`](examples/hybrid_role_example.py) for a working demonstration.
 
 ## Migration from LangChain
 
@@ -442,11 +487,31 @@ This system represents a complete architectural evolution:
 **Phase 4-5**: MCP integration and comprehensive testing
 **Phase 6-7**: Architecture consolidation and LangChain removal
 **Phase 8**: Post-migration cleanup and production readiness
+**Phase 9**: 🆕 **Hybrid Role Lifecycle Architecture** - Advanced role execution with lifecycle hooks
+
+### Latest Enhancement: Hybrid Role Lifecycle Architecture
+
+The system now includes a revolutionary hybrid role execution model:
+
+#### Implementation Achievements
+- **Enhanced RoleRegistry**: Lifecycle function support and parameter schemas
+- **Enhanced RequestRouter**: Parameter extraction in single LLM call
+- **Enhanced UniversalAgent**: Hybrid execution with pre/post processing hooks
+- **Updated WorkflowEngine**: Hybrid role support with async execution
+- **Migrated Weather Role**: Complete hybrid pattern implementation
+- **Comprehensive Testing**: 41 tests covering all hybrid functionality
+- **Full Documentation**: Migration guide and working examples
+
+#### Performance Impact
+- **Reduced LLM calls**: 3 → 2 calls per weather request (33% reduction)
+- **Enhanced caching**: Structured parameters improve cache hit rates
+- **Better monitoring**: Comprehensive execution time logging
+- **Improved security**: Built-in PII scrubbing and audit logging
 
 The migration maintained 100% functionality while achieving:
 - Zero LangChain dependencies
 - Simplified architecture (5 components → 1 Universal Agent)
-- Enhanced capabilities (pause/resume, external state, MCP integration)
+- Enhanced capabilities (pause/resume, external state, MCP integration, hybrid roles)
 - Production-ready features (health monitoring, deployment guides)
 - Comprehensive documentation and testing
 
