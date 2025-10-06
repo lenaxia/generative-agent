@@ -55,6 +55,7 @@ role:
   name: "weather"
   version: "2.0.0"
   description: "Weather information with pre-processing"
+  execution_type: "hybrid"  # NEW: Specifies hybrid execution with lifecycle hooks
   fast_reply: true  # Enables this role for fast-path routing
 
 # Parameters define what information the role needs from user requests
@@ -215,8 +216,15 @@ The role definition YAML file has several sections, each controlling a different
 | role.name | string | Yes | Role name (must match directory name) |
 | role.version | string | Yes | Semantic version (e.g., "1.0.0") |
 | role.description | string | Yes | Brief description of the role |
+| role.execution_type | string | No | Execution type: "hybrid" (with lifecycle hooks), "llm" (traditional), or "programmatic" (no LLM). Default: "llm" |
 | role.fast_reply | boolean | No | Enable for fast-path routing (default: false). When true, this role can be selected directly without complex planning. |
 | role.when_to_use | string | No | Guidance on when to use this role. Helps the system make better routing decisions. |
+
+#### Execution Types
+
+- **"hybrid"** (🆕 Recommended): Uses lifecycle hooks with pre-processing, LLM execution, and post-processing
+- **"llm"** (Traditional): Standard LLM execution with tools
+- **"programmatic"**: Direct Python execution without LLM processing
 
 ### Parameters
 
@@ -591,16 +599,23 @@ When debugging, focus on isolating the problem:
 
 See these example roles for reference:
 
-1. **Weather Role**: `roles/weather/` - A complete role with pre-processing to fetch weather data and post-processing for formatting. Shows how to use parameters effectively.
+1. **Weather Role** (Hybrid): `roles/weather/` - 🆕 Complete hybrid role with:
+   - Parameter extraction (location, timeframe, format)
+   - Pre-processing to fetch weather data from API
+   - Post-processing for TTS formatting, PII scrubbing, and audit logging
+   - Demonstrates all hybrid role lifecycle features
 
-2. **Search Role**: `roles/search/` - Demonstrates integration with search APIs and result formatting. Good example of shared tool usage.
+2. **Search Role** (LLM): `roles/search/` - Traditional LLM role with search APIs and result formatting. Good example of shared tool usage.
 
-3. **Calendar Role**: `roles/calendar/` - Shows how to integrate with external calendar APIs and handle dates and times correctly.
+3. **Calendar Role** (LLM): `roles/calendar/` - Shows integration with external calendar APIs and date/time handling.
 
-4. **Smart Home Role**: `roles/smart_home/` - Illustrates device control and state management with pre-processing for device status and post-processing for command confirmation.
+4. **Timer Role** (LLM): `roles/timer/` - Simple role for timer management and scheduling.
 
-For a complete demonstration of the role architecture, see the example in:
-`examples/hybrid_role_example.py`
+5. **Data Collection Role** (Programmatic): `roles/programmatic/data_collection_role.py` - Direct Python execution without LLM processing.
+
+For a complete demonstration of the hybrid role architecture, see:
+- `examples/hybrid_role_example.py` - Working demonstration
+- `docs/HYBRID_ROLE_MIGRATION_GUIDE.md` - Step-by-step migration guide
 
 ## Additional Resources
 
