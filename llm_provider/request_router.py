@@ -61,87 +61,67 @@ class RequestRouter:
     
     def route_request(self, instruction: str) -> Dict[str, Any]:
         """
-        Route request using existing WEAK model from LLMFactory with caching.
+        Enhanced routing with parameter extraction in single LLM call.
         
-        Args:
-            instruction: User instruction to route
-            
         Returns:
-            Dict containing route, confidence, and optional error information
+            Dict containing route, confidence, and extracted parameters
         """
         import time
         start_time = time.time()
         
         # Handle None or empty instruction
         if instruction is None:
-            logger.error("Received None instruction for routing")
             return {
                 "route": "PLANNING",
                 "confidence": 0.0,
-                "error": "No instruction provided",
-                "execution_time_ms": 0.1
+                "parameters": {},
+                "error": "No instruction provided"
             }
         
         try:
-            # Check cache first for performance
+            # Check cache first
             cache_key = self._create_cache_key(instruction)
             if cache_key in self._routing_cache:
                 cached_result = self._routing_cache[cache_key].copy()
-                cached_result["execution_time_ms"] = 0.1  # Cache hit time
-                logger.info(f"Cache hit: Routed request to '{cached_result['route']}' with confidence {cached_result['confidence']:.2f} in 0.1ms (cached)")
+                cached_result["execution_time_ms"] = 0.1
                 return cached_result
             
-            # Get fast-reply capable roles
+            # Get fast-reply roles with parameter schemas
             fast_reply_roles = self.role_registry.get_fast_reply_roles()
-            logger.debug(f"Found {len(fast_reply_roles)} fast-reply roles for routing")
-            
-            # If no fast-reply roles are available, fall back to planning immediately
             if not fast_reply_roles:
-                logger.warning("No fast-reply roles available, routing to PLANNING")
-                execution_time = (time.time() - start_time) * 1000
-                return {
-                    "route": "PLANNING",
-                    "confidence": 0.0,
-                    "error": "No fast-reply roles available",
-                    "execution_time_ms": execution_time
-                }
+                return {"route": "PLANNING", "confidence": 0.0, "parameters": {}}
             
-            # Build routing prompt
-            prompt = self._build_routing_prompt(instruction, fast_reply_roles)
-            logger.debug(f"Built routing prompt: {prompt[:200]}...")
+            # Build enhanced routing prompt with parameter schemas
+            routing_prompt = self._build_enhanced_routing_prompt(instruction, fast_reply_roles)
             
-            # Use UniversalAgent for LLM calls (proper architecture)
-            response = self.universal_agent.execute_task(
-                instruction=prompt,
-                role="router",  # Use specialized router role for routing decisions
-                llm_type=LLMType.WEAK,
-                context=None
+            # Single LLM call for routing AND parameter extraction
+            result = self.universal_agent.execute_task(
+                instruction=routing_prompt,
+                role="router",
+                llm_type=LLMType.WEAK
             )
             
-            logger.debug(f"LLM routing response: {response}")
+            # Parse routing result with parameters
+            parsed_result = self._parse_routing_and_parameters(result)
             
-            # Parse response
-            result = self._parse_routing_response(response)
+            # Cache the result
+            if len(self._routing_cache) >= self._cache_max_size:
+                self._routing_cache.clear()
+            self._routing_cache[cache_key] = parsed_result.copy()
             
-            # Add execution time
-            execution_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-            result["execution_time_ms"] = execution_time
+            execution_time_ms = (time.time() - start_time) * 1000
+            parsed_result["execution_time_ms"] = execution_time_ms
             
-            # Cache the result for future use
-            self._cache_routing_result(cache_key, result)
-            
-            logger.info(f"Routed request to '{result['route']}' with confidence {result['confidence']:.2f} in {execution_time:.1f}ms")
-            
-            return result
+            logger.info(f"Enhanced routing: '{parsed_result['route']}' with confidence {parsed_result['confidence']:.2f} and {len(parsed_result.get('parameters', {}))} parameters")
+            return parsed_result
             
         except Exception as e:
-            logger.error(f"Error during request routing: {e}", exc_info=True)
-            execution_time = (time.time() - start_time) * 1000
+            logger.error(f"Enhanced routing failed: {e}")
             return {
                 "route": "PLANNING",
                 "confidence": 0.0,
-                "error": f"Routing failed: {str(e)}",
-                "execution_time_ms": execution_time
+                "parameters": {},
+                "error": str(e)
             }
     
     def _create_cache_key(self, instruction: str) -> str:
@@ -316,6 +296,72 @@ Respond with JSON only:
             "warnings": warnings,
             "fast_reply_roles_count": len(fast_reply_roles) if 'fast_reply_roles' in locals() else 0
         }
+    
+    def _build_enhanced_routing_prompt(self, instruction: str, fast_reply_roles: List) -> str:
+        """Build routing prompt that includes parameter extraction."""
+        
+        # Build role schemas for parameter extraction
+        role_schemas = {}
+        for role_def in fast_reply_roles:
+            role_name = role_def.name
+            parameters = self.role_registry.get_role_parameters(role_name)
+            if parameters:
+                role_schemas[role_name] = {
+                    "description": role_def.config.get('role', {}).get('description', ''),
+                    "parameters": parameters
+                }
+        
+        return f"""Route this request to the best role AND extract parameters for that role.
+
+Request: "{instruction}"
+
+Available roles and their parameters:
+{json.dumps(role_schemas, indent=2)}
+
+Analyze the request and respond with JSON in this exact format:
+{{
+  "route": "role_name",
+  "confidence": 0.95,
+  "parameters": {{
+    "param_name": "extracted_value"
+  }}
+}}
+
+Rules:
+- Choose the role that best matches the request intent
+- Extract only the parameters defined for the chosen role
+- For enum parameters, pick from the allowed values only
+- Use examples as guidance for parameter format
+- Use confidence 0.0-1.0 based on how well the request matches the role
+- If no role matches well, use "PLANNING" with confidence < 0.7
+- Ensure all required parameters are extracted if possible"""
+    
+    def _parse_routing_and_parameters(self, llm_result: str) -> Dict[str, Any]:
+        """Parse LLM result to extract route and parameters."""
+        try:
+            # Clean the result and parse JSON
+            cleaned_result = llm_result.strip()
+            if cleaned_result.startswith('```json'):
+                cleaned_result = cleaned_result[7:-3].strip()
+            elif cleaned_result.startswith('```'):
+                cleaned_result = cleaned_result[3:-3].strip()
+            
+            parsed = json.loads(cleaned_result)
+            
+            return {
+                "route": parsed.get("route", "PLANNING"),
+                "confidence": float(parsed.get("confidence", 0.0)),
+                "parameters": parsed.get("parameters", {})
+            }
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse routing result: {e}")
+            return {
+                "route": "PLANNING",
+                "confidence": 0.0,
+                "parameters": {},
+                "error": f"Parse error: {str(e)}"
+            }
 
 
 class FastPathRoutingConfig:
@@ -381,3 +427,4 @@ class FastPathRoutingConfig:
             'log_routing_decisions': self.log_routing_decisions,
             'track_performance_metrics': self.track_performance_metrics
         }
+    

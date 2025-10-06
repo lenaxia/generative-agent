@@ -9,10 +9,12 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import re
 import logging
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
+@tool
 def summarize_text(text: str, max_length: int = 200, summary_type: str = "general") -> Dict[str, Any]:
     """
     Summarize text content - converted from SummarizerAgent.
@@ -167,6 +169,7 @@ def create_key_facts_summary(text: str, max_length: int) -> str:
     return '. '.join(key_sentences) + '.' if key_sentences else text[:max_length * 5]
 
 
+@tool
 def analyze_text_complexity(text: str) -> Dict[str, Any]:
     """
     Analyze text complexity and readability.
@@ -223,6 +226,7 @@ def analyze_text_complexity(text: str) -> Dict[str, Any]:
     return result
 
 
+@tool
 def extract_key_phrases(text: str, max_phrases: int = 10) -> Dict[str, Any]:
     """
     Extract key phrases from text.
@@ -288,6 +292,7 @@ def extract_key_phrases(text: str, max_phrases: int = 10) -> Dict[str, Any]:
     return result
 
 
+@tool
 def compare_texts(text1: str, text2: str) -> Dict[str, Any]:
     """
     Compare two texts for similarity and differences.

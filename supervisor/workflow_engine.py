@@ -110,13 +110,21 @@ class WorkflowEngine:
         # Create Universal Agent with MCP and role support first
         self.universal_agent = UniversalAgent(llm_factory, role_registry=self.role_registry, mcp_manager=self.mcp_manager)
         
-        # Performance optimization: Warm up models for faster routing
+        # Performance optimization: Warm up models and agents for faster routing
         logger.info("Warming up LLM models for optimal performance...")
         try:
             llm_factory.warm_models()
             logger.info("Model warming completed successfully")
         except Exception as e:
             logger.warning(f"Model warming failed (non-critical): {e}")
+        
+        # Performance optimization: Pre-warm agent pool to avoid MetricsClient creation during workflows
+        logger.info("Pre-warming agent pool to eliminate workflow latency...")
+        try:
+            llm_factory.warm_agent_pool()
+            logger.info("Agent pool warming completed successfully")
+        except Exception as e:
+            logger.warning(f"Agent pool warming failed (non-critical): {e}")
         
         # Initialize fast-path routing with UniversalAgent
         self.fast_path_config = FastPathRoutingConfig.from_dict(fast_path_config or {})
@@ -200,32 +208,50 @@ class WorkflowEngine:
         return self._handle_complex_workflow(request)
     
     def _handle_fast_reply(self, request: RequestMetadata, routing_result: Dict) -> str:
-        """Execute fast-reply using existing Universal Agent."""
+        """Execute fast-reply with hybrid role support and pre-extracted parameters."""
         try:
-            request_id = 'fr_' + str(uuid.uuid4()).split('-')[-1]  # Fast-reply ID
+            request_id = 'fr_' + str(uuid.uuid4()).split('-')[-1]
             role = routing_result["route"]
+            parameters = routing_result.get("parameters", {})
             
-            logger.info(f"Fast-reply '{request_id}' via {role} role (confidence: {routing_result['confidence']:.2f})")
+            logger.info(f"Fast-reply '{request_id}' via {role} role with {len(parameters)} parameters")
             
-            # Start duration tracking at the beginning of execution
+            # Start duration tracking
             duration_logger = get_duration_logger()
             duration_logger.start_workflow_tracking(
                 workflow_id=request_id,
-                source=WorkflowSource.CLI,  # Will be updated by caller if needed
+                source=WorkflowSource.CLI,
                 workflow_type=WorkflowType.FAST_REPLY,
                 instruction=request.prompt
             )
             
-            # Direct Universal Agent execution (no TaskContext needed)
-            logger.debug(f"DEBUG: Executing fast-reply with instruction: {repr(request.prompt)}")
-            result = self.universal_agent.execute_task(
-                instruction=request.prompt,
-                role=role,
-                llm_type=LLMType.WEAK,  # Fast model for quick responses
-                context=None  # No TaskContext for single-step execution
-            )
+            # Check if this is a hybrid role
+            execution_type = self.role_registry.get_role_execution_type(role)
             
-            logger.info(f"Fast-reply '{request_id}' completed in {role} role")
+            if execution_type == "hybrid":
+                # Execute hybrid role with pre-extracted parameters
+                import asyncio
+                result = asyncio.run(self.universal_agent.execute_task(
+                    instruction=request.prompt,
+                    role=role,
+                    llm_type=LLMType.WEAK,
+                    context=None,
+                    extracted_parameters=parameters
+                ))
+            else:
+                # Existing LLM execution path with parameter context injection
+                if parameters:
+                    param_context = "Context: " + ", ".join([f"{k}={v}" for k, v in parameters.items()])
+                    enhanced_instruction = f"{param_context}\n\n{request.prompt}"
+                else:
+                    enhanced_instruction = request.prompt
+                
+                result = self.universal_agent.execute_task(
+                    instruction=enhanced_instruction,
+                    role=role,
+                    llm_type=LLMType.WEAK,
+                    context=None
+                )
             
             # Complete duration tracking
             duration_logger.complete_workflow_tracking(
@@ -235,36 +261,30 @@ class WorkflowEngine:
                 confidence=routing_result.get('confidence')
             )
             
-            # Store the result for later retrieval and return the request_id
+            # Store result with parameters
             self._store_fast_reply_result(
                 request_id,
                 result,
                 role=role,
-                confidence=routing_result.get('confidence')
+                confidence=routing_result.get('confidence'),
+                parameters=parameters
             )
+            
             return request_id
             
         except Exception as e:
             logger.error(f"Fast-reply execution failed: {e}")
-            # Graceful fallback to complex workflow
-            logger.info("Falling back to complex workflow due to fast-reply failure")
             return self._handle_complex_workflow(request)
     
-    def _store_fast_reply_result(self, request_id: str, result: str, role: str = None, confidence: float = None, execution_time_ms: float = None):
-        """
-        Store fast reply result for later retrieval.
-        
-        Args:
-            request_id: The fast reply request ID
-            result: The execution result
-            role: The role used for execution
-            confidence: The routing confidence
-            execution_time_ms: Execution time in milliseconds
-        """
+    def _store_fast_reply_result(self, request_id: str, result: str, role: str = None,
+                                confidence: float = None, parameters: Dict = None,
+                                execution_time_ms: float = None):
+        """Enhanced result storage with parameters."""
         self.fast_reply_results[request_id] = {
             "result": result,
             "role": role,
             "confidence": confidence,
+            "parameters": parameters or {},
             "execution_time_ms": execution_time_ms,
             "timestamp": time.time()
         }

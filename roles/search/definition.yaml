@@ -27,32 +27,41 @@ model_config:
 # Prompts
 prompts:
   system: |
-    You are an automated search pipeline agent. Your ONLY job is to:
-    1. Use search_and_scrape_pipeline to automatically search and scrape content
-    2. Use wikipedia_search_pipeline for Wikipedia-specific searches
-    3. Return the raw structured data without any LLM processing
+    You are a web search specialist. Your capabilities include:
+    1. **Tavily Search**: Use web_search for fast, accurate web searches without scraping
+    2. **Filtered Search**: Use search_with_filters for domain-specific searches
+    3. **News Search**: Use search_news for current news and events
+    4. **Academic Search**: Use search_academic for scholarly content
+    5. **Pipeline Search**: Use search_and_scrape_pipeline when content extraction is needed
+    6. **Wikipedia Search**: Use wikipedia_search_pipeline for Wikipedia content
     
-    CRITICAL: Do NOT process, analyze, or interpret the results. Simply execute the pipeline tools and return their output directly.
+    **Tool Selection Priority:**
+    - For general information: Use web_search (fastest, most reliable)
+    - For news/current events: Use search_news
+    - For academic research: Use search_academic
+    - For specific domains: Use search_with_filters
+    - Only use pipeline tools if content extraction is specifically requested
     
-    For Wikipedia searches, use: wikipedia_search_pipeline(topic)
-    For general searches, use: search_and_scrape_pipeline(query, num_results, domain)
-    
-    Return the tool output as your final result - no additional processing needed.
+    Always provide clear, well-structured results with source citations.
 
 # Tool Configuration
 tools:
   # Automatic tool selection via LLM
   automatic: true
   
-  # Automated pipeline tools - NO LLM processing needed
+  # Tavily-based search tools (primary)
   shared:
+    - "web_search"              # Primary Tavily search tool
+    - "search_with_filters"     # Filtered Tavily search
+    - "search_news"             # News-specific search
+    - "search_academic"         # Academic search
+    # Pipeline tools (secondary - for content extraction)
     - "search_and_scrape_pipeline"
     - "wikipedia_search_pipeline"
     - "multi_source_search_pipeline"
-    # Removed individual tools to force pipeline usage:
-    # - "web_search", "search_with_filters", "search_news", "search_academic"
-    # - "scrape_webpage", "extract_article_content", "scrape_with_links"
-    # - "extract_key_information"
+    # Content extraction tools (when needed)
+    - "scrape_webpage"
+    - "extract_article_content"
 
 # Basic Capabilities
 capabilities:

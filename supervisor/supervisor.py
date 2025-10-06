@@ -315,7 +315,7 @@ class Supervisor:
                 "heartbeat": self.heartbeat.get_health_status() if self.heartbeat else None,
                 "metrics": self.metrics_manager.get_metrics(),
             }
-            logger.info(f"Retrieved Supervisor status: {status}")
+            logger.debug(f"Retrieved Supervisor status: {status}")
             return status
         except Exception as e:
             logger.error(f"Error getting Supervisor status: {e}")

@@ -1,10 +1,11 @@
-# Weather Role Definition
+# Weather Role Definition - Enhanced Hybrid Pattern
 
 # Role Metadata
 role:
   name: "weather"
-  version: "1.0.0"
-  description: "Specialized role for weather information retrieval and forecasting"
+  version: "2.0.0"
+  description: "Weather role with pre-processing data fetching and post-processing formatting"
+  execution_type: "hybrid"  # Changed from "llm" to "hybrid"
   fast_reply: true  # Enable fast-path routing for weather queries
   author: "system@generative-agent"
   when_to_use: |
@@ -15,6 +16,67 @@ role:
     - Validate weather data and coordinates
     - Provide weather-related information and analysis
 
+# Enhanced parameter schema for routing extraction
+parameters:
+  location:
+    type: "string"
+    required: true
+    description: "City, state, country, or coordinates for weather lookup"
+    examples: ["Seattle", "New York, NY", "90210", "47.6062,-122.3321"]
+  
+  timeframe:
+    type: "string"
+    required: false
+    description: "When to get weather for"
+    examples: ["current", "today", "tomorrow", "this week"]
+    enum: ["current", "today", "tomorrow", "this week", "next week"]
+    default: "current"
+  
+  format:
+    type: "string"
+    required: false
+    description: "Output format preference"
+    enum: ["brief", "detailed", "forecast"]
+    default: "brief"
+
+# Lifecycle hooks for hybrid execution
+lifecycle:
+  pre_processing:
+    enabled: true
+    functions:
+      - name: "fetch_weather_data"
+        uses_parameters: ["location", "timeframe"]
+      - name: "validate_location"
+        uses_parameters: ["location"]
+    data_injection: true  # Inject results into LLM context
+    
+  post_processing:
+    enabled: true
+    functions:
+      - name: "format_for_tts"
+        description: "Format response for text-to-speech"
+      - name: "pii_scrubber"
+        description: "Remove sensitive data"
+      - name: "audit_log"
+        description: "Log interaction for compliance"
+
+# Enhanced system prompt with pre-processed data
+prompts:
+  system: |
+    You are a weather specialist. The weather data has already been fetched
+    and is available in your context as pre-processed data. Focus on interpreting
+    and explaining this data rather than fetching it.
+    
+    Available data:
+    - Current weather: {weather_current}
+    - Location resolved: {location_resolved}
+    - Data timestamp: {data_timestamp}
+    - Timeframe requested: {timeframe_requested}
+    
+    Interpret and explain this weather data in a natural, conversational way.
+    Focus on what the user needs to know about the weather conditions.
+    Always respond in natural language as your output will be converted to text to speech.
+
 # Model Parameters
 model_config:
   temperature: 0.1              # Low temperature for factual weather data
@@ -22,30 +84,10 @@ model_config:
   max_context: 32000           # Sufficient context for weather queries
   top_p: 0.9                   # Focused sampling for accurate data
 
-# Prompts
-prompts:
-  system: |
-    You are a weather information specialist. Your role is to:
-    1. Retrieve current weather conditions for any location
-    2. Provide accurate weather forecasts
-    3. Handle different location formats (city names, ZIP codes, coordinates)
-    4. Explain weather patterns and provide helpful context
-    5. Validate weather data and coordinates
-    
-    Focus on providing accurate, current weather information with proper source attribution.
-    Always use the available weather tools to get real-time data from reliable sources.
-
-    Always respond in natural language as your output will be converted to text to speech.
-
-# Tool Configuration
+# Tool Configuration - No weather tools needed since data is pre-fetched
 tools:
-  # Disable automatic tool selection - use specific weather tools
   automatic: false
-  
-  # Manually specified shared tools for weather functionality
-  shared:
-    - "get_weather"
-    - "get_weather_forecast"
+  shared: []  # No need for weather tools since data is pre-fetched
 
 # Basic Capabilities
 capabilities:

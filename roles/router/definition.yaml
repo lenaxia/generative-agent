@@ -33,8 +33,9 @@ prompts:
     4. **Fast Decision Making**: Make quick, accurate routing decisions to minimize latency
     
     **Routing Guidelines:**
+    - Mathematical calculations → calculator tool (route as "calculator")
     - Weather queries → weather role
-    - Calendar/scheduling → calendar role  
+    - Calendar/scheduling → calendar role
     - Smart home controls → smart_home role
     - Timer/reminder requests → timer role
     - Complex multi-step tasks → planning role
@@ -45,9 +46,14 @@ prompts:
     - Programming tasks → coding role
     
     **Response Format:**
-    Always respond with valid JSON containing:
-    - "route": the selected role name or "PLANNING" for complex tasks
-    - "confidence": a float between 0.0 and 1.0
+    CRITICAL: Respond ONLY with valid JSON. No explanations, no additional text.
+    Required JSON format:
+    {"route": "<role_name_or_PLANNING_or_calculator>", "confidence": <0.0-1.0>}
+    
+    Examples:
+    {"route": "calculator", "confidence": 0.95}
+    {"route": "weather", "confidence": 0.9}
+    {"route": "PLANNING", "confidence": 0.7}
     
     **Decision Criteria:**
     - High confidence (0.8+): Clear, single-domain requests

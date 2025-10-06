@@ -5,10 +5,12 @@ Custom tools for the planning role.
 from typing import List, Optional, Dict, Any
 import json
 import logging
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
+@tool
 def create_task_plan(instruction: str) -> Dict[str, Any]:
     """
     Create a task plan by breaking down the instruction into manageable steps.
@@ -49,6 +51,7 @@ def create_task_plan(instruction: str) -> Dict[str, Any]:
         return {"error": str(e), "tasks": [], "dependencies": []}
 
 
+@tool
 def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Analyze dependencies between tasks.
@@ -78,6 +81,7 @@ def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any
         return []
 
 
+@tool
 def validate_task_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
     """
     Validate a task plan for completeness and correctness.

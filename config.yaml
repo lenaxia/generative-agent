@@ -12,8 +12,8 @@ llm_providers:
     # Model mapping for semantic types
     models:
       WEAK: "anthropic.claude-3-haiku-20240307-v1:0"      # Faster model for routing
-      DEFAULT: "anthropic.claude-sonnet-4-20250514-v1:0"
-      STRONG: "anthropic.claude-sonnet-4-20250514-v1:0"
+      DEFAULT: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"  # Fixed: Use Sonnet 3.5 instead of Sonnet 4
+      STRONG: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"   # Fixed: Use Sonnet 3.5 instead of Sonnet 4
     
     # Default parameters
     parameters:
@@ -177,6 +177,7 @@ fast_path:
   # Performance optimizations
   performance:
     agent_pool_warming: true      # Pre-warm Agent pool at startup
+    pre_warm_metrics_client: true # Pre-create MetricsClient during startup to avoid workflow latency
     skip_telemetry: false         # Keep telemetry for monitoring
     minimal_logging: false        # Keep logging for debugging
     

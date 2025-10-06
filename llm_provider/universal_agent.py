@@ -182,24 +182,46 @@ Focus on comprehensive, accurate analysis."""
     
     def execute_task(self, instruction: str, role: str = "default",
                     llm_type: LLMType = LLMType.DEFAULT,
-                    context: Optional[TaskContext] = None) -> str:
+                    context: Optional[TaskContext] = None,
+                    extracted_parameters: Optional[Dict] = None) -> str:
         """
-        Execute a task with hybrid execution path selection.
-        
-        Determines whether to use programmatic or LLM-based execution
-        based on the role type for optimal performance.
+        Enhanced task execution with hybrid role lifecycle support.
         
         Args:
             instruction: Task instruction
             role: Agent role to assume
             llm_type: Model type for optimization
             context: Optional task context
+            extracted_parameters: Parameters extracted during routing
             
         Returns:
             str: Task result
         """
-        # Determine execution path based on role type
-        if self.is_programmatic_role(role):
+        # Check execution type
+        execution_type = self.role_registry.get_role_execution_type(role)
+        
+        if execution_type == "hybrid":
+            # Run async hybrid execution in sync context
+            import asyncio
+            try:
+                # Try to get existing event loop
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, create a new task
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            self._execute_hybrid_task(instruction, role, context, extracted_parameters)
+                        )
+                        return future.result()
+                else:
+                    # If no loop is running, use asyncio.run
+                    return asyncio.run(self._execute_hybrid_task(instruction, role, context, extracted_parameters))
+            except RuntimeError:
+                # Fallback: run in new event loop
+                return asyncio.run(self._execute_hybrid_task(instruction, role, context, extracted_parameters))
+        elif execution_type == "programmatic":
             return self.execute_programmatic_task(instruction, role, context)
         else:
             return self.execute_llm_task(instruction, role, llm_type, context)
@@ -615,3 +637,151 @@ Focus on comprehensive, accurate analysis."""
             return json.dumps(result, indent=2, default=str)
         else:
             return str(result)
+    
+    async def _execute_hybrid_task(self, instruction: str, role: str,
+                                  context: Optional[TaskContext],
+                                  extracted_parameters: Optional[Dict]) -> str:
+        """Execute hybrid role with lifecycle hooks."""
+        import time
+        start_time = time.time()
+        
+        try:
+            role_def = self.role_registry.get_role(role)
+            if not role_def:
+                raise ValueError(f"Role '{role}' not found")
+            
+            lifecycle_functions = self.role_registry.get_lifecycle_functions(role)
+            
+            # 1. Pre-processing phase
+            pre_data = {}
+            if self._has_pre_processing(role_def):
+                logger.info(f"Running pre-processing for {role}")
+                pre_data = await self._run_pre_processors(
+                    role_def, lifecycle_functions, instruction, context, extracted_parameters or {}
+                )
+            
+            # 2. LLM execution phase (if needed)
+            llm_result = None
+            if self._needs_llm_processing(role_def):
+                logger.info(f"Running LLM processing for {role}")
+                enhanced_instruction = self._inject_pre_data(role_def, instruction, pre_data)
+                llm_result = self._execute_llm_with_context(enhanced_instruction, role, context)
+            
+            # 3. Post-processing phase
+            final_result = llm_result or self._format_pre_data_result(pre_data)
+            if self._has_post_processing(role_def):
+                logger.info(f"Running post-processing for {role}")
+                final_result = await self._run_post_processors(
+                    role_def, lifecycle_functions, final_result, context, pre_data
+                )
+            
+            execution_time = time.time() - start_time
+            logger.info(f"Hybrid role {role} completed in {execution_time:.3f}s")
+            return final_result
+            
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logger.error(f"Hybrid role {role} failed after {execution_time:.3f}s: {e}")
+            return f"Error in {role}: {str(e)}"
+    
+    async def _run_pre_processors(self, role_def: RoleDefinition, lifecycle_functions: Dict,
+                                 instruction: str, context: TaskContext, parameters: Dict) -> Dict[str, Any]:
+        """Run all pre-processing functions for a role."""
+        results = {}
+        
+        pre_config = role_def.config.get('lifecycle', {}).get('pre_processing', {})
+        functions = pre_config.get('functions', [])
+        
+        for func_config in functions:
+            if isinstance(func_config, str):
+                func_name = func_config
+                func_params = []
+            else:
+                func_name = func_config.get('name')
+                func_params = func_config.get('uses_parameters', [])
+            
+            processor = lifecycle_functions.get(func_name)
+            if processor:
+                try:
+                    # Extract relevant parameters for this function
+                    func_parameters = {k: v for k, v in parameters.items() if k in func_params}
+                    
+                    result = await processor(instruction, context, func_parameters)
+                    results[func_name] = result
+                    logger.debug(f"Pre-processor '{func_name}' completed successfully")
+                    
+                except Exception as e:
+                    logger.error(f"Pre-processor '{func_name}' failed: {e}")
+                    results[func_name] = {"error": str(e)}
+            else:
+                logger.warning(f"Pre-processor function '{func_name}' not found")
+        
+        return results
+    
+    async def _run_post_processors(self, role_def: RoleDefinition, lifecycle_functions: Dict,
+                                  llm_result: str, context: TaskContext, pre_data: Dict) -> str:
+        """Run all post-processing functions for a role."""
+        current_result = llm_result
+        
+        post_config = role_def.config.get('lifecycle', {}).get('post_processing', {})
+        functions = post_config.get('functions', [])
+        
+        for func_config in functions:
+            func_name = func_config if isinstance(func_config, str) else func_config.get('name')
+            
+            processor = lifecycle_functions.get(func_name)
+            if processor:
+                try:
+                    current_result = await processor(current_result, context, pre_data)
+                    logger.debug(f"Post-processor '{func_name}' completed successfully")
+                    
+                except Exception as e:
+                    logger.error(f"Post-processor '{func_name}' failed: {e}")
+                    # Continue with current result on post-processor failure
+            else:
+                logger.warning(f"Post-processor function '{func_name}' not found")
+        
+        return current_result
+    
+    def _has_pre_processing(self, role_def: RoleDefinition) -> bool:
+        """Check if pre-processing is enabled for a role."""
+        return role_def.config.get('lifecycle', {}).get('pre_processing', {}).get('enabled', False)
+    
+    def _has_post_processing(self, role_def: RoleDefinition) -> bool:
+        """Check if post-processing is enabled for a role."""
+        return role_def.config.get('lifecycle', {}).get('post_processing', {}).get('enabled', False)
+    
+    def _needs_llm_processing(self, role_def: RoleDefinition) -> bool:
+        """Determine if LLM processing is needed for a role."""
+        execution_type = role_def.config.get('role', {}).get('execution_type', 'hybrid')
+        return execution_type in ['hybrid', 'llm']
+    
+    def _inject_pre_data(self, role_def: RoleDefinition, instruction: str, pre_data: Dict) -> str:
+        """Inject pre-processing data into instruction context."""
+        system_prompt = role_def.config.get('prompts', {}).get('system', '')
+        
+        # Format system prompt with pre-processed data
+        try:
+            formatted_prompt = system_prompt.format(**self._flatten_pre_data(pre_data))
+            return f"{formatted_prompt}\n\nUser Request: {instruction}"
+        except KeyError as e:
+            logger.warning(f"Failed to format system prompt with pre-data: {e}")
+            return instruction
+    
+    def _flatten_pre_data(self, pre_data: Dict) -> Dict[str, Any]:
+        """Flatten pre-processing data for prompt formatting."""
+        flattened = {}
+        for func_name, data in pre_data.items():
+            if isinstance(data, dict) and 'error' not in data:
+                # Flatten successful results
+                for key, value in data.items():
+                    flattened[key] = value
+        return flattened
+    
+    def _format_pre_data_result(self, pre_data: Dict) -> str:
+        """Format pre-processing data as final result (for programmatic-only execution)."""
+        return str(pre_data)
+    
+    def _execute_llm_with_context(self, instruction: str, role: str, context: Optional[TaskContext]) -> str:
+        """Execute LLM with enhanced context."""
+        return self.execute_llm_task(instruction, role, LLMType.DEFAULT, context)

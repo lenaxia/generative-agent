@@ -50,6 +50,9 @@ class RoleRegistry:
         self.programmatic_roles: Dict[str, 'ProgrammaticRole'] = {}  # Python-based roles
         self.role_types: Dict[str, str] = {}  # Role type mapping
         
+        # Hybrid role lifecycle support
+        self.lifecycle_functions: Dict[str, Dict[str, Callable]] = {}  # role_name -> {func_name: func}
+        
         # Backward compatibility - keep existing interface
         self.roles: Dict[str, RoleDefinition] = self.llm_roles  # Alias for backward compatibility
         self.shared_tools: Dict[str, Callable] = {}
@@ -123,7 +126,7 @@ class RoleRegistry:
         return roles
     
     def _load_role(self, role_name: str) -> RoleDefinition:
-        """Load a single role definition from files."""
+        """Enhanced role loading with lifecycle function support."""
         role_path = self.roles_directory / role_name
         definition_file = role_path / "definition.yaml"
         
@@ -136,6 +139,11 @@ class RoleRegistry:
         tools_file = role_path / "tools.py"
         if tools_file.exists():
             custom_tools = self._load_custom_tools(tools_file)
+        
+        # Load lifecycle functions for all roles
+        lifecycle_functions = self._load_lifecycle_functions(role_name)
+        if lifecycle_functions:
+            self.register_lifecycle_functions(role_name, lifecycle_functions)
         
         return RoleDefinition(
             name=role_name,
@@ -498,6 +506,74 @@ class RoleRegistry:
         enhanced_stats['total_all_roles'] = len(self.llm_roles) + len(self.programmatic_roles)
         
         return enhanced_stats
+    
+    # Enhanced methods for hybrid execution architecture
+    
+    def get_role_parameters(self, role_name: str) -> Dict[str, Any]:
+        """Get parameter schema for a role for routing extraction."""
+        role_def = self.get_role(role_name)
+        if not role_def:
+            return {}
+        return role_def.config.get('parameters', {})
+    
+    def get_role_execution_type(self, role_name: str) -> str:
+        """
+        Get the execution type for a role.
+        
+        Args:
+            role_name: Name of the role
+            
+        Returns:
+            "hybrid", "programmatic", or "llm"
+        """
+        role_def = self.get_role(role_name)
+        if not role_def:
+            # Check if it's a programmatic role
+            if role_name in self.programmatic_roles:
+                return "programmatic"
+            return "llm"  # Default fallback
+        
+        # Check role config for execution type
+        execution_type = role_def.config.get('role', {}).get('execution_type', 'llm')
+        return execution_type
+    
+    def register_lifecycle_functions(self, role_name: str, functions: Dict[str, Callable]):
+        """Register lifecycle functions for a role."""
+        self.lifecycle_functions[role_name] = functions
+        logger.info(f"Registered {len(functions)} lifecycle functions for role: {role_name}")
+    
+    def get_lifecycle_functions(self, role_name: str) -> Dict[str, Callable]:
+        """Get lifecycle functions for a role."""
+        return self.lifecycle_functions.get(role_name, {})
+    
+    def _load_lifecycle_functions(self, role_name: str) -> Dict[str, Callable]:
+        """Load lifecycle functions from role's Python module."""
+        # Load from roles/{role_name}/lifecycle.py if it exists
+        lifecycle_file = self.roles_directory / role_name / "lifecycle.py"
+        if lifecycle_file.exists():
+            return self._load_functions_from_file(lifecycle_file)
+        return {}
+    
+    def _load_functions_from_file(self, lifecycle_file: Path) -> Dict[str, Callable]:
+        """Load all functions from a Python file."""
+        try:
+            # Load the module dynamically
+            spec = importlib.util.spec_from_file_location(f"lifecycle_{lifecycle_file.parent.name}", lifecycle_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Find all callable functions (not classes or private methods)
+            functions = {}
+            for name, obj in inspect.getmembers(module):
+                if callable(obj) and not name.startswith('_') and not inspect.isclass(obj):
+                    functions[name] = obj
+            
+            logger.info(f"Loaded {len(functions)} lifecycle functions from {lifecycle_file}")
+            return functions
+            
+        except Exception as e:
+            logger.error(f"Failed to load lifecycle functions from {lifecycle_file}: {e}")
+            return {}
     
     # Fast-reply role methods for fast-path routing
     
