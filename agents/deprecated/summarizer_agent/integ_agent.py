@@ -1,12 +1,10 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from agents.summarizer_agent.agent import TextSummarizerAgent, TextSummarizeInput, TextSummarizeOutput
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus
 from logging import Logger
-from langchain_aws import ChatBedrock
 from config.bedrock_config import BedrockConfig
-from config.openai_config import OpenAIConfig
 
 class TestTextSummarizerAgentIntegration(unittest.TestCase):
     def setUp(self):

@@ -1,4 +1,3 @@
-import json
 import os
 import threading
 import time
@@ -7,8 +6,6 @@ from agents.base_agent import AgentInput, BaseAgent
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from pydantic import BaseModel, Field
-from langchain.output_parsers import PydanticOutputParser
-from langchain.prompts import PromptTemplate
 import logging
 
 from common.request_model import RequestMetadata

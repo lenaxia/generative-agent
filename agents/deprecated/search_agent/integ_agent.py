@@ -1,10 +1,9 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from agents.search_agent.agent import SearchAgent
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus
 from logging import Logger
-from langchain_aws import ChatBedrock
 from agents.base_agent import AgentInput
 from config.bedrock_config import BedrockConfig
 from langchain_core.messages.ai import AIMessage

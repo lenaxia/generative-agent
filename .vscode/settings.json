@@ -1,0 +1,179 @@
+{
+    // Python Configuration
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    
+    // Formatting
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": ["--line-length=88"],
+    
+    // Linting Configuration
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": ["--config=.flake8"],
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": ["--config-file=pyproject.toml"],
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintArgs": ["--rcfile=pyproject.toml"],
+    "python.linting.banditEnabled": true,
+    "python.linting.banditArgs": ["-c", "pyproject.toml"],
+    "python.linting.lintOnSave": true,
+    
+    // Import Organization
+    "python.sortImports.args": ["--profile", "black"],
+    
+    // Testing Configuration
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "--timeout=300",
+        "-v"
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    
+    // Editor Configuration
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true,
+        "source.fixAll.flake8": true
+    },
+    "editor.rulers": [88],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.trimAutoWhitespace": true,
+    
+    // File Associations
+    "files.associations": {
+        "*.yml": "yaml",
+        "*.yaml": "yaml",
+        ".flake8": "ini",
+        ".pre-commit-config.yaml": "yaml",
+        "yamllint.yml": "yaml"
+    },
+    
+    // File Exclusions
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/*.egg-info": true,
+        "**/build": true,
+        "**/dist": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/agents/deprecated": true,
+        "**/.benchmarks": true,
+        "**/.roo": true
+    },
+    
+    // Search Exclusions
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/*.code-search": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/build": true,
+        "**/dist": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/agents/deprecated": true,
+        "**/.benchmarks": true,
+        "**/.roo": true,
+        "**/logs": true
+    },
+    
+    // YAML Configuration
+    "yaml.format.enable": true,
+    "yaml.format.singleQuote": false,
+    "yaml.format.bracketSpacing": true,
+    "yaml.validate": true,
+    "yaml.completion": true,
+    "yaml.hover": true,
+    
+    // JSON Configuration
+    "json.format.enable": true,
+    
+    // Git Configuration
+    "git.ignoreLimitWarning": true,
+    "git.autofetch": true,
+    
+    // Terminal Configuration
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}"
+    },
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}"
+    },
+    
+    // Language Specific Settings
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
+        "editor.tabSize": 4
+    },
+    
+    "[yaml]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.tabSize": 2
+    },
+    
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features",
+        "editor.tabSize": 2
+    },
+    
+    "[markdown]": {
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+        "editor.wordWrap": "on",
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "strings": "off",
+            "other": "off"
+        }
+    },
+    
+    // Extension Recommendations
+    "extensions.recommendations": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.flake8",
+        "ms-python.mypy-type-checker",
+        "ms-python.pylint",
+        "redhat.vscode-yaml",
+        "yzhang.markdown-all-in-one",
+        "ms-vscode.vscode-json",
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "ms-vscode.test-adapter-converter"
+    ],
+    
+    // Workspace Trust
+    "security.workspace.trust.untrustedFiles": "prompt",
+    
+    // Performance Settings
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "basic"
+}

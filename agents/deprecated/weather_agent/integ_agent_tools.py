@@ -1,6 +1,5 @@
-import pprint
 import unittest
-from agents.weather_agent.agent import WeatherInput, WeatherTool, CityToCoordinatesTool, ZipCodeToCoordinatesTool
+from agents.weather_agent.agent import WeatherTool, CityToCoordinatesTool, ZipCodeToCoordinatesTool
 
 class WeatherToolIntegrationTest(unittest.TestCase):
     def test_weather_tool(self):

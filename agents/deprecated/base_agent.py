@@ -1,7 +1,6 @@
 from logging import Logger
 from abc import abstractmethod
 from typing import Any, Dict, Optional, List, Union, Callable
-from langchain.agents import AgentType
 from common.bus_packet import BusPacket
 from llm_provider.factory import LLMFactory, LLMType
 from langchain.tools import BaseTool
@@ -122,42 +121,36 @@ class BaseAgent:
         """
         Performs initialization operations 
         """
-        pass
 
     @abstractmethod
     def setup(self):
         """
         Performs setup operations before task execution.
         """
-        pass
 
     @abstractmethod
     def teardown(self):
         """
         Performs teardown operations after task execution.
         """
-        pass
 
     def persist_state(self):
         """
         Persists the agent's state for future use or recovery.
         """
         # Implement state persistence logic here
-        pass
 
     def load_state(self):
         """
         Loads the agent's state from persistence storage.
         """
         # Implement state loading logic here
-        pass
 
     def upgrade(self, new_version):
         """
         Upgrades the agent to a new version.
         """
         # Implement agent upgrade logic here
-        pass
 
     def publish_message(self, message_type, message):
         """

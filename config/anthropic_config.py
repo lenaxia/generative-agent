@@ -1,6 +1,8 @@
 import os
-from typing import Optional, Union, Tuple, Dict, List, Any, Mapping, Callable
+from typing import Any, Callable, Dict, List, Mapping, Optional
+
 from .base_config import BaseConfig
+
 
 class AnthropicConfig(BaseConfig):
     provider_name: str = "anthropic"
@@ -47,9 +49,15 @@ class AnthropicConfig(BaseConfig):
         # Removed LangChain callback dependencies
         # self.callback_manager = os.environ.get("ANTHROPIC_CALLBACK_MANAGER", callback_manager)
         # self.callbacks = os.environ.get("ANTHROPIC_CALLBACKS", callbacks)
-        self.custom_get_token_ids = os.environ.get("ANTHROPIC_CUSTOM_GET_TOKEN_IDS", custom_get_token_ids)
-        self.default_headers = os.environ.get("ANTHROPIC_DEFAULT_HEADERS", default_headers)
-        self.default_request_timeout = os.environ.get("ANTHROPIC_DEFAULT_REQUEST_TIMEOUT", default_request_timeout)
+        self.custom_get_token_ids = os.environ.get(
+            "ANTHROPIC_CUSTOM_GET_TOKEN_IDS", custom_get_token_ids
+        )
+        self.default_headers = os.environ.get(
+            "ANTHROPIC_DEFAULT_HEADERS", default_headers
+        )
+        self.default_request_timeout = os.environ.get(
+            "ANTHROPIC_DEFAULT_REQUEST_TIMEOUT", default_request_timeout
+        )
         # self.disable_streaming = os.environ.get("ANTHROPIC_DISABLE_STREAMING", disable_streaming)  # Undefined variable
         self.metadata = os.environ.get("ANTHROPIC_METADATA", metadata)
         self.model_kwargs = os.environ.get("ANTHROPIC_MODEL_KWARGS", model_kwargs)

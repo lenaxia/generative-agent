@@ -1,22 +1,24 @@
 import logging
 import sys
 import time
-from typing import Optional, List
 from pathlib import Path
-from supervisor.workflow_engine import WorkflowEngine
-from supervisor.heartbeat import Heartbeat
+from typing import Optional
+
+from common.message_bus import MessageBus
 from common.request_model import RequestMetadata
-from supervisor.metrics_manager import MetricsManager
-from supervisor.config_manager import ConfigManager
-from supervisor.logging_config import configure_logging
-from common.message_bus import MessageBus, MessageType
-from supervisor.supervisor_config import SupervisorConfig, LLMProviderConfig
-from config.bedrock_config import BedrockConfig
 from config.anthropic_config import AnthropicConfig
+from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
 from llm_provider.factory import LLMFactory, LLMType
+from supervisor.config_manager import ConfigManager
+from supervisor.heartbeat import Heartbeat
+from supervisor.logging_config import configure_logging
+from supervisor.metrics_manager import MetricsManager
+from supervisor.supervisor_config import SupervisorConfig
+from supervisor.workflow_engine import WorkflowEngine
 
 logger = logging.getLogger("supervisor")
+
 
 class Supervisor:
     # TODO: It should be able to do it mostly out of the box right now, but we should confirm whether or not we can nest supervisors, to basically do
@@ -67,8 +69,12 @@ class Supervisor:
                 self.config_manager = ConfigManager(str(default_config_file))
                 logger.info(f"Using default config file: {default_config_file}")
             else:
-                logger.error(f"Default configuration file not found: {default_config_file}")
-                raise FileNotFoundError(f"Default configuration file not found: {default_config_file}")
+                logger.error(
+                    f"Default configuration file not found: {default_config_file}"
+                )
+                raise FileNotFoundError(
+                    f"Default configuration file not found: {default_config_file}"
+                )
 
         logger.info("Loading config...")
         self.config = self.config_manager.load_config()
@@ -89,7 +95,9 @@ class Supervisor:
         """
         logger.info("Initializing components...")
         configure_logging(self.config.logging)
-        logger.info(f"Logging configured with level: {self.config.logging.log_level} and file: {self.config.logging.log_file}")
+        logger.info(
+            f"Logging configured with level: {self.config.logging.log_level} and file: {self.config.logging.log_file}"
+        )
 
         self.message_bus = MessageBus()
         logger.info("Message bus initialized.")
@@ -100,40 +108,44 @@ class Supervisor:
         # Populate the LLM factory with configurations from self.config.llm_providers
         for provider_name, provider_config in self.config.llm_providers.items():
             # Handle the new YAML structure: llm_providers.bedrock.models.WEAK/DEFAULT/STRONG
-            if 'models' in provider_config:
+            if "models" in provider_config:
                 # New structure: bedrock/openai with models mapping
-                models = provider_config['models']
-                parameters = provider_config.get('parameters', {})
-                
+                models = provider_config["models"]
+                parameters = provider_config.get("parameters", {})
+
                 for llm_type_str, model_id in models.items():
                     try:
                         llm_type = LLMType[llm_type_str.upper()]
-                        
+
                         # Create appropriate config object based on provider
-                        if provider_name.lower() == 'bedrock':
+                        if provider_name.lower() == "bedrock":
                             from config.bedrock_config import BedrockConfig
+
                             config_obj = BedrockConfig(
                                 name=f"{provider_name}_{llm_type_str}",
                                 model=model_id,  # BedrockModelConfig expects 'model', not 'model_id'
-                                region=parameters.get('region', 'us-west-2'),
-                                temperature=parameters.get('temperature', 0.3),
-                                max_tokens=parameters.get('max_tokens', 4096)
+                                region=parameters.get("region", "us-west-2"),
+                                temperature=parameters.get("temperature", 0.3),
+                                max_tokens=parameters.get("max_tokens", 4096),
                             )
-                        elif provider_name.lower() == 'openai':
+                        elif provider_name.lower() == "openai":
                             from config.openai_config import OpenAIConfig
+
                             config_obj = OpenAIConfig(
                                 name=f"{provider_name}_{llm_type_str}",
                                 model_id=model_id,
-                                temperature=parameters.get('temperature', 0.3),
-                                max_tokens=parameters.get('max_tokens', 4096)
+                                temperature=parameters.get("temperature", 0.3),
+                                max_tokens=parameters.get("max_tokens", 4096),
                             )
                         else:
                             logger.warning(f"Unknown provider type: {provider_name}")
                             continue
-                            
+
                         self.llm_factory.add_config(llm_type, config_obj)
-                        logger.info(f"Added {llm_type.value} config for {provider_name}: {model_id}")
-                        
+                        logger.info(
+                            f"Added {llm_type.value} config for {provider_name}: {model_id}"
+                        )
+
                     except KeyError:
                         logger.warning(f"Unknown LLM type: {llm_type_str}")
                         continue
@@ -145,52 +157,83 @@ class Supervisor:
                 else:
                     llm_class = llm_class_str
                 self.llm_factory.add_config(llm_class, provider_config)
-            
+
         logger.info("LLM factory initialized with Universal Agent support.")
 
         # Initialize WorkflowEngine (consolidated RequestManager + TaskScheduler)
         # Pass MCP config path only if MCP integration is enabled
         mcp_config_path = None
-        if (hasattr(self.config, 'mcp') and self.config.mcp and self.config.mcp.enabled) or \
-           (hasattr(self.config, 'feature_flags') and self.config.feature_flags and self.config.feature_flags.enable_mcp_integration):
-            mcp_config_path = self.config.mcp.config_file if hasattr(self.config, 'mcp') and self.config.mcp else 'config/mcp_config.yaml'
-        
+        if (
+            hasattr(self.config, "mcp") and self.config.mcp and self.config.mcp.enabled
+        ) or (
+            hasattr(self.config, "feature_flags")
+            and self.config.feature_flags
+            and self.config.feature_flags.enable_mcp_integration
+        ):
+            mcp_config_path = (
+                self.config.mcp.config_file
+                if hasattr(self.config, "mcp") and self.config.mcp
+                else "config/mcp_config.yaml"
+            )
+
         # Get fast-path configuration from config
         fast_path_config = None
-        if hasattr(self.config, 'fast_path') and self.config.fast_path:
+        if hasattr(self.config, "fast_path") and self.config.fast_path:
             fast_path_config = {
-                'enabled': getattr(self.config.fast_path, 'enabled', True),
-                'confidence_threshold': getattr(self.config.fast_path, 'confidence_threshold', 0.7),
-                'max_response_time': getattr(self.config.fast_path, 'max_response_time', 3000),
-                'fallback_on_error': getattr(self.config.fast_path, 'fallback_on_error', True),
-                'log_routing_decisions': getattr(self.config.fast_path, 'log_routing_decisions', True),
-                'track_performance_metrics': getattr(self.config.fast_path, 'track_performance_metrics', True)
+                "enabled": getattr(self.config.fast_path, "enabled", True),
+                "confidence_threshold": getattr(
+                    self.config.fast_path, "confidence_threshold", 0.7
+                ),
+                "max_response_time": getattr(
+                    self.config.fast_path, "max_response_time", 3000
+                ),
+                "fallback_on_error": getattr(
+                    self.config.fast_path, "fallback_on_error", True
+                ),
+                "log_routing_decisions": getattr(
+                    self.config.fast_path, "log_routing_decisions", True
+                ),
+                "track_performance_metrics": getattr(
+                    self.config.fast_path, "track_performance_metrics", True
+                ),
             }
-        
+
         self.workflow_engine = WorkflowEngine(
             llm_factory=self.llm_factory,
             message_bus=self.message_bus,
             max_concurrent_tasks=5,
             checkpoint_interval=300,
             mcp_config_path=mcp_config_path,
-            fast_path_config=fast_path_config
+            fast_path_config=fast_path_config,
         )
-        logger.info("WorkflowEngine initialized (consolidated RequestManager + TaskScheduler).")
+        logger.info(
+            "WorkflowEngine initialized (consolidated RequestManager + TaskScheduler)."
+        )
 
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
 
         # Initialize Heartbeat service
-        heartbeat_config = getattr(self.config, 'heartbeat', {})
-        heartbeat_interval = heartbeat_config.get('interval', 30) if isinstance(heartbeat_config, dict) else 30
-        health_check_interval = heartbeat_config.get('health_check_interval', 60) if isinstance(heartbeat_config, dict) else 60
-        
+        heartbeat_config = getattr(self.config, "heartbeat", {})
+        heartbeat_interval = (
+            heartbeat_config.get("interval", 30)
+            if isinstance(heartbeat_config, dict)
+            else 30
+        )
+        health_check_interval = (
+            heartbeat_config.get("health_check_interval", 60)
+            if isinstance(heartbeat_config, dict)
+            else 60
+        )
+
         self.heartbeat = Heartbeat(
             supervisor=self,
             interval=heartbeat_interval,
-            health_check_interval=health_check_interval
+            health_check_interval=health_check_interval,
         )
-        logger.info(f"Heartbeat service initialized with {heartbeat_interval}s interval.")
+        logger.info(
+            f"Heartbeat service initialized with {heartbeat_interval}s interval."
+        )
 
         # Note: Message bus subscriptions are handled by WorkflowEngine internally
         logger.info("Component initialization complete.")
@@ -205,10 +248,10 @@ class Supervisor:
             logger.info("Starting Supervisor...")
             self.message_bus.start()
             logger.info("Message bus started.")
-            
+
             self.workflow_engine.start_workflow_engine()
             logger.info("WorkflowEngine started.")
-            
+
             # Start heartbeat service
             if self.heartbeat:
                 self.heartbeat.start()
@@ -226,15 +269,15 @@ class Supervisor:
         """
         try:
             logger.info("Stopping Supervisor...")
-            
+
             # Stop heartbeat service first
             if self.heartbeat:
                 self.heartbeat.stop()
                 logger.info("Heartbeat service stopped.")
-            
+
             self.workflow_engine.stop_workflow_engine()
             logger.info("WorkflowEngine stopped.")
-            
+
             self.message_bus.stop()
             logger.info("Message bus stopped.")
             logger.info("Supervisor stopped successfully.")
@@ -258,7 +301,9 @@ class Supervisor:
             logger.info("Running Supervisor...")
             self.start()
             while True:
-                action = input("Enter action (workflow, status, stop): ").strip().lower()
+                action = (
+                    input("Enter action (workflow, status, stop): ").strip().lower()
+                )
                 if action == "stop":
                     self.stop()
                     break
@@ -270,27 +315,31 @@ class Supervisor:
                         logger.warning("Failed to retrieve Supervisor status.")
                 else:
                     if len(action) < 5:
-                        logger.warning("Invalid instruction. Please enter at least 5 characters.")
+                        logger.warning(
+                            "Invalid instruction. Please enter at least 5 characters."
+                        )
                         continue
-                    request = RequestMetadata(
-                        prompt=action,
-                        source_id="console",
-                        target_id="supervisor",
-                    )
+
                     workflow_id = self.workflow_engine.start_workflow(action)
                     logger.info(f"New workflow '{workflow_id}' started.")
 
                     workflow_completed = False
                     while not workflow_completed:
-                        progress_info = self.workflow_engine.get_request_status(workflow_id)
+                        progress_info = self.workflow_engine.get_request_status(
+                            workflow_id
+                        )
                         if progress_info is None:
                             workflow_completed = True
                         else:
-                            logger.info(f"Workflow '{workflow_id}' Status: {progress_info}")
+                            logger.info(
+                                f"Workflow '{workflow_id}' Status: {progress_info}"
+                            )
                             if progress_info.get("status", False):
                                 workflow_completed = True
                             else:
-                                time.sleep(5)  # Wait for 5 seconds before checking progress again
+                                time.sleep(
+                                    5
+                                )  # Wait for 5 seconds before checking progress again
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Stopping Supervisor...")
             self.stop()
@@ -310,9 +359,19 @@ class Supervisor:
             status = {
                 "status": "running" if self.message_bus.is_running() else "stopped",
                 "running": self.message_bus.is_running(),
-                "workflow_engine": self.workflow_engine.get_workflow_metrics() if self.workflow_engine else None,
-                "universal_agent": self.workflow_engine.get_universal_agent_status() if self.workflow_engine else None,
-                "heartbeat": self.heartbeat.get_health_status() if self.heartbeat else None,
+                "workflow_engine": (
+                    self.workflow_engine.get_workflow_metrics()
+                    if self.workflow_engine
+                    else None
+                ),
+                "universal_agent": (
+                    self.workflow_engine.get_universal_agent_status()
+                    if self.workflow_engine
+                    else None
+                ),
+                "heartbeat": (
+                    self.heartbeat.get_health_status() if self.heartbeat else None
+                ),
                 "metrics": self.metrics_manager.get_metrics(),
             }
             logger.debug(f"Retrieved Supervisor status: {status}")
@@ -323,7 +382,7 @@ class Supervisor:
 
     def get_config_class(self, provider_type):
         # TODO: [Low] We need to get rid of this method and extract the type dynamically, we don't want to be tied to hard coded definitions
-        
+
         if provider_type == "openai":
             return OpenAIConfig
         elif provider_type == "anthropic":
@@ -332,6 +391,7 @@ class Supervisor:
             return BedrockConfig
         else:
             return None
+
 
 if __name__ == "__main__":
     logger.info("Starting Supervisor application...")

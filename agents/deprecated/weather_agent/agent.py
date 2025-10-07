@@ -1,9 +1,8 @@
 import requests
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.tools import BaseTool
-from langchain.prompts import ChatPromptTemplate
 from langgraph.prebuilt import create_react_agent
 from agents.base_agent import BaseAgent, AgentInput
 from llm_provider.factory import LLMFactory, LLMType
@@ -136,7 +135,7 @@ class WeatherAgent(BaseAgent):
         # TODO: Move prompts to external file
         system_prompt = "You are a weather bot who can look up the current weather in a city or zip code. Answer the user query below"
 
-        memory = MemorySaver()
+        MemorySaver()
         config = {"configurable": {"thread_id": "abc123"}}
         llm = self.llm_factory.create_chat_model(LLMType.DEFAULT)
         graph = create_react_agent(llm, tools=self.tools)

@@ -1,0 +1,179 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strands_agent"
+version = "1.0.0"
+description = "StrandsAgent Universal Agent System - Production-ready workflow management platform"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  agents/deprecated
+  | \.benchmarks
+  | \.roo
+  | build
+  | dist
+  | \.git
+  | \.venv
+  | venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["llm_provider", "supervisor", "common", "config", "roles", "tests"]
+known_third_party = ["strands_agents", "strands_agents_tools", "slack_bolt", "slack_sdk", "redis", "aioredis", "pytest", "yaml", "pydantic"]
+skip_glob = ["agents/deprecated/*", ".benchmarks/*", ".roo/*"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+exclude = [
+    "agents/deprecated/",
+    ".benchmarks/",
+    ".roo/",
+    "build/",
+    "dist/"
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "strands_agents.*",
+    "strands_agents_tools.*",
+    "slack_bolt.*",
+    "slack_sdk.*",
+    "redis.*",
+    "aioredis.*",
+    "tavily.*",
+    "readability.*",
+    "rank_bm25.*",
+    "beautifulsoup4.*",
+    "lxml.*",
+    "sentencepiece.*",
+    "transformers.*",
+    "torch.*",
+    "scipy.*",
+    "sklearn.*",
+    "nltk.*",
+    "spacy.*"
+]
+ignore_missing_imports = true
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "import-error",  # For strands dependencies
+    "missing-docstring",  # Handled by flake8-docstrings
+    "line-too-long",  # Handled by black
+    "invalid-name",  # Allow short variable names in some contexts
+]
+
+[tool.pylint.design]
+max-args = 8  # Constructors have many config parameters
+max-attributes = 15  # Classes manage complex state
+max-public-methods = 20  # Allow more methods for complex classes
+max-returns = 6
+max-branches = 12
+max-statements = 50
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.bandit]
+exclude_dirs = ["tests", "agents/deprecated", ".benchmarks", ".roo"]
+skips = ["B101"]  # Skip assert_used test
+
+[tool.bandit.assert_used]
+skips = ["*_test.py", "test_*.py"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--ignore=tests/unit/test_redis_tools.py",
+]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "llm_provider: marks tests as LLM provider tests",
+    "benchmark: marks tests as performance benchmarks",
+]
+timeout = 300
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "agents/deprecated/*",
+    ".benchmarks/*",
+    ".roo/*",
+    "venv/*",
+    ".venv/*",
+    "*/site-packages/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

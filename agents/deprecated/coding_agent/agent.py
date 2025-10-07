@@ -100,18 +100,15 @@ class CodingAgent(BaseAgent):
         """
         Performs initialization operations 
         """
-        pass
 
     @abstractmethod
     def setup(self):
         """
         Performs setup operations before task execution.
         """
-        pass
 
     @abstractmethod
     def teardown(self):
         """
         Performs teardown operations after task execution.
         """
-        pass

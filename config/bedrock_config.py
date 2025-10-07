@@ -1,6 +1,7 @@
-from typing import Optional, Dict, List, Mapping, Callable, Any
+from typing import Callable, Dict, List, Mapping, Optional
 
 from config.base_config import BaseConfig, ModelConfig
+
 
 class BedrockModelConfig(ModelConfig):
     model: str = None
@@ -23,8 +24,9 @@ class BedrockModelConfig(ModelConfig):
     provider_stop_reason_key_map: Optional[Mapping[str, str]] = None
     provider_stop_sequence_key_name_map: Optional[Mapping[str, str]] = None
     region_name: Optional[str] = None
-    system_prompt_with_tools: str = ''
+    system_prompt_with_tools: str = ""
     tags: Optional[List[str]] = None
+
 
 class BedrockConfig(BaseConfig):
     def __init__(self, **data):

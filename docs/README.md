@@ -20,6 +20,9 @@ This directory contains all technical documentation for the Generative Agent pro
 | 12_WORKFLOW_DURATION_LOGGING.md | Documentation on workflow duration logging |
 | 13_FAST_REPLY_PERFORMANCE_OPTIMIZATION_DESIGN.md | Design for fast reply performance optimization |
 | 14_HYBRID_ROLE_LIFECYCLE_DESIGN.md | Design for hybrid role lifecycle |
+| 15_HYBRID_ROLE_MIGRATION_GUIDE.md | Guide for migrating to hybrid roles |
+| 16_REDIS_SHARED_TOOLS_GUIDE.md | Guide for Redis shared tools |
+| 17_CODE_QUALITY_IMPROVEMENT_CHECKLIST.md | Systematic checklist for code quality improvements |
 
 ## File Organization
 

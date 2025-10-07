@@ -2,8 +2,8 @@ import unittest
 from typing import Dict
 from unittest.mock import patch, Mock
 from agents.base_agent import AgentInput
-from agents.weather_agent.agent import WeatherAgent, WeatherInput, WeatherTool, CityToCoordinatesTool, ZipCodeToCoordinatesTool
-from llm_provider.factory import LLMFactory, LLMType
+from agents.weather_agent.agent import WeatherAgent, WeatherTool, CityToCoordinatesTool, ZipCodeToCoordinatesTool
+from llm_provider.factory import LLMFactory
 from common.message_bus import MessageBus
 
 class TestWeatherAgent(unittest.TestCase):

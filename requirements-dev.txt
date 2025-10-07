@@ -1,0 +1,37 @@
+# Development Dependencies for StrandsAgent Universal Agent System
+# Linting and Code Quality Tools
+
+# Core Python Linters
+black>=23.0.0                    # Code formatting
+isort>=5.12.0                    # Import sorting
+flake8>=6.0.0                    # Style guide enforcement
+flake8-docstrings>=1.7.0         # Docstring linting
+flake8-import-order>=0.18.2      # Import order checking
+mypy>=1.5.0                      # Static type checking
+pylint>=2.17.0                   # Comprehensive code analysis
+bandit>=1.7.5                    # Security vulnerability scanning
+
+# Specialized Linters for AI/ML Projects
+flake8-bugbear>=23.0.0           # Additional bug detection
+flake8-comprehensions>=3.14.0    # List/dict comprehension improvements
+flake8-pytest-style>=1.7.2      # Pytest best practices
+
+# Configuration & Documentation Linters
+yamllint>=1.32.0                 # YAML linting (for config files)
+pydocstyle>=6.3.0               # Docstring style checking
+
+# Development Tools
+pre-commit>=3.3.0               # Pre-commit hooks management
+pytest-benchmark>=4.0.0         # Performance benchmarking
+coverage>=7.0.0                 # Code coverage analysis
+safety>=2.3.0                   # Security vulnerability checking
+
+# Auto-fixing Tools
+autoflake>=2.3.0                # Remove unused imports and variables
+unimport>=1.3.0                 # Advanced unused import detection
+pyupgrade>=3.10.0               # Upgrade Python syntax automatically
+
+# Type Stubs for External Dependencies
+types-PyYAML>=6.0.0             # Type stubs for PyYAML
+types-requests>=2.31.0          # Type stubs for requests
+types-redis>=4.6.0              # Type stubs for redis

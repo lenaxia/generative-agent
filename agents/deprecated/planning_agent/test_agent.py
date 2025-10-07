@@ -1,14 +1,11 @@
 import unittest
-from pydantic import parse_obj_as
 from unittest.mock import Mock, patch
-from agents.base_agent import AgentInput
 from agents.planning_agent.agent import PlanningAgent, PlanningAgentInput, PlanningAgentOutput, TaskDescription, TaskDependency
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus
 from supervisor.agent_manager import AgentManager
 from supervisor.supervisor_config import LoggingConfig, SupervisorConfig
 from config.bedrock_config import BedrockConfig
-from langchain_core.runnables.base import Runnable
 from typing import Dict
 
 class TestPlanningAgent(unittest.TestCase):
@@ -99,7 +96,6 @@ class TestPlanningAgent(unittest.TestCase):
         )
     
         output = "Task 1: Fetch data from API\nAgent: agent_1\n\nTask 2: Process data\nAgent: agent_1\n\nDependencies:\nTask 1 -> Task 2"
-        instruction = "Fetch and process data from an API"
         task_graph = self.planning_agent._process_output(input, mock_output)
     
         self.assertIsNotNone(task_graph)

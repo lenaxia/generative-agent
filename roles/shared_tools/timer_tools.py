@@ -5,8 +5,9 @@ These tools provide timer and alarm functionality stubs that throw NotImplemente
 They need to be implemented with real timer/notification systems.
 """
 
-from typing import Dict, Any, List, Optional
 import logging
+from typing import Any, Dict, Optional
+
 from strands import tool
 
 logger = logging.getLogger(__name__)
@@ -16,14 +17,14 @@ logger = logging.getLogger(__name__)
 def timer_set(duration: str, label: Optional[str] = None) -> Dict[str, Any]:
     """
     Set a countdown timer.
-    
+
     Args:
         duration: Timer duration (e.g., "5m", "30s", "1h30m", "120")
         label: Optional label for the timer
-        
+
     Returns:
         Dict containing timer creation result
-        
+
     Raises:
         NotImplementedError: This tool needs to be implemented with a timer system
     """
@@ -38,13 +39,13 @@ def timer_set(duration: str, label: Optional[str] = None) -> Dict[str, Any]:
 def timer_cancel(timer_id: str) -> Dict[str, Any]:
     """
     Cancel an active timer.
-    
+
     Args:
         timer_id: Timer identifier to cancel
-        
+
     Returns:
         Dict containing timer cancellation result
-        
+
     Raises:
         NotImplementedError: This tool needs to be implemented with a timer system
     """
@@ -59,13 +60,13 @@ def timer_cancel(timer_id: str) -> Dict[str, Any]:
 def timer_list(active_only: bool = True) -> Dict[str, Any]:
     """
     List timers (active or all).
-    
+
     Args:
         active_only: If True, only show active timers; if False, show all timers
-        
+
     Returns:
         Dict containing list of timers
-        
+
     Raises:
         NotImplementedError: This tool needs to be implemented with a timer system
     """
@@ -77,18 +78,20 @@ def timer_list(active_only: bool = True) -> Dict[str, Any]:
 
 
 @tool
-def alarm_set(time: str, label: Optional[str] = None, recurring: Optional[str] = None) -> Dict[str, Any]:
+def alarm_set(
+    time: str, label: Optional[str] = None, recurring: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Set an alarm for a specific time.
-    
+
     Args:
         time: Alarm time in format "HH:MM" or "YYYY-MM-DD HH:MM"
         label: Optional label for the alarm
         recurring: Optional recurrence pattern ("daily", "weekdays", "weekends", "weekly")
-        
+
     Returns:
         Dict containing alarm creation result
-        
+
     Raises:
         NotImplementedError: This tool needs to be implemented with an alarm system
     """
@@ -103,13 +106,13 @@ def alarm_set(time: str, label: Optional[str] = None, recurring: Optional[str] =
 def alarm_cancel(alarm_id: str) -> Dict[str, Any]:
     """
     Cancel an alarm.
-    
+
     Args:
         alarm_id: Alarm identifier to cancel
-        
+
     Returns:
         Dict containing alarm cancellation result
-        
+
     Raises:
         NotImplementedError: This tool needs to be implemented with an alarm system
     """

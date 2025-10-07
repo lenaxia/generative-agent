@@ -1,15 +1,17 @@
-from typing import Optional, Type
-from pydantic import BaseModel, field_validator
 import os
+from typing import Optional, Type
+
+from pydantic import BaseModel
+
 
 class ModelConfig(BaseModel):
     class Config:
-        env_prefix = ''
+        env_prefix = ""
         arbitrary_types_allowed = True
-    
+
     def __init__(self, **data):
         super().__init__(**data)
-        
+
     def populate_from_env(self, provider, name):
         env_prefix = f"{provider.upper()}_{name.upper()}_"
         for field in self.model_fields:
@@ -17,15 +19,18 @@ class ModelConfig(BaseModel):
             if env_var_name in os.environ:
                 setattr(self, field, os.environ[env_var_name])
 
+
 class BaseConfig(BaseModel):
     name: str
     provider_name: str = "baseconfig"
     api_key: Optional[str] = None
-    llm_config_class: Type[ModelConfig] = None  # Add a new field for the model configuration class
+    llm_config_class: Type[ModelConfig] = (
+        None  # Add a new field for the model configuration class
+    )
     llm_config: ModelConfig = None
 
     class Config:
-        env_prefix = ''
+        env_prefix = ""
         arbitrary_types_allowed = True
 
     def __init__(self, **data):
@@ -65,4 +70,3 @@ class BaseConfig(BaseModel):
                 setattr(self, field, os.environ[env_var_name])
 
         self.llm_config.populate_from_env(provider_name, name)
-

@@ -4,25 +4,27 @@ Research Analyst Custom Tools
 Specialized tools for research and analysis tasks.
 """
 
-from strands import tool
-from typing import Dict, List, Optional, Any
 import logging
-import re
 from datetime import datetime
+from typing import Dict, List
+
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
 
 @tool
-def academic_search(query: str, databases: List[str] = None, max_results: int = 10) -> Dict:
+def academic_search(
+    query: str, databases: List[str] = None, max_results: int = 10
+) -> Dict:
     """
     Search academic databases for research papers and scholarly articles.
-    
+
     Args:
         query: Academic search query
         databases: List of databases to search (e.g., ["pubmed", "arxiv", "scholar"])
         max_results: Maximum number of results to return
-        
+
     Returns:
         Dict containing academic search results with citations
     """
@@ -30,54 +32,52 @@ def academic_search(query: str, databases: List[str] = None, max_results: int = 
         # Default databases if none specified
         if databases is None:
             databases = ["scholar", "pubmed", "arxiv"]
-        
+
         # Mock academic search results (would integrate with real APIs)
         results = []
         for i in range(min(max_results, 5)):
-            results.append({
-                "title": f"Academic Paper {i+1}: {query}",
-                "authors": [f"Author {i+1}", f"Co-Author {i+1}"],
-                "journal": f"Journal of {query.title()} Studies",
-                "year": 2024 - i,
-                "doi": f"10.1000/journal.{i+1}",
-                "abstract": f"This paper investigates {query} through comprehensive analysis...",
-                "citation_count": 150 - (i * 20),
-                "url": f"https://scholar.example.com/paper-{i+1}",
-                "database": databases[i % len(databases)]
-            })
-        
+            results.append(
+                {
+                    "title": f"Academic Paper {i+1}: {query}",
+                    "authors": [f"Author {i+1}", f"Co-Author {i+1}"],
+                    "journal": f"Journal of {query.title()} Studies",
+                    "year": 2024 - i,
+                    "doi": f"10.1000/journal.{i+1}",
+                    "abstract": f"This paper investigates {query} through comprehensive analysis...",
+                    "citation_count": 150 - (i * 20),
+                    "url": f"https://scholar.example.com/paper-{i+1}",
+                    "database": databases[i % len(databases)],
+                }
+            )
+
         return {
             "query": query,
             "databases_searched": databases,
             "results": results,
             "total_results": len(results),
-            "search_timestamp": datetime.now().isoformat()
+            "search_timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Academic search failed: {e}")
-        return {
-            "query": query,
-            "results": [],
-            "error": str(e)
-        }
+        return {"query": query, "results": [], "error": str(e)}
 
 
 @tool
 def citation_formatter(papers: List[Dict], style: str = "APA") -> Dict:
     """
     Format research citations in various academic styles.
-    
+
     Args:
         papers: List of paper dictionaries with citation information
         style: Citation style ("APA", "MLA", "Chicago", "IEEE")
-        
+
     Returns:
         Dict containing formatted citations
     """
     try:
         formatted_citations = []
-        
+
         for paper in papers:
             if style.upper() == "APA":
                 citation = _format_apa_citation(paper)
@@ -89,70 +89,66 @@ def citation_formatter(papers: List[Dict], style: str = "APA") -> Dict:
                 citation = _format_ieee_citation(paper)
             else:
                 citation = f"Unknown style: {style}"
-            
+
             formatted_citations.append(citation)
-        
+
         return {
             "style": style,
             "citation_count": len(formatted_citations),
             "citations": formatted_citations,
-            "bibliography": "\n\n".join(formatted_citations)
+            "bibliography": "\n\n".join(formatted_citations),
         }
-        
+
     except Exception as e:
         logger.error(f"Citation formatting failed: {e}")
-        return {
-            "style": style,
-            "citations": [],
-            "error": str(e)
-        }
+        return {"style": style, "citations": [], "error": str(e)}
 
 
 def _format_apa_citation(paper: Dict) -> str:
     """Format citation in APA style."""
-    authors = paper.get('authors', ['Unknown Author'])
+    authors = paper.get("authors", ["Unknown Author"])
     author_str = ", ".join(authors) if len(authors) <= 2 else f"{authors[0]} et al."
-    
-    title = paper.get('title', 'Untitled')
-    journal = paper.get('journal', 'Unknown Journal')
-    year = paper.get('year', 'n.d.')
-    
+
+    title = paper.get("title", "Untitled")
+    journal = paper.get("journal", "Unknown Journal")
+    year = paper.get("year", "n.d.")
+
     return f"{author_str} ({year}). {title}. {journal}."
 
 
 def _format_mla_citation(paper: Dict) -> str:
     """Format citation in MLA style."""
-    authors = paper.get('authors', ['Unknown Author'])
-    author_str = authors[0] if authors else 'Unknown Author'
-    
-    title = paper.get('title', 'Untitled')
-    journal = paper.get('journal', 'Unknown Journal')
-    year = paper.get('year', 'n.d.')
-    
+    authors = paper.get("authors", ["Unknown Author"])
+    author_str = authors[0] if authors else "Unknown Author"
+
+    title = paper.get("title", "Untitled")
+    journal = paper.get("journal", "Unknown Journal")
+    year = paper.get("year", "n.d.")
+
     return f'{author_str}. "{title}." {journal}, {year}.'
 
 
 def _format_chicago_citation(paper: Dict) -> str:
     """Format citation in Chicago style."""
-    authors = paper.get('authors', ['Unknown Author'])
-    author_str = authors[0] if authors else 'Unknown Author'
-    
-    title = paper.get('title', 'Untitled')
-    journal = paper.get('journal', 'Unknown Journal')
-    year = paper.get('year', 'n.d.')
-    
+    authors = paper.get("authors", ["Unknown Author"])
+    author_str = authors[0] if authors else "Unknown Author"
+
+    title = paper.get("title", "Untitled")
+    journal = paper.get("journal", "Unknown Journal")
+    year = paper.get("year", "n.d.")
+
     return f'{author_str}. "{title}." {journal} ({year}).'
 
 
 def _format_ieee_citation(paper: Dict) -> str:
     """Format citation in IEEE style."""
-    authors = paper.get('authors', ['Unknown Author'])
+    authors = paper.get("authors", ["Unknown Author"])
     author_str = ", ".join(authors) if len(authors) <= 3 else f"{authors[0]} et al."
-    
-    title = paper.get('title', 'Untitled')
-    journal = paper.get('journal', 'Unknown Journal')
-    year = paper.get('year', 'n.d.')
-    
+
+    title = paper.get("title", "Untitled")
+    journal = paper.get("journal", "Unknown Journal")
+    year = paper.get("year", "n.d.")
+
     return f'{author_str}, "{title}," {journal}, {year}.'
 
 
@@ -160,11 +156,11 @@ def _format_ieee_citation(paper: Dict) -> str:
 def statistical_analyzer(data: List[float], analysis_type: str = "descriptive") -> Dict:
     """
     Perform statistical analysis on numerical data.
-    
+
     Args:
         data: List of numerical values
         analysis_type: Type of analysis ("descriptive", "correlation", "trend")
-        
+
     Returns:
         Dict containing statistical analysis results
     """
@@ -173,9 +169,9 @@ def statistical_analyzer(data: List[float], analysis_type: str = "descriptive") 
             return {
                 "success": False,
                 "error": "Invalid data: must be a list of numbers",
-                "analysis_type": analysis_type
+                "analysis_type": analysis_type,
             }
-        
+
         if analysis_type == "descriptive":
             return _descriptive_statistics(data)
         elif analysis_type == "correlation":
@@ -186,22 +182,18 @@ def statistical_analyzer(data: List[float], analysis_type: str = "descriptive") 
             return {
                 "success": False,
                 "error": f"Unknown analysis type: {analysis_type}",
-                "supported_types": ["descriptive", "correlation", "trend"]
+                "supported_types": ["descriptive", "correlation", "trend"],
             }
-            
+
     except Exception as e:
         logger.error(f"Statistical analysis failed: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "analysis_type": analysis_type
-        }
+        return {"success": False, "error": str(e), "analysis_type": analysis_type}
 
 
 def _descriptive_statistics(data: List[float]) -> Dict:
     """Calculate descriptive statistics."""
     import statistics
-    
+
     return {
         "success": True,
         "analysis_type": "descriptive",
@@ -217,8 +209,8 @@ def _descriptive_statistics(data: List[float]) -> Dict:
         "quartiles": {
             "q1": statistics.quantiles(data, n=4)[0] if len(data) >= 4 else None,
             "q2": statistics.median(data),
-            "q3": statistics.quantiles(data, n=4)[2] if len(data) >= 4 else None
-        }
+            "q3": statistics.quantiles(data, n=4)[2] if len(data) >= 4 else None,
+        },
     }
 
 
@@ -228,19 +220,23 @@ def _correlation_analysis(data: List[float]) -> Dict:
     if len(data) < 2:
         return {
             "success": False,
-            "error": "Need at least 2 data points for correlation analysis"
+            "error": "Need at least 2 data points for correlation analysis",
         }
-    
+
     # Calculate simple trend correlation
     x_values = list(range(len(data)))
     correlation = _calculate_correlation(x_values, data)
-    
+
     return {
         "success": True,
         "analysis_type": "correlation",
         "time_correlation": correlation,
-        "trend_direction": "positive" if correlation > 0.1 else "negative" if correlation < -0.1 else "neutral",
-        "correlation_strength": abs(correlation)
+        "trend_direction": (
+            "positive"
+            if correlation > 0.1
+            else "negative" if correlation < -0.1 else "neutral"
+        ),
+        "correlation_strength": abs(correlation),
     }
 
 
@@ -249,15 +245,19 @@ def _trend_analysis(data: List[float]) -> Dict:
     if len(data) < 3:
         return {
             "success": False,
-            "error": "Need at least 3 data points for trend analysis"
+            "error": "Need at least 3 data points for trend analysis",
         }
-    
+
     # Simple trend detection
-    increases = sum(1 for i in range(1, len(data)) if data[i] > data[i-1])
-    decreases = sum(1 for i in range(1, len(data)) if data[i] < data[i-1])
-    
-    trend = "increasing" if increases > decreases else "decreasing" if decreases > increases else "stable"
-    
+    increases = sum(1 for i in range(1, len(data)) if data[i] > data[i - 1])
+    decreases = sum(1 for i in range(1, len(data)) if data[i] < data[i - 1])
+
+    trend = (
+        "increasing"
+        if increases > decreases
+        else "decreasing" if decreases > increases else "stable"
+    )
+
     return {
         "success": True,
         "analysis_type": "trend",
@@ -265,7 +265,11 @@ def _trend_analysis(data: List[float]) -> Dict:
         "increases": increases,
         "decreases": decreases,
         "stability_ratio": abs(increases - decreases) / (len(data) - 1),
-        "volatility": statistics.stdev(data) / statistics.mean(data) if statistics.mean(data) != 0 else 0
+        "volatility": (
+            statistics.stdev(data) / statistics.mean(data)
+            if statistics.mean(data) != 0
+            else 0
+        ),
     }
 
 
@@ -273,48 +277,53 @@ def _calculate_correlation(x: List[float], y: List[float]) -> float:
     """Calculate Pearson correlation coefficient."""
     if len(x) != len(y) or len(x) < 2:
         return 0.0
-    
+
     import statistics
-    
+
     mean_x = statistics.mean(x)
     mean_y = statistics.mean(y)
-    
+
     numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(len(x)))
     sum_sq_x = sum((x[i] - mean_x) ** 2 for i in range(len(x)))
     sum_sq_y = sum((y[i] - mean_y) ** 2 for i in range(len(y)))
-    
+
     denominator = (sum_sq_x * sum_sq_y) ** 0.5
-    
+
     return numerator / denominator if denominator != 0 else 0.0
 
 
 @tool
-def research_report_generator(findings: List[Dict], title: str, 
-                            include_methodology: bool = True) -> Dict:
+def research_report_generator(
+    findings: List[Dict], title: str, include_methodology: bool = True
+) -> Dict:
     """
     Generate a structured research report from findings.
-    
+
     Args:
         findings: List of research findings and data
         title: Title for the research report
         include_methodology: Whether to include methodology section
-        
+
     Returns:
         Dict containing structured research report
     """
     try:
         report_sections = []
-        
+
         # Title and Executive Summary
         report_sections.append(f"# {title}")
-        report_sections.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report_sections.append(
+            f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         report_sections.append("")
-        
+
         # Executive Summary
         report_sections.append("## Executive Summary")
-        report_sections.append(f"This report presents analysis based on {len(findings)} key findings.")
+        report_sections.append(
+            f"This report presents analysis based on {len(findings)} key findings."
+        )
         report_sections.append("")
-        
+
         # Methodology (if requested)
         if include_methodology:
             report_sections.append("## Methodology")
@@ -323,7 +332,7 @@ def research_report_generator(findings: List[Dict], title: str,
             report_sections.append("- Statistical analysis where applicable")
             report_sections.append("- Evidence-based synthesis")
             report_sections.append("")
-        
+
         # Findings
         report_sections.append("## Key Findings")
         for i, finding in enumerate(findings, 1):
@@ -334,7 +343,7 @@ def research_report_generator(findings: List[Dict], title: str,
             else:
                 report_sections.append(f"- {finding}")
             report_sections.append("")
-        
+
         # Conclusions and Recommendations
         report_sections.append("## Conclusions and Recommendations")
         report_sections.append("Based on the analysis conducted:")
@@ -342,13 +351,13 @@ def research_report_generator(findings: List[Dict], title: str,
         report_sections.append("- Key patterns and trends have been identified")
         report_sections.append("- Evidence supports the presented findings")
         report_sections.append("")
-        
+
         # References placeholder
         report_sections.append("## References")
         report_sections.append("*Citations and references would be listed here*")
-        
+
         full_report = "\n".join(report_sections)
-        
+
         return {
             "success": True,
             "title": title,
@@ -356,13 +365,9 @@ def research_report_generator(findings: List[Dict], title: str,
             "word_count": len(full_report.split()),
             "section_count": len([s for s in report_sections if s.startswith("#")]),
             "findings_count": len(findings),
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Report generation failed: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "title": title
-        }
+        return {"success": False, "error": str(e), "title": title}

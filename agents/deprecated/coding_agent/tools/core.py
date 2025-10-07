@@ -1,16 +1,12 @@
 from langchain_core.tools.base import BaseTool
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.tools import tool
-from langchain_community.retrievers import BM25Retriever
 from langchain_community.document_loaders import PythonLoader
 from langchain_chroma import Chroma
 import os
 from langchain.document_loaders import PythonLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_text_splitters.python import PythonCodeTextSplitter
 from langchain_aws.embeddings.bedrock import BedrockEmbeddings
-from langchain_community.retrievers import BM25Retriever
 
 from agents.coding_agent.types import CodingState, WriteCode
 

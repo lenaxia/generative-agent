@@ -1,19 +1,20 @@
+import logging
+import threading
 from enum import Enum
 from typing import Any, Callable, Dict, List
-import threading
-from pydantic import BaseModel
-import logging
 
 logger = logging.getLogger("supervisor")
 
+
 class MessageType(Enum):
-    TASK_ASSIGNMENT = 'task_assignment'
-    TASK_RESPONSE = 'task_response'
-    AGENT_STATUS = 'agent_status'
-    AGENT_EVENT = 'agent_event'
-    AGENT_ERROR = 'agent_error'
-    SEND_MESSAGE = 'send_message'
-    INCOMING_REQUEST = 'incoming_request'
+    TASK_ASSIGNMENT = "task_assignment"
+    TASK_RESPONSE = "task_response"
+    AGENT_STATUS = "agent_status"
+    AGENT_EVENT = "agent_event"
+    AGENT_ERROR = "agent_error"
+    SEND_MESSAGE = "send_message"
+    INCOMING_REQUEST = "incoming_request"
+
 
 class MessageBus:
     class Config:
@@ -52,7 +53,7 @@ class MessageBus:
                 # Start a new thread for each callback
                 callback_thread = threading.Thread(target=callback, args=(message,))
                 callback_thread.start()
-           
+
     def subscribe(self, subscriber, message_type: MessageType, callback: Callable):
         with self._lock:
             if message_type not in self._subscribers:
@@ -63,7 +64,9 @@ class MessageBus:
 
             self._subscribers[message_type][subscriber].append(callback)
 
-    def unsubscribe(self, subscriber, message_type: MessageType, callback: Callable = None):
+    def unsubscribe(
+        self, subscriber, message_type: MessageType, callback: Callable = None
+    ):
         with self._lock:
             if message_type not in self._subscribers:
                 return
@@ -73,5 +76,7 @@ class MessageBus:
                     del self._subscribers[message_type][subscriber]
                 else:
                     self._subscribers[message_type][subscriber] = [
-                        cb for cb in self._subscribers[message_type][subscriber] if cb != callback
+                        cb
+                        for cb in self._subscribers[message_type][subscriber]
+                        if cb != callback
                     ]

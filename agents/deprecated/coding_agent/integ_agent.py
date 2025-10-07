@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from agents.coding_agent.agent import CodingAgent
 from agents.coding_agent.tools.core import draft_code, retrieve_context, use_aider
 from agents.coding_agent.types import CodingState
@@ -7,10 +7,7 @@ from common.task_graph import TaskPlanOutput
 from llm_provider.factory import LLMFactory, LLMType
 from common.message_bus import MessageBus
 from logging import Logger
-from langchain_core.messages.ai import AIMessage
-from langchain_aws import ChatBedrock
 from config.bedrock_config import BedrockConfig
-import operator
 
 class TestSolverAgentIntegration(unittest.TestCase):
     def setUp(self):
@@ -80,7 +77,7 @@ class TestSolverAgentIntegration(unittest.TestCase):
         
         aider = use_aider()
         
-        aider_state = aider._run(retrival_state)
+        aider._run(retrival_state)
         
         
         draft = draft_code()
@@ -94,7 +91,6 @@ class TestSolverAgentIntegration(unittest.TestCase):
 
 
     def test_run_integration(self):
-        problem_description = "Given a list of integers, find the sum of all even numbers in the list."
         test_cases = [
             {"input": "1 2 3 4 5", "output": "6"},
             {"input": "6 7 8 9 10", "output": "18"}

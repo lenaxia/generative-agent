@@ -1,5 +1,7 @@
-from typing import Optional, Union, Tuple, Any, Dict
+from typing import Any, Dict, Optional, Tuple, Union
+
 from config.base_config import BaseConfig, ModelConfig
+
 
 class OpenAIModelConfig(ModelConfig):
     model: str = None
@@ -19,6 +21,7 @@ class OpenAIModelConfig(ModelConfig):
 
     def __init__(self, **data):
         super().__init__(**data)
+
 
 class OpenAIConfig(BaseConfig):
     def __init__(self, **data):

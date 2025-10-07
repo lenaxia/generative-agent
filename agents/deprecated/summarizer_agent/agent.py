@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 
-from typing import Any, Dict, List
+from typing import Dict, List
 from pydantic import BaseModel
 from langchain_core.output_parsers import PydanticOutputParser
 from llm_provider.factory import LLMFactory, LLMType

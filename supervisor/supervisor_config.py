@@ -1,25 +1,32 @@
 from typing import Dict, Optional
-from pydantic import BaseModel, validator, Field
+
+from pydantic import BaseModel, Field
+
 from supervisor.metrics_manager import MetricsManager
 
 
 class LoggingConfig(BaseModel):
     log_level: str = "INFO"
     log_file: Optional[str] = None
-    log_file_max_size: int = 1024 # 1 kB
+    log_file_max_size: int = 1024  # 1 kB
     llm_providers: Dict[str, Dict] = {}
     disable_console_logging: Optional[bool] = None
 
+
 from typing import Dict, Optional
-from pydantic import BaseModel, validator
+
+from pydantic import BaseModel
+
 
 class LLMProviderConfig(BaseModel):
     name: str
     type: str
 
+
 class MCPConfig(BaseModel):
     enabled: bool = False
     config_file: str = "config/mcp_config.yaml"
+
 
 class FeatureFlags(BaseModel):
     enable_universal_agent: bool = True
@@ -28,12 +35,15 @@ class FeatureFlags(BaseModel):
     enable_pause_resume: bool = True
     enable_heartbeat: bool = True
 
+
 class SupervisorConfig(BaseModel):
     logging: LoggingConfig = Field(..., description="Logging configuration")
     llm_providers: Dict[str, Dict] = {}
     agents: Dict[str, Dict] = {}
     mcp: Optional[MCPConfig] = Field(default_factory=lambda: MCPConfig())
-    feature_flags: Optional[FeatureFlags] = Field(default_factory=lambda: FeatureFlags())
+    feature_flags: Optional[FeatureFlags] = Field(
+        default_factory=lambda: FeatureFlags()
+    )
 
     max_retries: int = 3
     retry_delay: float = 0.1

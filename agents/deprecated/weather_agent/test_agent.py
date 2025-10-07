@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from agents.weather_agent.agent import WeatherAgent
 from llm_provider.factory import LLMFactory, LLMType
 #from config.openai_config import OpenAIConfig

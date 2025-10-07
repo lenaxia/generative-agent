@@ -1,22 +1,25 @@
 import logging
-from typing import Dict, Optional
-import yaml
 from pathlib import Path
+from typing import Dict, Optional
+
+import yaml
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+
 class MetricsManager(BaseModel):
     # TODO: Enable configuration of the metrics manager
-    #config: BaseModel = Field(..., description="The configuration object")
-    metrics: Dict[str, Dict] = Field(default_factory=dict, description="Dictionary to store metrics")
+    # config: BaseModel = Field(..., description="The configuration object")
+    metrics: Dict[str, Dict] = Field(
+        default_factory=dict, description="Dictionary to store metrics"
+    )
 
     class Config:
         arbitrary_types_allowed = True
 
     def __init__(self):
         super().__init__()
-
 
     def get_metrics(self, request_id: Optional[str] = None) -> Dict:
         try:
@@ -40,7 +43,9 @@ class MetricsManager(BaseModel):
             if request_id not in self.metrics:
                 self.metrics[request_id] = {}
             for key, value in increments.items():
-                self.metrics[request_id][key] = self.metrics[request_id].get(key, 0) + value
+                self.metrics[request_id][key] = (
+                    self.metrics[request_id].get(key, 0) + value
+                )
         except Exception as e:
             logger.error(f"Error incrementing metrics for request '{request_id}': {e}")
 
@@ -50,10 +55,12 @@ class MetricsManager(BaseModel):
             #       to a persistent storage (e.g., database, file system)
             storage_path = Path("logs/storage") / f"{request_id}.yaml"
             storage_path.parent.mkdir(exist_ok=True)
-            
+
             with open(storage_path, "w") as f:
                 yaml.safe_dump(request_data, f)
-            logger.info(f"Persisted metrics for request '{request_id}' to '{storage_path}'.")
+            logger.info(
+                f"Persisted metrics for request '{request_id}' to '{storage_path}'."
+            )
         except Exception as e:
             logger.error(f"Error persisting metrics for request '{request_id}': {e}")
 
@@ -61,13 +68,17 @@ class MetricsManager(BaseModel):
         try:
             storage_path = Path("storage") / f"{request_id}.yaml"
             if not storage_path.exists():
-                logger.error(f"Metrics for request '{request_id}' not found in persistent storage.")
+                logger.error(
+                    f"Metrics for request '{request_id}' not found in persistent storage."
+                )
                 return {}
 
             with open(storage_path, "r") as f:
                 request_data = yaml.safe_load(f)
 
-            logger.info(f"Loaded metrics for request '{request_id}' from '{storage_path}'.")
+            logger.info(
+                f"Loaded metrics for request '{request_id}' from '{storage_path}'."
+            )
             return request_data
         except Exception as e:
             logger.error(f"Error loading metrics for request '{request_id}': {e}")

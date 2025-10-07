@@ -1,11 +1,13 @@
 import logging
-import yaml
-from pydantic import ValidationError, BaseModel
 from typing import Optional
+
+import yaml
+from pydantic import BaseModel, ValidationError
 
 from supervisor.supervisor_config import SupervisorConfig
 
 logger = logging.getLogger(__name__)
+
 
 class ConfigManager(BaseModel):
     config_file: Optional[str] = None
@@ -23,5 +25,7 @@ class ConfigManager(BaseModel):
             logger.error(f"Error validating configuration: {e}")
             raise e
         except Exception as e:
-            logger.error(f"Error loading configuration from file '{self.config_file}': {e}")
+            logger.error(
+                f"Error loading configuration from file '{self.config_file}': {e}"
+            )
             raise e

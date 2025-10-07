@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from agents.summarizer_agent.agent import TextSummarizerAgent, TextSummarizeInput, TextSummarizeOutput
+from agents.summarizer_agent.agent import TextSummarizerAgent, TextSummarizeInput
 from llm_provider.factory import LLMFactory
 from common.message_bus import MessageBus
 from logging import Logger

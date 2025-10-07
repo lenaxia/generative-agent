@@ -1,16 +1,14 @@
-from typing import Annotated, Dict, Any, List, Optional
+from typing import Annotated, Dict, List
 from langchain.prompts import PromptTemplate
-from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.runnables import RunnableConfig
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
-from agents.base_agent import BaseAgent, AgentInput
+from agents.base_agent import BaseAgent
 from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory, LLMType
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.message import AnyMessage, add_messages
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_community.retrievers import BM25Retriever
 import logging
