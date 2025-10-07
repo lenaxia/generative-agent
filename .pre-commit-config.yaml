@@ -5,51 +5,51 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        args: ['--unsafe']  # For complex YAML configs
+        args: ["--unsafe"] # For complex YAML configs
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ["--maxkb=1000"]
       - id: check-merge-conflict
       - id: debug-statements
       - id: check-toml
       - id: check-json
       - id: mixed-line-ending
-        args: ['--fix=lf']
+        args: ["--fix=lf"]
 
   - repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 23.12.1
     hooks:
       - id: black
         exclude: ^agents/deprecated/
         language_version: python3
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
       - id: isort
         exclude: ^agents/deprecated/
         args: ["--profile", "black"]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 7.0.0
     hooks:
       - id: flake8
         exclude: ^agents/deprecated/
         additional_dependencies:
-          - flake8-docstrings
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-pytest-style
-          - flake8-import-order
+          - flake8-docstrings>=1.7.0
+          - flake8-bugbear>=23.12.2
+          - flake8-comprehensions>=3.14.0
+          - flake8-pytest-style>=1.7.2
+          - flake8-import-order>=0.18.2
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.1
+    rev: v1.8.0
     hooks:
       - id: mypy
         exclude: ^agents/deprecated/
-        additional_dependencies: 
-          - types-PyYAML
-          - types-requests
-          - types-redis
+        additional_dependencies:
+          - types-PyYAML>=6.0.12
+          - types-requests>=2.31.0
+          - types-redis>=4.6.0
         args: [--ignore-missing-imports]
 
   - repo: https://github.com/adrienverge/yamllint
@@ -74,15 +74,16 @@ repos:
         args: [--convention=google]
 
   - repo: https://github.com/pylint-dev/pylint
-    rev: v2.17.5
+    rev: v3.0.3
     hooks:
       - id: pylint
         exclude: ^(agents/deprecated/|tests/)
         args: [--rcfile=pyproject.toml]
         additional_dependencies:
-          - PyYAML
-          - requests
-          - redis
+          - PyYAML>=6.0
+          - requests>=2.28.0
+          - redis>=4.5.0
+          - pydantic>=2.0.0
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.10.1
@@ -104,8 +105,8 @@ ci:
 
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
-  skip: [pylint, mypy]  # Skip heavy linters in CI
+  skip: [pylint, mypy] # Skip heavy linters in CI
   submodules: false
