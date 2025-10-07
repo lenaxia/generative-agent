@@ -27,8 +27,6 @@ class ModuleNameFormatter(logging.Formatter):
         return super().format(record)
 
 
-
-
 def configure_logging(logging_config: LoggingConfig):
     log_level = logging.getLevelName(logging_config.log_level.upper())
     log_file = logging_config.log_file

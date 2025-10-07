@@ -280,11 +280,11 @@ def _print_help_message():
 def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
     """
     Handle slash commands.
-    
+
     Args:
         command: The command string (without the leading slash)
         supervisor: The supervisor instance
-        
+
     Returns:
         True if the command was 'exit', False otherwise
     """
@@ -305,14 +305,14 @@ def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
     else:
         print(f"❌ Unknown command: /{command}")
         print("💡 Type /help for available commands")
-    
+
     return False
 
 
 def _execute_workflow(workflow_instruction: str, supervisor: Supervisor):
     """
     Execute a workflow instruction.
-    
+
     Args:
         workflow_instruction: The workflow instruction to execute
         supervisor: The supervisor instance
@@ -335,7 +335,7 @@ def _execute_workflow(workflow_instruction: str, supervisor: Supervisor):
 def _monitor_workflow_progress(workflow_id: str, supervisor: Supervisor):
     """
     Monitor workflow progress until completion.
-    
+
     Args:
         workflow_id: The ID of the workflow to monitor
         supervisor: The supervisor instance
@@ -369,11 +369,11 @@ def _monitor_workflow_progress(workflow_id: str, supervisor: Supervisor):
 def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
     """
     Process user input and execute appropriate action.
-    
+
     Args:
         user_input: The user's input string
         supervisor: The supervisor instance
-        
+
     Returns:
         True if the system should exit, False otherwise
     """
@@ -381,15 +381,15 @@ def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
     if user_input.startswith("/"):
         command = user_input[1:].lower()
         return _handle_slash_command(command, supervisor)
-    
+
     # Default: treat as workflow instruction
     elif user_input:
         _execute_workflow(user_input, supervisor)
-    
+
     # Handle empty input
     else:
         print("💡 Enter a workflow instruction or use /help for commands")
-    
+
     return False
 
 

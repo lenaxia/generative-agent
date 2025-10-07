@@ -379,7 +379,6 @@ class TaskGraph:
 
         return terminal_nodes
 
-
     def get_ready_tasks(self) -> List[TaskNode]:
         ready_nodes = []
         for node in self.nodes.values():
@@ -389,7 +388,6 @@ class TaskGraph:
             ):
                 ready_nodes.append(node)
         return ready_nodes
-
 
     def get_task_history(self, task_id: str) -> List[str]:
         """

@@ -25,19 +25,50 @@
 
 ## Overview
 
-This document provides a systematic checklist for improving code quality in the StrandsAgent Universal Agent System. After implementing comprehensive linting tools, we have identified 982 remaining issues from an original 1,395 (413 issues already auto-fixed, 30% improvement).
+This document provides a systematic checklist for improving code quality in the StrandsAgent Universal Agent System. After implementing comprehensive linting tools and recent formatting fixes, we have made significant progress in code quality improvements.
 
 ## Current Status
 
 - **✅ Linting Infrastructure**: Complete and functional
-- **✅ Auto-fixes Applied**: 413 issues resolved (30% improvement)
+- **✅ Auto-fixes Applied**: 453 issues resolved (32% improvement from original 1,395)
 - **✅ Test Compatibility**: 100% maintained (all tests passing)
 - **✅ Phase 2 Critical Issues**: C901 complexity and F811 redefinitions resolved
-- **📋 Remaining Issues**: ~868 issues to address systematically (Phase 2 complete)
+- **✅ Formatting Issues**: Black/isort applied, 40 additional issues fixed
+- **📋 Current Issues**: 828 issues remaining (down from 868 after formatting)
+- **🎯 Target**: Reduce to <60 issues (93% improvement from original baseline)
+
+## Current Issue Breakdown (828 Total Issues)
+
+### 📊 Issue Distribution by Category
+
+#### **Documentation Issues (D100-D415): ~520 issues (63%)**
+- **D100-D104**: Missing module/package docstrings (~25 issues)
+- **D101-D107**: Missing class/method docstrings (~130 issues)
+- **D212**: Multi-line docstring formatting (~365 issues)
+- **D415**: Missing punctuation in docstrings (~45 issues)
+- **D200, D202, D205**: Other docstring formatting issues (~55 issues)
+
+#### **Import Organization (I100, I101, I201, I202): ~180 issues (22%)**
+- **I100**: Wrong import order (~90 issues)
+- **I201**: Missing newlines between import groups (~85 issues)
+- **I101, I202**: Import name ordering and extra newlines (~5 issues)
+
+#### **Code Quality Issues (B007, F841, PT015, PT017, etc.): ~85 issues (10%)**
+- **B007**: Unused loop variables (~25 issues)
+- **F841**: Unused local variables (~15 issues)
+- **PT015, PT017**: Test assertion improvements (~20 issues)
+- **B011, B017, B023**: Other code quality issues (~15 issues)
+- **C901**: Function complexity (1 issue in conftest.py)
+- **E402, E712**: Module imports and comparisons (~10 issues)
+
+#### **Remaining Formatting Issues: ~43 issues (5%)**
+- **F401**: Unused imports (~8 issues)
+- **F824**: Unused global statements (~1 issue)
+- **Various**: Other minor formatting issues (~34 issues)
 
 ## Auto-Fixable Issues Checklist
 
-### 🔧 Safe Auto-Fixes (Can be scripted - ~160 issues)
+### 🔧 Safe Auto-Fixes (Can be scripted - ~120 issues)
 
 #### **High Priority - Immediate Action**
 
@@ -47,30 +78,31 @@ This document provides a systematic checklist for improving code quality in the 
    - **Risk**: Low (pytest compatible)
    - **Files completed**: All 6 files with PT009 issues converted
 
-- [-] **F841: Remove remaining unused variables** (19 issues) - 4 FIXED, 15 REMAINING
+- [-] **F841: Remove remaining unused variables** (~15 issues) - PARTIALLY COMPLETE
    - **Tool**: Manual removal and underscore prefixing
-   - **Progress**: Fixed in `supervisor/`, `tests/unit/test_universal_agent_unit.py`, `tests/unit/test_performance_benchmarking.py`
+   - **Progress**: Fixed in `supervisor/`, some test files
    - **Risk**: Very low (safe removal)
-   - **Files affected**: Various test files
+   - **Files affected**: Various test files, need systematic review
 
 #### **Medium Priority - Review Recommended**
 
-- [ ] **B007: Fix loop variable naming** (25+ issues)
+- [ ] **B007: Fix loop variable naming** (~25 issues)
   - **Action**: Rename unused loop variables with underscore prefix
   - **Example**: `for item in items:` → `for _item in items:` (if item unused)
   - **Risk**: Low (naming convention)
   - **Manual review**: Required to avoid breaking used variables
 
-- [x] **F541: Fix f-string placeholders** (9 issues) - 6 FIXED, 3 REMAINING
-   - **Action**: Remove f-prefix from strings without placeholders
-   - **Example**: `f"static text"` → `"static text"`
+- [ ] **F401: Remove unused imports** (~8 issues)
+   - **Action**: Remove or comment unused imports
+   - **Example**: Remove `import sys` if not used
    - **Risk**: Very low (syntax cleanup)
-   - **Files**: Fixed in `cli.py`, `tests/integration/test_real_world_scenarios.py`
+   - **Files**: Mainly in test files
 
-- [x] **W293: Clean remaining whitespace** (2 issues) - COMPLETED
-   - **Tool**: Manual cleanup during other fixes
-   - **Command**: Fixed during code modifications
+- [x] **Formatting Issues**: Black/isort applied - 40 ISSUES FIXED
+   - **Tool**: Black and isort formatters
+   - **Command**: `black . && isort .`
    - **Risk**: None (formatting only)
+   - **Status**: Applied to 4 files, significant improvement
 
 ## Manual Code Quality Issues Checklist
 
@@ -204,38 +236,61 @@ This document provides a systematic checklist for improving code quality in the 
 
 ## Implementation Strategy
 
-### Phase 1: Automated Fixes (Week 1)
+### Phase 3A: Quick Wins - Code Quality (Week 1) 🎯 TARGET: <750 issues
 
-- [ ] Run PT009 conversion script for unittest assertions
-- [ ] Apply remaining autoflake fixes for unused variables
-- [ ] Fix f-string placeholders manually
-- [ ] Clean up remaining whitespace issues
+- [ ] **Fix unused variables (F841)** - ~15 issues
+  ```bash
+  # Find and fix unused variables
+  flake8 . --select=F841 --show-source
+  ```
+- [ ] **Fix unused loop variables (B007)** - ~25 issues
+  ```bash
+  # Rename unused loop variables with underscore prefix
+  flake8 . --select=B007 --show-source
+  ```
+- [ ] **Remove unused imports (F401)** - ~8 issues
+  ```bash
+  # Remove unused imports
+  flake8 . --select=F401 --show-source
+  ```
+- [ ] **Fix test assertions (PT015, PT017)** - ~20 issues
+  ```bash
+  # Convert to proper pytest patterns
+  flake8 . --select=PT015,PT017 --show-source
+  ```
 
-### Phase 2: Security & Critical Issues (Week 2)
+### Phase 3B: Import Organization (Week 2) 🎯 TARGET: <570 issues
 
-- [ ] Fix all B001 bare except statements
-- [ ] Reduce C901 function complexity
-- [ ] Address all security-related issues
-- [ ] Fix F811 function redefinitions
+- [ ] **Fix import ordering (I100)** - ~90 issues
+  ```bash
+  # Use isort with proper configuration
+  isort . --check-only --diff
+  isort . --force-single-line-imports
+  ```
+- [ ] **Add import group separators (I201)** - ~85 issues
+  ```bash
+  # Add blank lines between import groups
+  # Manual review required for complex cases
+  ```
 
-### Phase 3: Documentation (Weeks 3-4)
+### Phase 3C: Documentation Foundation (Weeks 3-4) 🎯 TARGET: <200 issues
 
-- [ ] Add module docstrings (25 issues)
-- [ ] Add class docstrings (36 issues)
-- [ ] Add method docstrings (32 issues)
-- [ ] Fix docstring formatting (365 issues)
+- [ ] **Add missing module docstrings (D100-D104)** - ~25 issues
+  - Priority files: `common/`, `config/`, `llm_provider/`
+- [ ] **Add missing class docstrings (D101-D107)** - ~130 issues
+  - Focus on public APIs and core classes
+- [ ] **Fix docstring formatting (D212)** - ~365 issues
+  ```bash
+  # Systematic docstring formatting
+  # Move summary to first line, add proper punctuation
+  ```
 
-### Phase 4: Test Quality (Week 5)
+### Phase 3D: Final Polish (Week 5) 🎯 TARGET: <60 issues
 
-- [ ] Convert all unittest assertions to pytest
-- [ ] Fix exception assertion patterns
-- [ ] Improve test assertion clarity
-
-### Phase 5: Import Organization (Week 6)
-
-- [ ] Fix import ordering across all files
-- [ ] Add proper import group separations
-- [ ] Verify import consistency
+- [ ] **Address remaining complexity (C901)** - 1 issue in conftest.py
+- [ ] **Fix remaining code quality issues** - ~15 issues
+- [ ] **Final import and formatting cleanup** - ~10 issues
+- [ ] **Comprehensive testing and validation**
 
 ## Verification Commands
 
@@ -747,10 +802,45 @@ def bad_error_handling():
 
 ---
 
-**Target**: Reduce from 868 issues to <60 issues (93% improvement)
-**Timeline**: 8 weeks with systematic approach
-**Success Metric**: Production-ready code quality with comprehensive documentation and monitoring
+## Next Immediate Actions 🚀
 
-**Last Updated**: January 2025
-**Document Version**: 2.0
+### Ready to Execute Now
+
+```bash
+# 1. Quick assessment of current state
+flake8 . --count
+make test  # Ensure all tests still pass
+
+# 2. Fix unused variables (F841) - ~15 issues
+flake8 . --select=F841 --show-source | head -20
+# Then manually fix or prefix with underscore
+
+# 3. Fix unused loop variables (B007) - ~25 issues
+flake8 . --select=B007 --show-source | head -20
+# Rename unused loop vars: for item in items: → for _item in items:
+
+# 4. Remove unused imports (F401) - ~8 issues
+flake8 . --select=F401 --show-source
+# Remove or comment out unused imports
+
+# 5. Fix test assertions (PT015, PT017) - ~20 issues
+flake8 . --select=PT015,PT017 --show-source | head -10
+# Convert assert False → pytest.fail(), fix exception assertions
+```
+
+### Expected Impact
+- **Phase 3A completion**: ~68 issues fixed
+- **New total**: ~760 issues (8% reduction)
+- **Time estimate**: 2-3 hours of focused work
+- **Risk**: Very low (safe, mechanical changes)
+
+---
+
+**Current Status**: 828 issues (down from 1,395 original)
+**Target**: Reduce to <60 issues (93% improvement from original baseline)
+**Timeline**: 4-5 weeks with systematic approach
+**Success Metric**: Production-ready code quality with comprehensive documentation
+
+**Last Updated**: January 2025 (Post-formatting fixes)
+**Document Version**: 2.1
 **Maintainer**: StrandsAgent Development Team
