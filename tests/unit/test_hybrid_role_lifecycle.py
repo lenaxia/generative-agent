@@ -1,5 +1,4 @@
-"""
-Unit tests for Hybrid Role Lifecycle Architecture.
+"""Unit tests for Hybrid Role Lifecycle Architecture.
 
 Tests the enhanced RoleRegistry, RequestRouter, and UniversalAgent
 with lifecycle hooks and parameter extraction capabilities.

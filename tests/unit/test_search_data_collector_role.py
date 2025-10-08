@@ -1,5 +1,4 @@
-"""
-Unit tests for SearchDataCollectorRole programmatic role.
+"""Unit tests for SearchDataCollectorRole programmatic role.
 
 Tests the SearchDataCollectorRole that performs pure data collection without analysis,
 designed to eliminate redundant LLM analysis calls in search → analysis workflows.

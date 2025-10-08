@@ -1,5 +1,4 @@
-"""
-Unit tests for TaskContext core functionality.
+"""Unit tests for TaskContext core functionality.
 
 Tests the TaskContext class which provides a high-level interface for managing
 task execution, conversation history, progressive summaries, and checkpointing

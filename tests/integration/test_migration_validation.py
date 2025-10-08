@@ -510,9 +510,10 @@ task_scheduling:
 
                 except Exception as e:
                     # Expected exceptions should be handled gracefully
-                    assert isinstance(
-                        e, (TimeoutError, ConnectionError, MemoryError, Exception)
-                    )
+                    with pytest.raises(
+                        (TimeoutError, ConnectionError, MemoryError, Exception)
+                    ):
+                        raise e
 
     def test_scalability_and_load_handling(self, supervisor):
         """Test system scalability and load handling capabilities."""

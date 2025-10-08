@@ -1,5 +1,4 @@
-"""
-Research Analyst Custom Tools
+"""Research Analyst Custom Tools
 
 Specialized tools for research and analysis tasks.
 """
@@ -7,7 +6,6 @@ Specialized tools for research and analysis tasks.
 import logging
 import statistics
 from datetime import datetime
-from typing import Dict, List
 
 from strands import tool
 
@@ -18,8 +16,7 @@ logger = logging.getLogger(__name__)
 def academic_search(
     query: str, databases: list[str] = None, max_results: int = 10
 ) -> dict:
-    """
-    Search academic databases for research papers and scholarly articles.
+    """Search academic databases for research papers and scholarly articles.
 
     Args:
         query: Academic search query
@@ -66,8 +63,7 @@ def academic_search(
 
 @tool
 def citation_formatter(papers: list[dict], style: str = "APA") -> dict:
-    """
-    Format research citations in various academic styles.
+    """Format research citations in various academic styles.
 
     Args:
         papers: List of paper dictionaries with citation information
@@ -155,8 +151,7 @@ def _format_ieee_citation(paper: dict) -> str:
 
 @tool
 def statistical_analyzer(data: list[float], analysis_type: str = "descriptive") -> dict:
-    """
-    Perform statistical analysis on numerical data.
+    """Perform statistical analysis on numerical data.
 
     Args:
         data: List of numerical values
@@ -301,8 +296,7 @@ def _calculate_correlation(x: list[float], y: list[float]) -> float:
 def research_report_generator(
     findings: list[dict], title: str, include_methodology: bool = True
 ) -> dict:
-    """
-    Generate a structured research report from findings.
+    """Generate a structured research report from findings.
 
     Args:
         findings: List of research findings and data

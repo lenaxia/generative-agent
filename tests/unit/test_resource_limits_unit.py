@@ -1,5 +1,4 @@
-"""
-Unit tests for resource limit handling and system constraints.
+"""Unit tests for resource limit handling and system constraints.
 
 Tests how the system handles resource constraints, memory pressure,
 task timeouts, and checkpoint size limits to ensure graceful degradation

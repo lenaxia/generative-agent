@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Heartbeat:
-    """
-    Heartbeat service for monitoring system health and performing periodic maintenance.
+    """Heartbeat service for monitoring system health and performing periodic maintenance.
 
     Integrates with the new WorkflowEngine architecture to provide:
     - System health monitoring
@@ -28,8 +27,7 @@ class Heartbeat:
     """
 
     def __init__(self, supervisor, interval: int = 30, health_check_interval: int = 60):
-        """
-        Initialize Heartbeat service.
+        """Initialize Heartbeat service.
 
         Args:
             supervisor: Supervisor instance to monitor

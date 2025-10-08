@@ -1,5 +1,4 @@
-"""
-Unit tests for task result sharing functionality.
+"""Unit tests for task result sharing functionality.
 
 Tests the enhanced WorkflowEngine capability to pass predecessor task results
 to dependent tasks, eliminating duplicate work and improving efficiency.

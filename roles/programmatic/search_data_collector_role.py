@@ -1,5 +1,4 @@
-"""
-Search Data Collector Role
+"""Search Data Collector Role
 
 Programmatic role for pure data collection without analysis.
 Designed to eliminate redundant LLM analysis calls in search → analysis workflows.
@@ -28,9 +27,8 @@ class SearchPipelineTools:
 
     def search_source(
         self, query: str, source: str, num_results: int = 5
-    ) -> List[Dict[str, Any]]:
-        """
-        Mock search function that would integrate with actual search tools.
+    ) -> list[dict[str, Any]]:
+        """Mock search function that would integrate with actual search tools.
 
         In real implementation, this would call:
         - web_search() for web source
@@ -51,8 +49,7 @@ class SearchPipelineTools:
 
 
 class SearchDataCollectorRole(ProgrammaticRole):
-    """
-    Programmatic role for pure data collection without analysis.
+    """Programmatic role for pure data collection without analysis.
 
     Key features:
     - LLM-assisted instruction parsing
@@ -63,6 +60,11 @@ class SearchDataCollectorRole(ProgrammaticRole):
     """
 
     def __init__(self):
+        """Initialize the SearchDataCollectorRole with search capabilities.
+
+        Sets up the role with search pipeline tools and prepares for
+        LLM factory injection for minimal LLM usage in search operations.
+        """
         super().__init__(
             name="search_data_collector",
             description="Collects raw search data without analysis for downstream processing",
@@ -72,9 +74,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
 
     def execute(
         self, instruction: str, context: Optional[TaskContext] = None
-    ) -> Dict[str, Any]:
-        """
-        Execute search with LLM parsing but no analysis.
+    ) -> dict[str, Any]:
+        """Execute search with LLM parsing but no analysis.
 
         Args:
             instruction: Natural language search instruction
@@ -123,9 +124,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
             execution_time = time.time() - start_time
             return self._create_error_result(e, execution_time)
 
-    def parse_instruction(self, instruction: str) -> Dict[str, Any]:
-        """
-        Parse instruction to extract search parameters.
+    def parse_instruction(self, instruction: str) -> dict[str, Any]:
+        """Parse instruction to extract search parameters.
 
         Args:
             instruction: Raw instruction string
@@ -135,9 +135,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
         """
         return self._llm_parse_search_instruction(instruction)
 
-    def _llm_parse_search_instruction(self, instruction: str) -> Dict[str, Any]:
-        """
-        Use LLM to convert natural language to structured parameters.
+    def _llm_parse_search_instruction(self, instruction: str) -> dict[str, Any]:
+        """Use LLM to convert natural language to structured parameters.
 
         Args:
             instruction: Natural language instruction
@@ -175,9 +174,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
             # Fallback when no LLM factory available
             return self._fallback_parse_instruction(instruction)
 
-    def _fallback_parse_instruction(self, instruction: str) -> Dict[str, Any]:
-        """
-        Fallback instruction parsing without LLM.
+    def _fallback_parse_instruction(self, instruction: str) -> dict[str, Any]:
+        """Fallback instruction parsing without LLM.
 
         Args:
             instruction: Natural language instruction
@@ -193,9 +191,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
             "min_results": 3,
         }
 
-    def _execute_search_pipeline(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        Execute search without any LLM analysis - pure data collection.
+    def _execute_search_pipeline(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Execute search without any LLM analysis - pure data collection.
 
         Args:
             params: Structured search parameters
@@ -219,9 +216,8 @@ class SearchDataCollectorRole(ProgrammaticRole):
         # Return raw structured data - no summarization, no analysis
         return results
 
-    def _needs_followup(self, results: List[Dict], params: Dict) -> bool:
-        """
-        Determine if follow-up searches are needed.
+    def _needs_followup(self, results: list[dict], params: dict) -> bool:
+        """Determine if follow-up searches are needed.
 
         Args:
             results: Current search results
@@ -239,10 +235,9 @@ class SearchDataCollectorRole(ProgrammaticRole):
         return False
 
     def _llm_determine_followup(
-        self, results: List[Dict], params: Dict
-    ) -> Optional[Dict]:
-        """
-        Use LLM to determine follow-up search parameters if needed.
+        self, results: list[dict], params: dict
+    ) -> Optional[dict]:
+        """Use LLM to determine follow-up search parameters if needed.
 
         Args:
             results: Current search results

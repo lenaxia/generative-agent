@@ -5,8 +5,8 @@ from common.task_graph import TaskDependency, TaskDescription, TaskGraph, TaskSt
 
 
 class TaskContext:
-    """
-    TaskContext wrapper around enhanced TaskGraph for external state management.
+    """TaskContext wrapper around enhanced TaskGraph for external state management.
+
     This is the class we're testing - it will be implemented after tests are written.
     """
 

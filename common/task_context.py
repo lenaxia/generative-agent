@@ -29,16 +29,14 @@ class ExecutionState(str, Enum):
 
 
 class TaskContext:
-    """
-    TaskContext wrapper around enhanced TaskGraph for external state management.
+    """TaskContext wrapper around enhanced TaskGraph for external state management.
 
     This class provides a high-level interface for managing task execution,
     conversation history, progressive summaries, and checkpointing functionality.
     """
 
     def __init__(self, task_graph: TaskGraph, context_id: Optional[str] = None):
-        """
-        Initialize TaskContext with an existing TaskGraph.
+        """Initialize TaskContext with an existing TaskGraph.
 
         Args:
             task_graph (TaskGraph): The underlying task graph
@@ -59,8 +57,7 @@ class TaskContext:
         request_id: Optional[str] = None,
         context_id: Optional[str] = None,
     ) -> "TaskContext":
-        """
-        Create TaskContext directly from tasks and dependencies.
+        """Create TaskContext directly from tasks and dependencies.
 
         Args:
             tasks: List of task descriptions
@@ -78,8 +75,7 @@ class TaskContext:
 
     @classmethod
     def from_checkpoint(cls, checkpoint: dict) -> "TaskContext":
-        """
-        Create TaskContext from a checkpoint.
+        """Create TaskContext from a checkpoint.
 
         Args:
             checkpoint: Checkpoint data
@@ -111,8 +107,7 @@ class TaskContext:
 
     @classmethod
     def from_dict(cls, data: dict) -> "TaskContext":
-        """
-        Create TaskContext from serialized dictionary.
+        """Create TaskContext from serialized dictionary.
 
         Args:
             data: Serialized TaskContext data
@@ -149,8 +144,7 @@ class TaskContext:
         return self.task_graph.progressive_summary.copy()
 
     def condense_summary(self, max_entries: int = 10):
-        """
-        Condense the progressive summary to keep only the most recent entries.
+        """Condense the progressive summary to keep only the most recent entries.
 
         Args:
             max_entries: Maximum number of summary entries to keep
@@ -179,8 +173,7 @@ class TaskContext:
 
     # Checkpoint Management
     def create_checkpoint(self) -> dict:
-        """
-        Create a comprehensive checkpoint of the current state.
+        """Create a comprehensive checkpoint of the current state.
 
         Returns:
             Dict: Checkpoint containing all context state
@@ -203,8 +196,7 @@ class TaskContext:
 
     # Serialization
     def to_dict(self) -> dict:
-        """
-        Serialize TaskContext to dictionary.
+        """Serialize TaskContext to dictionary.
 
         Returns:
             Dict: Serialized TaskContext data
@@ -217,8 +209,7 @@ class TaskContext:
         return self.task_graph.get_ready_tasks()
 
     def prepare_task_execution(self, task_id: str) -> dict:
-        """
-        Prepare configuration for task execution.
+        """Prepare configuration for task execution.
 
         Args:
             task_id: Task ID to prepare execution for
@@ -229,8 +220,7 @@ class TaskContext:
         return self.task_graph.prepare_task_execution(task_id)
 
     def complete_task(self, task_id: str, result: str) -> list[TaskNode]:
-        """
-        Mark a task as completed and return next ready tasks.
+        """Mark a task as completed and return next ready tasks.
 
         Args:
             task_id: Task ID to complete
@@ -248,8 +238,7 @@ class TaskContext:
         self.start_time = time.time()
 
     def pause_execution(self) -> dict:
-        """
-        Pause execution and return checkpoint.
+        """Pause execution and return checkpoint.
 
         Returns:
             Dict: Checkpoint for resuming execution
@@ -258,8 +247,7 @@ class TaskContext:
         return self.create_checkpoint()
 
     def resume_execution(self, checkpoint: Optional[dict] = None):
-        """
-        Resume execution from checkpoint or current state.
+        """Resume execution from checkpoint or current state.
 
         Args:
             checkpoint: Optional checkpoint to resume from
@@ -295,8 +283,7 @@ class TaskContext:
 
     # Performance Metrics
     def get_performance_metrics(self) -> dict:
-        """
-        Get performance metrics for the task execution.
+        """Get performance metrics for the task execution.
 
         Returns:
             Dict: Performance metrics

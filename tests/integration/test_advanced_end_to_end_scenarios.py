@@ -822,7 +822,22 @@ task_scheduling:
                 )
 
                 # System should handle faults gracefully
-                try:
+                if fault_type in [
+                    "universal_agent_timeout",
+                    "memory_pressure",
+                    "network_partition",
+                ]:
+                    # Expect specific exceptions for these fault types
+                    expected_exception = {
+                        "universal_agent_timeout": TimeoutError,
+                        "memory_pressure": MemoryError,
+                        "network_partition": ConnectionError,
+                    }[fault_type]
+
+                    with pytest.raises(expected_exception):
+                        supervisor.workflow_engine.handle_request(request)
+                else:
+                    # For other fault types, the request should succeed
                     request_id = supervisor.workflow_engine.handle_request(request)
 
                     # Verify system state remains consistent
@@ -832,10 +847,6 @@ task_scheduling:
                     # Context should exist even during faults
                     context = supervisor.workflow_engine.get_request_context(request_id)
                     assert context is not None
-
-                except Exception as e:
-                    # If exceptions occur, they should be handled gracefully
-                    assert isinstance(e, (TimeoutError, MemoryError, ConnectionError))
 
     def test_performance_benchmarking_and_optimization(self, supervisor):
         """Test performance benchmarking and optimization scenarios."""

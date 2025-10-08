@@ -1,5 +1,5 @@
-"""
-Tests for Phase 7.1: Supervisor Migration to StrandsAgent-Only
+"""Tests for Phase 7.1: Supervisor Migration to StrandsAgent-Only
+
 Verifies that Supervisor works without AgentManager or LangChain dependencies.
 """
 
@@ -20,6 +20,7 @@ class TestSupervisorPhase7:
     def setup_method(self):
         """Set up test configuration."""
         self.config_content = """
+
 logging:
   log_level: INFO
   log_file: test.log

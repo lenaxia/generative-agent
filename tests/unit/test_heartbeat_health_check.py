@@ -1,5 +1,4 @@
-"""
-Unit tests for Heartbeat health check logic.
+"""Unit tests for Heartbeat health check logic.
 
 Tests the health check logic to ensure disabled services don't cause degraded status.
 """
@@ -30,7 +29,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             mock_supervisor.return_value = {"status": "healthy"}
             mock_workflow.return_value = {"status": "healthy"}
             mock_agent.return_value = {"status": "healthy"}
@@ -51,7 +49,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             mock_supervisor.return_value = {"status": "healthy"}
             mock_workflow.return_value = {"status": "healthy"}
             mock_agent.return_value = {"status": "healthy"}
@@ -76,7 +73,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             mock_supervisor.return_value = {"status": "healthy"}
             mock_workflow.return_value = {
                 "status": "unhealthy",
@@ -101,7 +97,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             mock_supervisor.return_value = {"status": "healthy"}
             mock_workflow.return_value = {"status": "healthy"}
             mock_agent.return_value = {"status": "disabled"}  # Agent disabled
@@ -123,7 +118,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             mock_supervisor.return_value = {"status": "healthy"}
             mock_workflow.return_value = {"status": "unknown"}  # Unexpected status
             mock_agent.return_value = {"status": "healthy"}
@@ -145,7 +139,6 @@ class TestHeartbeatHealthCheck:
             patch.object(self.heartbeat, "_check_universal_agent_health") as mock_agent,
             patch.object(self.heartbeat, "_check_mcp_health") as mock_mcp,
         ):
-
             supervisor_result = {"status": "healthy"}
             workflow_result = {"status": "healthy"}
             agent_result = {"status": "healthy"}

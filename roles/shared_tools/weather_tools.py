@@ -1,5 +1,4 @@
-"""
-Weather tools for StrandsAgent - converted from WeatherAgent.
+"""Weather tools for StrandsAgent - converted from WeatherAgent.
 
 These tools replace the LangChain-based WeatherAgent with @tool decorated functions
 that can be used by the Universal Agent for weather information retrieval.
@@ -16,9 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def get_weather(location: str) -> Dict[str, Any]:
-    """
-    Get weather information for a location - converted from WeatherAgent.
+def get_weather(location: str) -> dict[str, Any]:
+    """Get weather information for a location - converted from WeatherAgent.
 
     This tool can handle city names, ZIP codes, or coordinates and returns
     current weather information using the NOAA Weather API.
@@ -71,9 +69,8 @@ def get_weather(location: str) -> Dict[str, Any]:
         }
 
 
-def check_weather(lat: float, lon: float) -> Dict[str, Any]:
-    """
-    Check weather for specific coordinates using NOAA API.
+def check_weather(lat: float, lon: float) -> dict[str, Any]:
+    """Check weather for specific coordinates using NOAA API.
 
     Args:
         lat: Latitude coordinate
@@ -126,9 +123,8 @@ def check_weather(lat: float, lon: float) -> Dict[str, Any]:
         raise
 
 
-def city_to_coordinates(city: str) -> Dict[str, float]:
-    """
-    Convert a city name to latitude and longitude coordinates.
+def city_to_coordinates(city: str) -> dict[str, float]:
+    """Convert a city name to latitude and longitude coordinates.
 
     Args:
         city: City name to convert
@@ -160,9 +156,8 @@ def city_to_coordinates(city: str) -> Dict[str, float]:
         raise
 
 
-def zipcode_to_coordinates(zipcode: str, country_code: str = "US") -> Dict[str, float]:
-    """
-    Convert a ZIP code to latitude and longitude coordinates.
+def zipcode_to_coordinates(zipcode: str, country_code: str = "US") -> dict[str, float]:
+    """Convert a ZIP code to latitude and longitude coordinates.
 
     Args:
         zipcode: ZIP code to convert
@@ -214,9 +209,8 @@ def zipcode_to_coordinates(zipcode: str, country_code: str = "US") -> Dict[str, 
 
 
 @tool
-def get_weather_forecast(location: str, days: int = 7) -> Dict[str, Any]:
-    """
-    Get extended weather forecast for a location.
+def get_weather_forecast(location: str, days: int = 7) -> dict[str, Any]:
+    """Get extended weather forecast for a location.
 
     Args:
         location: Location as city name, ZIP code, or coordinates
@@ -301,9 +295,8 @@ def get_weather_forecast(location: str, days: int = 7) -> Dict[str, Any]:
         }
 
 
-def validate_coordinates(lat: float, lon: float) -> Dict[str, Any]:
-    """
-    Validate latitude and longitude coordinates.
+def validate_coordinates(lat: float, lon: float) -> dict[str, Any]:
+    """Validate latitude and longitude coordinates.
 
     Args:
         lat: Latitude coordinate
@@ -364,12 +357,12 @@ WEATHER_TOOLS = {
 }
 
 
-def get_weather_tools() -> Dict[str, Any]:
+def get_weather_tools() -> dict[str, Any]:
     """Get all available weather tools."""
     return WEATHER_TOOLS
 
 
-def get_weather_tool_descriptions() -> Dict[str, str]:
+def get_weather_tool_descriptions() -> dict[str, str]:
     """Get descriptions of all weather tools."""
     return {
         "get_weather": "Get current weather for any location (city, ZIP, or coordinates)",

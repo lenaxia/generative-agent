@@ -1,5 +1,4 @@
-"""
-Unit tests for UniversalAgent core functionality.
+"""Unit tests for UniversalAgent core functionality.
 
 Tests the UniversalAgent class which provides a unified interface for creating
 role-specific agents using the StrandsAgent framework with semantic model types

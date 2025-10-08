@@ -1,5 +1,4 @@
-"""
-Performance Optimization Tests
+"""Performance Optimization Tests
 
 Tests to verify that the routing performance optimizations are working correctly
 and that routing time is reduced from ~5 seconds to under 1 second.
@@ -19,6 +18,13 @@ class MockConfig:
     """Mock configuration for testing."""
 
     def __init__(self, name="test", provider_type="bedrock", model_id="test-model"):
+        """Initialize MockConfig with test configuration parameters.
+
+        Args:
+            name: Configuration name for testing.
+            provider_type: LLM provider type (e.g., 'bedrock').
+            model_id: Model identifier for testing.
+        """
         self.name = name
         self.provider_type = provider_type
         self.model_id = model_id

@@ -1,5 +1,4 @@
-"""
-System Validation Tests for Fast-Path Routing Implementation.
+"""System Validation Tests for Fast-Path Routing Implementation.
 
 Comprehensive validation of the complete fast-path routing system including:
 - End-to-end fast-path execution

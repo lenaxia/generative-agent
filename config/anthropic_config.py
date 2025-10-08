@@ -12,6 +12,12 @@ from .base_config import BaseConfig
 
 
 class AnthropicConfig(BaseConfig):
+    """Configuration class for Anthropic Claude API integration.
+
+    Manages API keys, model settings, request parameters, and other
+    configuration options specific to Anthropic's Claude models.
+    """
+
     provider_name: str = "anthropic"
 
     def __init__(
@@ -37,6 +43,27 @@ class AnthropicConfig(BaseConfig):
         tags: Optional[list[str]] = None,
         **base_config_kwargs,
     ):
+        """Initialize AnthropicConfig with API and model parameters.
+
+        Args:
+            api_key: Anthropic API key for authentication.
+            model_name: Name of the Claude model to use.
+            endpoint: API endpoint URL for Anthropic services.
+            top_p: Nucleus sampling parameter for response generation.
+            top_k: Top-k sampling parameter for response generation.
+            temperature: Sampling temperature for response randomness.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum number of retry attempts for failed requests.
+            api_base: Base URL for API requests.
+            custom_get_token_ids: Custom tokenization function.
+            default_headers: Default HTTP headers for requests.
+            default_request_timeout: Default timeout for requests.
+            metadata: Additional metadata for the configuration.
+            model_kwargs: Additional model-specific parameters.
+            stream_usage: Whether to enable streaming usage tracking.
+            tags: Tags for request categorization.
+            **base_config_kwargs: Additional base configuration parameters.
+        """
         super().__init__(
             api_key=api_key,
             model_name=model_name,

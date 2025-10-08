@@ -12,6 +12,13 @@ from common.task_graph import TaskGraph
 
 
 class RequestMetadata(BaseModel):
+    """Metadata container for request handling and routing.
+
+    Contains essential information for request processing including
+    source and target identification, callback configuration, and
+    response handling preferences.
+    """
+
     prompt: str
     metadata: Optional[dict] = None
     source_id: str = Field(..., description="The source agent")
@@ -23,6 +30,18 @@ class RequestMetadata(BaseModel):
 
 
 class Request:
+    """Request container combining metadata and task execution graph.
+
+    Encapsulates a complete request with its associated metadata and
+    task graph for workflow execution within the StrandsAgent system.
+    """
+
     def __init__(self, metadata: RequestMetadata, task_graph: TaskGraph):
+        """Initialize a Request with metadata and task graph.
+
+        Args:
+            metadata: Request metadata containing routing and callback information.
+            task_graph: Task execution graph defining the workflow to be executed.
+        """
         self.metadata = metadata
         self.task_graph = task_graph

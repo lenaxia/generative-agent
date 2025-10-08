@@ -92,12 +92,10 @@ class TestPerformanceBenchmarking:
 
     def test_agent_creation_vs_pooling_performance(self, factory_with_config):
         """Benchmark agent creation vs agent pooling performance."""
-
         with (
             patch("llm_provider.factory.BedrockModel") as mock_bedrock,
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             # Simulate slow agent creation (realistic overhead)
             def slow_agent_creation(*args, **kwargs):
                 time.sleep(0.001)  # 1ms delay to simulate real overhead
@@ -145,12 +143,10 @@ class TestPerformanceBenchmarking:
 
     def test_role_switching_performance(self, universal_agent):
         """Benchmark role switching performance with agent pooling."""
-
         with (
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent = Mock()
             mock_agent.update_context = Mock()
             mock_agent_class.return_value = mock_agent
@@ -179,12 +175,10 @@ class TestPerformanceBenchmarking:
 
     def test_weather_query_simulation_performance(self, universal_agent):
         """Simulate the weather query workflow from the design document."""
-
         with (
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent = Mock()
             mock_agent.update_context = Mock()
             mock_agent_class.return_value = mock_agent
@@ -217,7 +211,6 @@ class TestPerformanceBenchmarking:
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent = Mock()
             mock_agent.update_context = Mock()
             mock_agent_class.return_value = mock_agent
@@ -265,12 +258,10 @@ class TestPerformanceBenchmarking:
 
     def test_memory_efficiency_with_pooling(self, factory_with_config):
         """Test that agent pooling doesn't cause memory leaks."""
-
         with (
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent_class.return_value = Mock()
 
             # Create many agent requests
@@ -290,12 +281,10 @@ class TestPerformanceBenchmarking:
 
     def test_pool_warming_performance(self, factory_with_config):
         """Test agent pool warming performance."""
-
         with (
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent_class.return_value = Mock()
 
             # Benchmark pool warming
@@ -315,12 +304,10 @@ class TestPerformanceBenchmarking:
 
     def test_performance_regression_detection(self, universal_agent):
         """Test to detect performance regressions in agent operations."""
-
         with (
             patch("llm_provider.factory.BedrockModel"),
             patch("llm_provider.factory.Agent") as mock_agent_class,
         ):
-
             mock_agent = Mock()
             mock_agent.update_context = Mock()
             mock_agent_class.return_value = mock_agent
@@ -417,7 +404,6 @@ class TestPerformanceComparison:
 
     def test_target_performance_achievement(self):
         """Verify that we achieve the 3.0s target from 5.74s baseline."""
-
         # Based on design document analysis:
         # Before: 5.74s total (2.9s agent creation + 2.84s other)
         # After: 3.0s total (0.002s agent pooling + 2.84s other)

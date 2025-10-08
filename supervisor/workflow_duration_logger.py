@@ -1,5 +1,4 @@
-"""
-Workflow Duration Logger
+"""Workflow Duration Logger
 
 Tracks and logs workflow execution durations for performance monitoring and analytics.
 Supports both CLI and Slack workflow completion tracking.
@@ -53,6 +52,11 @@ class WorkflowDurationMetrics:
     timestamp: str = None
 
     def __post_init__(self):
+        """Post-initialization processing for WorkflowDurationLog.
+
+        Automatically calculates timestamp and duration if not provided,
+        ensuring consistent timing data for workflow duration tracking.
+        """
         if self.timestamp is None:
             self.timestamp = datetime.fromtimestamp(self.start_time).isoformat()
 
@@ -72,14 +76,13 @@ class WorkflowDurationMetrics:
         if error_message:
             self.error_message = error_message
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
 
 
 class WorkflowDurationLogger:
-    """
-    Centralized workflow duration logging system.
+    """Centralized workflow duration logging system.
 
     Tracks workflow execution times across CLI and Slack interfaces,
     providing performance metrics and analytics capabilities.
@@ -91,8 +94,7 @@ class WorkflowDurationLogger:
         enable_console_logging: bool = True,
         max_log_file_size_mb: int = 100,
     ):
-        """
-        Initialize the workflow duration logger.
+        """Initialize the workflow duration logger.
 
         Args:
             log_file_path: Path to the JSONL log file for storing duration metrics
@@ -104,7 +106,7 @@ class WorkflowDurationLogger:
         self.max_log_file_size_bytes = max_log_file_size_mb * 1024 * 1024
 
         # Active workflow tracking
-        self.active_workflows: Dict[str, WorkflowDurationMetrics] = {}
+        self.active_workflows: dict[str, WorkflowDurationMetrics] = {}
 
         # Setup logging
         self.logger = logging.getLogger(f"{__name__}.WorkflowDurationLogger")
@@ -128,8 +130,7 @@ class WorkflowDurationLogger:
         user_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> WorkflowDurationMetrics:
-        """
-        Start tracking a workflow's duration.
+        """Start tracking a workflow's duration.
 
         Args:
             workflow_id: Unique identifier for the workflow
@@ -172,8 +173,7 @@ class WorkflowDurationLogger:
         confidence: Optional[float] = None,
         task_count: Optional[int] = None,
     ) -> Optional[WorkflowDurationMetrics]:
-        """
-        Complete tracking for a workflow and log the duration.
+        """Complete tracking for a workflow and log the duration.
 
         Args:
             workflow_id: Unique identifier for the workflow
@@ -224,7 +224,7 @@ class WorkflowDurationLogger:
         """Get the number of currently active workflows being tracked."""
         return len(self.active_workflows)
 
-    def get_active_workflows(self) -> List[WorkflowDurationMetrics]:
+    def get_active_workflows(self) -> list[WorkflowDurationMetrics]:
         """Get list of currently active workflows."""
         return list(self.active_workflows.values())
 
@@ -261,9 +261,8 @@ class WorkflowDurationLogger:
         except Exception as e:
             self.logger.error(f"Failed to rotate log file: {e}")
 
-    def get_recent_metrics(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """
-        Get recent workflow metrics from the log file.
+    def get_recent_metrics(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Get recent workflow metrics from the log file.
 
         Args:
             limit: Maximum number of recent entries to return
@@ -274,7 +273,7 @@ class WorkflowDurationLogger:
         metrics = []
         try:
             if os.path.exists(self.log_file_path):
-                with open(self.log_file_path, "r", encoding="utf-8") as f:
+                with open(self.log_file_path, encoding="utf-8") as f:
                     lines = f.readlines()
                     # Get the last 'limit' lines
                     recent_lines = lines[-limit:] if len(lines) > limit else lines
@@ -290,9 +289,8 @@ class WorkflowDurationLogger:
         # Return in reverse order (most recent first)
         return list(reversed(metrics))
 
-    def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
-        """
-        Get performance summary for the last N hours.
+    def get_performance_summary(self, hours: int = 24) -> dict[str, Any]:
+        """Get performance summary for the last N hours.
 
         Args:
             hours: Number of hours to analyze

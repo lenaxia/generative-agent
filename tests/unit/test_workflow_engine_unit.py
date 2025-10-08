@@ -1,5 +1,4 @@
-"""
-Unit tests for WorkflowEngine core functionality.
+"""Unit tests for WorkflowEngine core functionality.
 
 Tests the WorkflowEngine class which consolidates RequestManager + TaskScheduler
 functionality into a unified workflow management system with DAG execution

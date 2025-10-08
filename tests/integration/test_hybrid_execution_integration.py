@@ -1,5 +1,4 @@
-"""
-Integration tests for Hybrid Execution Architecture.
+"""Integration tests for Hybrid Execution Architecture.
 
 Tests end-to-end workflows using both LLM-based and programmatic roles
 to verify the hybrid execution architecture works correctly.

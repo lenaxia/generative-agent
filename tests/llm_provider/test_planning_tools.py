@@ -1,6 +1,4 @@
-"""
-Tests for planning tools - Phase 7.2 PlanningAgent migration to @tool functions.
-"""
+"""Tests for planning tools - Phase 7.2 PlanningAgent migration to @tool functions."""
 
 from unittest.mock import patch
 

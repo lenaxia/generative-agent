@@ -1,5 +1,4 @@
-"""
-Web Search Shared Tool
+"""Web Search Shared Tool
 
 Complete web search functionality using Tavily API for real-time web search.
 Provides both basic search and advanced filtered search capabilities.
@@ -44,8 +43,7 @@ except ImportError:
 
 
 def _get_tavily_client():
-    """
-    Get Tavily client instance with API key from environment.
+    """Get Tavily client instance with API key from environment.
 
     Returns:
         TavilyClient instance or None if not available/configured
@@ -65,9 +63,8 @@ def _get_tavily_client():
         return None
 
 
-def _format_search_results(tavily_response: Dict, query: str) -> Dict:
-    """
-    Format Tavily API response into standardized result format.
+def _format_search_results(tavily_response: dict, query: str) -> dict:
+    """Format Tavily API response into standardized result format.
 
     Args:
         tavily_response: Raw response from Tavily API
@@ -96,9 +93,8 @@ def _format_search_results(tavily_response: Dict, query: str) -> Dict:
 
 
 @tool
-def web_search(query: str, num_results: int = 5) -> Dict:
-    """
-    Search the web for information using Tavily API.
+def web_search(query: str, num_results: int = 5) -> dict:
+    """Search the web for information using Tavily API.
 
     Args:
         query: Search query string
@@ -187,9 +183,8 @@ def search_with_filters(
     date_range: Optional[str] = None,
     content_type: Optional[str] = None,
     num_results: int = 5,
-) -> Dict:
-    """
-    Advanced web search with filters using Tavily API.
+) -> dict:
+    """Advanced web search with filters using Tavily API.
 
     Args:
         query: Search query string
@@ -323,9 +318,8 @@ def search_with_filters(
 
 
 @tool
-def search_news(query: str, num_results: int = 5) -> Dict:
-    """
-    Search for recent news articles using Tavily API.
+def search_news(query: str, num_results: int = 5) -> dict:
+    """Search for recent news articles using Tavily API.
 
     Args:
         query: News search query
@@ -348,9 +342,8 @@ def search_news(query: str, num_results: int = 5) -> Dict:
 
 
 @tool
-def search_academic(query: str, num_results: int = 5) -> Dict:
-    """
-    Search for academic papers and scholarly content.
+def search_academic(query: str, num_results: int = 5) -> dict:
+    """Search for academic papers and scholarly content.
 
     Args:
         query: Academic search query
@@ -370,9 +363,8 @@ def search_academic(query: str, num_results: int = 5) -> Dict:
 @tool
 def scrape_webpage(
     url: str, extract_content: bool = True, include_links: bool = False
-) -> Dict:
-    """
-    Scrape content from a specific webpage URL.
+) -> dict:
+    """Scrape content from a specific webpage URL.
 
     Args:
         url: The URL to scrape
@@ -392,142 +384,167 @@ def scrape_webpage(
     start_time = time.time()
 
     try:
-        # Validate URL
-        if not url or not url.strip():
-            return {
-                "url": url,
-                "title": "",
-                "content": "",
-                "links": [],
-                "error": "Empty URL provided",
-            }
+        # Validate and normalize URL
+        validation_result = _validate_and_normalize_url(url)
+        if validation_result.get("error"):
+            return validation_result
 
-        # Add protocol if missing
-        if not url.startswith(("http://", "https://")):
-            url = "https://" + url
+        url = validation_result["url"]
 
-        # Validate URL format
-        parsed_url = urlparse(url)
-        if not parsed_url.netloc:
-            return {
-                "url": url,
-                "title": "",
-                "content": "",
-                "links": [],
-                "error": "Invalid URL format",
-            }
-
-        # Check if scraping libraries are available
+        # Check dependencies
         if not SCRAPING_AVAILABLE:
-            return {
-                "url": url,
-                "title": "",
-                "content": "",
-                "links": [],
-                "error": "Web scraping libraries not available. Install beautifulsoup4 and readability-lxml",
-            }
+            return _create_error_result(
+                url,
+                "Web scraping libraries not available. Install beautifulsoup4 and readability-lxml",
+                start_time,
+            )
 
-        # Set up headers to mimic a real browser
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
+        # Fetch and parse webpage
+        soup = _fetch_and_parse_webpage(url)
 
-        # Fetch the webpage
-        logger.info(f"Scraping webpage: {url}")
-        response = requests.get(url, headers=headers, timeout=30)
-        response.raise_for_status()
+        # Extract data
+        title = _extract_title(soup)
+        content = _extract_content(soup, extract_content)
+        links = _extract_links(soup, url, include_links)
 
-        # Parse HTML
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        # Extract title
-        title_tag = soup.find("title")
-        title = title_tag.get_text().strip() if title_tag else ""
-
-        # Extract content
-        content = ""
-        if extract_content:
-            # Use readability to extract main content
-            doc = Document(response.content)
-            content = doc.summary()
-
-            # Parse the cleaned HTML to get text
-            content_soup = BeautifulSoup(content, "html.parser")
-            content = content_soup.get_text().strip()
-
-            # Clean up whitespace
-            content = " ".join(content.split())
-        else:
-            # Just get all text from the page
-            content = soup.get_text().strip()
-            content = " ".join(content.split())
-
-        # Extract links if requested
-        links = []
-        if include_links:
-            for link in soup.find_all("a", href=True):
-                href = link["href"]
-                link_text = link.get_text().strip()
-
-                # Convert relative URLs to absolute
-                if href.startswith("/"):
-                    href = urljoin(url, href)
-                elif not href.startswith(("http://", "https://")):
-                    href = urljoin(url, href)
-
-                if link_text and href.startswith(("http://", "https://")):
-                    links.append({"text": link_text, "url": href})
-
-        # Limit content length to prevent excessive data
-        if len(content) > 10000:
-            content = content[:10000] + "... [content truncated]"
-
-        result = {
-            "url": url,
-            "title": title,
-            "content": content,
-            "links": links[:50] if include_links else [],  # Limit to 50 links
-            "content_length": len(content),
-            "num_links": len(links) if include_links else 0,
-            "scrape_time": f"{time.time() - start_time:.2f}s",
-        }
-
-        logger.info(
-            f"Webpage scraped successfully: {len(content)} chars, {len(links)} links in {result['scrape_time']}"
+        # Build result
+        return _build_success_result(
+            url, title, content, links, include_links, start_time
         )
-        return result
 
     except requests.exceptions.RequestException as e:
         logger.error(f"HTTP error scraping {url}: {e}")
-        return {
-            "url": url,
-            "title": "",
-            "content": "",
-            "links": [],
-            "error": f"HTTP error: {str(e)}",
-            "scrape_time": f"{time.time() - start_time:.2f}s",
-        }
+        return _create_error_result(url, f"HTTP error: {str(e)}", start_time)
     except Exception as e:
         logger.error(f"Error scraping webpage {url}: {e}")
-        return {
-            "url": url,
-            "title": "",
-            "content": "",
-            "links": [],
-            "error": str(e),
-            "scrape_time": f"{time.time() - start_time:.2f}s",
-        }
+        return _create_error_result(url, str(e), start_time)
+
+
+def _validate_and_normalize_url(url: str) -> dict:
+    """Validate and normalize URL."""
+    if not url or not url.strip():
+        return _create_error_result(url, "Empty URL provided")
+
+    # Add protocol if missing
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    # Validate URL format
+    parsed_url = urlparse(url)
+    if not parsed_url.netloc:
+        return _create_error_result(url, "Invalid URL format")
+
+    return {"url": url}
+
+
+def _fetch_and_parse_webpage(url: str):
+    """Fetch webpage and parse HTML."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+    logger.info(f"Scraping webpage: {url}")
+    response = requests.get(url, headers=headers, timeout=30)
+    response.raise_for_status()
+
+    return BeautifulSoup(response.content, "html.parser")
+
+
+def _extract_title(soup) -> str:
+    """Extract title from HTML."""
+    title_tag = soup.find("title")
+    return title_tag.get_text().strip() if title_tag else ""
+
+
+def _extract_content(soup, extract_content: bool) -> str:
+    """Extract content from HTML."""
+    if extract_content:
+        # Use readability to extract main content
+        doc = Document(str(soup))
+        content = doc.summary()
+        content_soup = BeautifulSoup(content, "html.parser")
+        content = content_soup.get_text().strip()
+    else:
+        # Just get all text from the page
+        content = soup.get_text().strip()
+
+    # Clean up whitespace and limit length
+    content = " ".join(content.split())
+    if len(content) > 10000:
+        content = content[:10000] + "... [content truncated]"
+
+    return content
+
+
+def _extract_links(soup, base_url: str, include_links: bool) -> list:
+    """Extract links from HTML."""
+    if not include_links:
+        return []
+
+    links = []
+    for link in soup.find_all("a", href=True):
+        href = link["href"]
+        link_text = link.get_text().strip()
+
+        # Convert relative URLs to absolute
+        if href.startswith("/"):
+            href = urljoin(base_url, href)
+        elif not href.startswith(("http://", "https://")):
+            href = urljoin(base_url, href)
+
+        if link_text and href.startswith(("http://", "https://")):
+            links.append({"text": link_text, "url": href})
+
+    return links
+
+
+def _build_success_result(
+    url: str,
+    title: str,
+    content: str,
+    links: list,
+    include_links: bool,
+    start_time: float,
+) -> dict:
+    """Build successful scraping result."""
+    scrape_time = f"{time.time() - start_time:.2f}s"
+
+    result = {
+        "url": url,
+        "title": title,
+        "content": content,
+        "links": links[:50] if include_links else [],  # Limit to 50 links
+        "content_length": len(content),
+        "num_links": len(links) if include_links else 0,
+        "scrape_time": scrape_time,
+    }
+
+    logger.info(
+        f"Webpage scraped successfully: {len(content)} chars, {len(links)} links in {scrape_time}"
+    )
+    return result
+
+
+def _create_error_result(url: str, error_msg: str, start_time: float = None) -> dict:
+    """Create error result dictionary."""
+    return {
+        "url": url,
+        "title": "",
+        "content": "",
+        "links": [],
+        "error": error_msg,
+        "scrape_time": f"{time.time() - start_time:.2f}s" if start_time else "0.00s",
+    }
 
 
 @tool
-def extract_article_content(url: str) -> Dict:
-    """
-    Extract the main article content from a webpage using readability.
+def extract_article_content(url: str) -> dict:
+    """Extract the main article content from a webpage using readability.
 
     This is optimized for news articles, blog posts, and similar content.
 
@@ -548,9 +565,8 @@ def extract_article_content(url: str) -> Dict:
 
 
 @tool
-def scrape_with_links(url: str) -> Dict:
-    """
-    Scrape webpage content and extract all links.
+def scrape_with_links(url: str) -> dict:
+    """Scrape webpage content and extract all links.
 
     Useful for discovering related pages and navigation.
 

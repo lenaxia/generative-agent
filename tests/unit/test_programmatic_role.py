@@ -1,5 +1,4 @@
-"""
-Unit tests for ProgrammaticRole base class.
+"""Unit tests for ProgrammaticRole base class.
 
 Tests the abstract base class for programmatic roles that execute directly
 without LLM processing, focusing on pure automation and data collection tasks.
@@ -36,7 +35,7 @@ class TestProgrammaticRoleBase:
             ) -> Any:
                 return {"test": "result"}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"query": instruction}
 
         role = TestRole("test_role", "Test role for unit testing")
@@ -51,7 +50,7 @@ class TestProgrammaticRoleBase:
         from llm_provider.programmatic_role import ProgrammaticRole
 
         class IncompleteRole(ProgrammaticRole):
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"query": instruction}
 
             # Missing execute method
@@ -88,7 +87,7 @@ class TestProgrammaticRoleBase:
                 self.total_execution_time += 0.01
                 return {"result": "success"}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"query": instruction}
 
         role = MetricsTestRole("metrics_test", "Test metrics tracking")
@@ -113,7 +112,7 @@ class TestProgrammaticRoleBase:
             ) -> Any:
                 return {"test": "result"}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"query": instruction}
 
         role = SimpleRole("simple_role", "Simple test role")
@@ -153,7 +152,7 @@ class TestProgrammaticRoleBase:
                     }
                 return {"instruction": instruction, "context_available": False}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"query": instruction}
 
         role = ContextAwareRole("context_role", "Context-aware test role")
@@ -182,7 +181,7 @@ class TestProgrammaticRoleBase:
                     raise ValueError("Simulated execution failure")
                 return {"result": "success"}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 if instruction == "parse_fail":
                     raise ValueError("Simulated parsing failure")
                 return {"query": instruction}
@@ -220,7 +219,7 @@ class TestProgrammaticRoleBase:
                 else:
                     return None
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 return {"type": instruction}
 
         role = MultiTypeRole("multi_type", "Multi-type test role")
@@ -243,7 +242,7 @@ class TestProgrammaticRoleBase:
                 params = self.parse_instruction(instruction)
                 return {"parsed_params": params}
 
-            def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+            def parse_instruction(self, instruction: str) -> dict[str, Any]:
                 # Simple parsing logic for testing
                 words = instruction.split()
                 return {

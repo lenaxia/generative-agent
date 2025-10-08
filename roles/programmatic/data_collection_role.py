@@ -1,5 +1,4 @@
-"""
-Data Collection Role
+"""Data Collection Role
 
 Programmatic role for structured data collection from multiple sources.
 Designed for pure automation workflows without any LLM processing.
@@ -26,10 +25,9 @@ class DataSourceManager:
     """Mock data source manager for the DataCollectionRole."""
 
     def collect_from_source(
-        self, source: str, data_types: List[str]
-    ) -> List[Dict[str, Any]]:
-        """
-        Mock data collection from a specific source.
+        self, source: str, data_types: list[str]
+    ) -> list[dict[str, Any]]:
+        """Mock data collection from a specific source.
 
         In real implementation, this would integrate with:
         - Database connections
@@ -58,8 +56,7 @@ class DataSourceManager:
 
 
 class DataCollectionRole(ProgrammaticRole):
-    """
-    Programmatic role for structured data collection from multiple sources.
+    """Programmatic role for structured data collection from multiple sources.
 
     Key features:
     - Rule-based instruction parsing (no LLM needed)
@@ -70,6 +67,11 @@ class DataCollectionRole(ProgrammaticRole):
     """
 
     def __init__(self):
+        """Initialize the DataCollectionRole with data source management.
+
+        Sets up the role with multi-source data aggregation capabilities
+        and initializes the data source manager for automation workflows.
+        """
         super().__init__(
             name="data_collection",
             description="Multi-source data aggregation and structured processing for automation workflows",
@@ -78,9 +80,8 @@ class DataCollectionRole(ProgrammaticRole):
 
     def execute(
         self, instruction: str, context: Optional[TaskContext] = None
-    ) -> Dict[str, Any]:
-        """
-        Execute multi-source data collection.
+    ) -> dict[str, Any]:
+        """Execute multi-source data collection.
 
         Args:
             instruction: Data collection instruction
@@ -124,9 +125,8 @@ class DataCollectionRole(ProgrammaticRole):
             execution_time = time.time() - start_time
             return self._create_error_result(e, execution_time)
 
-    def parse_instruction(self, instruction: str) -> Dict[str, Any]:
-        """
-        Parse data collection parameters using rule-based parsing.
+    def parse_instruction(self, instruction: str) -> dict[str, Any]:
+        """Parse data collection parameters using rule-based parsing.
 
         Args:
             instruction: Raw instruction string
@@ -146,7 +146,7 @@ class DataCollectionRole(ProgrammaticRole):
             "parallel": True,  # Enable parallel collection by default
         }
 
-    def _extract_sources(self, instruction: str) -> List[str]:
+    def _extract_sources(self, instruction: str) -> list[str]:
         """Extract data sources from instruction using pattern matching."""
         instruction_lower = instruction.lower()
         sources = []
@@ -171,7 +171,7 @@ class DataCollectionRole(ProgrammaticRole):
 
         return sources
 
-    def _extract_data_types(self, instruction: str) -> List[str]:
+    def _extract_data_types(self, instruction: str) -> list[str]:
         """Extract data types from instruction using pattern matching."""
         instruction_lower = instruction.lower()
         data_types = []
@@ -210,10 +210,9 @@ class DataCollectionRole(ProgrammaticRole):
             return "json"  # Default format
 
     def _collect_data_parallel(
-        self, params: Dict[str, Any]
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Collect data from multiple sources in parallel for efficiency.
+        self, params: dict[str, Any]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Collect data from multiple sources in parallel for efficiency.
 
         Args:
             params: Collection parameters
@@ -258,10 +257,9 @@ class DataCollectionRole(ProgrammaticRole):
         return collected_data
 
     def _collect_from_single_source(
-        self, source: str, data_types: List[str]
-    ) -> List[Dict[str, Any]]:
-        """
-        Collect data from a single source.
+        self, source: str, data_types: list[str]
+    ) -> list[dict[str, Any]]:
+        """Collect data from a single source.
 
         Args:
             source: Source name

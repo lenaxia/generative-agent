@@ -1,6 +1,4 @@
-"""
-Unit tests for web scraping tools.
-"""
+"""Unit tests for web scraping tools."""
 
 from unittest.mock import Mock, patch
 

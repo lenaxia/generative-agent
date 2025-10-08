@@ -1,5 +1,4 @@
-"""
-Search Pipeline Tool
+"""Search Pipeline Tool
 
 Automated search and scraping pipeline that performs web search,
 automatically scrapes all result URLs, and returns structured data
@@ -20,9 +19,8 @@ logger = logging.getLogger(__name__)
 @tool
 def search_and_scrape_pipeline(
     query: str, num_results: int = 5, domain: Optional[str] = None
-) -> Dict:
-    """
-    Automated search and scraping pipeline.
+) -> dict:
+    """Automated search and scraping pipeline.
 
     Performs web search, then automatically scrapes all result URLs
     and returns structured data without LLM processing.
@@ -138,9 +136,8 @@ def search_and_scrape_pipeline(
 
 
 @tool
-def wikipedia_search_pipeline(topic: str) -> Dict:
-    """
-    Specialized Wikipedia search and scraping pipeline.
+def wikipedia_search_pipeline(topic: str) -> dict:
+    """Specialized Wikipedia search and scraping pipeline.
 
     Searches Wikipedia for a topic and automatically scrapes
     the main Wikipedia article content.
@@ -160,10 +157,9 @@ def wikipedia_search_pipeline(topic: str) -> Dict:
 
 @tool
 def multi_source_search_pipeline(
-    query: str, sources: List[str], results_per_source: int = 2
-) -> Dict:
-    """
-    Multi-source search and scraping pipeline.
+    query: str, sources: list[str], results_per_source: int = 2
+) -> dict:
+    """Multi-source search and scraping pipeline.
 
     Searches multiple domains and automatically scrapes content
     from each source.

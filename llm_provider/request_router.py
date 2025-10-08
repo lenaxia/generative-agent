@@ -1,5 +1,4 @@
-"""
-Request Router Module
+"""Request Router Module
 
 Implements fast-path routing for the StrandsAgent Universal Agent System.
 Routes incoming requests to either fast-reply roles or complex workflow planning
@@ -30,8 +29,7 @@ class RoutingResult:
 
 
 class RequestRouter:
-    """
-    Routes incoming requests to fast-reply roles or complex workflow planning.
+    """Routes incoming requests to fast-reply roles or complex workflow planning.
 
     Uses existing WEAK model via LLMFactory for fast, cost-effective routing decisions.
     Integrates with RoleRegistry to identify available fast-reply roles.
@@ -40,8 +38,7 @@ class RequestRouter:
     def __init__(
         self, llm_factory: LLMFactory, role_registry: RoleRegistry, universal_agent
     ):
-        """
-        Initialize RequestRouter with LLM factory and role registry.
+        """Initialize RequestRouter with LLM factory and role registry.
 
         Args:
             llm_factory: LLMFactory for creating routing models
@@ -56,16 +53,15 @@ class RequestRouter:
         self.universal_agent = universal_agent
 
         # Performance optimization: Cache routing decisions for similar queries
-        self._routing_cache: Dict[str, Dict[str, Any]] = {}
+        self._routing_cache: dict[str, dict[str, Any]] = {}
         self._cache_max_size = 100  # Limit cache size to prevent memory issues
 
         logger.info(
             "RequestRouter initialized with fast-path routing capabilities and caching"
         )
 
-    def route_request(self, instruction: str) -> Dict[str, Any]:
-        """
-        Enhanced routing with parameter extraction in single LLM call.
+    def route_request(self, instruction: str) -> dict[str, Any]:
+        """Enhanced routing with parameter extraction in single LLM call.
 
         Returns:
             Dict containing route, confidence, and extracted parameters
@@ -132,8 +128,7 @@ class RequestRouter:
             }
 
     def _create_cache_key(self, instruction: str) -> str:
-        """
-        Create a cache key for routing decisions.
+        """Create a cache key for routing decisions.
 
         Args:
             instruction: User instruction
@@ -153,9 +148,8 @@ class RequestRouter:
         # Create hash for consistent key
         return hashlib.md5(normalized.encode()).hexdigest()[:16]
 
-    def _cache_routing_result(self, cache_key: str, result: Dict[str, Any]):
-        """
-        Cache a routing result.
+    def _cache_routing_result(self, cache_key: str, result: dict[str, Any]):
+        """Cache a routing result.
 
         Args:
             cache_key: Cache key
@@ -174,10 +168,9 @@ class RequestRouter:
         logger.debug(f"Cached routing result for key: {cache_key}")
 
     def _build_routing_prompt(
-        self, instruction: str, roles: List[RoleDefinition]
+        self, instruction: str, roles: list[RoleDefinition]
     ) -> str:
-        """
-        Build routing prompt with available fast-reply roles.
+        """Build routing prompt with available fast-reply roles.
 
         Args:
             instruction: User instruction to route
@@ -204,9 +197,8 @@ OPTIONS:
 Respond with JSON only:
 {{"route": "<role_name_or_PLANNING>", "confidence": <0.0-1.0>}}"""
 
-    def _parse_routing_response(self, response: str) -> Dict[str, Any]:
-        """
-        Parse LLM routing response with fallback handling.
+    def _parse_routing_response(self, response: str) -> dict[str, Any]:
+        """Parse LLM routing response with fallback handling.
 
         Args:
             response: Raw LLM response string
@@ -259,9 +251,8 @@ Respond with JSON only:
                 "error": f"Failed to parse routing response: {e}",
             }
 
-    def get_routing_statistics(self) -> Dict[str, Any]:
-        """
-        Get routing statistics and performance metrics.
+    def get_routing_statistics(self) -> dict[str, Any]:
+        """Get routing statistics and performance metrics.
 
         Returns:
             Dictionary with routing statistics
@@ -275,9 +266,8 @@ Respond with JSON only:
             "llm_type_used": LLMType.WEAK.value,
         }
 
-    def validate_routing_setup(self) -> Dict[str, Any]:
-        """
-        Validate that routing is properly configured.
+    def validate_routing_setup(self) -> dict[str, Any]:
+        """Validate that routing is properly configured.
 
         Returns:
             Validation result with status and any issues
@@ -313,10 +303,9 @@ Respond with JSON only:
         }
 
     def _build_enhanced_routing_prompt(
-        self, instruction: str, fast_reply_roles: List
+        self, instruction: str, fast_reply_roles: list
     ) -> str:
         """Build routing prompt that includes parameter extraction."""
-
         # Build role schemas for parameter extraction
         role_schemas = {}
         for role_def in fast_reply_roles:
@@ -355,7 +344,7 @@ Rules:
 - If no role matches well, use "PLANNING" with confidence < 0.7
 - Ensure all required parameters are extracted if possible"""
 
-    def _parse_routing_and_parameters(self, llm_result: str) -> Dict[str, Any]:
+    def _parse_routing_and_parameters(self, llm_result: str) -> dict[str, Any]:
         """Parse LLM result to extract route and parameters."""
         try:
             # Clean the result and parse JSON
@@ -395,8 +384,7 @@ class FastPathRoutingConfig:
         log_routing_decisions: bool = True,
         track_performance_metrics: bool = True,
     ):
-        """
-        Initialize fast-path routing configuration.
+        """Initialize fast-path routing configuration.
 
         Args:
             enabled: Whether fast-path routing is enabled
@@ -414,9 +402,8 @@ class FastPathRoutingConfig:
         self.track_performance_metrics = track_performance_metrics
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "FastPathRoutingConfig":
-        """
-        Create configuration from dictionary.
+    def from_dict(cls, config_dict: dict[str, Any]) -> "FastPathRoutingConfig":
+        """Create configuration from dictionary.
 
         Args:
             config_dict: Configuration dictionary
@@ -435,9 +422,8 @@ class FastPathRoutingConfig:
             ),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert configuration to dictionary.
+    def to_dict(self) -> dict[str, Any]:
+        """Convert configuration to dictionary.
 
         Returns:
             Configuration as dictionary

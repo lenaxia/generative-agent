@@ -5,19 +5,16 @@ managing prompt templates used across different roles and agents in the system.
 """
 
 import os
-from typing import Dict, List, Optional
+from typing import Optional
 
 import yaml
 
 
 class PromptLibrary:
-    """
-    Manages prompts for different agent roles in the Universal Agent system.
-    """
+    """Manages prompts for different agent roles in the Universal Agent system."""
 
     def __init__(self, prompt_dir: Optional[str] = None):
-        """
-        Initialize the prompt library.
+        """Initialize the prompt library.
 
         Args:
             prompt_dir: Directory containing prompt files (optional)
@@ -154,8 +151,7 @@ Always:
             print(f"Warning: Could not load prompts from {prompt_dir}: {e}")
 
     def get_prompt(self, role: str) -> str:
-        """
-        Get the prompt for a specific role.
+        """Get the prompt for a specific role.
 
         Args:
             role: The agent role (e.g., 'planning', 'search', 'summarizer')
@@ -166,8 +162,7 @@ Always:
         return self.prompts.get(role, self.prompts.get("default", ""))
 
     def add_prompt(self, role: str, prompt: str):
-        """
-        Add or update a prompt for a role.
+        """Add or update a prompt for a role.
 
         Args:
             role: The agent role
@@ -176,8 +171,7 @@ Always:
         self.prompts[role] = prompt
 
     def remove_prompt(self, role: str):
-        """
-        Remove a prompt for a role.
+        """Remove a prompt for a role.
 
         Args:
             role: The agent role to remove
@@ -186,8 +180,7 @@ Always:
             del self.prompts[role]
 
     def list_roles(self) -> list[str]:
-        """
-        Get a list of all available roles.
+        """Get a list of all available roles.
 
         Returns:
             List[str]: List of role names
@@ -195,8 +188,7 @@ Always:
         return list(self.prompts.keys())
 
     def has_role(self, role: str) -> bool:
-        """
-        Check if a role exists in the library.
+        """Check if a role exists in the library.
 
         Args:
             role: The role to check
@@ -207,8 +199,7 @@ Always:
         return role in self.prompts
 
     def update_prompts(self, prompts: dict[str, str]):
-        """
-        Update multiple prompts at once.
+        """Update multiple prompts at once.
 
         Args:
             prompts: Dictionary of role -> prompt mappings
@@ -216,8 +207,7 @@ Always:
         self.prompts.update(prompts)
 
     def save_to_file(self, filepath: str):
-        """
-        Save all prompts to a YAML file.
+        """Save all prompts to a YAML file.
 
         Args:
             filepath: Path to save the prompts
@@ -226,8 +216,7 @@ Always:
             yaml.dump(self.prompts, f, default_flow_style=False, allow_unicode=True)
 
     def load_from_file(self, filepath: str):
-        """
-        Load prompts from a YAML file.
+        """Load prompts from a YAML file.
 
         Args:
             filepath: Path to load prompts from

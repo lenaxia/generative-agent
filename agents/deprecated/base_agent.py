@@ -19,7 +19,7 @@ class BaseAgent:
         self.llm_factory = llm_factory
         self.config = config or {}
         self.state = None
-        self.version = None 
+        self.version = None
         self.message_bus = message_bus
         self.agent_id = agent_id
         self.agent_type = None
@@ -30,39 +30,33 @@ class BaseAgent:
 
     @property
     def tools(self) -> Dict[str, BaseTool]:
-        """
-        Returns a dictionary of tools that the agent can use.
+        """Returns a dictionary of tools that the agent can use.
         """
         raise NotImplementedError
 
     def _run(self, input: AgentInput) -> Any:
-        """
-        Executes the agent's task synchronously.
+        """Executes the agent's task synchronously.
         """
         raise NotImplementedError
 
     def _arun(self, input: AgentInput) -> Any:
-        """
-        Executes the agent's task asynchronously.
+        """Executes the agent's task asynchronously.
         """
         raise NotImplementedError
 
     def _format_input(self, task_data: Dict) -> AgentInput:
-        """
-        Formats the input for the LLM provider and the respective tool(s).
+        """Formats the input for the LLM provider and the respective tool(s).
         """
         input: AgentInput = AgentInput(**task_data)
         return input
 
     def _process_output(self, task_data: Dict, output: Any) -> Any:
-        """
-        Processes the output from the LLM provider and the respective tool(s).
+        """Processes the output from the LLM provider and the respective tool(s).
         """
         return output
 
     def run(self, task_data: Dict) -> Any:
-        """
-        Executes the agent's task synchronously.
+        """Executes the agent's task synchronously.
         """
         self.setup()
         input_data: AgentInput = self._format_input(task_data)
@@ -71,15 +65,13 @@ class BaseAgent:
         return self._process_output(task_data, output_data)
 
     def _select_llm_provider(self) -> Runnable:
-        """
-        Selects the LLM provider based on the specified type and additional arguments.
+        """Selects the LLM provider based on the specified type and additional arguments.
         Subclasses can override this method to customize LLM provider selection.
         """
         return self.llm_factory.create_chat_model(LLMType.DEFAULT)
 
     async def arun(self, input: AgentInput) -> Any:
-        """
-        Executes the agent's task asynchronously.
+        """Executes the agent's task asynchronously.
         """
         self.setup()
         llm: Runnable = self.llm_factory.create_chat_model(input.llm_type)
@@ -91,7 +83,7 @@ class BaseAgent:
     def handle_task_assignment(self, task_data: Dict):
         if task_data["agent_id"] != self.agent_id:
             self.logger.debug(f"Request seen by {self.agent_id} but it is not directed at me. Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
-            return 
+            return
 
         self.logger.info(f"New Request Received by {self.agent_id}, Request ID: {task_data['request_id']}, Task ID: {task_data['task_id']}")
 
@@ -118,8 +110,7 @@ class BaseAgent:
 
     @abstractmethod
     def initialize(self):
-        """
-        Performs initialization operations 
+        """Performs initialization operations
         """
 
     @abstractmethod
@@ -130,51 +121,43 @@ class BaseAgent:
 
     @abstractmethod
     def teardown(self):
-        """
-        Performs teardown operations after task execution.
+        """Performs teardown operations after task execution.
         """
 
     def persist_state(self):
-        """
-        Persists the agent's state for future use or recovery.
+        """Persists the agent's state for future use or recovery.
         """
         # Implement state persistence logic here
 
     def load_state(self):
-        """
-        Loads the agent's state from persistence storage.
+        """Loads the agent's state from persistence storage.
         """
         # Implement state loading logic here
 
     def upgrade(self, new_version):
-        """
-        Upgrades the agent to a new version.
+        """Upgrades the agent to a new version.
         """
         # Implement agent upgrade logic here
 
     def publish_message(self, message_type, message):
-        """
-        Publishes a message to the MessageBus for other agents to consume.
+        """Publishes a message to the MessageBus for other agents to consume.
         """
         self.message_bus.publish(self, message_type, message)
-        
+
     def publish_packet(self, packet: BusPacket):
-        """
-        Publishes a message to the MessageBus for other agents to consume.
+        """Publishes a message to the MessageBus for other agents to consume.
         """
         self.message_bus.publish(self, packet)
 
     def subscribe_to_messages(self, message_type, callback):
-        """
-        Subscribes to messages of a specific type from the MessageBus.
+        """Subscribes to messages of a specific type from the MessageBus.
         """
         self.message_bus.subscribe(self, message_type, callback)
 
     def create_tool_from_agent(self) -> Callable:
-        """
-        Converts the current agent into a tool, relying on a pydantic to validate input.
+        """Converts the current agent into a tool, relying on a pydantic to validate input.
         This is meant to allow this agent to be called as a tool as part of a high level
-        supervisor agent/workflow. 
+        supervisor agent/workflow.
         """
         def tool_func(input_data: Dict[str, Any]) -> Any:
             input_model_instance = AgentInput(**input_data)

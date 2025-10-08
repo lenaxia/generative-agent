@@ -41,7 +41,7 @@ class PlanningAgent(BaseAgent):
 
     def set_agent_manager(self, agent_manager):
         self.agent_manager = agent_manager
-        
+
     def _select_llm_provider(self):
         llm = self.llm_factory.create_chat_model(self.config.get("llm_class", LLMType.DEFAULT))
         return llm
@@ -63,14 +63,14 @@ class PlanningAgent(BaseAgent):
                      "Task Graph:\n",
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
-        
+
         # TODO: Instead of just getting the agent names, also get the agent descriptions, so the LLM has more context on what each agent does
         #   and update the formatter above to properly format the agent name and description
         agents = [agent for agent in self.agent_manager.get_agents() if agent.agent_id != self.agent_id]
-        
+
         agents_prompt =  "\n".join([f"- {agent.agent_id} ({agent.agent_description})" for agent in agents])
         self.logger.debug(f"Agents for PlanningAgent: {agents_prompt}")
-        
+
         llm_provider = self._select_llm_provider()
 
         chain = prompt_template | llm_provider | parser
@@ -82,8 +82,7 @@ class PlanningAgent(BaseAgent):
 
 
     def _format_input(self, task_data: Dict) -> AgentInput:
-        """
-        Formats the input for the LLM provider and the respective tool(s).
+        """Formats the input for the LLM provider and the respective tool(s).
         """
         input: AgentInput = PlanningAgentInput(**task_data)
         return input

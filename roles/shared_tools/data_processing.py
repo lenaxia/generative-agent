@@ -1,5 +1,4 @@
-"""
-Data Processing Shared Tools
+"""Data Processing Shared Tools
 
 Common data analysis and formatting functionality that can be used across multiple roles.
 """
@@ -8,7 +7,7 @@ import json
 import logging
 import statistics
 from datetime import datetime
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 from strands import tool
 
@@ -17,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def analyze_data(data: Union[list, dict], analysis_type: str = "summary") -> dict:
-    """
-    Perform basic data analysis on structured data.
+    """Perform basic data analysis on structured data.
 
     Args:
         data: Data to analyze (list or dict)
@@ -140,8 +138,7 @@ def _analyze_structure(data: Union[list, dict]) -> dict:
 
 @tool
 def format_output(data: Any, format_type: str = "json", pretty: bool = True) -> dict:
-    """
-    Format data for output in various formats.
+    """Format data for output in various formats.
 
     Args:
         data: Data to format
@@ -218,8 +215,7 @@ def _format_as_list(data: Any) -> str:
 
 @tool
 def extract_key_information(text: str, info_type: str = "entities") -> dict:
-    """
-    Extract key information from text.
+    """Extract key information from text.
 
     Args:
         text: Text to analyze
@@ -278,8 +274,7 @@ def extract_key_information(text: str, info_type: str = "entities") -> dict:
 def perform_comparative_analysis(
     data1: Any, data2: Any, comparison_type: str = "basic"
 ) -> dict:
-    """
-    Perform comparative analysis between two datasets or pieces of information.
+    """Perform comparative analysis between two datasets or pieces of information.
 
     Args:
         data1: First dataset or information to compare
@@ -410,8 +405,7 @@ def _calculate_complexity(data: Any) -> int:
 
 @tool
 def generate_insights(data: Any, focus_area: str = "patterns") -> dict:
-    """
-    Generate insights and observations from data.
+    """Generate insights and observations from data.
 
     Args:
         data: Data to analyze for insights

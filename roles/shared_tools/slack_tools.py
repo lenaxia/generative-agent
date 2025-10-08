@@ -1,5 +1,4 @@
-"""
-Slack tools for StrandsAgent - converted from SlackAgent.
+"""Slack tools for StrandsAgent - converted from SlackAgent.
 
 These tools replace the LangChain-based SlackAgent with @tool decorated functions
 that can be used by the Universal Agent for Slack integration functionality.
@@ -8,7 +7,7 @@ that can be used by the Universal Agent for Slack integration functionality.
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from strands import tool
 
@@ -19,8 +18,7 @@ logger = logging.getLogger(__name__)
 def send_slack_message(
     channel: str, message: str, thread_ts: Optional[str] = None
 ) -> dict[str, Any]:
-    """
-    Send a message to a Slack channel using real Slack API.
+    """Send a message to a Slack channel using real Slack API.
 
     This tool sends messages to Slack channels using the Slack WebClient.
     Requires SLACK_BOT_TOKEN environment variable.
@@ -125,8 +123,7 @@ def send_slack_message(
 
 
 def get_slack_channel_info(channel: str) -> dict[str, Any]:
-    """
-    Get information about a Slack channel.
+    """Get information about a Slack channel.
 
     Args:
         channel: Slack channel name or ID
@@ -158,8 +155,7 @@ def get_slack_channel_info(channel: str) -> dict[str, Any]:
 def list_slack_channels(
     limit: int = 20, types: str = "public_channel"
 ) -> dict[str, Any]:
-    """
-    List available Slack channels.
+    """List available Slack channels.
 
     Args:
         limit: Maximum number of channels to return
@@ -216,8 +212,7 @@ def list_slack_channels(
 
 
 def format_slack_message(content: str, formatting: str = "plain") -> dict[str, Any]:
-    """
-    Format message content for Slack.
+    """Format message content for Slack.
 
     Args:
         content: Message content to format
@@ -263,8 +258,7 @@ def format_slack_message(content: str, formatting: str = "plain") -> dict[str, A
 
 
 def validate_slack_channel(channel: str) -> dict[str, Any]:
-    """
-    Validate Slack channel name format.
+    """Validate Slack channel name format.
 
     Args:
         channel: Channel name to validate
@@ -318,8 +312,7 @@ def validate_slack_channel(channel: str) -> dict[str, Any]:
 
 
 def get_slack_user_info(user_id: str) -> dict[str, Any]:
-    """
-    Get information about a Slack user.
+    """Get information about a Slack user.
 
     Args:
         user_id: Slack user ID

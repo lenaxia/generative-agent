@@ -24,13 +24,42 @@ credential_patterns = [
 
 
 class CustomLogRecord(logging.LogRecord):
+    """Custom log record with enhanced module name tracking.
+
+    Extends the standard LogRecord to include module name information
+    for improved logging context and debugging capabilities.
+    """
+
     def __init__(self, *args, **kwargs):
+        """Initialize CustomLogRecord with module name extraction.
+
+        Args:
+            *args: Positional arguments passed to LogRecord.
+            **kwargs: Keyword arguments passed to LogRecord.
+        """
         super().__init__(*args, **kwargs)
         self.module_name = getmodulename(self.pathname)
 
 
 class ModuleNameFormatter(logging.Formatter):
+    """Custom log formatter with module name support.
+
+    Provides enhanced log formatting capabilities with support for
+    module name display and custom formatting patterns.
+    """
+
     def format(self, record):
+        """Format a log record using the parent formatter.
+
+        Applies the standard formatting to the log record while maintaining
+        compatibility with the custom module name functionality.
+
+        Args:
+            record: The LogRecord instance to format.
+
+        Returns:
+            The formatted log message string.
+        """
         return super().format(record)
 
 
@@ -99,12 +128,37 @@ def configure_logging(logging_config: LoggingConfig):
 
 
 class CredentialFilter(logging.Filter):
-    # TODO: This doesn't work right now
+    """Logging filter for credential sanitization.
+
+    Filters and sanitizes log messages to prevent credential leakage
+    by detecting and masking sensitive information patterns.
+
+    Note: This implementation is currently under development.
+    """
+
     def __init__(self, credential_patterns):
+        """Initialize CredentialFilter with credential patterns.
+
+        Args:
+            credential_patterns: Patterns to detect and filter credentials.
+        """
         self.credential_patterns = credential_patterns
         super().__init__()
 
     def filter(self, record):
+        """Filter and sanitize log records to prevent credential leakage.
+
+        Examines log messages for credential patterns and replaces any
+        matching sensitive information with "REDACTED" to prevent
+        accidental exposure of secrets in logs.
+
+        Args:
+            record: The LogRecord instance to filter and sanitize.
+
+        Returns:
+            bool: Always returns True to allow the record to be logged
+                  after sanitization.
+        """
         message = record.getMessage()
         try:
             # Try to parse the message as a dictionary

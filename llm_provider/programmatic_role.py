@@ -1,5 +1,4 @@
-"""
-Programmatic Role Base Class
+"""Programmatic Role Base Class
 
 Abstract base class for programmatic roles that execute directly without LLM processing.
 Designed for pure automation tasks, data collection, API integrations, and structured processing.
@@ -16,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProgrammaticRole(ABC):
-    """
-    Base class for programmatic roles that execute directly without LLM processing.
+    """Base class for programmatic roles that execute directly without LLM processing.
 
     Programmatic roles are designed for:
     - Pure automation tasks
@@ -34,8 +32,7 @@ class ProgrammaticRole(ABC):
     """
 
     def __init__(self, name: str, description: str):
-        """
-        Initialize programmatic role with basic metadata.
+        """Initialize programmatic role with basic metadata.
 
         Args:
             name: Role name identifier
@@ -50,8 +47,7 @@ class ProgrammaticRole(ABC):
 
     @abstractmethod
     def execute(self, instruction: str, context: Optional[TaskContext] = None) -> Any:
-        """
-        Execute the programmatic task directly.
+        """Execute the programmatic task directly.
 
         This method should implement the core logic of the role without
         relying on LLM reasoning. It may use one LLM call for instruction
@@ -69,9 +65,8 @@ class ProgrammaticRole(ABC):
         """
 
     @abstractmethod
-    def parse_instruction(self, instruction: str) -> Dict[str, Any]:
-        """
-        Parse instruction to extract parameters for execution.
+    def parse_instruction(self, instruction: str) -> dict[str, Any]:
+        """Parse instruction to extract parameters for execution.
 
         This method should convert natural language instructions into
         structured parameters that can be used for programmatic execution.
@@ -87,9 +82,8 @@ class ProgrammaticRole(ABC):
             Exception: Parsing errors should be propagated
         """
 
-    def get_metrics(self) -> Dict[str, Any]:
-        """
-        Get execution metrics for this role.
+    def get_metrics(self) -> dict[str, Any]:
+        """Get execution metrics for this role.
 
         Returns:
             Dict containing execution statistics and performance metrics
@@ -103,8 +97,7 @@ class ProgrammaticRole(ABC):
         }
 
     def _track_execution_time(self, start_time: float):
-        """
-        Track execution time for metrics.
+        """Track execution time for metrics.
 
         Args:
             start_time: Start time from time.time()
@@ -117,9 +110,8 @@ class ProgrammaticRole(ABC):
 
     def _create_error_result(
         self, error: Exception, execution_time: float = 0.0
-    ) -> Dict[str, Any]:
-        """
-        Create standardized error result for programmatic execution.
+    ) -> dict[str, Any]:
+        """Create standardized error result for programmatic execution.
 
         Args:
             error: The exception that occurred
@@ -144,10 +136,9 @@ class ProgrammaticRole(ABC):
         data: Any,
         execution_time: float,
         llm_calls: int = 0,
-        metadata: Optional[Dict] = None,
-    ) -> Dict[str, Any]:
-        """
-        Create standardized success result for programmatic execution.
+        metadata: Optional[dict] = None,
+    ) -> dict[str, Any]:
+        """Create standardized success result for programmatic execution.
 
         Args:
             data: The actual result data

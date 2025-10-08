@@ -1,5 +1,4 @@
-"""
-Timer tools for StrandsAgent - Placeholder implementations.
+"""Timer tools for StrandsAgent - Placeholder implementations.
 
 These tools provide timer and alarm functionality stubs that throw NotImplementedError.
 They need to be implemented with real timer/notification systems.
@@ -14,9 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def timer_set(duration: str, label: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Set a countdown timer.
+def timer_set(duration: str, label: Optional[str] = None) -> dict[str, Any]:
+    """Set a countdown timer.
 
     Args:
         duration: Timer duration (e.g., "5m", "30s", "1h30m", "120")
@@ -36,9 +34,8 @@ def timer_set(duration: str, label: Optional[str] = None) -> Dict[str, Any]:
 
 
 @tool
-def timer_cancel(timer_id: str) -> Dict[str, Any]:
-    """
-    Cancel an active timer.
+def timer_cancel(timer_id: str) -> dict[str, Any]:
+    """Cancel an active timer.
 
     Args:
         timer_id: Timer identifier to cancel
@@ -57,9 +54,8 @@ def timer_cancel(timer_id: str) -> Dict[str, Any]:
 
 
 @tool
-def timer_list(active_only: bool = True) -> Dict[str, Any]:
-    """
-    List timers (active or all).
+def timer_list(active_only: bool = True) -> dict[str, Any]:
+    """List timers (active or all).
 
     Args:
         active_only: If True, only show active timers; if False, show all timers
@@ -80,9 +76,8 @@ def timer_list(active_only: bool = True) -> Dict[str, Any]:
 @tool
 def alarm_set(
     time: str, label: Optional[str] = None, recurring: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Set an alarm for a specific time.
+) -> dict[str, Any]:
+    """Set an alarm for a specific time.
 
     Args:
         time: Alarm time in format "HH:MM" or "YYYY-MM-DD HH:MM"
@@ -103,9 +98,8 @@ def alarm_set(
 
 
 @tool
-def alarm_cancel(alarm_id: str) -> Dict[str, Any]:
-    """
-    Cancel an alarm.
+def alarm_cancel(alarm_id: str) -> dict[str, Any]:
+    """Cancel an alarm.
 
     Args:
         alarm_id: Alarm identifier to cancel

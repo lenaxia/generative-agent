@@ -1,5 +1,4 @@
-"""
-Shared Tools Module
+"""Shared Tools Module
 
 Common tools that can be used across multiple roles.
 """

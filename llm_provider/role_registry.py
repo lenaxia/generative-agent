@@ -1,5 +1,4 @@
-"""
-Role Registry Module
+"""Role Registry Module
 
 Manages dynamic loading and registration of roles from file-based definitions.
 """
@@ -32,15 +31,15 @@ class RoleDefinition:
 
 
 class RoleRegistry:
-    """
-    Registry for managing dynamically loaded roles from file definitions.
+    """Role registry for managing and accessing role definitions.
+
+    Central registry for discovering, loading, and managing roles used in the system.
     """
 
     _global_registry = None
 
     def __init__(self, roles_directory: str = "roles"):
-        """
-        Initialize the role registry with support for both LLM and programmatic roles.
+        """Initialize the role registry.
 
         Args:
             roles_directory: Path to the roles directory
@@ -109,8 +108,8 @@ class RoleRegistry:
         )
 
     def initialize_once(self):
-        """
-        Initialize the role registry only if not already initialized.
+        """Initialize the role registry if not already initialized.
+
         This method provides performance optimization by avoiding repeated initialization.
         """
         if self._is_initialized:
@@ -225,8 +224,7 @@ class RoleRegistry:
             return []
 
     def get_role(self, role_name: str) -> Optional[RoleDefinition]:
-        """
-        Get role definition by name.
+        """Get a role definition by name.
 
         Args:
             role_name: Name of the role
@@ -237,8 +235,7 @@ class RoleRegistry:
         return self.roles.get(role_name)
 
     def get_role_summaries(self) -> list[dict[str, str]]:
-        """
-        Get role summaries for planning LLM.
+        """Get summaries for all available roles.
 
         Returns:
             List of role summaries with name, description, and when_to_use
@@ -256,8 +253,7 @@ class RoleRegistry:
         return summaries
 
     def list_roles(self) -> list[dict[str, Any]]:
-        """
-        List all available roles with metadata.
+        """List all available roles with detailed information.
 
         Returns:
             List of role information dicts
@@ -281,8 +277,7 @@ class RoleRegistry:
         return roles_info
 
     def get_shared_tool(self, tool_name: str) -> Optional[Callable]:
-        """
-        Get a shared tool by name.
+        """Get a shared tool by name.
 
         Args:
             tool_name: Name of the shared tool
@@ -297,8 +292,7 @@ class RoleRegistry:
         return self.shared_tools.copy()
 
     def validate_role(self, role_name: str) -> dict[str, Any]:
-        """
-        Validate a role definition.
+        """Validate a role definition.
 
         Args:
             role_name: Name of the role to validate
@@ -348,8 +342,7 @@ class RoleRegistry:
         }
 
     def get_statistics(self) -> dict[str, Any]:
-        """
-        Get registry statistics.
+        """Get statistics about the role registry.
 
         Returns:
             Statistics about the role registry
@@ -379,8 +372,7 @@ class RoleRegistry:
     # Enhanced methods for hybrid execution architecture
 
     def register_programmatic_role(self, role: "ProgrammaticRole"):
-        """
-        Register a programmatic role for direct execution.
+        """Register a programmatic role.
 
         Args:
             role: ProgrammaticRole instance to register
@@ -393,8 +385,7 @@ class RoleRegistry:
         logger.info(f"Registered programmatic role: {role.name}")
 
     def register_llm_role(self, name: str, definition: RoleDefinition):
-        """
-        Register an LLM-based role.
+        """Register an LLM-based role.
 
         Args:
             name: Role name
@@ -405,8 +396,7 @@ class RoleRegistry:
         logger.info(f"Registered LLM role: {name}")
 
     def get_role_type(self, role_name: str) -> str:
-        """
-        Get the execution type for a role.
+        """Get the type of a role.
 
         Args:
             role_name: Name of the role
@@ -417,8 +407,7 @@ class RoleRegistry:
         return self.role_types.get(role_name, "llm")
 
     def get_all_roles(self) -> dict[str, str]:
-        """
-        Get all roles with their types.
+        """Get all available roles and their types.
 
         Returns:
             Dict mapping role names to their execution types
@@ -426,8 +415,7 @@ class RoleRegistry:
         return self.role_types.copy()
 
     def is_programmatic_role(self, role_name: str) -> bool:
-        """
-        Check if a role uses programmatic execution.
+        """Check if a role is programmatic.
 
         Args:
             role_name: Name of the role to check
@@ -438,8 +426,7 @@ class RoleRegistry:
         return role_name in self.programmatic_roles
 
     def get_programmatic_role(self, role_name: str) -> Optional["ProgrammaticRole"]:
-        """
-        Get a programmatic role by name.
+        """Get a programmatic role by name.
 
         Args:
             role_name: Name of the programmatic role
@@ -450,8 +437,7 @@ class RoleRegistry:
         return self.programmatic_roles.get(role_name)
 
     def list_programmatic_roles(self) -> dict[str, "ProgrammaticRole"]:
-        """
-        Get all programmatic roles.
+        """List all available programmatic roles.
 
         Returns:
             Dict of all programmatic roles
@@ -459,8 +445,7 @@ class RoleRegistry:
         return self.programmatic_roles.copy()
 
     def get_role_metrics(self, role_name: str) -> Optional[dict[str, Any]]:
-        """
-        Get execution metrics for a programmatic role.
+        """Get metrics for a programmatic role.
 
         Args:
             role_name: Name of the programmatic role
@@ -472,8 +457,7 @@ class RoleRegistry:
         return role.get_metrics() if role else None
 
     def validate_programmatic_role(self, role_name: str) -> dict[str, Any]:
-        """
-        Validate a programmatic role.
+        """Validate a programmatic role.
 
         Args:
             role_name: Name of the programmatic role to validate
@@ -517,8 +501,7 @@ class RoleRegistry:
         }
 
     def get_enhanced_statistics(self) -> dict[str, Any]:
-        """
-        Get enhanced registry statistics including programmatic roles.
+        """Get enhanced statistics about the role registry including programmatic roles.
 
         Returns:
             Enhanced statistics about the role registry
@@ -557,8 +540,7 @@ class RoleRegistry:
         return role_def.config.get("parameters", {})
 
     def get_role_execution_type(self, role_name: str) -> str:
-        """
-        Get the execution type for a role.
+        """Get the execution type of a role.
 
         Args:
             role_name: Name of the role
@@ -630,10 +612,9 @@ class RoleRegistry:
             return {}
 
     # Fast-reply role methods for fast-path routing
-
     def get_fast_reply_roles(self) -> list[RoleDefinition]:
-        """
-        Return roles marked with fast_reply: true that provide meaningful direct output.
+        """Get roles marked for fast-reply execution.
+
         Uses caching for performance optimization.
 
         Returns:
@@ -658,8 +639,7 @@ class RoleRegistry:
         return fast_reply_roles
 
     def is_fast_reply_role(self, role_name: str) -> bool:
-        """
-        Check if role supports fast replies.
+        """Check if a role supports fast replies.
 
         Args:
             role_name: Name of the role to check
@@ -673,8 +653,7 @@ class RoleRegistry:
         return role.config.get("role", {}).get("fast_reply", False)
 
     def get_fast_reply_role_summaries(self) -> list[dict[str, str]]:
-        """
-        Get summaries of fast-reply roles for routing prompts.
+        """Get summaries for roles that support fast replies.
 
         Returns:
             List of role summaries with name and description

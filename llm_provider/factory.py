@@ -21,14 +21,47 @@ try:
 except ImportError:
     # Mock classes for testing when StrandsAgent is not available
     class BedrockModel:
+        """Mock BedrockModel class for testing when StrandsAgent is not available.
+
+        Provides a placeholder implementation for Bedrock model functionality
+        during testing or when the StrandsAgent library is not installed.
+        """
+
         def __init__(self, **kwargs):
+            """Initialize mock BedrockModel with provided arguments.
+
+            Args:
+                **kwargs: Configuration arguments for the mock model.
+            """
             self.kwargs = kwargs
 
     class Agent:
+        """Mock Agent class for testing when StrandsAgent is not available.
+
+        Provides a placeholder implementation for agent functionality
+        during testing or when the StrandsAgent library is not installed.
+        """
+
         def __init__(self, **kwargs):
+            """Initialize mock Agent with provided arguments.
+
+            Args:
+                **kwargs: Configuration arguments for the mock agent.
+            """
             self.kwargs = kwargs
 
         def __call__(self, instruction):
+            """Execute the mock agent with the given instruction.
+
+            Provides a simple mock response for testing purposes when
+            the StrandsAgent library is not available.
+
+            Args:
+                instruction: The instruction or prompt to process.
+
+            Returns:
+                A mock response string indicating the instruction received.
+            """
             return f"Mock agent response to: {instruction}"
 
     STRANDS_AVAILABLE = False
@@ -41,7 +74,18 @@ try:
 except ImportError:
 
     class OpenAIModel:
+        """Mock OpenAIModel class for testing when OpenAI integration is not available.
+
+        Provides a placeholder implementation for OpenAI model functionality
+        during testing or when the OpenAI integration is not available.
+        """
+
         def __init__(self, **kwargs):
+            """Initialize mock OpenAIModel with provided arguments.
+
+            Args:
+                **kwargs: Configuration arguments for the mock model.
+            """
             self.kwargs = kwargs
 
     OPENAI_AVAILABLE = False
@@ -58,6 +102,12 @@ else:
 
 
 class LLMType(Enum):
+    """Enumeration of available LLM types and capabilities.
+
+    Defines the different types of language models available in the system,
+    categorized by their capabilities and intended use cases.
+    """
+
     DEFAULT = "default"
     STRONG = "strong"
     WEAK = "weak"
@@ -67,11 +117,17 @@ class LLMType(Enum):
 
 
 class LLMFactory:
+    """Factory class for creating and managing LLM instances.
+
+    Provides centralized creation and configuration of different types of
+    language models, including provider-specific implementations and
+    fallback mechanisms.
+    """
+
     def __init__(
         self, configs: dict[LLMType, list[BaseConfig]], framework: str = "strands"
     ):
-        """
-        Initialize LLMFactory with StrandsAgent support and performance caching.
+        """Initialize LLMFactory with StrandsAgent support and performance caching.
 
         Args:
             configs: Configuration mapping for different LLM types
@@ -107,8 +163,7 @@ class LLMFactory:
         ]
 
     def create_strands_model(self, llm_type: LLMType, name: Optional[str] = None):
-        """
-        Create a StrandsAgent model instance with caching for performance.
+        """Create a StrandsAgent model instance with caching for performance.
 
         Args:
             llm_type: The semantic LLM type (DEFAULT, STRONG, WEAK, etc.)
@@ -139,8 +194,7 @@ class LLMFactory:
         return model
 
     def _create_new_model(self, llm_type: LLMType, name: Optional[str] = None):
-        """
-        Internal method to create a new model instance.
+        """Internal method to create a new model instance.
 
         Args:
             llm_type: The semantic LLM type
@@ -151,44 +205,24 @@ class LLMFactory:
         """
         config = self._get_config(llm_type, name)
 
+        provider_type = self._extract_provider_type(config)
+        model_params = self._extract_model_parameters(config)
+
+        return self._create_model_instance(provider_type, model_params)
+
+    def _extract_provider_type(self, config) -> str:
+        """Extract provider type from configuration."""
         if hasattr(config, "provider_type"):
-            provider_type = config.provider_type
+            return config.provider_type
         elif hasattr(config, "provider_name"):
-            provider_type = config.provider_name
+            return config.provider_name
         else:
             raise ValueError("Configuration missing provider type information")
 
-        # Extract model parameters from configuration
-        # Try multiple possible locations for model_id
-        model_id = None
-        if hasattr(config, "model_id") and config.model_id:
-            model_id = config.model_id
-        elif (
-            hasattr(config, "llm_config")
-            and hasattr(config.llm_config, "model")
-            and config.llm_config.model
-        ):
-            model_id = config.llm_config.model
-        elif (
-            hasattr(config, "llm_config")
-            and hasattr(config.llm_config, "model_id")
-            and config.llm_config.model_id
-        ):
-            model_id = config.llm_config.model_id
-
-        if model_id is None:
-            raise ValueError(f"Configuration missing model_id: {config}")
-
-        # Extract temperature from config or llm_config
-        temperature = 0.3  # default
-        if hasattr(config, "temperature") and config.temperature:
-            temperature = config.temperature
-        elif (
-            hasattr(config, "llm_config")
-            and hasattr(config.llm_config, "temperature")
-            and config.llm_config.temperature
-        ):
-            temperature = config.llm_config.temperature
+    def _extract_model_parameters(self, config) -> dict:
+        """Extract model parameters from configuration."""
+        model_id = self._extract_model_id(config)
+        temperature = self._extract_temperature(config)
 
         model_params = {"model_id": model_id, "temperature": temperature}
 
@@ -196,7 +230,42 @@ class LLMFactory:
         if hasattr(config, "additional_params") and config.additional_params:
             model_params.update(config.additional_params)
 
-        # Create appropriate model based on provider type
+        return model_params
+
+    def _extract_model_id(self, config) -> str:
+        """Extract model_id from configuration."""
+        if hasattr(config, "model_id") and config.model_id:
+            return config.model_id
+        elif (
+            hasattr(config, "llm_config")
+            and hasattr(config.llm_config, "model")
+            and config.llm_config.model
+        ):
+            return config.llm_config.model
+        elif (
+            hasattr(config, "llm_config")
+            and hasattr(config.llm_config, "model_id")
+            and config.llm_config.model_id
+        ):
+            return config.llm_config.model_id
+        else:
+            raise ValueError(f"Configuration missing model_id: {config}")
+
+    def _extract_temperature(self, config) -> float:
+        """Extract temperature from configuration."""
+        if hasattr(config, "temperature") and config.temperature:
+            return config.temperature
+        elif (
+            hasattr(config, "llm_config")
+            and hasattr(config.llm_config, "temperature")
+            and config.llm_config.temperature
+        ):
+            return config.llm_config.temperature
+        else:
+            return 0.3  # default
+
+    def _create_model_instance(self, provider_type: str, model_params: dict):
+        """Create model instance based on provider type."""
         if provider_type == "bedrock":
             return BedrockModel(**model_params)
         elif provider_type == "openai":
@@ -216,8 +285,7 @@ class LLMFactory:
         tools: Optional[list] = None,
         role_registry=None,
     ):
-        """
-        Create a Universal Agent using StrandsAgent framework with caching.
+        """Create a Universal Agent using StrandsAgent framework with caching.
 
         Args:
             llm_type: The semantic LLM type for model selection
@@ -266,8 +334,7 @@ class LLMFactory:
         return agent
 
     def _hash_tools(self, tools: list) -> str:
-        """
-        Create a hash of the tools list for caching purposes.
+        """Create a hash of the tools list for caching purposes.
 
         Args:
             tools: List of tools
@@ -295,8 +362,8 @@ class LLMFactory:
         return hashlib.md5(tools_str.encode()).hexdigest()[:8]
 
     def warm_models(self):
-        """
-        Pre-create commonly used models to avoid cold start delays.
+        """Pre-create commonly used models to avoid cold start delays.
+
         This should be called during application startup.
         """
         if self._is_warmed:
@@ -331,8 +398,8 @@ class LLMFactory:
             # Don't fail startup if warming fails
 
     def clear_cache(self):
-        """
-        Clear all cached models and agents.
+        """Clear all cached models and agents.
+
         Useful for testing or memory management.
         """
         self._model_cache.clear()
@@ -341,8 +408,7 @@ class LLMFactory:
         logger.info("Cleared all model and agent caches")
 
     def get_cache_stats(self) -> dict[str, Any]:
-        """
-        Get statistics about cached models and agents.
+        """Get statistics about cached models and agents.
 
         Returns:
             Dict with cache statistics
@@ -356,8 +422,7 @@ class LLMFactory:
         }
 
     def _get_config(self, llm_type: LLMType, name: Optional[str] = None) -> BaseConfig:
-        """
-        Get configuration for the specified LLM type and name.
+        """Get configuration for the specified LLM type and name.
 
         Args:
             llm_type: The LLM type
@@ -401,8 +466,7 @@ class LLMFactory:
         return len(self.configs.get(llm_type, []))
 
     def validate_configuration(self) -> dict[str, Any]:
-        """
-        Validate the factory configuration.
+        """Validate the factory configuration.
 
         Returns:
             Dict containing validation results
@@ -441,8 +505,7 @@ class LLMFactory:
         return validation_result
 
     def get_agent(self, llm_type: LLMType, provider: str = None) -> Any:
-        """
-        Get cached Agent for provider/model combination.
+        """Get cached Agent for provider/model combination.
 
         Args:
             llm_type: Semantic model type (WEAK, DEFAULT, STRONG)
@@ -527,8 +590,8 @@ class LLMFactory:
         return "bedrock"
 
     def clear_agent_pool(self):
-        """
-        Clear all cached agents in the pool.
+        """Clear all cached agents in the pool.
+
         Useful for testing or memory management.
         """
         self._agent_pool.clear()

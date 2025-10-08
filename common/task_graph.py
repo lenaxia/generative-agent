@@ -17,6 +17,12 @@ logger = logging.getLogger("supervisor")
 
 
 class TaskStatus(str, Enum):
+    """Enumeration of possible task execution states.
+
+    Defines the lifecycle states a task can be in during execution
+    within the task graph system.
+    """
+
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
@@ -24,6 +30,11 @@ class TaskStatus(str, Enum):
     RETRIESEXCEEDED = "RETRIESEXCEEDED"
 
     def __repr__(self):
+        """Return string representation of TaskStatus.
+
+        Returns:
+            String representation in format "TaskStatus.{name}".
+        """
         return f"TaskStatus.{self.name}"
 
 
@@ -34,6 +45,12 @@ yaml.SafeDumper.add_multi_representer(
 
 
 class TaskResponse(BaseModel):
+    """Response container for task execution results.
+
+    Encapsulates the outcome of task execution including status,
+    results, and termination reasons.
+    """
+
     task_id: str
     status: TaskStatus
     result: Optional[dict] = None
@@ -41,6 +58,12 @@ class TaskResponse(BaseModel):
 
 
 class TaskDescription(BaseModel):
+    """Comprehensive task definition and configuration.
+
+    Contains all necessary information for task execution including
+    agent assignment, prompts, and execution preferences.
+    """
+
     task_name: str = Field(
         ...,
         description="A friendly name for the task, e.g., 'ConvertSeattleToGPSCoords', 'MathCaclulationStep1'",
@@ -69,6 +92,12 @@ class TaskDescription(BaseModel):
 
 
 class TaskDependency(BaseModel):
+    """Dependency relationship between tasks in the execution graph.
+
+    Defines the data flow and execution order constraints between
+    tasks in the workflow.
+    """
+
     source: str = Field(..., description="The task name that is the source of data")
     target: str = Field(..., description="The task name that is the target of data")
     condition: Optional[dict] = Field(
@@ -77,11 +106,31 @@ class TaskDependency(BaseModel):
 
 
 class TaskPlanOutput(BaseModel):
+    """Container for task planning results.
+
+    Encapsulates the output of task planning including the list of
+    tasks to execute and their dependencies.
+    """
+
     tasks: list[TaskDescription] = None
     dependencies: Optional[list[TaskDependency]] = None
 
     @field_validator("tasks")
     def check_tasks(cls, tasks):
+        """Validate that all tasks have required fields.
+
+        Ensures each task has the necessary agent_id/tool_id, task_name,
+        and prompt fields for proper execution.
+
+        Args:
+            tasks: List of TaskDescription objects to validate.
+
+        Returns:
+            List of validated tasks.
+
+        Raises:
+            ValueError: If any task is missing required fields.
+        """
         for task in tasks:
             if (
                 not task.task_name
@@ -95,6 +144,20 @@ class TaskPlanOutput(BaseModel):
 
     @field_validator("dependencies")
     def check_dependencies(cls, dependencies):
+        """Validate that all dependencies have required source and target fields.
+
+        Ensures each dependency has both source and target task names
+        properly specified for graph construction.
+
+        Args:
+            dependencies: List of TaskDependency objects to validate, or None.
+
+        Returns:
+            List of validated dependencies, or None if input was None/empty.
+
+        Raises:
+            ValueError: If any dependency is missing source or target.
+        """
         if dependencies is None or len(dependencies) == 0:
             return dependencies  # Return as is if dependencies is None or empty
 
@@ -105,6 +168,12 @@ class TaskPlanOutput(BaseModel):
 
 
 class TaskNode(BaseModel):
+    """Individual task node in the execution graph.
+
+    Represents a single executable task with its configuration, state,
+    dependencies, and execution context within the task graph.
+    """
+
     task_id: str = Field(..., description="Unique identifier for the task")
     task_name: str = Field(..., description="A friendly name for the task")
     request_id: Optional[str] = Field(
@@ -170,10 +239,29 @@ class TaskNode(BaseModel):
     )
 
     def update_status(self, status: TaskStatus, result: Optional[str] = None):
+        """Update the task's execution status and result.
+
+        Sets the task's current status and optionally stores the execution result.
+
+        Args:
+            status: The new TaskStatus for this task.
+            result: Optional result string from task execution.
+        """
         self.status = status
         self.result = result
 
     def get_child_nodes(self, task_graph: "TaskGraph"):
+        """Get all child nodes that depend on this task.
+
+        Returns all task nodes that have this task as a dependency
+        (connected via outbound edges).
+
+        Args:
+            task_graph: The TaskGraph containing all nodes.
+
+        Returns:
+            List of TaskNode objects that are children of this task.
+        """
         return [
             task_graph.get_node_by_task_id(edge.target_id)
             for edge in self.outbound_edges
@@ -214,6 +302,12 @@ class TaskNode(BaseModel):
 
 
 class TaskEdge(BaseModel):
+    """Directed edge connecting tasks in the execution graph.
+
+    Represents the flow of data and execution dependencies between
+    task nodes in the workflow.
+    """
+
     source_id: str = Field(..., description="The source task node")
     target_id: str = Field(..., description="The target task node")
     condition: Optional[dict] = Field(
@@ -222,6 +316,13 @@ class TaskEdge(BaseModel):
 
 
 class TaskGraph:
+    """Directed acyclic graph for task workflow management.
+
+    Manages task execution order, dependencies, state tracking, and
+    provides checkpointing capabilities for complex workflows in the
+    StrandsAgent system.
+    """
+
     nodes: dict[str, TaskNode]
     edges: list[TaskEdge]
     task_name_map: dict[str, str]  # Map task_name to task_id
@@ -254,6 +355,14 @@ class TaskGraph:
         request_id: Optional[str] = "",
         max_history_size: int = 1000,
     ):
+        """Initialize TaskGraph with tasks and dependencies.
+
+        Args:
+            tasks: List of task descriptions to execute.
+            dependencies: Optional list of task dependencies.
+            request_id: Optional identifier for the parent request.
+            max_history_size: Maximum size of execution history to maintain.
+        """
         self.nodes = {}
         self.edges = []
         self.task_name_map = {}
@@ -320,20 +429,50 @@ class TaskGraph:
                 self.edges.append(edge)
 
     def get_node_by_task_id(self, task_id: str) -> Optional[TaskNode]:
+        """Retrieve a task node by its unique identifier.
+
+        Args:
+            task_id: The unique identifier of the task node.
+
+        Returns:
+            The TaskNode with the specified ID, or None if not found.
+        """
         return self.nodes.get(task_id)
 
     def get_child_nodes(
         self, nodes: dict[str, TaskNode], node: TaskNode
     ) -> list[TaskNode]:
+        """Get child nodes for a specific task node from a nodes dictionary.
+
+        Retrieves all child task nodes that depend on the specified node
+        using the provided nodes dictionary.
+
+        Args:
+            nodes: Dictionary mapping task IDs to TaskNode objects.
+            node: The parent TaskNode to find children for.
+
+        Returns:
+            List of child TaskNode objects.
+        """
         child_nodes = []
         for edge in node.outbound_edges:
             child_nodes.append(nodes[edge.target_id])
         return child_nodes
 
     def is_complete(self) -> bool:
+        """Check if all tasks in the graph have completed successfully.
+
+        Returns:
+            True if all task nodes have COMPLETED status, False otherwise.
+        """
         return all(node.status == TaskStatus.COMPLETED for node in self.nodes.values())
 
     def get_failed_tasks(self) -> list[TaskNode]:
+        """Get all tasks that have failed or exceeded retry limits.
+
+        Returns:
+            List of TaskNode objects with FAILED or RETRIESEXCEEDED status.
+        """
         return [
             node
             for node in self.nodes.values()
@@ -341,6 +480,15 @@ class TaskGraph:
         ]
 
     def to_dict(self) -> dict:
+        """Convert the task graph to a dictionary representation.
+
+        Creates a serializable dictionary containing nodes and edges
+        information for persistence or API responses.
+
+        Returns:
+            Dictionary with 'nodes' and 'edges' keys containing
+            task and dependency information.
+        """
         nodes_data = [
             {
                 "task_id": node.task_id,
@@ -355,8 +503,8 @@ class TaskGraph:
         return {"nodes": nodes_data, "edges": edges_data}
 
     def get_entrypoint_nodes(self) -> list[TaskNode]:
-        """
-        Returns a list of all top-level leaf nodes in the task graph.
+        """Returns a list of all top-level leaf nodes in the task graph.
+
         A top-level leaf node is a node that has no inbound edges.
         """
         # Initialize an empty list to store the top-level leaf nodes
@@ -373,8 +521,8 @@ class TaskGraph:
         return top_level_leaf_nodes
 
     def get_terminal_nodes(self) -> list[TaskNode]:
-        """
-        Returns a list of all terminal nodes in the task graph.
+        """Returns a list of all terminal nodes in the task graph.
+
         A terminal node is a node that has no outbound edges.
         """
         terminal_nodes = []
@@ -386,6 +534,14 @@ class TaskGraph:
         return terminal_nodes
 
     def get_ready_tasks(self) -> list[TaskNode]:
+        """Get all tasks that are ready to execute.
+
+        Returns tasks that are in PENDING status and have all their
+        dependencies (inbound edges) completed successfully.
+
+        Returns:
+            List of TaskNode objects ready for execution.
+        """
         ready_nodes = []
         for node in self.nodes.values():
             if node.status == TaskStatus.PENDING and all(
@@ -396,8 +552,8 @@ class TaskGraph:
         return ready_nodes
 
     def get_task_history(self, task_id: str) -> list[str]:
-        """
-        Get the history of a specific task node, either a full history of all previous tasks or just the results of the parent tasks.
+        """Get the history of a specific task node, either a full history of all previous tasks or just the results of the parent tasks.
+
         Determines whether or not to provide full history by checking the `include_full_history` attribute of the task node.
 
         :param task_id: The task ID of the node for which to retrieve the history.
@@ -432,8 +588,7 @@ class TaskGraph:
         return history
 
     def create_checkpoint(self) -> dict:
-        """
-        Create a checkpoint of the current task graph state.
+        """Create a checkpoint of the current task graph state.
 
         Returns:
             Dict: Checkpoint containing task graph state, conversation history,
@@ -482,8 +637,7 @@ class TaskGraph:
         return checkpoint
 
     def resume_from_checkpoint(self, checkpoint: dict):
-        """
-        Resume task graph execution from a checkpoint.
+        """Resume task graph execution from a checkpoint.
 
         Args:
             checkpoint (Dict): Checkpoint data containing task graph state
@@ -554,8 +708,10 @@ class TaskGraph:
             raise ValueError(f"Invalid checkpoint data: {str(e)}")
 
     def add_conversation_entry(self, role: str, content: str):
-        """
-        Add an entry to the conversation history.
+        """Records a new entry in the conversation history log.
+
+        Adds a structured entry to the conversation history with role attribution,
+        message content, and automatic timestamp.
 
         Args:
             role (str): Role of the speaker (e.g., 'user', 'assistant')
@@ -566,8 +722,10 @@ class TaskGraph:
         )
 
     def add_to_progressive_summary(self, summary: str):
-        """
-        Add to the progressive summary.
+        """Append a new entry to the task's progressive summary collection.
+
+        Takes the provided summary text and adds it to the progressive summary list
+        along with an automatically generated timestamp.
 
         Args:
             summary (str): Summary text to add
@@ -575,8 +733,10 @@ class TaskGraph:
         self.progressive_summary.append({"summary": summary, "timestamp": time.time()})
 
     def set_metadata(self, key: str, value):
-        """
-        Set metadata for the task graph.
+        """Store a key-value pair in the task graph metadata dictionary.
+
+        Updates or creates a metadata entry with the specified key and value,
+        allowing for arbitrary data storage with the task graph.
 
         Args:
             key (str): Metadata key
@@ -585,8 +745,10 @@ class TaskGraph:
         self.metadata[key] = value
 
     def get_metadata(self, key: str, default=None):
-        """
-        Get metadata value.
+        """Retrieve a value from the task graph metadata dictionary.
+
+        Looks up a value by key in the metadata dictionary, returning the provided
+        default value if the key is not found.
 
         Args:
             key (str): Metadata key
@@ -598,9 +760,11 @@ class TaskGraph:
         return self.metadata.get(key, default)
 
     def get_task_context(self, task_id: str) -> dict:
-        """
-        Get comprehensive context for a task including parent results,
-        conversation history, and progressive summary.
+        """Retrieve the complete execution context for a specified task.
+
+        Assembles a comprehensive context object containing parent task results,
+        conversation history, progressive summaries, and metadata for a given task.
+        This context is used during task execution to provide relevant background.
 
         Args:
             task_id (str): Task ID to get context for
@@ -639,8 +803,7 @@ class TaskGraph:
         return context
 
     def prepare_task_execution(self, task_id: str) -> dict:
-        """
-        Prepare configuration for task execution with Universal Agent.
+        """Prepare configuration for task execution with Universal Agent.
 
         Args:
             task_id (str): Task ID to prepare execution for
@@ -670,9 +833,7 @@ class TaskGraph:
     def mark_task_completed(
         self, task_id: str, result: Optional[str] = None
     ) -> list[TaskNode]:
-        """
-        Enhanced version that also updates progressive summary.
-        """
+        """Enhanced version that also updates progressive summary."""
         node = self.get_node_by_task_id(task_id)
         if node:
             node.update_status(TaskStatus.COMPLETED, result)

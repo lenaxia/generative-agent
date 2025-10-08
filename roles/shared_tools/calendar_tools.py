@@ -1,5 +1,4 @@
-"""
-Calendar tools for StrandsAgent - Placeholder implementations.
+"""Calendar tools for StrandsAgent - Placeholder implementations.
 
 These tools provide calendar functionality stubs that throw NotImplementedError.
 They need to be implemented with real calendar integrations (Google Calendar, Outlook, etc.).
@@ -18,9 +17,8 @@ def calendar_get_events(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     calendar_id: str = "default",
-) -> Dict[str, Any]:
-    """
-    Get calendar events within a date range.
+) -> dict[str, Any]:
+    """Get calendar events within a date range.
 
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD) or None for today
@@ -48,9 +46,8 @@ def calendar_add_event(
     description: str = "",
     location: str = "",
     calendar_id: str = "default",
-) -> Dict[str, Any]:
-    """
-    Add a new calendar event.
+) -> dict[str, Any]:
+    """Add a new calendar event.
 
     Args:
         title: Event title
@@ -81,9 +78,8 @@ def calendar_update_event(
     end_time: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Update an existing calendar event.
+) -> dict[str, Any]:
+    """Update an existing calendar event.
 
     Args:
         event_id: Event identifier
@@ -107,9 +103,8 @@ def calendar_update_event(
 
 
 @tool
-def calendar_delete_event(event_id: str) -> Dict[str, Any]:
-    """
-    Delete a calendar event.
+def calendar_delete_event(event_id: str) -> dict[str, Any]:
+    """Delete a calendar event.
 
     Args:
         event_id: Event identifier

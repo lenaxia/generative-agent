@@ -1,6 +1,4 @@
-"""
-Unit tests for web search tool with Tavily API integration.
-"""
+"""Unit tests for web search tool with Tavily API integration."""
 
 import os
 from unittest.mock import Mock, patch

@@ -1,6 +1,4 @@
-"""
-Unit tests for role tool integration with web search and scraping tools.
-"""
+"""Unit tests for role tool integration with web search and scraping tools."""
 
 from unittest.mock import Mock, patch
 
@@ -101,7 +99,6 @@ class TestRoleToolIntegration:
             patch.object(universal_agent, "_create_strands_model") as mock_create_model,
             patch("strands.Agent") as mock_agent_class,
         ):
-
             mock_model = Mock()
             mock_create_model.return_value = mock_model
             mock_agent_instance = Mock()
@@ -141,7 +138,6 @@ class TestRoleToolIntegration:
             patch.object(universal_agent, "_create_strands_model") as mock_create_model,
             patch("strands.Agent") as mock_agent_class,
         ):
-
             mock_model = Mock()
             mock_create_model.return_value = mock_model
             mock_agent_instance = Mock()

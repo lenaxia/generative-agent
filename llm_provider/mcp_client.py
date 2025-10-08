@@ -1,5 +1,4 @@
-"""
-MCP (Model Context Protocol) client integration for Universal Agent.
+"""MCP (Model Context Protocol) client integration for Universal Agent.
 
 This module provides MCP server management and tool integration capabilities
 for the Universal Agent system, enabling access to external tool ecosystems.
@@ -29,7 +28,7 @@ class MCPServerConfig:
 
     name: str
     command: str
-    args: List[str]
+    args: list[str]
     description: Optional[str] = None
 
     def __post_init__(self):
@@ -41,8 +40,7 @@ class MCPServerConfig:
 
 
 class MCPClientManager:
-    """
-    Manages MCP (Model Context Protocol) server connections and tool access.
+    """Manages MCP (Model Context Protocol) server connections and tool access.
 
     This class handles:
     - MCP server registration and lifecycle management
@@ -53,9 +51,9 @@ class MCPClientManager:
 
     def __init__(self):
         """Initialize MCP client manager."""
-        self.clients: Dict[str, Any] = {}
-        self.available_tools: List[Dict[str, Any]] = []
-        self.server_configs: Dict[str, MCPServerConfig] = {}
+        self.clients: dict[str, Any] = {}
+        self.available_tools: list[dict[str, Any]] = []
+        self.server_configs: dict[str, MCPServerConfig] = {}
 
         if not MCP_AVAILABLE:
             logger.warning("MCP dependencies not available. MCP integration disabled.")
@@ -64,11 +62,10 @@ class MCPClientManager:
         self,
         name: str,
         command: str,
-        args: List[str],
+        args: list[str],
         description: Optional[str] = None,
     ) -> bool:
-        """
-        Register and initialize an MCP server.
+        """Register and initialize an MCP server.
 
         Args:
             name: Unique name for the MCP server
@@ -117,9 +114,8 @@ class MCPClientManager:
             )
             return False
 
-    def get_tools_for_role(self, role: str) -> List[Dict[str, Any]]:
-        """
-        Get MCP tools appropriate for a specific agent role.
+    def get_tools_for_role(self, role: str) -> list[dict[str, Any]]:
+        """Get MCP tools appropriate for a specific agent role.
 
         Args:
             role: Agent role (planning, search, weather, etc.)
@@ -162,10 +158,9 @@ class MCPClientManager:
         return relevant_tools
 
     def execute_tool(
-        self, tool_name: str, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Execute an MCP tool with given parameters.
+        self, tool_name: str, parameters: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Execute an MCP tool with given parameters.
 
         Args:
             tool_name: Name of the tool to execute
@@ -211,9 +206,8 @@ class MCPClientManager:
             )
             raise
 
-    def load_servers_from_config(self, config_data: Dict[str, Any]) -> None:
-        """
-        Load and register MCP servers from configuration data.
+    def load_servers_from_config(self, config_data: dict[str, Any]) -> None:
+        """Load and register MCP servers from configuration data.
 
         Args:
             config_data: Configuration dictionary containing MCP server definitions
@@ -234,9 +228,8 @@ class MCPClientManager:
 
             self.register_server(server_name, command, args, description)
 
-    def get_server_status(self) -> Dict[str, Any]:
-        """
-        Get status information for all registered MCP servers.
+    def get_server_status(self) -> dict[str, Any]:
+        """Get status information for all registered MCP servers.
 
         Returns:
             Dictionary containing server status information
@@ -301,8 +294,7 @@ COMMON_MCP_SERVERS = {
 
 
 def create_mcp_manager_with_defaults() -> MCPClientManager:
-    """
-    Create an MCP client manager with common servers pre-configured.
+    """Create an MCP client manager with common servers pre-configured.
 
     Returns:
         MCPClientManager with default servers registered

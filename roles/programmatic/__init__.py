@@ -1,5 +1,4 @@
-"""
-Programmatic Roles Package
+"""Programmatic Roles Package
 
 Contains programmatic role implementations for hybrid execution architecture.
 These roles execute directly without LLM processing for optimal performance.

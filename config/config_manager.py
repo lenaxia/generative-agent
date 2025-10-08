@@ -1,5 +1,4 @@
-"""
-Simplified Configuration Manager for Universal Agent System.
+"""Simplified Configuration Manager for Universal Agent System.
 
 This module provides centralized configuration management with validation,
 environment variable substitution, and backward compatibility with existing configs.
@@ -8,7 +7,7 @@ environment variable substitution, and backward compatibility with existing conf
 import logging
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -19,22 +18,26 @@ class ConfigValidationError(Exception):
     """Raised when configuration validation fails."""
 
     def __init__(self, message: str, path: str = ""):
+        """Initialize ConfigValidationError with message and path.
+
+        Args:
+            message: Error message describing the validation failure.
+            path: Configuration path where the error occurred.
+        """
         self.message = message
         self.path = path
         super().__init__(f"Configuration validation error at '{path}': {message}")
 
 
 class ConfigManager:
-    """
-    Simplified configuration manager for Universal Agent system.
+    """Simplified configuration manager for Universal Agent system.
 
     Focuses on practical configuration loading, validation, and environment
     variable substitution while maintaining backward compatibility.
     """
 
     def __init__(self, config_path: str = "config.yaml"):
-        """
-        Initialize configuration manager.
+        """Initialize configuration manager.
 
         Args:
             config_path: Path to main configuration file
@@ -43,8 +46,7 @@ class ConfigManager:
         self.config_data: dict[str, Any] = {}
 
     def load_config(self, validate: bool = True) -> dict[str, Any]:
-        """
-        Load configuration from file.
+        """Load configuration from file.
 
         Args:
             validate: Whether to validate configuration after loading
@@ -80,8 +82,7 @@ class ConfigManager:
             raise ConfigValidationError(f"Error loading config: {e}", self.config_path)
 
     def _substitute_env_vars(self, config: Any) -> Any:
-        """
-        Recursively substitute environment variables in configuration.
+        """Recursively substitute environment variables in configuration.
 
         Supports ${VAR_NAME} and ${VAR_NAME:default_value} syntax.
         """
@@ -147,8 +148,7 @@ class ConfigManager:
             )
 
     def get_config(self, path: str, default: Any = None) -> Any:
-        """
-        Get configuration value by dot-separated path.
+        """Get configuration value by dot-separated path.
 
         Args:
             path: Dot-separated configuration path (e.g., "universal_agent.role_llm_mapping")
@@ -169,8 +169,7 @@ class ConfigManager:
         return current
 
     def set_config(self, path: str, value: Any):
-        """
-        Set configuration value by dot-separated path.
+        """Set configuration value by dot-separated path.
 
         Args:
             path: Dot-separated configuration path
@@ -189,8 +188,7 @@ class ConfigManager:
         current[keys[-1]] = value
 
     def get_feature_flag(self, flag_name: str, default: bool = False) -> bool:
-        """
-        Get feature flag value.
+        """Get feature flag value.
 
         Args:
             flag_name: Name of the feature flag
@@ -218,8 +216,7 @@ class ConfigManager:
         return self.get_config("mcp.config_file", "config/mcp_config.yaml")
 
     def get_llm_config(self, provider: str) -> dict[str, Any]:
-        """
-        Get LLM provider configuration.
+        """Get LLM provider configuration.
 
         Args:
             provider: Provider name ("bedrock" or "openai")
@@ -258,8 +255,7 @@ class ConfigManager:
         return self.get_config("development.debug_mode", False)
 
     def save_config(self, output_path: Optional[str] = None):
-        """
-        Save current configuration to file.
+        """Save current configuration to file.
 
         Args:
             output_path: Path to save configuration file (defaults to original path)
@@ -286,8 +282,7 @@ _config_manager: Optional[ConfigManager] = None
 
 
 def get_config_manager(config_path: str = "config.yaml") -> ConfigManager:
-    """
-    Get global configuration manager instance.
+    """Get global configuration manager instance.
 
     Args:
         config_path: Path to configuration file
@@ -309,8 +304,7 @@ def reload_config():
 
 
 def get_config(path: str, default: Any = None) -> Any:
-    """
-    Get configuration value using global config manager.
+    """Get configuration value using global config manager.
 
     Args:
         path: Dot-separated configuration path
@@ -323,8 +317,7 @@ def get_config(path: str, default: Any = None) -> Any:
 
 
 def get_feature_flag(flag_name: str, default: bool = False) -> bool:
-    """
-    Get feature flag using global config manager.
+    """Get feature flag using global config manager.
 
     Args:
         flag_name: Feature flag name

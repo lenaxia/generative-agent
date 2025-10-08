@@ -1,9 +1,7 @@
-"""
-Custom tools for the planning role.
-"""
+"""Custom tools for the planning role."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from strands import tool
 
@@ -12,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def create_task_plan(instruction: str) -> dict[str, Any]:
-    """
-    Create a task plan by breaking down the instruction into manageable steps.
+    """Create a task plan by breaking down the instruction into manageable steps.
 
     Args:
         instruction: The user instruction to create a plan for
@@ -53,8 +50,7 @@ def create_task_plan(instruction: str) -> dict[str, Any]:
 
 @tool
 def analyze_task_dependencies(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """
-    Analyze dependencies between tasks.
+    """Analyze dependencies between tasks.
 
     Args:
         tasks: List of task dictionaries
@@ -85,8 +81,7 @@ def analyze_task_dependencies(tasks: list[dict[str, Any]]) -> list[dict[str, Any
 
 @tool
 def validate_task_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    """
-    Validate a task plan for completeness and correctness.
+    """Validate a task plan for completeness and correctness.
 
     Args:
         plan: Task plan dictionary

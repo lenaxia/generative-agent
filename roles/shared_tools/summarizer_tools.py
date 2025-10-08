@@ -1,5 +1,4 @@
-"""
-Summarizer tools for StrandsAgent - converted from SummarizerAgent.
+"""Summarizer tools for StrandsAgent - converted from SummarizerAgent.
 
 These tools replace the LangChain-based SummarizerAgent with @tool decorated functions
 that can be used by the Universal Agent for text summarization functionality.
@@ -19,8 +18,7 @@ logger = logging.getLogger(__name__)
 def summarize_text(
     text: str, max_length: int = 200, summary_type: str = "general"
 ) -> dict[str, Any]:
-    """
-    Summarize text content - converted from SummarizerAgent.
+    """Summarize text content - converted from SummarizerAgent.
 
     This tool creates concise summaries of text content with configurable
     length and summary type.
@@ -180,8 +178,7 @@ def create_key_facts_summary(text: str, max_length: int) -> str:
 
 @tool
 def analyze_text_complexity(text: str) -> dict[str, Any]:
-    """
-    Analyze text complexity and readability.
+    """Analyze text complexity and readability.
 
     Args:
         text: Text to analyze
@@ -239,8 +236,7 @@ def analyze_text_complexity(text: str) -> dict[str, Any]:
 
 @tool
 def extract_key_phrases(text: str, max_phrases: int = 10) -> dict[str, Any]:
-    """
-    Extract key phrases from text.
+    """Extract key phrases from text.
 
     Args:
         text: Text to extract phrases from
@@ -340,8 +336,7 @@ def extract_key_phrases(text: str, max_phrases: int = 10) -> dict[str, Any]:
 
 @tool
 def compare_texts(text1: str, text2: str) -> dict[str, Any]:
-    """
-    Compare two texts for similarity and differences.
+    """Compare two texts for similarity and differences.
 
     Args:
         text1: First text to compare

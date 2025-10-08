@@ -1,5 +1,4 @@
-"""
-Unit tests for the Dynamic Role System.
+"""Unit tests for the Dynamic Role System.
 
 Tests the RoleRegistry, role loading, and integration with UniversalAgent.
 """
@@ -205,7 +204,6 @@ def another_custom_tool(value: int) -> int:
             patch.object(universal_agent, "_create_strands_model") as mock_create_model,
             patch("strands.Agent") as mock_agent_class,
         ):
-
             mock_create_model.return_value = mock_model
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent

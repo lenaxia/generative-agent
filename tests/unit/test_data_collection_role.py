@@ -1,5 +1,4 @@
-"""
-Unit tests for DataCollectionRole programmatic role.
+"""Unit tests for DataCollectionRole programmatic role.
 
 Tests the DataCollectionRole that performs structured data collection from multiple sources
 for pure automation workflows without any LLM processing.

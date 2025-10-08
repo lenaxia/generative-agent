@@ -1,6 +1,4 @@
-"""
-Test CLI complexity refactor to ensure functionality is preserved.
-"""
+"""Test CLI complexity refactor to ensure functionality is preserved."""
 
 import io
 from unittest.mock import Mock, patch

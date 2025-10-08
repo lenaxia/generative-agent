@@ -1,5 +1,4 @@
-"""
-Integration tests for hybrid weather role end-to-end functionality.
+"""Integration tests for hybrid weather role end-to-end functionality.
 
 Tests the complete flow from request routing through parameter extraction,
 hybrid execution with lifecycle hooks, and result formatting.

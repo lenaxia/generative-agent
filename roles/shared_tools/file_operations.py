@@ -1,5 +1,4 @@
-"""
-File Operations Shared Tools
+"""File Operations Shared Tools
 
 Common file handling functionality that can be used across multiple roles.
 """
@@ -14,9 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def read_file_content(file_path: str, encoding: str = "utf-8") -> Dict:
-    """
-    Read content from a file.
+def read_file_content(file_path: str, encoding: str = "utf-8") -> dict:
+    """Read content from a file.
 
     Args:
         file_path: Path to the file to read
@@ -42,7 +40,7 @@ def read_file_content(file_path: str, encoding: str = "utf-8") -> Dict:
                 "content": None,
             }
 
-        with open(path, "r", encoding=encoding) as f:
+        with open(path, encoding=encoding) as f:
             content = f.read()
 
         return {
@@ -62,9 +60,8 @@ def read_file_content(file_path: str, encoding: str = "utf-8") -> Dict:
 @tool
 def write_file_content(
     file_path: str, content: str, encoding: str = "utf-8", create_dirs: bool = True
-) -> Dict:
-    """
-    Write content to a file.
+) -> dict:
+    """Write content to a file.
 
     Args:
         file_path: Path to the file to write
@@ -101,9 +98,8 @@ def write_file_content(
 @tool
 def list_directory_contents(
     directory_path: str, include_hidden: bool = False, file_types: Optional[list] = None
-) -> Dict:
-    """
-    List contents of a directory.
+) -> dict:
+    """List contents of a directory.
 
     Args:
         directory_path: Path to the directory to list

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Hybrid Role Lifecycle Example
+"""Hybrid Role Lifecycle Example.
 
 This example demonstrates how to use the new hybrid role lifecycle architecture
 with the enhanced weather role that includes pre-processing and post-processing.
@@ -17,7 +16,6 @@ from llm_provider.role_registry import RoleRegistry
 
 def demonstrate_hybrid_role_features():
     """Demonstrate the key features of hybrid roles."""
-
     print("🚀 Hybrid Role Lifecycle Architecture Demo")
     print("=" * 50)
 
@@ -73,7 +71,6 @@ def demonstrate_hybrid_role_features():
 
 def demonstrate_enhanced_routing():
     """Demonstrate enhanced routing with parameter extraction."""
-
     print("\n🎯 Enhanced Routing with Parameter Extraction")
     print("=" * 50)
 
@@ -120,7 +117,6 @@ def demonstrate_enhanced_routing():
 
 def demonstrate_lifecycle_execution():
     """Demonstrate the lifecycle execution flow."""
-
     print("\n⚡ Hybrid Role Execution Flow")
     print("=" * 50)
 
@@ -155,7 +151,6 @@ def demonstrate_lifecycle_execution():
 
 def demonstrate_performance_benefits():
     """Demonstrate performance benefits of hybrid roles."""
-
     print("\n📊 Performance Benefits")
     print("=" * 50)
 

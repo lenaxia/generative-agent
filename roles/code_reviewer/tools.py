@@ -1,5 +1,4 @@
-"""
-Code Reviewer Custom Tools
+"""Code Reviewer Custom Tools
 
 Specialized tools for code analysis and review tasks.
 """
@@ -16,9 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def analyze_code_quality(code: str, language: str = "python") -> Dict:
-    """
-    Analyze code quality and identify potential issues.
+def analyze_code_quality(code: str, language: str = "python") -> dict:
+    """Analyze code quality and identify potential issues.
 
     Args:
         code: Source code to analyze
@@ -156,9 +154,8 @@ def _analyze_generic_code(code: str) -> tuple:
 
 
 @tool
-def security_scan(code: str, language: str = "python") -> Dict:
-    """
-    Scan code for potential security vulnerabilities.
+def security_scan(code: str, language: str = "python") -> dict:
+    """Scan code for potential security vulnerabilities.
 
     Args:
         code: Source code to scan
@@ -254,9 +251,8 @@ def _scan_generic_security(code: str) -> tuple:
 @tool
 def generate_code_documentation(
     code: str, language: str = "python", doc_style: str = "google"
-) -> Dict:
-    """
-    Generate documentation for code.
+) -> dict:
+    """Generate documentation for code.
 
     Args:
         code: Source code to document
@@ -345,9 +341,8 @@ def _generate_generic_docs(code: str, language: str) -> str:
 @tool
 def refactor_suggestions(
     code: str, language: str = "python", focus_area: str = "general"
-) -> Dict:
-    """
-    Provide refactoring suggestions for code improvement.
+) -> dict:
+    """Provide refactoring suggestions for code improvement.
 
     Args:
         code: Source code to analyze
@@ -379,7 +374,7 @@ def refactor_suggestions(
         return {"success": False, "error": str(e), "language": language}
 
 
-def _python_refactor_suggestions(code: str, focus_area: str) -> List[str]:
+def _python_refactor_suggestions(code: str, focus_area: str) -> list[str]:
     """Generate Python-specific refactoring suggestions."""
     suggestions = []
 
@@ -416,7 +411,7 @@ def _python_refactor_suggestions(code: str, focus_area: str) -> List[str]:
     return suggestions
 
 
-def _generic_refactor_suggestions(code: str, focus_area: str) -> List[str]:
+def _generic_refactor_suggestions(code: str, focus_area: str) -> list[str]:
     """Generate generic refactoring suggestions."""
     suggestions = []
 

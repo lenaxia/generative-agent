@@ -9,7 +9,6 @@ import logging
 import time
 from typing import Any, Optional
 
-# Import StrandsAgent - hard dependency, no fallbacks
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands_tools import calculator, file_read, shell
@@ -25,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class UniversalAgent:
-    """
-    Universal Agent that can assume different roles using StrandsAgent framework.
+    r"""\1
 
     This class provides a unified interface for creating role-specific agents
     while leveraging the semantic model types and prompt library from StrandsAgent.
@@ -38,8 +36,7 @@ class UniversalAgent:
         role_registry: Optional[RoleRegistry] = None,
         mcp_manager: Optional[MCPClientManager] = None,
     ):
-        """
-        Initialize Universal Agent with LLMFactory, role registry, and optional MCP manager.
+        r"""\1
 
         Args:
             llm_factory: Enhanced LLMFactory instance
@@ -61,8 +58,7 @@ class UniversalAgent:
         context: Optional[TaskContext] = None,
         tools: Optional[list[str]] = None,
     ):
-        """
-        Assume role using pooled Agent with context switching.
+        r"""\1
 
         Args:
             role: The role name (e.g., 'weather', 'timer', 'calendar')
@@ -108,8 +104,7 @@ class UniversalAgent:
         return final_agent
 
     def _create_strands_model(self, llm_type: LLMType):
-        """
-        Create a StrandsAgent model based on LLM type.
+        r"""\1
 
         Args:
             llm_type: Semantic model type
@@ -132,8 +127,7 @@ class UniversalAgent:
         )
 
     def _get_role_prompt(self, role: str) -> str:
-        """
-        Get role-specific system prompt.
+        r"""\1
 
         Args:
             role: Agent role
@@ -199,8 +193,7 @@ Focus on comprehensive, accurate analysis.""",
         context: Optional[TaskContext] = None,
         extracted_parameters: Optional[dict] = None,
     ) -> str:
-        """
-        Enhanced task execution with hybrid role lifecycle support.
+        r"""\1
 
         Args:
             instruction: Task instruction
@@ -254,8 +247,7 @@ Focus on comprehensive, accurate analysis.""",
             return self.execute_llm_task(instruction, role, llm_type, context)
 
     def is_programmatic_role(self, role: str) -> bool:
-        """
-        Check if role should use programmatic execution.
+        r"""\1
 
         Args:
             role: Role name to check
@@ -266,8 +258,7 @@ Focus on comprehensive, accurate analysis.""",
         return self.role_registry.is_programmatic_role(role)
 
     def get_role_type(self, role: str) -> str:
-        """
-        Get the execution type for a role.
+        r"""\1
 
         Args:
             role: Role name
@@ -280,8 +271,7 @@ Focus on comprehensive, accurate analysis.""",
     def execute_programmatic_task(
         self, instruction: str, role: str, context: Optional[TaskContext] = None
     ) -> str:
-        """
-        Execute task using programmatic role (no LLM processing).
+        r"""\1
 
         Args:
             instruction: Task instruction
@@ -310,8 +300,7 @@ Focus on comprehensive, accurate analysis.""",
         llm_type: LLMType,
         context: Optional[TaskContext] = None,
     ) -> str:
-        """
-        Execute task using LLM-based role (current implementation).
+        r"""\1
 
         Args:
             instruction: Task instruction
@@ -352,8 +341,7 @@ Focus on comprehensive, accurate analysis.""",
             return f"Error executing task: {str(e)}"
 
     def get_status(self) -> dict[str, Any]:
-        """
-        Get current Universal Agent status.
+        r"""\1
 
         Returns:
             Dict: Status information
@@ -384,8 +372,7 @@ Focus on comprehensive, accurate analysis.""",
         }
 
     def get_available_roles(self) -> list[str]:
-        """
-        Get list of available agent roles.
+        r"""\1
 
         Returns:
             List[str]: Available roles
@@ -402,8 +389,7 @@ Focus on comprehensive, accurate analysis.""",
         ]
 
     def get_mcp_status(self) -> dict[str, Any]:
-        """
-        Get MCP integration status for heartbeat monitoring.
+        r"""\1
 
         Returns:
             Dict: MCP status information
@@ -426,9 +412,7 @@ Focus on comprehensive, accurate analysis.""",
     def _create_model_for_role(
         self, role_def: RoleDefinition, llm_type: LLMType
     ) -> BedrockModel:
-        """
-        Create model with role-specific configuration merged with model capabilities.
-        Uses LLM Factory caching for performance.
+        r"""Uses LLM Factory caching for performance.
 
         Args:
             role_def: Role definition containing model config
@@ -494,8 +478,7 @@ Focus on comprehensive, accurate analysis.""",
     def _assemble_role_tools(
         self, role_def: RoleDefinition, additional_tools: list[str]
     ) -> list:
-        """
-        Assemble all tools for a role from multiple sources.
+        r"""\1
 
         Args:
             role_def: Role definition
@@ -549,8 +532,7 @@ Focus on comprehensive, accurate analysis.""",
         context: Optional[TaskContext] = None,
         tools: Optional[list[str]] = None,
     ) -> Agent:
-        """
-        Create a basic agent with default configuration.
+        r"""\1
 
         Args:
             llm_type: LLM type for the agent
@@ -564,7 +546,6 @@ Focus on comprehensive, accurate analysis.""",
 
         # Use default system prompt
         system_prompt = """You are a helpful AI assistant. Analyze the task at hand and use the most appropriate tools to complete it effectively. Provide clear, accurate, and helpful responses."""
-
         # Use basic tools only
         from strands_tools import calculator, file_read, shell
 
@@ -592,8 +573,7 @@ Focus on comprehensive, accurate analysis.""",
         self.current_llm_type = None
 
     def register_programmatic_role(self, name: str, role_instance: "ProgrammaticRole"):
-        """
-        Register a programmatic role for direct execution.
+        r"""\1
 
         Args:
             name: Role name
@@ -602,8 +582,7 @@ Focus on comprehensive, accurate analysis.""",
         self.role_registry.register_programmatic_role(role_instance)
 
     def _update_agent_context(self, agent: Agent, system_prompt: str, tools: list[Any]):
-        """
-        Update Agent context with optimal reuse strategy.
+        r"""\1
 
         Based on Strands documentation:
         - system_prompt can be updated directly
@@ -663,8 +642,7 @@ Focus on comprehensive, accurate analysis.""",
             return Agent(model=model, system_prompt=system_prompt, tools=tools)
 
     def _determine_llm_type_for_role(self, role: str) -> LLMType:
-        """
-        Determine the appropriate LLM type for a given role.
+        r"""\1
 
         Args:
             role: Role name
@@ -693,8 +671,7 @@ Focus on comprehensive, accurate analysis.""",
         return role_llm_mapping.get(role, LLMType.DEFAULT)
 
     def _serialize_result(self, result: Any) -> str:
-        """
-        Serialize programmatic results to string format.
+        r"""\1
 
         Args:
             result: Result data from programmatic execution

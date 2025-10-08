@@ -1,5 +1,4 @@
-"""
-Test suite for RequestRouter component.
+"""Test suite for RequestRouter component.
 
 Tests the fast-path routing logic including:
 - Route classification (fast-reply vs planning)

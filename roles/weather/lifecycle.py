@@ -1,5 +1,4 @@
-"""
-Weather Role Lifecycle Functions
+"""Weather Role Lifecycle Functions
 
 Pre-processing and post-processing functions for the hybrid weather role.
 These functions handle data fetching and result formatting for the weather role.
@@ -18,8 +17,7 @@ logger = logging.getLogger(__name__)
 async def fetch_weather_data(
     instruction: str, context: TaskContext, parameters: dict
 ) -> dict[str, Any]:
-    """
-    Pre-processor: Fetch weather data before LLM call.
+    """Pre-processor: Fetch weather data before LLM call.
 
     Args:
         instruction: Original user instruction
@@ -64,8 +62,7 @@ async def fetch_weather_data(
 async def validate_location(
     instruction: str, context: TaskContext, parameters: dict
 ) -> dict[str, Any]:
-    """
-    Pre-processor: Validate and normalize location parameter.
+    """Pre-processor: Validate and normalize location parameter.
 
     Args:
         instruction: Original user instruction
@@ -116,8 +113,7 @@ async def validate_location(
 
 
 async def format_for_tts(llm_result: str, context: TaskContext, pre_data: dict) -> str:
-    """
-    Post-processor: Format LLM result for text-to-speech.
+    """Post-processor: Format LLM result for text-to-speech.
 
     Args:
         llm_result: Result from LLM processing
@@ -163,8 +159,7 @@ async def format_for_tts(llm_result: str, context: TaskContext, pre_data: dict) 
 
 
 async def pii_scrubber(llm_result: str, context: TaskContext, pre_data: dict) -> str:
-    """
-    Post-processor: Remove sensitive data from weather responses.
+    """Post-processor: Remove sensitive data from weather responses.
 
     Args:
         llm_result: Result from LLM processing
@@ -200,8 +195,7 @@ async def pii_scrubber(llm_result: str, context: TaskContext, pre_data: dict) ->
 
 
 async def audit_log(llm_result: str, context: TaskContext, pre_data: dict) -> str:
-    """
-    Post-processor: Log interaction for compliance and monitoring.
+    """Post-processor: Log interaction for compliance and monitoring.
 
     Args:
         llm_result: Result from LLM processing

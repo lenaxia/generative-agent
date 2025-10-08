@@ -11,6 +11,12 @@ from config.base_config import BaseConfig, ModelConfig
 
 
 class BedrockModelConfig(ModelConfig):
+    """Model configuration class for AWS Bedrock integration.
+
+    Manages AWS credentials, model settings, and Bedrock-specific
+    configuration parameters for foundation model access.
+    """
+
     model: str = None
     temperature: Optional[float] = None
     aws_access_key_id: Optional[str] = None
@@ -36,7 +42,18 @@ class BedrockModelConfig(ModelConfig):
 
 
 class BedrockConfig(BaseConfig):
+    """Configuration class for AWS Bedrock API integration.
+
+    Provides configuration management for AWS Bedrock foundation models,
+    including credentials, region settings, and model parameters.
+    """
+
     def __init__(self, **data):
+        """Initialize BedrockConfig with AWS and model parameters.
+
+        Args:
+            **data: Configuration data including AWS credentials and model settings.
+        """
         super().__init__(**data)
         self.llm_config = BedrockModelConfig(**data)
         self.provider_name: str = "bedrock"

@@ -1,5 +1,4 @@
-"""
-Unit tests for enhanced Universal Agent with hybrid execution paths.
+"""Unit tests for enhanced Universal Agent with hybrid execution paths.
 
 Tests the Universal Agent's ability to handle both LLM-based and programmatic
 execution paths based on role type for the hybrid execution architecture.

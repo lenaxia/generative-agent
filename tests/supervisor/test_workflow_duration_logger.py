@@ -1,5 +1,4 @@
-"""
-Tests for Workflow Duration Logger
+"""Tests for Workflow Duration Logger
 
 Comprehensive test suite for workflow duration tracking and logging functionality.
 """

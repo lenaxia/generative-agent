@@ -62,16 +62,15 @@ class CodingAgent(BaseAgent):
         self.logger.info(f"Running SolverAgent with problem description: {input.problem_description}")
 
         test_cases_str = "\n".join([f"Input: {tc['input']}\nExpected Output: {tc['output']}" for tc in input.test_cases])
-        
+
         config = {"configurable": {"thread_id": "silver-hl-1", "k": 2}}
-        
+
         solver_output = self.graph.invoke({"problem_description": input.problem_description, "test_cases": test_cases_str, "runtime_limit": input.runtime_limit}, config)
 
         return solver_output
 
     def _format_input(self, task_data: Dict) -> SolverInput:
-        """
-        Formats the input for the LLM provider and the respective tool(s).
+        """Formats the input for the LLM provider and the respective tool(s).
         """
         input: SolverInput = SolverInput(**task_data)
         return input
@@ -90,7 +89,7 @@ class CodingAgent(BaseAgent):
         self.retriever = BM25Retriever.from_texts(["These are some examples"])
 
         self.builder = StateGraph(State)
-        
+
         draft_parser = PydanticOutputParser(pydantic_object=WritePython)
 
         draft_prompt = PromptTemplate(
@@ -105,7 +104,7 @@ class CodingAgent(BaseAgent):
 
         draft_chain = draft_prompt | self._select_llm_provider() | draft_parser
 
-        
+
         solver_parser = PydanticOutputParser(pydantic_object=SolverOutput)
 
         solve_prompt = PromptTemplate(
@@ -119,15 +118,15 @@ class CodingAgent(BaseAgent):
                     "Solution (Only provide the code):\n",
             partial_variables={"format_instructions": solver_parser.get_format_instructions()},
         )
-        
+
         solve_chain = solve_prompt | self._select_llm_provider() | solver_parser
-        
-        
+
+
         self.builder.add_node("draft", draft_chain)
         self.builder.add_node("retrieve", self.retrieve_examples)
         self.builder.add_node("solve", solve_chain)
         self.builder.add_node("evaluate", self.evaluate)
-        
+
         self.builder.add_edge(START, "draft")
         self.builder.add_edge("draft", "evaluate")
         self.builder.add_edge("draft", "retrieve")
@@ -174,7 +173,7 @@ Approach this new question with similar sophistication."""
         return {"examples": examples_str}
 
 
-        
+
     def format_tool_message(self, response: str, ai_message: AIMessage):
         return ToolMessage(
             content=response + "\nMake all fixes using the writePython tool.",
@@ -182,8 +181,7 @@ Approach this new question with similar sophistication."""
         )
 
     def check_correctness(self, code: str, input_data: str, expected_output: str, timeout: float) -> str:
-        """
-        Function to execute the generated code and check its correctness against the test cases.
+        """Function to execute the generated code and check its correctness against the test cases.
         """
         try:
             start_time = time.time()
@@ -211,8 +209,7 @@ Approach this new question with similar sophistication."""
             return f"failed: {traceback.format_exc()}"
 
     def evaluate(self, state: State) -> Dict:
-        """
-        Node function to evaluate the generated solution.
+        """Node function to evaluate the generated solution.
         """
         test_cases = state["test_cases"]
         ai_message: AIMessage = state["messages"][-1]
@@ -248,4 +245,3 @@ Approach this new question with similar sophistication."""
         response = f"Incorrect submission. Please respond with updated code.\nPass rate: {succeeded}/{num_test_cases}\nResults:\n{responses}"
         formatted_message = self.format_tool_message(response, ai_message)
         return {"messages": [formatted_message]}
-

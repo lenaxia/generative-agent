@@ -1,5 +1,4 @@
-"""
-Smart Home tools for StrandsAgent - Placeholder implementations.
+"""Smart Home tools for StrandsAgent - Placeholder implementations.
 
 These tools provide smart home device control stubs that throw NotImplementedError.
 They need to be implemented with real smart home integrations (Home Assistant, Philips Hue, etc.).
@@ -15,10 +14,9 @@ logger = logging.getLogger(__name__)
 
 @tool
 def home_assistant_api(
-    endpoint: str, method: str = "GET", data: Optional[Dict] = None
-) -> Dict[str, Any]:
-    """
-    Make API calls to Home Assistant.
+    endpoint: str, method: str = "GET", data: Optional[dict] = None
+) -> dict[str, Any]:
+    """Make API calls to Home Assistant.
 
     Args:
         endpoint: API endpoint path
@@ -44,9 +42,8 @@ def smart_lights_control(
     action: str,
     brightness: Optional[int] = None,
     color: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Control smart lights (turn on/off, adjust brightness, change color).
+) -> dict[str, Any]:
+    """Control smart lights (turn on/off, adjust brightness, change color).
 
     Args:
         device_id: Light device identifier
@@ -73,9 +70,8 @@ def thermostat_control(
     action: str,
     temperature: Optional[float] = None,
     mode: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Control smart thermostat (set temperature, change mode).
+) -> dict[str, Any]:
+    """Control smart thermostat (set temperature, change mode).
 
     Args:
         device_id: Thermostat device identifier
@@ -99,9 +95,8 @@ def thermostat_control(
 @tool
 def device_status_check(
     device_id: Optional[str] = None, device_type: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Check status of smart home devices.
+) -> dict[str, Any]:
+    """Check status of smart home devices.
 
     Args:
         device_id: Specific device identifier (optional)
@@ -121,9 +116,8 @@ def device_status_check(
 
 
 @tool
-def scene_control(scene_name: str, action: str = "activate") -> Dict[str, Any]:
-    """
-    Control smart home scenes and automation routines.
+def scene_control(scene_name: str, action: str = "activate") -> dict[str, Any]:
+    """Control smart home scenes and automation routines.
 
     Args:
         scene_name: Name of the scene to control

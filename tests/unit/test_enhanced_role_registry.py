@@ -1,5 +1,4 @@
-"""
-Unit tests for enhanced RoleRegistry with programmatic role support.
+"""Unit tests for enhanced RoleRegistry with programmatic role support.
 
 Tests the enhanced RoleRegistry that supports both YAML-based LLM roles
 and Python-based programmatic roles for hybrid execution architecture.
@@ -23,7 +22,7 @@ class MockProgrammaticRole(ProgrammaticRole):
     def execute(self, instruction: str, context: Optional[TaskContext] = None) -> Any:
         return {"mock_result": instruction, "context_provided": context is not None}
 
-    def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+    def parse_instruction(self, instruction: str) -> dict[str, Any]:
         return {"parsed": instruction.split()}
 
 

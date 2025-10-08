@@ -1,5 +1,4 @@
-"""
-Integration tests for Fast-Path Routing System.
+"""Integration tests for Fast-Path Routing System.
 
 Tests the complete fast-path routing flow from request to response,
 including routing decisions, role execution, and fallback mechanisms.

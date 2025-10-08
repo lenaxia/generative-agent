@@ -69,6 +69,11 @@ class QueuedTask:
     task_id: str = field(init=False)
 
     def __post_init__(self):
+        """Post-initialization processing for ScheduledTask.
+
+        Automatically extracts and sets the task_id from the associated
+        TaskNode for consistent task identification in the workflow engine.
+        """
         self.task_id = self.task.task_id
 
     def __lt__(self, other):
@@ -81,8 +86,7 @@ class QueuedTask:
 
 
 class WorkflowEngine:
-    """
-    Unified workflow management with DAG execution and state persistence.
+    """Unified workflow management with DAG execution and state persistence.
 
     This consolidates RequestManager + TaskScheduler functionality into a single
     WorkflowEngine for simplified architecture and better performance.
@@ -106,8 +110,7 @@ class WorkflowEngine:
         roles_directory: str = "roles",
         fast_path_config: Optional[dict[str, Any]] = None,
     ):
-        """
-        Initialize WorkflowEngine with Universal Agent, task scheduling, and fast-path routing support.
+        """Initialize WorkflowEngine with Universal Agent, task scheduling, and fast-path routing support.
 
         Args:
             llm_factory: LLMFactory for creating Universal Agent
@@ -208,8 +211,7 @@ class WorkflowEngine:
     def start_workflow(
         self, instruction: str, source_id: str = "client", target_id: str = "supervisor"
     ) -> str:
-        """
-        Create and start a new workflow from user instruction.
+        """Create and start a new workflow from user instruction.
 
         Args:
             instruction: User instruction to create workflow for
@@ -237,8 +239,7 @@ class WorkflowEngine:
         return workflow_id
 
     def handle_request(self, request: RequestMetadata) -> str:
-        """
-        Enhanced request handling with fast-path routing.
+        """Enhanced request handling with fast-path routing.
 
         Args:
             request: The incoming request metadata
@@ -409,8 +410,7 @@ class WorkflowEngine:
                 return None
 
     def pause_workflow(self, workflow_id: Optional[str] = None) -> dict:
-        """
-        Pause workflow execution and create comprehensive checkpoint.
+        """Pause workflow execution and create comprehensive checkpoint.
 
         Args:
             workflow_id: Optional specific workflow to pause, or all workflows
@@ -458,8 +458,7 @@ class WorkflowEngine:
     def resume_workflow(
         self, workflow_id: Optional[str] = None, checkpoint: Optional[dict] = None
     ) -> bool:
-        """
-        Resume workflow execution from checkpoint.
+        """Resume workflow execution from checkpoint.
 
         Args:
             workflow_id: Optional specific workflow to resume
@@ -499,8 +498,7 @@ class WorkflowEngine:
     # ==================== DAG EXECUTION WITH PARALLEL PROCESSING ====================
 
     def _execute_dag_parallel(self, task_context: TaskContext):
-        """
-        Execute DAG with parallel task execution and concurrency control.
+        """Execute DAG with parallel task execution and concurrency control.
 
         Combines DAG traversal with priority-based task execution from TaskScheduler.
 
@@ -517,8 +515,7 @@ class WorkflowEngine:
                 self.schedule_task(task_context, task, TaskPriority.NORMAL)
 
     def _execute_task_async(self, task_context: TaskContext, task: TaskNode):
-        """
-        Execute task asynchronously with concurrency tracking.
+        r"""\1
 
         Args:
             task_context: The task context
@@ -541,8 +538,7 @@ class WorkflowEngine:
         task: TaskNode,
         priority: TaskPriority = TaskPriority.NORMAL,
     ):
-        """
-        Schedule a task for execution with priority queuing.
+        r"""\1
 
         Args:
             context: Task context
@@ -576,8 +572,7 @@ class WorkflowEngine:
             self._start_task_execution(queued_task)
 
     def _start_task_execution(self, queued_task: QueuedTask):
-        """
-        Start execution of a queued task.
+        r"""\1
 
         Args:
             queued_task: The task to start executing
@@ -609,8 +604,7 @@ class WorkflowEngine:
     def _create_task_plan(
         self, instruction: str, request_id: Optional[str] = None
     ) -> TaskContext:
-        """
-        Create task plan using Universal Agent with planning role.
+        r"""\1
 
         Args:
             instruction: User instruction to plan for
@@ -648,8 +642,7 @@ class WorkflowEngine:
         return task_context
 
     def delegate_task(self, task_context: TaskContext, task: TaskNode):
-        """
-        Delegate task using Universal Agent with role-based execution.
+        r"""\1
 
         Args:
             task_context: The task context containing state
@@ -746,8 +739,7 @@ Current task: {base_prompt}"""
             self.handle_task_error(task_context, task, str(e))
 
     def _get_llm_type_for_role(self, role_name: str) -> LLMType:
-        """
-        Get LLM type from role definition, defaulting to DEFAULT if not specified.
+        r"""\1
 
         Args:
             role_name: The role name
@@ -772,8 +764,7 @@ Current task: {base_prompt}"""
         return LLMType.DEFAULT
 
     def _is_simple_request(self, instruction: str) -> bool:
-        """
-        Determine if a request is simple enough to skip complex planning.
+        r"""\1
 
         Args:
             instruction: The user instruction
@@ -801,8 +792,7 @@ Current task: {base_prompt}"""
     def _parse_planning_result(
         self, plan_result: str, instruction: str, request_id: str
     ) -> TaskContext:
-        """
-        Parse the LLM planning result into a structured TaskContext.
+        r"""\1
 
         Args:
             plan_result: JSON string from planning agent
@@ -885,8 +875,7 @@ Current task: {base_prompt}"""
     def handle_task_error(
         self, task_context: TaskContext, task: TaskNode, error_message: str
     ):
-        """
-        Handle task errors with retry logic.
+        r"""\1
 
         Args:
             task_context: The task context
@@ -940,8 +929,7 @@ Current task: {base_prompt}"""
             logger.error(f"Error handling task error for '{task.task_id}': {e}")
 
     def handle_task_completion(self, completion_data: dict):
-        """
-        Handle task completion events from message bus.
+        r"""\1
 
         Args:
             completion_data: Task completion information
@@ -960,8 +948,7 @@ Current task: {base_prompt}"""
             self._maybe_create_checkpoint()
 
     def handle_task_error_event(self, error_data: dict):
-        """
-        Handle task error events from message bus.
+        r"""\1
 
         Args:
             error_data: Task error information
@@ -977,8 +964,7 @@ Current task: {base_prompt}"""
             self._process_task_queue()
 
     def _should_fail_request(self, task_context: TaskContext) -> bool:
-        """
-        Determine if a failed task should cause the entire request to fail.
+        r"""\1
 
         Args:
             task_context: The task context to check
@@ -1009,8 +995,7 @@ Current task: {base_prompt}"""
     # ==================== PAUSE/RESUME FUNCTIONALITY ====================
 
     def pause_request(self, request_id: str) -> Optional[dict]:
-        """
-        Pause request execution and return checkpoint.
+        r"""\1
 
         Args:
             request_id: Request ID to pause
@@ -1034,8 +1019,7 @@ Current task: {base_prompt}"""
     def resume_request(
         self, request_id: str, checkpoint: Optional[dict] = None
     ) -> bool:
-        """
-        Resume request execution from checkpoint or current state.
+        r"""\1
 
         Args:
             request_id: Request ID to resume
@@ -1069,8 +1053,7 @@ Current task: {base_prompt}"""
     # ==================== STATUS AND MONITORING ====================
 
     def get_workflow_metrics(self) -> dict[str, Any]:
-        """
-        Get consolidated workflow metrics combining request tracking and task queue statistics.
+        r"""\1
 
         Returns:
             Dict: Comprehensive workflow metrics
@@ -1102,8 +1085,7 @@ Current task: {base_prompt}"""
         }
 
     def get_request_status(self, request_id: str) -> dict:
-        """
-        Get current status of a request.
+        r"""\1
 
         Args:
             request_id: Request ID to check
@@ -1114,94 +1096,106 @@ Current task: {base_prompt}"""
         try:
             # Check if it's a fast reply
             if request_id in self.fast_reply_results:
-                fast_reply = self.fast_reply_results[request_id]
-
-                # Complete duration tracking if not already done
-                if (
-                    hasattr(self, "duration_logger")
-                    and request_id in self.duration_logger.active_workflows
-                ):
-                    try:
-                        self.duration_logger.complete_workflow_tracking(
-                            workflow_id=request_id,
-                            success=True,
-                            role=fast_reply.get("role"),
-                            confidence=fast_reply.get("confidence"),
-                        )
-                    except Exception as e:
-                        logger.debug(
-                            f"Duration tracking already completed for {request_id}: {e}"
-                        )
-
-                return {
-                    "request_id": request_id,
-                    "execution_state": "COMPLETED",
-                    "is_completed": True,
-                    "result": fast_reply["result"],
-                    "role": fast_reply["role"],
-                    "confidence": fast_reply["confidence"],
-                    "execution_time_ms": fast_reply.get("execution_time_ms", 0),
-                }
+                return self._get_fast_reply_status(request_id)
 
             # Check regular workflows
             task_context = self.active_workflows.get(request_id)
             if not task_context:
                 return {"error": f"Request '{request_id}' not found"}
 
-            is_completed = task_context.is_completed()
-
-            # Complete duration tracking for complex workflows when they finish
-            if (
-                is_completed
-                and hasattr(self, "duration_logger")
-                and request_id in self.duration_logger.active_workflows
-            ):
-                try:
-                    # Get task count and success status
-                    task_statuses = {
-                        node_id: node.status.value
-                        for node_id, node in task_context.task_graph.nodes.items()
-                    }
-                    task_count = len(task_statuses)
-                    failed_tasks = [
-                        status
-                        for status in task_statuses.values()
-                        if status == "FAILED"
-                    ]
-                    success = len(failed_tasks) == 0
-                    error_message = (
-                        f"{len(failed_tasks)} tasks failed" if failed_tasks else None
-                    )
-
-                    self.duration_logger.complete_workflow_tracking(
-                        workflow_id=request_id,
-                        success=success,
-                        error_message=error_message,
-                        task_count=task_count,
-                    )
-                except Exception as e:
-                    logger.debug(
-                        f"Duration tracking already completed for {request_id}: {e}"
-                    )
-
-            return {
-                "request_id": request_id,
-                "execution_state": task_context.execution_state.value,
-                "is_completed": is_completed,
-                "performance_metrics": task_context.get_performance_metrics(),
-                "task_statuses": {
-                    node_id: node.status.value
-                    for node_id, node in task_context.task_graph.nodes.items()
-                },
-            }
+            return self._get_regular_workflow_status(request_id, task_context)
 
         except Exception as e:
             logger.error(f"Error getting request status for '{request_id}': {e}")
             return {"error": str(e)}
 
+    def _get_fast_reply_status(self, request_id: str) -> dict:
+        """Get status for fast reply requests."""
+        fast_reply = self.fast_reply_results[request_id]
+
+        # Complete duration tracking if not already done
+        self._complete_fast_reply_duration_tracking(request_id, fast_reply)
+
+        return {
+            "request_id": request_id,
+            "execution_state": "COMPLETED",
+            "is_completed": True,
+            "result": fast_reply["result"],
+            "role": fast_reply["role"],
+            "confidence": fast_reply["confidence"],
+            "execution_time_ms": fast_reply.get("execution_time_ms", 0),
+        }
+
+    def _complete_fast_reply_duration_tracking(self, request_id: str, fast_reply: dict):
+        """Complete duration tracking for fast reply if needed."""
+        if (
+            hasattr(self, "duration_logger")
+            and request_id in self.duration_logger.active_workflows
+        ):
+            try:
+                self.duration_logger.complete_workflow_tracking(
+                    workflow_id=request_id,
+                    success=True,
+                    role=fast_reply.get("role"),
+                    confidence=fast_reply.get("confidence"),
+                )
+            except Exception as e:
+                logger.debug(
+                    f"Duration tracking already completed for {request_id}: {e}"
+                )
+
+    def _get_regular_workflow_status(self, request_id: str, task_context) -> dict:
+        """Get status for regular workflow requests."""
+        is_completed = task_context.is_completed()
+
+        # Complete duration tracking for complex workflows when they finish
+        if is_completed:
+            self._complete_workflow_duration_tracking(request_id, task_context)
+
+        return {
+            "request_id": request_id,
+            "execution_state": task_context.execution_state.value,
+            "is_completed": is_completed,
+            "performance_metrics": task_context.get_performance_metrics(),
+            "task_statuses": {
+                node_id: node.status.value
+                for node_id, node in task_context.task_graph.nodes.items()
+            },
+        }
+
+    def _complete_workflow_duration_tracking(self, request_id: str, task_context):
+        """Complete duration tracking for regular workflows."""
+        if not (
+            hasattr(self, "duration_logger")
+            and request_id in self.duration_logger.active_workflows
+        ):
+            return
+
+        try:
+            task_statuses = {
+                node_id: node.status.value
+                for node_id, node in task_context.task_graph.nodes.items()
+            }
+            task_count = len(task_statuses)
+            failed_tasks = [
+                status for status in task_statuses.values() if status == "FAILED"
+            ]
+            success = len(failed_tasks) == 0
+            error_message = (
+                f"{len(failed_tasks)} tasks failed" if failed_tasks else None
+            )
+
+            self.duration_logger.complete_workflow_tracking(
+                workflow_id=request_id,
+                success=success,
+                error_message=error_message,
+                task_count=task_count,
+            )
+        except Exception as e:
+            logger.debug(f"Duration tracking already completed for {request_id}: {e}")
+
     def get_request_context(self, request_id: str) -> Optional[TaskContext]:
-        """
-        Get TaskContext for a request.
+        r"""\1
 
         Args:
             request_id: Request ID
@@ -1212,8 +1206,7 @@ Current task: {base_prompt}"""
         return self.active_workflows.get(request_id)
 
     def get_universal_agent_status(self) -> dict:
-        """
-        Get status of Universal Agent integration.
+        r"""\1
 
         Returns:
             Dict: Status information
@@ -1232,8 +1225,7 @@ Current task: {base_prompt}"""
         }
 
     def get_queue_status(self) -> dict[str, Any]:
-        """
-        Get detailed queue status.
+        r"""\1
 
         Returns:
             Dict: Queue status information
@@ -1261,8 +1253,7 @@ Current task: {base_prompt}"""
         }
 
     def list_active_requests(self) -> list[str]:
-        """
-        List all active request IDs.
+        r"""\1
 
         Returns:
             List[str]: List of active request IDs
@@ -1270,8 +1261,7 @@ Current task: {base_prompt}"""
         return list(self.active_workflows.keys())
 
     def cleanup_completed_requests(self, max_age_seconds: int = 3600):
-        """
-        Clean up completed requests older than specified age.
+        r"""\1
 
         Args:
             max_age_seconds: Maximum age in seconds for completed requests
@@ -1326,8 +1316,7 @@ Current task: {base_prompt}"""
     def _initialize_mcp_manager(
         self, config_path: Optional[str] = None
     ) -> Optional[MCPClientManager]:
-        """
-        Initialize MCP client manager from configuration.
+        r"""\1
 
         Args:
             config_path: Optional path to MCP configuration file.
@@ -1382,8 +1371,7 @@ Current task: {base_prompt}"""
             return None
 
     def get_mcp_tools(self, role: Optional[str] = None) -> list[dict]:
-        """
-        Get available MCP tools for a role.
+        r"""\1
 
         Args:
             role: Optional role to filter tools for
@@ -1397,8 +1385,7 @@ Current task: {base_prompt}"""
         return self.mcp_manager.get_tools_for_role(role or "default")
 
     def execute_mcp_tool(self, tool_name: str, parameters: dict) -> dict:
-        """
-        Execute an MCP tool with given parameters.
+        r"""\1
 
         Args:
             tool_name: Name of the MCP tool to execute
@@ -1419,8 +1406,7 @@ Current task: {base_prompt}"""
     # ==================== ROLE-BASED TASK DELEGATION ====================
 
     def _determine_role_from_agent_id(self, agent_id: str) -> str:
-        """
-        Determine role from legacy agent ID for backward compatibility.
+        r"""\1
 
         Args:
             agent_id: Legacy agent ID (e.g., 'planning_agent', 'search_agent')
@@ -1455,8 +1441,7 @@ Current task: {base_prompt}"""
         user_id: str = None,
         channel_id: str = None,
     ):
-        """
-        Update the source of an active workflow (for Slack vs CLI differentiation).
+        r"""\1
 
         Args:
             workflow_id: The workflow ID to update
@@ -1480,8 +1465,7 @@ Current task: {base_prompt}"""
                 logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
 
     def _determine_llm_type_for_role(self, role: str) -> LLMType:
-        """
-        Determine optimal LLM type for a given role.
+        r"""\1
 
         Args:
             role: Role name

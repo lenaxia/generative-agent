@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test CLI workflow completion detection.
+"""Test CLI workflow completion detection.
 
 This test reproduces the bug where CLI doesn't properly detect workflow completion
 due to checking for wrong field name in the status response.
@@ -171,7 +170,6 @@ llm_providers:
     @patch("cli.execute_single_workflow")
     def test_cli_completion_logic_simulation(self, mock_execute):
         """Simulate the CLI completion detection logic to show the bug."""
-
         # Mock the workflow status that get_request_status returns
         mock_status_completed = {
             "request_id": "wf_test123",

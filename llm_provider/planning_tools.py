@@ -1,5 +1,4 @@
-"""
-Planning tools for StrandsAgent with Dynamic Role Support.
+"""Planning tools for StrandsAgent with Dynamic Role Support.
 
 These tools create task graphs using dynamically loaded roles instead of hardcoded agents.
 The planning LLM selects appropriate roles based on available role definitions.
@@ -21,11 +20,25 @@ logger = logging.getLogger(__name__)
 class PlanningOutput(BaseModel):
     """Output schema for planning tools."""
 
-    tasks: List[TaskDescription] = []
-    dependencies: Optional[List[TaskDependency]] = []
+    tasks: list[TaskDescription] = []
+    dependencies: Optional[list[TaskDependency]] = []
 
     @field_validator("tasks")
     def check_tasks(cls, tasks):
+        """Validate that all tasks have required fields for planning output.
+
+        Ensures each task has the necessary agent_id, task_type, task_name,
+        and prompt fields for proper execution in the planning system.
+
+        Args:
+            tasks: List of TaskDescription objects to validate.
+
+        Returns:
+            List of validated tasks.
+
+        Raises:
+            ValueError: If any task is missing required fields.
+        """
         for task in tasks:
             if (
                 not task.task_name
@@ -38,6 +51,20 @@ class PlanningOutput(BaseModel):
 
     @field_validator("dependencies")
     def check_dependencies(cls, dependencies):
+        """Validate that all dependencies have required source and target fields.
+
+        Ensures each dependency has both source and target task names
+        properly specified for planning graph construction.
+
+        Args:
+            dependencies: List of TaskDependency objects to validate, or None.
+
+        Returns:
+            List of validated dependencies, or None if input was None/empty.
+
+        Raises:
+            ValueError: If any dependency is missing source or target.
+        """
         if dependencies is None or len(dependencies) == 0:
             return dependencies  # Return as is if dependencies is None or empty
 
@@ -49,9 +76,8 @@ class PlanningOutput(BaseModel):
 
 def create_task_plan(
     instruction: str, llm_factory: LLMFactory = None, request_id: str = "default"
-) -> Dict[str, Any]:
-    """
-    Create a task plan using dynamic role selection via LLM.
+) -> dict[str, Any]:
+    """Create a task plan using dynamic role selection via LLM.
 
     This tool uses an LLM to intelligently break down tasks and select
     appropriate roles from the dynamic role registry.
@@ -108,10 +134,9 @@ def create_task_plan(
 
 
 def _create_llm_task_plan(
-    instruction: str, available_roles: List[Dict], llm_factory: LLMFactory
+    instruction: str, available_roles: list[dict], llm_factory: LLMFactory
 ) -> tuple:
     """Use LLM to create intelligent task plan with role selection."""
-
     # Format roles for LLM prompt
     roles_text = "\n".join(
         [
@@ -221,9 +246,8 @@ Required JSON structure:
 # Removed fallback functions - no more fallbacks, proper error handling instead
 
 
-def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Analyze and create dependencies between tasks.
+def analyze_task_dependencies(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Analyze and create dependencies between tasks.
 
     Args:
         tasks: List of task dictionaries
@@ -249,10 +273,9 @@ def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any
 
 
 def validate_task_plan(
-    tasks: List[Dict[str, Any]], dependencies: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    """
-    Validate a task plan for correctness.
+    tasks: list[dict[str, Any]], dependencies: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Validate a task plan for correctness.
 
     Args:
         tasks: List of task dictionaries
@@ -304,10 +327,9 @@ def validate_task_plan(
 
 
 def optimize_task_plan(
-    tasks: List[Dict[str, Any]], dependencies: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    """
-    Optimize a task plan for better execution.
+    tasks: list[dict[str, Any]], dependencies: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Optimize a task plan for better execution.
 
     Args:
         tasks: List of task dictionaries
@@ -356,12 +378,12 @@ PLANNING_TOOLS = {
 }
 
 
-def get_planning_tools() -> Dict[str, Any]:
+def get_planning_tools() -> dict[str, Any]:
     """Get all available planning tools."""
     return PLANNING_TOOLS
 
 
-def get_planning_tool_descriptions() -> Dict[str, str]:
+def get_planning_tool_descriptions() -> dict[str, str]:
     """Get descriptions of all planning tools."""
     return {
         "create_task_plan": "Create a task plan from user instruction",

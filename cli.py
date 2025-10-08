@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-StrandsAgent Universal Agent System CLI
+"""StrandsAgent Universal Agent System CLI.
 
 Interactive command-line interface for the StrandsAgent Universal Agent System.
 Provides workflow execution, system monitoring, and management capabilities.
@@ -278,8 +277,7 @@ def _print_help_message():
 
 
 def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
-    """
-    Handle slash commands.
+    """Handle slash commands.
 
     Args:
         command: The command string (without the leading slash)
@@ -310,8 +308,7 @@ def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
 
 
 def _execute_workflow(workflow_instruction: str, supervisor: Supervisor):
-    """
-    Execute a workflow instruction.
+    """Execute a workflow instruction.
 
     Args:
         workflow_instruction: The workflow instruction to execute
@@ -333,8 +330,7 @@ def _execute_workflow(workflow_instruction: str, supervisor: Supervisor):
 
 
 def _monitor_workflow_progress(workflow_id: str, supervisor: Supervisor):
-    """
-    Monitor workflow progress until completion.
+    """Monitor workflow progress until completion.
 
     Args:
         workflow_id: The ID of the workflow to monitor
@@ -367,8 +363,7 @@ def _monitor_workflow_progress(workflow_id: str, supervisor: Supervisor):
 
 
 def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
-    """
-    Process user input and execute appropriate action.
+    """Process user input and execute appropriate action.
 
     Args:
         user_input: The user's input string

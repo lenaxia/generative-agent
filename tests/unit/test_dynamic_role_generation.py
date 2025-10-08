@@ -1,5 +1,4 @@
-"""
-Unit tests for role fallback functionality in UniversalAgent.
+"""Unit tests for role fallback functionality in UniversalAgent.
 
 Tests the behavior when "None" is specified or when a requested role
 is not found in the registry - should fall back to default role or basic agent.

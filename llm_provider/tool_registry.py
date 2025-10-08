@@ -6,12 +6,11 @@ tools that can be used by agents and roles within the system.
 
 import inspect
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 
 def tool(name: Optional[str] = None, description: str = "", role: Optional[str] = None):
-    """
-    Decorator to register a function as a tool for the Universal Agent.
+    """Decorator to register a function as a tool for the Universal Agent.
 
     Args:
         name: Optional name for the tool (uses function name if not provided)
@@ -44,9 +43,7 @@ def tool(name: Optional[str] = None, description: str = "", role: Optional[str] 
 
 
 class ToolRegistry:
-    """
-    Registry for managing tools available to the Universal Agent.
-    """
+    """Registry for managing tools available to the Universal Agent."""
 
     _global_registry = None
 
@@ -69,8 +66,7 @@ class ToolRegistry:
         description: str = "",
         role: Optional[str] = None,
     ):
-        """
-        Add a tool to the registry.
+        """Add a tool to the registry.
 
         Args:
             name: Tool name
@@ -101,8 +97,7 @@ class ToolRegistry:
                 self.role_tools[role].append(name)
 
     def remove_tool(self, name: str):
-        """
-        Remove a tool from the registry.
+        """Remove a tool from the registry.
 
         Args:
             name: Tool name to remove
@@ -122,8 +117,7 @@ class ToolRegistry:
                     del self.role_tools[role]
 
     def get_tool(self, name: str) -> Optional[dict[str, Any]]:
-        """
-        Get tool information by name.
+        """Get tool information by name.
 
         Args:
             name: Tool name
@@ -134,8 +128,7 @@ class ToolRegistry:
         return self.tools.get(name)
 
     def get_tools(self, tool_names: list[str]) -> list[Callable]:
-        """
-        Get tool functions by names.
+        """Get tool functions by names.
 
         Args:
             tool_names: List of tool names
@@ -150,8 +143,7 @@ class ToolRegistry:
         return tools
 
     def get_tools_for_role(self, role: str) -> list[str]:
-        """
-        Get tool names associated with a role.
+        """Get tool names associated with a role.
 
         Args:
             role: Role name
@@ -162,8 +154,7 @@ class ToolRegistry:
         return self.role_tools.get(role, []).copy()
 
     def list_tools(self) -> list[str]:
-        """
-        Get list of all tool names.
+        """Get list of all tool names.
 
         Returns:
             List of tool names
@@ -171,8 +162,7 @@ class ToolRegistry:
         return list(self.tools.keys())
 
     def list_roles(self) -> list[str]:
-        """
-        Get list of all roles that have associated tools.
+        """Get list of all roles that have associated tools.
 
         Returns:
             List of role names
@@ -180,8 +170,7 @@ class ToolRegistry:
         return list(self.role_tools.keys())
 
     def search_tools(self, query: str) -> list[str]:
-        """
-        Search for tools by name or description.
+        """Search for tools by name or description.
 
         Args:
             query: Search query
@@ -202,8 +191,7 @@ class ToolRegistry:
         return matches
 
     def get_tool_info(self, name: str) -> Optional[dict[str, Any]]:
-        """
-        Get detailed information about a tool.
+        """Get detailed information about a tool.
 
         Args:
             name: Tool name
@@ -224,8 +212,7 @@ class ToolRegistry:
         return tool_info
 
     def validate_tool(self, name: str) -> bool:
-        """
-        Validate that a tool is properly configured.
+        """Validate that a tool is properly configured.
 
         Args:
             name: Tool name
@@ -256,8 +243,7 @@ class ToolRegistry:
         self.role_tools.clear()
 
     def export_tools(self) -> dict[str, Any]:
-        """
-        Export tool registry for serialization.
+        """Export tool registry for serialization.
 
         Returns:
             Serializable representation of tools
@@ -277,8 +263,7 @@ class ToolRegistry:
         return exported
 
     def get_statistics(self) -> dict[str, Any]:
-        """
-        Get registry statistics.
+        """Get registry statistics.
 
         Returns:
             Statistics about the tool registry

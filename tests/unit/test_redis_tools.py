@@ -1,5 +1,4 @@
-"""
-Unit tests for Redis shared tools.
+"""Unit tests for Redis shared tools.
 
 Tests Redis operations with automatic key prefixing, TTL support,
 and both synchronous and asynchronous operations.

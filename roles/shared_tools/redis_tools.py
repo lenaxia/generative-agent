@@ -1,5 +1,4 @@
-"""
-Redis tools for generative agent roles.
+"""Redis tools for generative agent roles.
 
 Provides Redis operations with automatic key prefixing by role/agent to avoid collisions.
 Supports both synchronous and asynchronous operations with TTL support.
@@ -29,8 +28,7 @@ _redis_lock = threading.Lock()
 
 
 def _get_calling_role() -> str:
-    """
-    Automatically detect the calling role/agent from the call stack.
+    """Automatically detect the calling role/agent from the call stack.
 
     Returns:
         Role name extracted from the call stack or 'unknown' if not detectable
@@ -43,31 +41,50 @@ def _get_calling_role() -> str:
             if not frame:
                 break
 
-            # Look for _role indicators in the call stack
-            filename = frame.f_code.co_filename
+            # Try different detection strategies
+            role = _detect_role_from_filename(frame.f_code.co_filename)
+            if role:
+                return role
 
-            # Check if we're in a role directory
-            if "/roles/" in filename:
-                parts = filename.split("/roles/")
-                if len(parts) > 1:
-                    role_part = parts[1].split("/")[0]
-                    if role_part and role_part != "shared_tools":
-                        return role_part
-
-            # Check local variables for role context
-            local_vars = frame.f_locals
-            for var_name in ["role_name", "role", "agent_name", "agent"]:
-                if var_name in local_vars:
-                    value = local_vars[var_name]
-                    if isinstance(value, str) and value:
-                        return value
-                    elif hasattr(value, "name") and isinstance(value.name, str):
-                        return value.name
+            role = _detect_role_from_local_vars(frame.f_locals)
+            if role:
+                return role
 
     finally:
         del frame
 
     return "unknown"
+
+
+def _detect_role_from_filename(filename: str) -> str:
+    """Detect role from filename path."""
+    if "/roles/" not in filename:
+        return ""
+
+    parts = filename.split("/roles/")
+    if len(parts) <= 1:
+        return ""
+
+    role_part = parts[1].split("/")[0]
+    if role_part and role_part != "shared_tools":
+        return role_part
+
+    return ""
+
+
+def _detect_role_from_local_vars(local_vars: dict) -> str:
+    """Detect role from local variables in frame."""
+    for var_name in ["role_name", "role", "agent_name", "agent"]:
+        if var_name not in local_vars:
+            continue
+
+        value = local_vars[var_name]
+        if isinstance(value, str) and value:
+            return value
+        elif hasattr(value, "name") and isinstance(value.name, str):
+            return value.name
+
+    return ""
 
 
 def _get_redis_config() -> dict[str, Any]:
@@ -177,8 +194,7 @@ async def _get_async_redis_client():
 
 
 def _prefix_key(key: str, role: Optional[str] = None) -> str:
-    """
-    Add role prefix to Redis key to avoid collisions.
+    """Add role prefix to Redis key to avoid collisions.
 
     Args:
         key: Original key
@@ -193,8 +209,7 @@ def _prefix_key(key: str, role: Optional[str] = None) -> str:
 
 
 def _unprefix_key(prefixed_key: str, role: Optional[str] = None) -> str:
-    """
-    Remove role prefix from Redis key.
+    """Remove role prefix from Redis key.
 
     Args:
         prefixed_key: Key with role prefix
@@ -217,8 +232,7 @@ def _unprefix_key(prefixed_key: str, role: Optional[str] = None) -> str:
 def redis_write(
     key: str, value: Union[str, int, float, dict, list], ttl: Optional[int] = None
 ) -> dict[str, Any]:
-    """
-    Synchronously write data to Redis with optional TTL.
+    """Synchronously write data to Redis with optional TTL.
 
     Args:
         key: Redis key (will be prefixed with role name)
@@ -270,8 +284,7 @@ def redis_write(
 
 
 def redis_read(key: str) -> dict[str, Any]:
-    """
-    Synchronously read data from Redis.
+    """Synchronously read data from Redis.
 
     Args:
         key: Redis key (will be prefixed with role name)
@@ -333,8 +346,7 @@ def redis_read(key: str) -> dict[str, Any]:
 
 
 def redis_get_keys(pattern: str = "*") -> dict[str, Any]:
-    """
-    Get all keys for the current role matching a pattern.
+    """Get all keys for the current role matching a pattern.
 
     Args:
         pattern: Key pattern to match (applied after role prefix)
@@ -391,8 +403,8 @@ def redis_get_keys(pattern: str = "*") -> dict[str, Any]:
 def redis_write_async(
     key: str, value: Union[str, int, float, dict, list], ttl: Optional[int] = None
 ) -> dict[str, Any]:
-    """
-    Asynchronously write data to Redis (fire and forget).
+    """Asynchronously write data to Redis (fire and forget).
+
     Returns immediately without waiting for completion.
 
     Args:
@@ -406,77 +418,79 @@ def redis_write_async(
     Example:
         redis_write_async("log_entry", {"timestamp": "2024-01-01", "event": "user_login"})
     """
-
-    def _async_write():
-        """Internal async write function."""
-
-        async def _do_write():
-            try:
-                client = await _get_async_redis_client()
-                prefixed_key = _prefix_key(key)
-
-                # Handle different value types
-                if isinstance(value, (dict, list)):
-                    import json
-
-                    serialized_value = json.dumps(value)
-                else:
-                    serialized_value = str(value)
-
-                # Set value with optional TTL
-                if ttl:
-                    await client.setex(prefixed_key, ttl, serialized_value)
-                else:
-                    await client.set(prefixed_key, serialized_value)
-
-                logger.debug(f"Async Redis write completed: {prefixed_key}")
-
-            except Exception as e:
-                logger.error(f"Async Redis write error: {e}")
-
-        # Run in event loop
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an event loop, schedule the task
-                asyncio.create_task(_do_write())
-            else:
-                # If no event loop is running, run it
-                asyncio.run(_do_write())
-        except RuntimeError:
-            # Fallback: run in a new thread
-            import threading
-
-            thread = threading.Thread(target=lambda: asyncio.run(_do_write()))
-            thread.daemon = True
-            thread.start()
-
     try:
-        _async_write()
-
-        return {
-            "success": True,
-            "key": key,
-            "prefixed_key": _prefix_key(key),
-            "ttl": ttl,
-            "async": True,
-            "message": "Async write operation started",
-        }
-
+        _start_async_write_operation(key, value, ttl)
+        return _create_write_success_response(key, ttl)
     except Exception as e:
         logger.error(f"Failed to start async Redis write: {e}")
-        return {
-            "success": False,
-            "key": key,
-            "error": str(e),
-            "async": True,
-            "message": "Failed to start async write operation",
-        }
+        return _create_write_error_response(key, str(e))
+
+
+def _start_async_write_operation(
+    key: str, value: Union[str, int, float, dict, list], ttl: Optional[int]
+):
+    """Start the async write operation."""
+
+    async def _do_write():
+        try:
+            await _perform_redis_write(key, value, ttl)
+            logger.debug(f"Async Redis write completed: {_prefix_key(key)}")
+        except Exception as e:
+            logger.error(f"Async Redis write error: {e}")
+
+    _execute_async_operation(_do_write)
+
+
+async def _perform_redis_write(
+    key: str, value: Union[str, int, float, dict, list], ttl: Optional[int]
+):
+    """Perform the actual Redis write operation."""
+    client = await _get_async_redis_client()
+    prefixed_key = _prefix_key(key)
+    serialized_value = _serialize_value(value)
+
+    if ttl:
+        await client.setex(prefixed_key, ttl, serialized_value)
+    else:
+        await client.set(prefixed_key, serialized_value)
+
+
+def _serialize_value(value: Union[str, int, float, dict, list]) -> str:
+    """Serialize value for Redis storage."""
+    if isinstance(value, (dict, list)):
+        import json
+
+        return json.dumps(value)
+    else:
+        return str(value)
+
+
+def _create_write_success_response(key: str, ttl: Optional[int]) -> dict:
+    """Create success response for write operation."""
+    return {
+        "success": True,
+        "key": key,
+        "prefixed_key": _prefix_key(key),
+        "ttl": ttl,
+        "async": True,
+        "message": "Async write operation started",
+    }
+
+
+def _create_write_error_response(key: str, error: str) -> dict:
+    """Create error response for write operation."""
+    return {
+        "success": False,
+        "key": key,
+        "error": error,
+        "async": True,
+        "message": "Failed to start async write operation",
+    }
 
 
 def redis_read_async(key: str, callback: Optional[callable] = None) -> dict[str, Any]:
-    """
-    Asynchronously read data from Redis (fire and forget).
+    """Asynchronously read data from Redis (fire and forget).
+
     Returns immediately. Use callback to handle the result.
 
     Args:
@@ -493,111 +507,145 @@ def redis_read_async(key: str, callback: Optional[callable] = None) -> dict[str,
 
         redis_read_async("user_session", callback=handle_result)
     """
-
-    def _async_read():
-        """Internal async read function."""
-
-        async def _do_read():
-            try:
-                client = await _get_async_redis_client()
-                prefixed_key = _prefix_key(key)
-
-                value = await client.get(prefixed_key)
-
-                if value is None:
-                    result = {
-                        "success": False,
-                        "key": key,
-                        "prefixed_key": prefixed_key,
-                        "value": None,
-                        "message": "Key not found",
-                    }
-                else:
-                    # Try to deserialize JSON
-                    try:
-                        import json
-
-                        parsed_value = json.loads(value)
-                    except (json.JSONDecodeError, TypeError):
-                        parsed_value = value
-
-                    # Get TTL if available
-                    ttl = await client.ttl(prefixed_key)
-                    ttl = ttl if ttl > 0 else None
-
-                    result = {
-                        "success": True,
-                        "key": key,
-                        "prefixed_key": prefixed_key,
-                        "value": parsed_value,
-                        "ttl": ttl,
-                        "message": "Data read successfully",
-                    }
-
-                logger.debug(f"Async Redis read completed: {prefixed_key}")
-
-                # Call callback if provided
-                if callback:
-                    callback(result)
-
-            except Exception as e:
-                logger.error(f"Async Redis read error: {e}")
-                if callback:
-                    callback(
-                        {
-                            "success": False,
-                            "key": key,
-                            "error": str(e),
-                            "message": "Failed to read data from Redis",
-                        }
-                    )
-
-        # Run in event loop
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an event loop, schedule the task
-                asyncio.create_task(_do_read())
-            else:
-                # If no event loop is running, run it
-                asyncio.run(_do_read())
-        except RuntimeError:
-            # Fallback: run in a new thread
-            import threading
-
-            thread = threading.Thread(target=lambda: asyncio.run(_do_read()))
-            thread.daemon = True
-            thread.start()
-
     try:
-        _async_read()
-
-        return {
-            "success": True,
-            "key": key,
-            "prefixed_key": _prefix_key(key),
-            "async": True,
-            "callback": callback is not None,
-            "message": "Async read operation started",
-        }
-
+        _start_async_read_operation(key, callback)
+        return _create_async_success_response(key, callback)
     except Exception as e:
         logger.error(f"Failed to start async Redis read: {e}")
-        return {
-            "success": False,
-            "key": key,
-            "error": str(e),
-            "async": True,
-            "message": "Failed to start async read operation",
-        }
+        return _create_async_error_response(key, str(e))
+
+
+def _start_async_read_operation(key: str, callback: Optional[callable]):
+    """Start the async read operation."""
+
+    async def _do_read():
+        try:
+            result = await _perform_redis_read(key)
+            logger.debug(f"Async Redis read completed: {result.get('prefixed_key')}")
+
+            if callback:
+                callback(result)
+        except Exception as e:
+            logger.error(f"Async Redis read error: {e}")
+            if callback:
+                callback(_create_read_error_result(key, str(e)))
+
+    _execute_async_operation(_do_read)
+
+
+async def _perform_redis_read(key: str) -> dict:
+    """Perform the actual Redis read operation."""
+    client = await _get_async_redis_client()
+    prefixed_key = _prefix_key(key)
+    value = await client.get(prefixed_key)
+
+    if value is None:
+        return _create_not_found_result(key, prefixed_key)
+
+    parsed_value = _parse_redis_value(value)
+    ttl = await _get_ttl_if_available(client, prefixed_key)
+
+    return _create_read_success_result(key, prefixed_key, parsed_value, ttl)
+
+
+def _parse_redis_value(value):
+    """Parse Redis value, attempting JSON deserialization."""
+    try:
+        import json
+
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value
+
+
+async def _get_ttl_if_available(client, prefixed_key):
+    """Get TTL for key if available."""
+    ttl = await client.ttl(prefixed_key)
+    return ttl if ttl > 0 else None
+
+
+def _execute_async_operation(async_func):
+    """Execute async operation in appropriate event loop context."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(async_func())
+        else:
+            asyncio.run(async_func())
+    except RuntimeError:
+        _run_in_thread(async_func)
+
+
+def _run_in_thread(async_func):
+    """Run async function in a separate thread."""
+    import threading
+
+    thread = threading.Thread(target=lambda: asyncio.run(async_func()))
+    thread.daemon = True
+    thread.start()
+
+
+def _create_not_found_result(key: str, prefixed_key: str) -> dict:
+    """Create result for key not found."""
+    return {
+        "success": False,
+        "key": key,
+        "prefixed_key": prefixed_key,
+        "value": None,
+        "message": "Key not found",
+    }
+
+
+def _create_read_success_result(key: str, prefixed_key: str, parsed_value, ttl) -> dict:
+    """Create successful read result."""
+    return {
+        "success": True,
+        "key": key,
+        "prefixed_key": prefixed_key,
+        "value": parsed_value,
+        "ttl": ttl,
+        "message": "Data read successfully",
+    }
+
+
+def _create_read_error_result(key: str, error: str) -> dict:
+    """Create error result for read operation."""
+    return {
+        "success": False,
+        "key": key,
+        "error": error,
+        "message": "Failed to read data from Redis",
+    }
+
+
+def _create_async_success_response(key: str, callback: Optional[callable]) -> dict:
+    """Create success response for async operation start."""
+    return {
+        "success": True,
+        "key": key,
+        "prefixed_key": _prefix_key(key),
+        "async": True,
+        "callback": callback is not None,
+        "message": "Async read operation started",
+    }
+
+
+def _create_async_error_response(key: str, error: str) -> dict:
+    """Create error response for async operation start."""
+    return {
+        "success": False,
+        "key": key,
+        "error": error,
+        "async": True,
+        "message": "Failed to start async read operation",
+    }
 
 
 # Utility Functions
 
 
 def redis_delete(key: str) -> dict[str, Any]:
-    """
-    Delete a key from Redis.
+    """Delete a key from Redis.
 
     Args:
         key: Redis key to delete (will be prefixed with role name)
@@ -632,8 +680,7 @@ def redis_delete(key: str) -> dict[str, Any]:
 
 
 def redis_exists(key: str) -> dict[str, Any]:
-    """
-    Check if a key exists in Redis.
+    """Check if a key exists in Redis.
 
     Args:
         key: Redis key to check (will be prefixed with role name)
@@ -668,8 +715,7 @@ def redis_exists(key: str) -> dict[str, Any]:
 
 
 def redis_clear_role_data(role: Optional[str] = None) -> dict[str, Any]:
-    """
-    Clear all data for a specific role (use with caution).
+    """Clear all data for a specific role (use with caution).
 
     Args:
         role: Role name (auto-detected if not provided)
@@ -714,8 +760,7 @@ def redis_clear_role_data(role: Optional[str] = None) -> dict[str, Any]:
 
 
 def redis_health_check() -> dict[str, Any]:
-    """
-    Check Redis connection health.
+    """Check Redis connection health.
 
     Returns:
         Dict containing health status

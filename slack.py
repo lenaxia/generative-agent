@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Enhanced Slack Bot with Universal Agent Integration
+"""Enhanced Slack Bot with Universal Agent Integration.
 
 Connects your Slack bot to the StrandsAgent Universal Agent system for intelligent responses.
 """
@@ -11,7 +10,6 @@ import os
 import sys
 import threading
 from pathlib import Path
-from typing import Dict
 
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -29,13 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 class IntelligentSlackBot:
-    """
-    Slack bot that integrates with the Universal Agent system for intelligent responses.
-    """
+    """Slack bot that integrates with the Universal Agent system for intelligent responses."""
 
     def __init__(self, app_token, bot_token=None, config_path="config.yaml"):
-        """
-        Initialize the intelligent Slack bot.
+        """Initialize the intelligent Slack bot.
 
         Args:
             app_token: Slack app token for socket mode
@@ -129,8 +124,7 @@ class IntelligentSlackBot:
         return {"id": channel_id, "name": channel_id, "is_private": False}
 
     async def _resolve_slack_references(self, text: str, client) -> str:
-        """
-        Resolve Slack user and channel references to human-readable names.
+        """Resolve Slack user and channel references to human-readable names.
 
         Args:
             text: Message text with Slack references like <@U123> or <#C123|channelname>
@@ -168,8 +162,7 @@ class IntelligentSlackBot:
     async def _process_with_ai(
         self, message_text, user_id=None, channel=None, client=None
     ):
-        """
-        Process message with the Universal Agent system.
+        """Process message with the Universal Agent system.
 
         Args:
             message_text: The message to process
@@ -188,91 +181,112 @@ class IntelligentSlackBot:
             return self._handle_slash_command(message_text, user_id)
 
         try:
-            # Resolve Slack references in the message text
-            resolved_message = message_text
-            if client:
-                resolved_message = await self._resolve_slack_references(
-                    message_text, client
-                )
-
-            # Build context message with human-readable names
-            context_message = resolved_message
-
-            if user_id and client:
-                user_info = await self._get_user_info(user_id, client)
-                user_name = (
-                    user_info.get("display_name")
-                    or user_info.get("real_name")
-                    or user_info.get("name")
-                )
-                context_message = f"User {user_name} (@{user_info.get('name')}) asks: {resolved_message}"
-            elif user_id:
-                context_message = f"User {user_id} asks: {resolved_message}"
-
-            # Add channel context if available
-            if channel and client:
-                channel_info = await self._get_channel_info(channel, client)
-                channel_name = channel_info.get("name")
-                if channel_name:
-                    context_message += f" [in #{channel_name}]"
-
-            logger.info(f"🧠 Processing with AI: {context_message}")
-
-            # Start workflow with Universal Agent
-            workflow_id = self.supervisor.workflow_engine.start_workflow(
-                context_message
+            context_message = await self._build_context_message(
+                message_text, user_id, channel, client
             )
-
-            # Update workflow source to Slack (duration tracking is handled in workflow engine)
-            self.supervisor.workflow_engine.update_workflow_source(
-                workflow_id, WorkflowSource.SLACK, user_id=user_id, channel_id=channel
-            )
-
-            # Wait for completion with more frequent checks and immediate response
-            max_wait = 30  # 30 seconds timeout
-            wait_time = 0
-            check_interval = 0.5  # Check every 500ms for faster response
-
-            while wait_time < max_wait:
-                status = self.supervisor.workflow_engine.get_request_status(workflow_id)
-
-                if status is None:
-                    # Workflow completed, try to get results from TaskContext
-                    return await self._get_workflow_result(workflow_id)
-
-                if status.get("is_completed", False):
-                    # Workflow completed, get the actual result immediately
-                    return await self._get_workflow_result(workflow_id)
-
-                if status.get("error"):
-                    return f"❌ Error: {status.get('error')}"
-
-                # Check if any tasks are completed even if workflow isn't marked complete
-                task_statuses = status.get("task_statuses", {})
-                if task_statuses:
-                    completed_tasks = [
-                        task_id
-                        for task_id, task_status in task_statuses.items()
-                        if task_status == "COMPLETED"
-                    ]
-                    if completed_tasks:
-                        # Try to get partial results
-                        partial_result = await self._get_workflow_result(workflow_id)
-                        if partial_result and "🤖" in partial_result:
-                            return partial_result
-
-                await asyncio.sleep(check_interval)
-                wait_time += check_interval
-
-            return "⏰ AI is taking longer than expected. Please try a simpler request."
+            workflow_id = self._start_workflow(context_message, user_id, channel)
+            return await self._wait_for_workflow_completion(workflow_id)
 
         except Exception as e:
             logger.error(f"❌ AI processing error: {e}")
             return f"❌ Sorry, I encountered an error: {str(e)}"
 
+    async def _build_context_message(self, message_text, user_id, channel, client):
+        """Build context message with user and channel information."""
+        # Resolve Slack references in the message text
+        resolved_message = message_text
+        if client:
+            resolved_message = await self._resolve_slack_references(
+                message_text, client
+            )
+
+        # Build context message with human-readable names
+        context_message = resolved_message
+
+        if user_id and client:
+            user_info = await self._get_user_info(user_id, client)
+            user_name = self._extract_user_name(user_info)
+            context_message = (
+                f"User {user_name} (@{user_info.get('name')}) asks: {resolved_message}"
+            )
+        elif user_id:
+            context_message = f"User {user_id} asks: {resolved_message}"
+
+        # Add channel context if available
+        if channel and client:
+            channel_info = await self._get_channel_info(channel, client)
+            channel_name = channel_info.get("name")
+            if channel_name:
+                context_message += f" [in #{channel_name}]"
+
+        logger.info(f"🧠 Processing with AI: {context_message}")
+        return context_message
+
+    def _extract_user_name(self, user_info):
+        """Extract the best available user name from user info."""
+        return (
+            user_info.get("display_name")
+            or user_info.get("real_name")
+            or user_info.get("name")
+        )
+
+    def _start_workflow(self, context_message, user_id, channel):
+        """Start workflow and update source information."""
+        workflow_id = self.supervisor.workflow_engine.start_workflow(context_message)
+
+        # Update workflow source to Slack (duration tracking is handled in workflow engine)
+        self.supervisor.workflow_engine.update_workflow_source(
+            workflow_id, WorkflowSource.SLACK, user_id=user_id, channel_id=channel
+        )
+        return workflow_id
+
+    async def _wait_for_workflow_completion(self, workflow_id):
+        """Wait for workflow completion with polling."""
+        max_wait = 30  # 30 seconds timeout
+        wait_time = 0
+        check_interval = 0.5  # Check every 500ms for faster response
+
+        while wait_time < max_wait:
+            status = self.supervisor.workflow_engine.get_request_status(workflow_id)
+
+            result = await self._check_workflow_status(workflow_id, status)
+            if result:
+                return result
+
+            await asyncio.sleep(check_interval)
+            wait_time += check_interval
+
+        return "⏰ AI is taking longer than expected. Please try a simpler request."
+
+    async def _check_workflow_status(self, workflow_id, status):
+        """Check workflow status and return result if ready."""
+        if status is None:
+            return await self._get_workflow_result(workflow_id)
+
+        if status.get("is_completed", False):
+            return await self._get_workflow_result(workflow_id)
+
+        if status.get("error"):
+            return f"❌ Error: {status.get('error')}"
+
+        # Check if any tasks are completed even if workflow isn't marked complete
+        task_statuses = status.get("task_statuses", {})
+        if task_statuses:
+            completed_tasks = [
+                task_id
+                for task_id, task_status in task_statuses.items()
+                if task_status == "COMPLETED"
+            ]
+            if completed_tasks:
+                # Try to get partial results
+                partial_result = await self._get_workflow_result(workflow_id)
+                if partial_result and "🤖" in partial_result:
+                    return partial_result
+
+        return None  # Continue waiting
+
     async def _get_workflow_result(self, workflow_id: str) -> str:
-        """
-        Get the actual result from a completed workflow.
+        """Get the actual result from a completed workflow.
 
         Args:
             workflow_id: The workflow ID to get results for
@@ -281,7 +295,6 @@ class IntelligentSlackBot:
             The actual AI response or a fallback message
         """
         try:
-            # Get the TaskContext for this workflow
             task_context = self.supervisor.workflow_engine.get_request_context(
                 workflow_id
             )
@@ -289,47 +302,63 @@ class IntelligentSlackBot:
             if not task_context:
                 return "✅ Task completed successfully!"
 
-            # Get all completed task nodes and their results
-            completed_results = []
-            for node in task_context.task_graph.nodes.values():
-                if node.status.value == "COMPLETED" and node.result:
-                    completed_results.append(node.result)
+            # Try different result extraction strategies
+            result = (
+                self._get_result_from_completed_nodes(task_context)
+                or self._get_result_from_conversation_history(task_context)
+                or self._get_result_from_progressive_summary(task_context)
+            )
 
-            # If we have results, return the most recent/relevant one
-            if completed_results:
-                # For simple workflows, return the last result
-                final_result = completed_results[-1]
-                logger.info(f"🎯 Retrieved AI result: {final_result[:100]}...")
-                return f"🤖 {final_result}"
-
-            # Try to get from conversation history
-            conversation_history = task_context.get_conversation_history()
-            if conversation_history:
-                # Look for the last assistant message
-                for msg in reversed(conversation_history):
-                    if msg.get("role") == "assistant" and msg.get("content"):
-                        content = msg.get("content")
-                        if content and content.strip():
-                            logger.info(
-                                f"🎯 Retrieved from conversation: {content[:100]}..."
-                            )
-                            return f"🤖 {content}"
-
-            # Try to get from progressive summary
-            if (
-                hasattr(task_context.task_graph, "progressive_summary")
-                and task_context.task_graph.progressive_summary
-            ):
-                summary = task_context.task_graph.progressive_summary[-1]
-                if summary and summary.strip():
-                    logger.info(f"🎯 Retrieved from summary: {summary[:100]}...")
-                    return f"🤖 {summary}"
-
-            return "✅ Task completed successfully!"
+            return result or "✅ Task completed successfully!"
 
         except Exception as e:
             logger.error(f"❌ Error getting workflow result: {e}")
             return "✅ Task completed successfully!"
+
+    def _get_result_from_completed_nodes(self, task_context):
+        """Extract result from completed task nodes."""
+        completed_results = []
+        for node in task_context.task_graph.nodes.values():
+            if node.status.value == "COMPLETED" and node.result:
+                completed_results.append(node.result)
+
+        if completed_results:
+            final_result = completed_results[-1]
+            logger.info(f"🎯 Retrieved AI result: {final_result[:100]}...")
+            return f"🤖 {final_result}"
+
+        return None
+
+    def _get_result_from_conversation_history(self, task_context):
+        """Extract result from conversation history."""
+        conversation_history = task_context.get_conversation_history()
+        if not conversation_history:
+            return None
+
+        # Look for the last assistant message
+        for msg in reversed(conversation_history):
+            if msg.get("role") == "assistant" and msg.get("content"):
+                content = msg.get("content")
+                if content and content.strip():
+                    logger.info(f"🎯 Retrieved from conversation: {content[:100]}...")
+                    return f"🤖 {content}"
+
+        return None
+
+    def _get_result_from_progressive_summary(self, task_context):
+        """Extract result from progressive summary."""
+        if not (
+            hasattr(task_context.task_graph, "progressive_summary")
+            and task_context.task_graph.progressive_summary
+        ):
+            return None
+
+        summary = task_context.task_graph.progressive_summary[-1]
+        if summary and summary.strip():
+            logger.info(f"🎯 Retrieved from summary: {summary[:100]}...")
+            return f"🤖 {summary}"
+
+        return None
 
     def setup_middleware(self):
         """Setup Slack middleware for logging."""
@@ -340,8 +369,7 @@ class IntelligentSlackBot:
             return next()
 
     def _handle_slash_command(self, message_text: str, user_id: str = None) -> str:
-        """
-        Handle slash commands in messages (similar to CLI implementation).
+        """Handle slash commands in messages (similar to CLI implementation).
 
         Args:
             message_text: The message text starting with /
@@ -420,73 +448,82 @@ class IntelligentSlackBot:
         def ai_command(ack, body, say, respond):
             """Handle /ai slash command for direct AI interaction."""
             ack()
-
-            user_id = body["user_id"]
-            text = body.get("text", "").strip()
-
-            if not text:
-                say(f"Hi <@{user_id}>! Use `/ai your question` to chat with me. 🤖")
-                return
-
-            logger.info(f"📝 /ai command from {user_id}: {text}")
-
-            # Send initial response
-            respond(f"<@{user_id}> 🤔 Processing your request...")
-
-            # Process with AI in a separate thread to avoid blocking
-            def process_ai():
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    response = loop.run_until_complete(
-                        self._process_with_ai(text, user_id)
-                    )
-                    # Update the original message
-                    respond(f"<@{user_id}> {response}")
-                except Exception as e:
-                    logger.error(f"❌ Error in AI processing: {e}")
-                    respond(
-                        f"<@{user_id}> Sorry, I encountered an error processing your request."
-                    )
-
-            threading.Thread(target=process_ai, daemon=True).start()
+            self._handle_ai_command(body, say, respond)
 
         @self.app.command("/status")
         def status_command(ack, body, say):
             """Handle /status command to show AI system status."""
             ack()
+            self._handle_status_command(body, say)
 
-            user_id = body["user_id"]
+    def _handle_ai_command(self, body, say, respond):
+        """Handle /ai slash command logic."""
+        user_id = body["user_id"]
+        text = body.get("text", "").strip()
 
-            if not self.system_ready:
-                say(f"<@{user_id}> 🔄 AI system is starting up...")
-                return
+        if not text:
+            say(f"Hi <@{user_id}>! Use `/ai your question` to chat with me. 🤖")
+            return
 
+        logger.info(f"📝 /ai command from {user_id}: {text}")
+        respond(f"<@{user_id}> 🤔 Processing your request...")
+
+        self._process_ai_command_async(text, user_id, respond)
+
+    def _handle_status_command(self, body, say):
+        """Handle /status command logic."""
+        user_id = body["user_id"]
+
+        if not self.system_ready:
+            say(f"<@{user_id}> 🔄 AI system is starting up...")
+            return
+
+        try:
+            status = self.supervisor.status()
+            if status:
+                status_msg = self._build_status_message_for_command(user_id, status)
+                say(status_msg)
+            else:
+                say(f"<@{user_id}> ❌ Could not retrieve system status")
+        except Exception as e:
+            logger.error(f"❌ Status error: {e}")
+            say(f"<@{user_id}> ❌ Error getting status: {str(e)}")
+
+    def _process_ai_command_async(self, text, user_id, respond):
+        """Process AI command in background thread."""
+
+        def process_ai():
             try:
-                status = self.supervisor.status()
-                if status:
-                    status_msg = f"<@{user_id}> 🤖 *AI System Status*\n"
-                    status_msg += f"• System: {status.get('status', 'unknown')}\n"
-                    status_msg += (
-                        f"• Running: {'✅' if status.get('running') else '❌'}\n"
-                    )
-
-                    if "workflow_engine" in status:
-                        we_status = status["workflow_engine"]
-                        status_msg += f"• Active Workflows: {we_status.get('active_workflows', 0)}\n"
-
-                    if "universal_agent" in status:
-                        ua_status = status["universal_agent"]
-                        roles = ua_status.get("available_roles", [])
-                        status_msg += f"• Available Roles: {', '.join(roles)}\n"
-
-                    say(status_msg)
-                else:
-                    say(f"<@{user_id}> ❌ Could not retrieve system status")
-
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                response = loop.run_until_complete(self._process_with_ai(text, user_id))
+                respond(f"<@{user_id}> {response}")
             except Exception as e:
-                logger.error(f"❌ Status error: {e}")
-                say(f"<@{user_id}> ❌ Error getting status: {str(e)}")
+                logger.error(f"❌ Error in AI processing: {e}")
+                respond(
+                    f"<@{user_id}> Sorry, I encountered an error processing your request."
+                )
+
+        threading.Thread(target=process_ai, daemon=True).start()
+
+    def _build_status_message_for_command(self, user_id, status):
+        """Build status message for slash command."""
+        status_msg = f"<@{user_id}> 🤖 *AI System Status*\n"
+        status_msg += f"• System: {status.get('status', 'unknown')}\n"
+        status_msg += f"• Running: {'✅' if status.get('running') else '❌'}\n"
+
+        if "workflow_engine" in status:
+            we_status = status["workflow_engine"]
+            status_msg += (
+                f"• Active Workflows: {we_status.get('active_workflows', 0)}\n"
+            )
+
+        if "universal_agent" in status:
+            ua_status = status["universal_agent"]
+            roles = ua_status.get("available_roles", [])
+            status_msg += f"• Available Roles: {', '.join(roles)}\n"
+
+        return status_msg
 
     def setup_events(self):
         """Setup Slack event handlers."""
@@ -494,188 +531,209 @@ class IntelligentSlackBot:
         @self.app.event("app_mention")
         def handle_mention(body, say, logger, client):
             """Handle @mentions of the bot."""
-            event = body["event"]
-            user_id = event["user"]
-            text = event["text"]
-            channel = event["channel"]
-
-            # Remove bot mention from text
-            # Slack mentions look like <@U1234567890>
-            import re
-
-            clean_text = re.sub(r"<@[A-Z0-9]+>", "", text).strip()
-
-            if not clean_text:
-                say(f"Hi <@{user_id}>! How can I help you today? 🤖")
-                return
-
-            logger.info(f"📢 Mentioned by {user_id}: {clean_text}")
-
-            # Send initial processing message
-            initial_msg = say(f"<@{user_id}> 🤔 Processing your request...")
-
-            # Process with AI
-            def process_mention():
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    response = loop.run_until_complete(
-                        self._process_with_ai(clean_text, user_id, channel, client)
-                    )
-
-                    # Update the original message
-                    if initial_msg and initial_msg.get("ts"):
-                        client.chat_update(
-                            channel=channel,
-                            ts=initial_msg["ts"],
-                            text=f"<@{user_id}> {response}",
-                        )
-                    else:
-                        # Fallback to new message if update fails
-                        say(f"<@{user_id}> {response}")
-
-                except Exception as e:
-                    logger.error(f"❌ Error processing mention: {e}")
-                    # Update with error message
-                    if initial_msg and initial_msg.get("ts"):
-                        client.chat_update(
-                            channel=channel,
-                            ts=initial_msg["ts"],
-                            text=f"<@{user_id}> Sorry, I encountered an error processing your request.",
-                        )
-                    else:
-                        say(f"<@{user_id}> Sorry, I encountered an error.")
-
-            threading.Thread(target=process_mention, daemon=True).start()
+            self._handle_mention_event(body, say, logger, client)
 
         @self.app.event("message")
         def handle_direct_message(body, say, logger, client):
             """Handle direct messages to the bot."""
-            event = body["event"]
+            self._handle_direct_message_event(body, say, logger, client)
 
-            # Only respond to direct messages (not channel messages)
-            if event.get("channel_type") != "im":
-                return
+    def _handle_mention_event(self, body, say, logger, client):
+        """Handle @mentions of the bot."""
+        event = body["event"]
+        user_id = event["user"]
+        text = event["text"]
+        channel = event["channel"]
 
-            # Ignore bot messages
-            if event.get("bot_id"):
-                return
+        clean_text = self._clean_mention_text(text)
 
-            user_id = event["user"]
-            text = event.get("text", "").strip()
-            channel = event["channel"]
+        if not clean_text:
+            say(f"Hi <@{user_id}>! How can I help you today? 🤖")
+            return
 
-            if not text:
-                return
+        logger.info(f"📢 Mentioned by {user_id}: {clean_text}")
+        initial_msg = say(f"<@{user_id}> 🤔 Processing your request...")
 
-            # Handle slash commands in direct messages
-            if text.startswith("/"):
-                command = text[1:].lower().split()[0]
+        self._process_mention_async(
+            clean_text, user_id, channel, client, initial_msg, logger, say
+        )
 
-                if command == "status":
-                    # Handle /status command in DM
-                    if not self.system_ready:
-                        say("🔄 AI system is starting up...")
-                        return
+    def _handle_direct_message_event(self, body, say, logger, client):
+        """Handle direct messages to the bot."""
+        event = body["event"]
 
-                    try:
-                        status = self.supervisor.status()
-                        if status:
-                            status_msg = "🤖 *AI System Status*\n"
-                            status_msg += (
-                                f"• System: {status.get('status', 'unknown')}\n"
-                            )
-                            status_msg += (
-                                f"• Running: {'✅' if status.get('running') else '❌'}\n"
-                            )
+        if not self._should_process_dm(event):
+            return
 
-                            if "workflow_engine" in status:
-                                we_status = status["workflow_engine"]
-                                status_msg += f"• Active Workflows: {we_status.get('active_workflows', 0)}\n"
+        user_id = event["user"]
+        text = event.get("text", "").strip()
+        channel = event["channel"]
 
-                            if "universal_agent" in status:
-                                ua_status = status["universal_agent"]
-                                roles = ua_status.get("available_roles", [])
-                                status_msg += f"• Available Roles: {', '.join(roles)}\n"
+        if not text:
+            return
 
-                            # Add health status from our fixed health check
-                            if "heartbeat" in status:
-                                hb_status = status["heartbeat"]
-                                health_status = hb_status.get(
-                                    "overall_status", "unknown"
-                                )
-                                health_emoji = (
-                                    "✅"
-                                    if health_status == "healthy"
-                                    else "⚠️"
-                                    if health_status == "degraded"
-                                    else "❓"
-                                )
-                                status_msg += (
-                                    f"• Health Status: {health_emoji} {health_status}\n"
-                                )
+        if text.startswith("/"):
+            self._handle_dm_command(text, user_id, say, logger)
+            return
 
-                            say(status_msg)
-                        else:
-                            say("❌ Could not retrieve system status")
+        logger.info(f"💬 Direct message from {user_id}: {text}")
+        initial_msg = say("🤔 Processing your message...")
 
-                    except Exception as e:
-                        logger.error(f"❌ Status error: {e}")
-                        say(f"❌ Error getting status: {str(e)}")
-                    return
+        self._process_dm_async(text, user_id, channel, client, initial_msg, logger, say)
 
-                elif command == "help":
-                    # Handle /help command in DM
-                    help_msg = "🤖 *Available Commands:*\n"
-                    help_msg += "• `/status` - Show system status and health\n"
-                    help_msg += "• `/help` - Show this help message\n"
-                    help_msg += "• Any other text - Process as AI workflow\n"
-                    say(help_msg)
-                    return
+    def _clean_mention_text(self, text):
+        """Remove bot mention from text."""
+        import re
 
-                else:
-                    # Unknown slash command
-                    say(
-                        f"❌ Unknown command: `{text}`\n💡 Use `/help` for available commands"
-                    )
-                    return
+        return re.sub(r"<@[A-Z0-9]+>", "", text).strip()
 
-            logger.info(f"💬 Direct message from {user_id}: {text}")
+    def _should_process_dm(self, event):
+        """Check if we should process this direct message."""
+        return event.get("channel_type") == "im" and not event.get("bot_id")
 
-            # Send initial processing message
-            initial_msg = say("🤔 Processing your message...")
+    def _handle_dm_command(self, text, user_id, say, logger):
+        """Handle slash commands in direct messages."""
+        command = text[1:].lower().split()[0]
 
-            # Process with AI
-            def process_dm():
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    response = loop.run_until_complete(
-                        self._process_with_ai(text, user_id, channel, client)
-                    )
+        if command == "status":
+            self._handle_status_command(say, logger)
+        elif command == "help":
+            self._handle_help_command(say)
+        else:
+            say(f"❌ Unknown command: `{text}`\n💡 Use `/help` for available commands")
 
-                    # Update the original message
-                    if initial_msg and initial_msg.get("ts"):
-                        client.chat_update(
-                            channel=channel, ts=initial_msg["ts"], text=response
-                        )
-                    else:
-                        # Fallback to new message if update fails
-                        say(response)
+    def _handle_status_command(self, say, logger):
+        """Handle /status command."""
+        if not self.system_ready:
+            say("🔄 AI system is starting up...")
+            return
 
-                except Exception as e:
-                    logger.error(f"❌ Error processing DM: {e}")
-                    # Update with error message
-                    if initial_msg and initial_msg.get("ts"):
-                        client.chat_update(
-                            channel=channel,
-                            ts=initial_msg["ts"],
-                            text="Sorry, I encountered an error processing your message.",
-                        )
-                    else:
-                        say("Sorry, I encountered an error processing your message.")
+        try:
+            status = self.supervisor.status()
+            if status:
+                status_msg = self._build_status_message(status)
+                say(status_msg)
+            else:
+                say("❌ Could not retrieve system status")
+        except Exception as e:
+            logger.error(f"❌ Status error: {e}")
+            say(f"❌ Error getting status: {str(e)}")
 
-            threading.Thread(target=process_dm, daemon=True).start()
+    def _handle_help_command(self, say):
+        """Handle /help command."""
+        help_msg = "🤖 *Available Commands:*\n"
+        help_msg += "• `/status` - Show system status and health\n"
+        help_msg += "• `/help` - Show this help message\n"
+        help_msg += "• Any other text - Process as AI workflow\n"
+        say(help_msg)
+
+    def _build_status_message(self, status):
+        """Build system status message."""
+        status_msg = "🤖 *AI System Status*\n"
+        status_msg += f"• System: {status.get('status', 'unknown')}\n"
+        status_msg += f"• Running: {'✅' if status.get('running') else '❌'}\n"
+
+        if "workflow_engine" in status:
+            we_status = status["workflow_engine"]
+            status_msg += (
+                f"• Active Workflows: {we_status.get('active_workflows', 0)}\n"
+            )
+
+        if "universal_agent" in status:
+            ua_status = status["universal_agent"]
+            roles = ua_status.get("available_roles", [])
+            status_msg += f"• Available Roles: {', '.join(roles)}\n"
+
+        if "heartbeat" in status:
+            hb_status = status["heartbeat"]
+            health_status = hb_status.get("overall_status", "unknown")
+            health_emoji = self._get_health_emoji(health_status)
+            status_msg += f"• Health Status: {health_emoji} {health_status}\n"
+
+        return status_msg
+
+    def _get_health_emoji(self, health_status):
+        """Get emoji for health status."""
+        if health_status == "healthy":
+            return "✅"
+        elif health_status == "degraded":
+            return "⚠️"
+        else:
+            return "❓"
+
+    def _process_mention_async(
+        self, clean_text, user_id, channel, client, initial_msg, logger, say
+    ):
+        """Process mention in background thread."""
+
+        def process_mention():
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                response = loop.run_until_complete(
+                    self._process_with_ai(clean_text, user_id, channel, client)
+                )
+                self._update_message_or_fallback(
+                    client,
+                    channel,
+                    initial_msg,
+                    f"<@{user_id}> {response}",
+                    say,
+                    f"<@{user_id}> {response}",
+                )
+            except Exception as e:
+                logger.error(f"❌ Error processing mention: {e}")
+                self._update_message_or_fallback(
+                    client,
+                    channel,
+                    initial_msg,
+                    f"<@{user_id}> Sorry, I encountered an error processing your request.",
+                    say,
+                    f"<@{user_id}> Sorry, I encountered an error.",
+                )
+
+        threading.Thread(target=process_mention, daemon=True).start()
+
+    def _process_dm_async(
+        self, text, user_id, channel, client, initial_msg, logger, say
+    ):
+        """Process direct message in background thread."""
+
+        def process_dm():
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                response = loop.run_until_complete(
+                    self._process_with_ai(text, user_id, channel, client)
+                )
+                self._update_message_or_fallback(
+                    client, channel, initial_msg, response, say, response
+                )
+            except Exception as e:
+                logger.error(f"❌ Error processing DM: {e}")
+                self._update_message_or_fallback(
+                    client,
+                    channel,
+                    initial_msg,
+                    "Sorry, I encountered an error processing your message.",
+                    say,
+                    "Sorry, I encountered an error processing your message.",
+                )
+
+        threading.Thread(target=process_dm, daemon=True).start()
+
+    def _update_message_or_fallback(
+        self, client, channel, initial_msg, update_text, say, fallback_text
+    ):
+        """Update message or fallback to new message."""
+        if initial_msg and initial_msg.get("ts"):
+            client.chat_update(
+                channel=channel,
+                ts=initial_msg["ts"],
+                text=update_text,
+            )
+        else:
+            say(fallback_text)
 
     def setup_error_handler(self):
         """Setup global error handler."""

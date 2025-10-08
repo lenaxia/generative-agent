@@ -1,6 +1,4 @@
-"""
-Unit tests for analysis tools.
-"""
+"""Unit tests for analysis tools."""
 
 from roles.shared_tools.data_processing import (
     generate_insights,

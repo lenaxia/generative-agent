@@ -1,5 +1,4 @@
-"""
-Unit tests for configuration management functionality.
+"""Unit tests for configuration management functionality.
 
 Tests configuration loading, validation, environment variable substitution,
 and LLM provider mapping across the system.
