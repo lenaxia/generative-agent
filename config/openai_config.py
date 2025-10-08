@@ -1,3 +1,9 @@
+"""OpenAI API configuration for the StrandsAgent Universal Agent System.
+
+Provides configuration management for OpenAI GPT API integration,
+including API keys, model settings, and request parameters.
+"""
+
 from typing import Any, Dict, Optional, Tuple, Union
 
 from config.base_config import BaseConfig, ModelConfig
@@ -11,8 +17,8 @@ class OpenAIModelConfig(ModelConfig):
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
     logprobs: Optional[bool] = None
-    stream_options: Optional[Dict] = None
-    timeout: Optional[Union[float, Tuple[float, float], Any]] = None
+    stream_options: Optional[dict] = None
+    timeout: Optional[Union[float, tuple[float, float], Any]] = None
     max_retries: Optional[int] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None

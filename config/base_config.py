@@ -1,3 +1,9 @@
+"""Base configuration classes for the StrandsAgent Universal Agent System.
+
+Provides abstract base classes and common configuration patterns
+for all LLM provider configurations in the system.
+"""
+
 import os
 from typing import Optional, Type
 
@@ -24,9 +30,9 @@ class BaseConfig(BaseModel):
     name: str
     provider_name: str = "baseconfig"
     api_key: Optional[str] = None
-    llm_config_class: Type[ModelConfig] = (
-        None  # Add a new field for the model configuration class
-    )
+    llm_config_class: type[
+        ModelConfig
+    ] = None  # Add a new field for the model configuration class
     llm_config: ModelConfig = None
 
     class Config:

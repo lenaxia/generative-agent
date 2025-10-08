@@ -1,5 +1,12 @@
+"""Anthropic API configuration for the StrandsAgent Universal Agent System.
+
+Provides configuration management for Anthropic Claude API integration,
+including API keys, model settings, and request parameters.
+"""
+
 import os
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Callable, Dict, List, Optional
 
 from .base_config import BaseConfig
 
@@ -21,13 +28,13 @@ class AnthropicConfig(BaseConfig):
         # Removed LangChain callback dependencies for StrandsAgent compatibility
         # callback_manager: Optional[BaseCallbackManager] = None,
         # callbacks: Optional[Callbacks] = None,
-        custom_get_token_ids: Optional[Callable[[str], List[int]]] = None,
+        custom_get_token_ids: Optional[Callable[[str], list[int]]] = None,
         default_headers: Optional[Mapping[str, str]] = None,
         default_request_timeout: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
         stream_usage: bool = True,
-        tags: Optional[List[str]] = None,
+        tags: Optional[list[str]] = None,
         **base_config_kwargs,
     ):
         super().__init__(
