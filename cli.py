@@ -18,8 +18,8 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from supervisor.supervisor import Supervisor
-from supervisor.workflow_duration_logger import WorkflowSource
+from supervisor.supervisor import Supervisor  # noqa: E402
+from supervisor.workflow_duration_logger import WorkflowSource  # noqa: E402
 
 # Configure logging for CLI
 logging.basicConfig(

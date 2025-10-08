@@ -1,7 +1,13 @@
+"""Event-driven communication system for the StrandsAgent Universal Agent System.
+
+Provides message bus functionality for inter-component communication,
+event handling, and workflow coordination across the system.
+"""
+
 import logging
 import threading
 from enum import Enum
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 logger = logging.getLogger("supervisor")
 

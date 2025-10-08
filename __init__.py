@@ -1,3 +1,9 @@
+"""StrandsAgent Universal Agent System.
+
+A comprehensive multi-agent system for task orchestration, workflow management,
+and intelligent request routing with hybrid execution capabilities.
+"""
+
 import os
 import sys
 
