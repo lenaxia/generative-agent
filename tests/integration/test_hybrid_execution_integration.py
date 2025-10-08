@@ -74,7 +74,8 @@ class TestHybridExecutionIntegration:
             universal_agent, "execute_task", return_value="test result"
         ) as mock_execute:
             # Test programmatic execution
-            result = universal_agent.execute_task(
+            # Execute task but don't store unused result
+            universal_agent.execute_task(
                 instruction="Search for USS Monitor", role="search_data_collector"
             )
 

@@ -85,13 +85,7 @@ class TestUniversalAgentUnit:
 
     def test_assume_role_planning(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume planning role with STRONG LLM."""
-        with (
-            patch("llm_provider.universal_agent.Agent") as mock_agent_class,
-            patch("llm_provider.universal_agent.calculator") as _mock_calc,
-            patch("llm_provider.universal_agent.file_read") as _mock_file,
-            patch("llm_provider.universal_agent.shell") as _mock_shell,
-        ):
-
+        with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
             # Mock the LLM factory to return a mock model
             mock_model_instance = Mock()
             universal_agent.llm_factory.create_strands_model.return_value = (
@@ -128,7 +122,6 @@ class TestUniversalAgentUnit:
     def test_assume_role_search(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume search role with WEAK LLM."""
         with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
-
             # Mock the LLM factory to return a mock model
             mock_model_instance = Mock()
             universal_agent.llm_factory.create_strands_model.return_value = (
@@ -170,7 +163,6 @@ class TestUniversalAgentUnit:
             patch("llm_provider.universal_agent.Agent") as mock_agent_class,
             patch("llm_provider.universal_agent.BedrockModel") as mock_model_class,
         ):
-
             mock_agent_class.return_value = mock_strands_agent
             mock_model_class.return_value = Mock()
 
@@ -208,7 +200,6 @@ class TestUniversalAgentUnit:
             patch("llm_provider.universal_agent.Agent") as mock_agent_class,
             patch("llm_provider.universal_agent.BedrockModel") as mock_model_class,
         ):
-
             mock_agent_class.return_value = mock_strands_agent
             mock_model_class.return_value = Mock()
 
@@ -235,7 +226,6 @@ class TestUniversalAgentUnit:
             patch("llm_provider.universal_agent.Agent") as mock_agent_class,
             patch("llm_provider.universal_agent.BedrockModel") as mock_model_class,
         ):
-
             mock_agent_class.return_value = mock_strands_agent
             mock_model_class.return_value = Mock()
 
@@ -273,7 +263,6 @@ class TestUniversalAgentUnit:
             patch("llm_provider.universal_agent.Agent") as mock_agent_class,
             patch("llm_provider.universal_agent.BedrockModel") as mock_model_class,
         ):
-
             mock_agent_class.return_value = mock_strands_agent
             mock_model_class.return_value = Mock()
 

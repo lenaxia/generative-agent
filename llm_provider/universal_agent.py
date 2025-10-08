@@ -51,7 +51,7 @@ class UniversalAgent:
         role: str,
         llm_type: Optional[LLMType] = None,
         context: Optional[TaskContext] = None,
-        tools: Optional[List[str]] = None,
+        tools: Optional[list[str]] = None,
     ):
         """
         Assume role using pooled Agent with context switching.
@@ -189,7 +189,7 @@ Focus on comprehensive, accurate analysis.""",
         role: str = "default",
         llm_type: LLMType = LLMType.DEFAULT,
         context: Optional[TaskContext] = None,
-        extracted_parameters: Optional[Dict] = None,
+        extracted_parameters: Optional[dict] = None,
     ) -> str:
         """
         Enhanced task execution with hybrid role lifecycle support.
@@ -343,7 +343,7 @@ Focus on comprehensive, accurate analysis.""",
             logger.error(f"Error executing task with agent: {e}")
             return f"Error executing task: {str(e)}"
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get current Universal Agent status.
 
@@ -375,7 +375,7 @@ Focus on comprehensive, accurate analysis.""",
             "framework": "strands",
         }
 
-    def get_available_roles(self) -> List[str]:
+    def get_available_roles(self) -> list[str]:
         """
         Get list of available agent roles.
 
@@ -393,7 +393,7 @@ Focus on comprehensive, accurate analysis.""",
             "default",
         ]
 
-    def get_mcp_status(self) -> Dict[str, Any]:
+    def get_mcp_status(self) -> dict[str, Any]:
         """
         Get MCP integration status for heartbeat monitoring.
 
@@ -445,7 +445,7 @@ Focus on comprehensive, accurate analysis.""",
         return merged_config
 
     def _merge_model_configs(
-        self, role_config: Dict, base_model: BedrockModel
+        self, role_config: dict, base_model: BedrockModel
     ) -> BedrockModel:
         """Merge role configuration with base model."""
         try:
@@ -484,8 +484,8 @@ Focus on comprehensive, accurate analysis.""",
         return prompts.get("system", "You are a helpful AI assistant.")
 
     def _assemble_role_tools(
-        self, role_def: RoleDefinition, additional_tools: List[str]
-    ) -> List:
+        self, role_def: RoleDefinition, additional_tools: list[str]
+    ) -> list:
         """
         Assemble all tools for a role from multiple sources.
 
@@ -539,7 +539,7 @@ Focus on comprehensive, accurate analysis.""",
         self,
         llm_type: LLMType,
         context: Optional[TaskContext] = None,
-        tools: Optional[List[str]] = None,
+        tools: Optional[list[str]] = None,
     ) -> Agent:
         """
         Create a basic agent with default configuration.
@@ -593,7 +593,7 @@ Focus on comprehensive, accurate analysis.""",
         """
         self.role_registry.register_programmatic_role(role_instance)
 
-    def _update_agent_context(self, agent: Agent, system_prompt: str, tools: List[Any]):
+    def _update_agent_context(self, agent: Agent, system_prompt: str, tools: list[Any]):
         """
         Update Agent context with optimal reuse strategy.
 
@@ -709,7 +709,7 @@ Focus on comprehensive, accurate analysis.""",
         instruction: str,
         role: str,
         context: Optional[TaskContext],
-        extracted_parameters: Optional[Dict],
+        extracted_parameters: Optional[dict],
     ) -> str:
         """Execute hybrid role with lifecycle hooks."""
         import time
@@ -778,11 +778,11 @@ Focus on comprehensive, accurate analysis.""",
     async def _run_pre_processors(
         self,
         role_def: RoleDefinition,
-        lifecycle_functions: Dict,
+        lifecycle_functions: dict,
         instruction: str,
         context: TaskContext,
-        parameters: Dict,
-    ) -> Dict[str, Any]:
+        parameters: dict,
+    ) -> dict[str, Any]:
         """Run all pre-processing functions for a role."""
         results = {}
 
@@ -828,10 +828,10 @@ Focus on comprehensive, accurate analysis.""",
     async def _run_post_processors(
         self,
         role_def: RoleDefinition,
-        lifecycle_functions: Dict,
+        lifecycle_functions: dict,
         llm_result: str,
         context: TaskContext,
-        pre_data: Dict,
+        pre_data: dict,
     ) -> str:
         """Run all post-processing functions for a role."""
         current_result = llm_result
@@ -888,7 +888,7 @@ Focus on comprehensive, accurate analysis.""",
         return execution_type in ["hybrid", "llm"]
 
     def _inject_pre_data(
-        self, role_def: RoleDefinition, instruction: str, pre_data: Dict
+        self, role_def: RoleDefinition, instruction: str, pre_data: dict
     ) -> str:
         """Inject pre-processing data into instruction context."""
         system_prompt = role_def.config.get("prompts", {}).get("system", "")
@@ -901,17 +901,17 @@ Focus on comprehensive, accurate analysis.""",
             logger.warning(f"Failed to format system prompt with pre-data: {e}")
             return instruction
 
-    def _flatten_pre_data(self, pre_data: Dict) -> Dict[str, Any]:
+    def _flatten_pre_data(self, pre_data: dict) -> dict[str, Any]:
         """Flatten pre-processing data for prompt formatting."""
         flattened = {}
-        for func_name, data in pre_data.items():
+        for _func_name, data in pre_data.items():
             if isinstance(data, dict) and "error" not in data:
                 # Flatten successful results
                 for key, value in data.items():
                     flattened[key] = value
         return flattened
 
-    def _format_pre_data_result(self, pre_data: Dict) -> str:
+    def _format_pre_data_result(self, pre_data: dict) -> str:
         """Format pre-processing data as final result (for programmatic-only execution)."""
         return str(pre_data)
 

@@ -300,7 +300,7 @@ class Heartbeat:
             # Determine overall health
             # Only consider 'unhealthy' status as problematic, not 'disabled' services
             overall_health = "healthy"
-            for component, status in health_results.items():
+            for _component, status in health_results.items():
                 component_status = status.get("status")
                 if component_status == "unhealthy":
                     overall_health = "degraded"
@@ -323,7 +323,7 @@ class Heartbeat:
             logger.error(f"Health check failed: {e}")
             self.health_status = "unhealthy"
 
-    def _check_supervisor_health(self) -> Dict[str, Any]:
+    def _check_supervisor_health(self) -> dict[str, Any]:
         """Check Supervisor component health"""
         try:
             status = self.supervisor.status()
@@ -336,7 +336,7 @@ class Heartbeat:
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
-    def _check_workflow_engine_health(self) -> Dict[str, Any]:
+    def _check_workflow_engine_health(self) -> dict[str, Any]:
         """Check WorkflowEngine component health"""
         try:
             if hasattr(self.supervisor, "workflow_engine"):
@@ -365,7 +365,7 @@ class Heartbeat:
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
-    def _check_universal_agent_health(self) -> Dict[str, Any]:
+    def _check_universal_agent_health(self) -> dict[str, Any]:
         """Check Universal Agent component health"""
         try:
             if hasattr(self.supervisor, "workflow_engine"):
@@ -387,7 +387,7 @@ class Heartbeat:
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
-    def _check_mcp_health(self) -> Dict[str, Any]:
+    def _check_mcp_health(self) -> dict[str, Any]:
         """Check MCP servers health"""
         try:
             if hasattr(self.supervisor, "workflow_engine"):
@@ -434,7 +434,7 @@ class Heartbeat:
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Get current health status"""
         return {
             "overall_status": self.health_status,
@@ -445,7 +445,7 @@ class Heartbeat:
             ),
         }
 
-    def get_system_metrics(self) -> Dict[str, Any]:
+    def get_system_metrics(self) -> dict[str, Any]:
         """Get comprehensive system metrics"""
         return {
             "timestamp": time.time(),

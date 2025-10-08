@@ -75,7 +75,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -140,7 +139,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -199,7 +197,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -257,7 +254,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -311,7 +307,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -378,7 +373,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -460,7 +454,7 @@ llm_providers:
             include_full_history=False,
         )
 
-        for prompt, expected_role, expected_llm_type in test_cases:
+        for prompt, expected_role, _expected_llm_type in test_cases:
             with (
                 patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
                 patch.object(
@@ -470,7 +464,6 @@ llm_providers:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -515,7 +508,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -624,7 +616,6 @@ llm_providers:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),

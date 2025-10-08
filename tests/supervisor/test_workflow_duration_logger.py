@@ -203,7 +203,7 @@ class TestWorkflowDurationLogger:
 
         # Check that log file was created and contains the entry
         assert os.path.exists(self.log_file)
-        with open(self.log_file, "r") as f:
+        with open(self.log_file) as f:
             log_entry = json.loads(f.read().strip())
             assert log_entry["workflow_id"] == workflow_id
             assert log_entry["success"] is True
@@ -257,7 +257,7 @@ class TestWorkflowDurationLogger:
         assert completed_metrics.error_message == error_message
 
         # Check log file
-        with open(self.log_file, "r") as f:
+        with open(self.log_file) as f:
             log_entry = json.loads(f.read().strip())
             assert log_entry["success"] is False
             assert log_entry["error_message"] == error_message
@@ -289,7 +289,7 @@ class TestWorkflowDurationLogger:
         assert self.logger.get_active_workflow_count() == 0
 
         # Check that all entries were logged
-        with open(self.log_file, "r") as f:
+        with open(self.log_file) as f:
             lines = f.readlines()
             assert len(lines) == 3
 
@@ -444,7 +444,8 @@ class TestWorkflowDurationIntegration:
         instruction = "Get weather for Seattle"
 
         # Simulate CLI workflow
-        metrics = self.logger.start_workflow_tracking(
+        # Start workflow tracking but don't store unused metrics
+        self.logger.start_workflow_tracking(
             workflow_id=workflow_id, source=WorkflowSource.CLI, instruction=instruction
         )
 
@@ -487,7 +488,8 @@ class TestWorkflowDurationIntegration:
         channel_id = "C987654321"
 
         # Simulate Slack workflow
-        metrics = self.logger.start_workflow_tracking(
+        # Start workflow tracking but don't store unused metrics
+        self.logger.start_workflow_tracking(
             workflow_id=workflow_id,
             source=WorkflowSource.SLACK,
             instruction=instruction,

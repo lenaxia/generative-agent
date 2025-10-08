@@ -97,7 +97,7 @@ class WorkflowEngine:
         checkpoint_interval: int = 300,
         mcp_config_path: Optional[str] = None,
         roles_directory: str = "roles",
-        fast_path_config: Optional[Dict[str, Any]] = None,
+        fast_path_config: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize WorkflowEngine with Universal Agent, task scheduling, and fast-path routing support.
@@ -160,14 +160,14 @@ class WorkflowEngine:
         )
 
         # Workflow tracking
-        self.active_workflows: Dict[str, TaskContext] = {}
-        self.fast_reply_results: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # Store fast reply results
+        self.active_workflows: dict[str, TaskContext] = {}
+        self.fast_reply_results: dict[
+            str, dict[str, Any]
+        ] = {}  # Store fast reply results
 
         # Task scheduling
-        self.task_queue: List[QueuedTask] = []
-        self.running_tasks: Dict[str, Dict] = {}
+        self.task_queue: list[QueuedTask] = []
+        self.running_tasks: dict[str, dict] = {}
         self.max_concurrent_tasks = max_concurrent_tasks
         self.checkpoint_interval = checkpoint_interval
 
@@ -221,9 +221,9 @@ class WorkflowEngine:
         if workflow_id and hasattr(self, "duration_logger"):
             try:
                 if workflow_id in self.duration_logger.active_workflows:
-                    self.duration_logger.active_workflows[workflow_id].source = (
-                        WorkflowSource.CLI
-                    )
+                    self.duration_logger.active_workflows[
+                        workflow_id
+                    ].source = WorkflowSource.CLI
             except Exception as e:
                 logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
 
@@ -248,14 +248,13 @@ class WorkflowEngine:
                 and routing_result.get("confidence", 0)
                 >= self.fast_path_config.confidence_threshold
             ):
-
                 # Fast-path execution
                 return self._handle_fast_reply(request, routing_result)
 
         # Existing complex workflow path (unchanged)
         return self._handle_complex_workflow(request)
 
-    def _handle_fast_reply(self, request: RequestMetadata, routing_result: Dict) -> str:
+    def _handle_fast_reply(self, request: RequestMetadata, routing_result: dict) -> str:
         """Execute fast-reply with hybrid role support and pre-extracted parameters."""
         try:
             request_id = "fr_" + str(uuid.uuid4()).split("-")[-1]
@@ -334,7 +333,7 @@ class WorkflowEngine:
         result: str,
         role: str = None,
         confidence: float = None,
-        parameters: Dict = None,
+        parameters: dict = None,
         execution_time_ms: float = None,
     ):
         """Enhanced result storage with parameters."""
@@ -402,7 +401,7 @@ class WorkflowEngine:
                 logger.error(f"Error creating failed workflow context: {context_error}")
                 return None
 
-    def pause_workflow(self, workflow_id: Optional[str] = None) -> Dict:
+    def pause_workflow(self, workflow_id: Optional[str] = None) -> dict:
         """
         Pause workflow execution and create comprehensive checkpoint.
 
@@ -450,7 +449,7 @@ class WorkflowEngine:
         return checkpoint
 
     def resume_workflow(
-        self, workflow_id: Optional[str] = None, checkpoint: Optional[Dict] = None
+        self, workflow_id: Optional[str] = None, checkpoint: Optional[dict] = None
     ) -> bool:
         """
         Resume workflow execution from checkpoint.
@@ -563,7 +562,6 @@ class WorkflowEngine:
             and self.task_queue
             and self.state == WorkflowState.RUNNING
         ):
-
             # Get highest priority task
             queued_task = heapq.heappop(self.task_queue)
 
@@ -721,7 +719,7 @@ Current task: {base_prompt}"""
                 del self.running_tasks[task.task_id]
 
             # Delegate next ready tasks
-            for next_task in next_tasks:
+            for _next_task in next_tasks:
                 self._execute_dag_parallel(task_context)  # Re-evaluate DAG
 
             # Publish task completion message
@@ -934,7 +932,7 @@ Current task: {base_prompt}"""
         except Exception as e:
             logger.error(f"Error handling task error for '{task.task_id}': {e}")
 
-    def handle_task_completion(self, completion_data: Dict):
+    def handle_task_completion(self, completion_data: dict):
         """
         Handle task completion events from message bus.
 
@@ -954,7 +952,7 @@ Current task: {base_prompt}"""
             # Create checkpoint if interval elapsed
             self._maybe_create_checkpoint()
 
-    def handle_task_error_event(self, error_data: Dict):
+    def handle_task_error_event(self, error_data: dict):
         """
         Handle task error events from message bus.
 
@@ -995,7 +993,6 @@ Current task: {base_prompt}"""
             self.last_checkpoint_time
             and current_time - self.last_checkpoint_time >= self.checkpoint_interval
         ):
-
             self.pause_workflow()
             # In a full implementation, this would be persisted
             logger.info("Automatic checkpoint created")
@@ -1004,7 +1001,7 @@ Current task: {base_prompt}"""
 
     # ==================== PAUSE/RESUME FUNCTIONALITY ====================
 
-    def pause_request(self, request_id: str) -> Optional[Dict]:
+    def pause_request(self, request_id: str) -> Optional[dict]:
         """
         Pause request execution and return checkpoint.
 
@@ -1028,7 +1025,7 @@ Current task: {base_prompt}"""
             return None
 
     def resume_request(
-        self, request_id: str, checkpoint: Optional[Dict] = None
+        self, request_id: str, checkpoint: Optional[dict] = None
     ) -> bool:
         """
         Resume request execution from checkpoint or current state.
@@ -1064,7 +1061,7 @@ Current task: {base_prompt}"""
 
     # ==================== STATUS AND MONITORING ====================
 
-    def get_workflow_metrics(self) -> Dict[str, Any]:
+    def get_workflow_metrics(self) -> dict[str, Any]:
         """
         Get consolidated workflow metrics combining request tracking and task queue statistics.
 
@@ -1097,7 +1094,7 @@ Current task: {base_prompt}"""
             "universal_agent_status": self.get_universal_agent_status(),
         }
 
-    def get_request_status(self, request_id: str) -> Dict:
+    def get_request_status(self, request_id: str) -> dict:
         """
         Get current status of a request.
 
@@ -1207,7 +1204,7 @@ Current task: {base_prompt}"""
         """
         return self.active_workflows.get(request_id)
 
-    def get_universal_agent_status(self) -> Dict:
+    def get_universal_agent_status(self) -> dict:
         """
         Get status of Universal Agent integration.
 
@@ -1227,7 +1224,7 @@ Current task: {base_prompt}"""
             "framework": self.llm_factory.get_framework() if self.llm_factory else None,
         }
 
-    def get_queue_status(self) -> Dict[str, Any]:
+    def get_queue_status(self) -> dict[str, Any]:
         """
         Get detailed queue status.
 
@@ -1256,7 +1253,7 @@ Current task: {base_prompt}"""
             },
         }
 
-    def list_active_requests(self) -> List[str]:
+    def list_active_requests(self) -> list[str]:
         """
         List all active request IDs.
 
@@ -1296,11 +1293,11 @@ Current task: {base_prompt}"""
         self.task_queue.clear()
         logger.info(f"Cleared {cleared_count} queued tasks")
 
-    def get_running_task_ids(self) -> List[str]:
+    def get_running_task_ids(self) -> list[str]:
         """Get list of currently running task IDs."""
         return list(self.running_tasks.keys())
 
-    def get_queued_task_ids(self) -> List[str]:
+    def get_queued_task_ids(self) -> list[str]:
         """Get list of queued task IDs."""
         return [task.task_id for task in self.task_queue]
 
@@ -1355,7 +1352,7 @@ Current task: {base_prompt}"""
             return None
 
         try:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config_data = yaml.safe_load(f)
 
             manager = MCPClientManager()
@@ -1377,7 +1374,7 @@ Current task: {base_prompt}"""
             )
             return None
 
-    def get_mcp_tools(self, role: Optional[str] = None) -> List[Dict]:
+    def get_mcp_tools(self, role: Optional[str] = None) -> list[dict]:
         """
         Get available MCP tools for a role.
 
@@ -1392,7 +1389,7 @@ Current task: {base_prompt}"""
 
         return self.mcp_manager.get_tools_for_role(role or "default")
 
-    def execute_mcp_tool(self, tool_name: str, parameters: Dict) -> Dict:
+    def execute_mcp_tool(self, tool_name: str, parameters: dict) -> dict:
         """
         Execute an MCP tool with given parameters.
 

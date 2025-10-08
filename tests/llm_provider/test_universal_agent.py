@@ -34,7 +34,6 @@ class TestUniversalAgent(unittest.TestCase):
                 self.universal_agent, "_update_agent_context"
             ) as mock_update_context,
         ):
-
             mock_agent_instance = Mock()
             mock_get_agent.return_value = mock_agent_instance
 
@@ -58,7 +57,6 @@ class TestUniversalAgent(unittest.TestCase):
                 self.universal_agent, "_update_agent_context"
             ) as mock_update_context,
         ):
-
             mock_agent_instance = Mock()
             mock_get_agent.return_value = mock_agent_instance
 
@@ -98,9 +96,8 @@ class TestUniversalAgent(unittest.TestCase):
             self.universal_agent.current_role = "planning"
             self.universal_agent.current_agent = Mock()
 
-            result = self.universal_agent.execute_task(
-                "Search for information", role="search"
-            )
+            # Execute task but don't store unused result
+            self.universal_agent.execute_task("Search for information", role="search")
 
             # Should switch roles (only 3 parameters in actual implementation)
             mock_assume.assert_called_once_with("search", LLMType.DEFAULT, None)
@@ -176,7 +173,6 @@ class TestUniversalAgent(unittest.TestCase):
                 self.universal_agent, "_update_agent_context"
             ) as mock_update_context,
         ):
-
             mock_agent_instance = Mock()
             mock_get_agent.return_value = mock_agent_instance
 

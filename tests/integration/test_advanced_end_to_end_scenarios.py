@@ -115,7 +115,12 @@ task_scheduling:
 
         def mock_execute_side_effect(instruction, role, llm_type, context):
             # Find matching scenario based on role
-            for prompt, expected_role, expected_llm_type, response in request_scenarios:
+            for (
+                _prompt,
+                expected_role,
+                _expected_llm_type,
+                response,
+            ) in request_scenarios:
                 if expected_role in role:
                     return response
             return f"Task completed for role: {role}"
@@ -126,7 +131,6 @@ task_scheduling:
             ) as mock_execute,
             patch("llm_provider.planning_tools.create_task_plan") as mock_create_plan,
         ):
-
             mock_execute.side_effect = mock_execute_side_effect
 
             # Mock the planning phase to avoid real LLM calls
@@ -160,7 +164,7 @@ task_scheduling:
             request_ids = []
             start_time = time.time()
 
-            for prompt, role, llm_type, expected_response in request_scenarios:
+            for prompt, role, _llm_type, expected_response in request_scenarios:
                 request = RequestMetadata(
                     prompt=prompt, source_id=f"client_{role}", target_id="supervisor"
                 )
@@ -175,7 +179,7 @@ task_scheduling:
             assert processing_time < 30.0  # Should complete within 30 seconds
 
             # Verify each request has a valid context
-            for request_id, role, expected_response in request_ids:
+            for request_id, _role, _expected_response in request_ids:
                 context = supervisor.workflow_engine.get_request_context(request_id)
                 assert context is not None
                 assert context.execution_state in [
@@ -239,7 +243,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -257,7 +260,8 @@ task_scheduling:
             )
 
             request_id = supervisor.workflow_engine.handle_request(request)
-            context = supervisor.workflow_engine.get_request_context(request_id)
+            # Get context for verification but don't store unused variable
+            supervisor.workflow_engine.get_request_context(request_id)
 
             # Simulate checkpoints at different stages (reduced sleep times)
             checkpoints = []
@@ -278,14 +282,15 @@ task_scheduling:
             supervisor.workflow_engine.resume_request(request_id, checkpoint_2)
 
             # Verify checkpoints contain proper state
-            for i, checkpoint in enumerate(checkpoints):
+            for _i, checkpoint in enumerate(checkpoints):
                 assert "context_id" in checkpoint
                 assert "execution_state" in checkpoint
                 assert "task_graph_state" in checkpoint
                 assert "timestamp" in checkpoint
 
             # Verify workflow progression
-            final_context = supervisor.workflow_engine.get_request_context(request_id)
+            # Get final context for verification but don't store unused variable
+            supervisor.workflow_engine.get_request_context(request_id)
             # Don't assert context is not None as it may have completed
 
     def test_error_recovery_and_retry_mechanisms(self, supervisor):
@@ -336,7 +341,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -347,7 +351,7 @@ task_scheduling:
             mock_dag.return_value = None  # Skip actual DAG execution
 
             # Test each failure scenario (reduced for performance)
-            for error_type, error_message in failure_scenarios[
+            for error_type, _error_message in failure_scenarios[
                 :2
             ]:  # Test only first 2 scenarios
                 request = RequestMetadata(
@@ -397,7 +401,6 @@ task_scheduling:
             ) as mock_execute,
             patch("llm_provider.planning_tools.create_task_plan") as mock_create_plan,
         ):
-
             mock_execute.return_value = "Large dataset processed"
 
             # Mock the planning phase to avoid real LLM calls
@@ -503,7 +506,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -617,7 +619,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -632,7 +633,8 @@ task_scheduling:
                     prompt=prompt, source_id="mcp_test_client", target_id="supervisor"
                 )
 
-                request_id = supervisor.workflow_engine.handle_request(request)
+                # Handle request but don't store unused request_id
+                supervisor.workflow_engine.handle_request(request)
 
                 # Verify MCP tools are available for the role
                 if supervisor.workflow_engine.mcp_manager:
@@ -698,7 +700,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -719,7 +720,7 @@ task_scheduling:
             context = supervisor.workflow_engine.get_request_context(request_id)
 
             # Continue the conversation by adding messages to the same context (reduced iterations)
-            for i, (turn_prompt, turn_description) in enumerate(
+            for _i, (turn_prompt, _turn_description) in enumerate(
                 conversation_turns[1:], 1
             ):
                 # Add user message to conversation history
@@ -785,7 +786,7 @@ task_scheduling:
         )
 
         # Test only first 3 scenarios for performance
-        for fault_type, description in fault_scenarios[:3]:
+        for fault_type, _description in fault_scenarios[:3]:
             with (
                 patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
                 patch.object(
@@ -795,7 +796,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -862,7 +862,7 @@ task_scheduling:
             include_full_history=False,
         )
 
-        for test_name, num_requests, description in performance_scenarios:
+        for test_name, num_requests, _description in performance_scenarios:
             start_time = time.time()
 
             with (
@@ -874,7 +874,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),

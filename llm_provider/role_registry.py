@@ -26,9 +26,9 @@ class RoleDefinition:
     """Container for a complete role definition."""
 
     name: str
-    config: Dict[str, Any]
-    custom_tools: List[Callable]
-    shared_tools: Dict[str, Callable]
+    config: dict[str, Any]
+    custom_tools: list[Callable]
+    shared_tools: dict[str, Callable]
 
 
 class RoleRegistry:
@@ -48,26 +48,26 @@ class RoleRegistry:
         self.roles_directory = Path(roles_directory)
 
         # Enhanced role storage for hybrid architecture
-        self.llm_roles: Dict[str, RoleDefinition] = {}  # YAML-based roles
-        self.programmatic_roles: Dict[str, "ProgrammaticRole"] = (
-            {}
-        )  # Python-based roles
-        self.role_types: Dict[str, str] = {}  # Role type mapping
+        self.llm_roles: dict[str, RoleDefinition] = {}  # YAML-based roles
+        self.programmatic_roles: dict[
+            str, "ProgrammaticRole"
+        ] = {}  # Python-based roles
+        self.role_types: dict[str, str] = {}  # Role type mapping
 
         # Hybrid role lifecycle support
-        self.lifecycle_functions: Dict[str, Dict[str, Callable]] = (
-            {}
-        )  # role_name -> {func_name: func}
+        self.lifecycle_functions: dict[
+            str, dict[str, Callable]
+        ] = {}  # role_name -> {func_name: func}
 
         # Backward compatibility - keep existing interface
-        self.roles: Dict[str, RoleDefinition] = (
-            self.llm_roles
-        )  # Alias for backward compatibility
-        self.shared_tools: Dict[str, Callable] = {}
+        self.roles: dict[
+            str, RoleDefinition
+        ] = self.llm_roles  # Alias for backward compatibility
+        self.shared_tools: dict[str, Callable] = {}
 
         # Performance optimization: Track initialization state
         self._is_initialized = False
-        self._fast_reply_roles_cache: Optional[List[RoleDefinition]] = None
+        self._fast_reply_roles_cache: Optional[list[RoleDefinition]] = None
 
         # Load shared tools first
         self._load_shared_tools()
@@ -121,7 +121,7 @@ class RoleRegistry:
         self.refresh()
         logger.info("Role registry initialization completed")
 
-    def _discover_roles(self) -> List[str]:
+    def _discover_roles(self) -> list[str]:
         """Discover all available role definitions."""
         roles = []
 
@@ -143,7 +143,7 @@ class RoleRegistry:
         definition_file = role_path / "definition.yaml"
 
         # Load role configuration
-        with open(definition_file, "r") as f:
+        with open(definition_file) as f:
             config = yaml.safe_load(f)
 
         # Load custom tools if tools.py exists
@@ -190,11 +190,11 @@ class RoleRegistry:
             except Exception as e:
                 logger.error(f"Failed to load shared tools from {tool_file}: {e}")
 
-    def _load_custom_tools(self, tools_file: Path) -> List[Callable]:
+    def _load_custom_tools(self, tools_file: Path) -> list[Callable]:
         """Load all @tool functions from a role's tools.py file."""
         return self._load_tools_from_file(tools_file)
 
-    def _load_tools_from_file(self, tools_file: Path) -> List[Callable]:
+    def _load_tools_from_file(self, tools_file: Path) -> list[Callable]:
         """Load all @tool decorated functions from a Python file."""
         try:
             # Load the module dynamically
@@ -206,7 +206,7 @@ class RoleRegistry:
 
             # Find all @tool decorated functions
             tools = []
-            for name, obj in inspect.getmembers(module):
+            for _name, obj in inspect.getmembers(module):
                 # Check for StrandsAgent @tool decorator with multiple detection methods
                 if callable(obj) and (
                     hasattr(obj, "_is_tool")  # Original check
@@ -236,7 +236,7 @@ class RoleRegistry:
         """
         return self.roles.get(role_name)
 
-    def get_role_summaries(self) -> List[Dict[str, str]]:
+    def get_role_summaries(self) -> list[dict[str, str]]:
         """
         Get role summaries for planning LLM.
 
@@ -255,7 +255,7 @@ class RoleRegistry:
             )
         return summaries
 
-    def list_roles(self) -> List[Dict[str, Any]]:
+    def list_roles(self) -> list[dict[str, Any]]:
         """
         List all available roles with metadata.
 
@@ -292,11 +292,11 @@ class RoleRegistry:
         """
         return self.shared_tools.get(tool_name)
 
-    def get_all_shared_tools(self) -> Dict[str, Callable]:
+    def get_all_shared_tools(self) -> dict[str, Callable]:
         """Get all shared tools."""
         return self.shared_tools.copy()
 
-    def validate_role(self, role_name: str) -> Dict[str, Any]:
+    def validate_role(self, role_name: str) -> dict[str, Any]:
         """
         Validate a role definition.
 
@@ -347,7 +347,7 @@ class RoleRegistry:
             "role_name": role_name,
         }
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get registry statistics.
 
@@ -416,7 +416,7 @@ class RoleRegistry:
         """
         return self.role_types.get(role_name, "llm")
 
-    def get_all_roles(self) -> Dict[str, str]:
+    def get_all_roles(self) -> dict[str, str]:
         """
         Get all roles with their types.
 
@@ -449,7 +449,7 @@ class RoleRegistry:
         """
         return self.programmatic_roles.get(role_name)
 
-    def list_programmatic_roles(self) -> Dict[str, "ProgrammaticRole"]:
+    def list_programmatic_roles(self) -> dict[str, "ProgrammaticRole"]:
         """
         Get all programmatic roles.
 
@@ -458,7 +458,7 @@ class RoleRegistry:
         """
         return self.programmatic_roles.copy()
 
-    def get_role_metrics(self, role_name: str) -> Optional[Dict[str, Any]]:
+    def get_role_metrics(self, role_name: str) -> Optional[dict[str, Any]]:
         """
         Get execution metrics for a programmatic role.
 
@@ -471,7 +471,7 @@ class RoleRegistry:
         role = self.programmatic_roles.get(role_name)
         return role.get_metrics() if role else None
 
-    def validate_programmatic_role(self, role_name: str) -> Dict[str, Any]:
+    def validate_programmatic_role(self, role_name: str) -> dict[str, Any]:
         """
         Validate a programmatic role.
 
@@ -516,7 +516,7 @@ class RoleRegistry:
             "role_type": "programmatic",
         }
 
-    def get_enhanced_statistics(self) -> Dict[str, Any]:
+    def get_enhanced_statistics(self) -> dict[str, Any]:
         """
         Get enhanced registry statistics including programmatic roles.
 
@@ -549,7 +549,7 @@ class RoleRegistry:
 
     # Enhanced methods for hybrid execution architecture
 
-    def get_role_parameters(self, role_name: str) -> Dict[str, Any]:
+    def get_role_parameters(self, role_name: str) -> dict[str, Any]:
         """Get parameter schema for a role for routing extraction."""
         role_def = self.get_role(role_name)
         if not role_def:
@@ -578,7 +578,7 @@ class RoleRegistry:
         return execution_type
 
     def register_lifecycle_functions(
-        self, role_name: str, functions: Dict[str, Callable]
+        self, role_name: str, functions: dict[str, Callable]
     ):
         """Register lifecycle functions for a role."""
         self.lifecycle_functions[role_name] = functions
@@ -586,11 +586,11 @@ class RoleRegistry:
             f"Registered {len(functions)} lifecycle functions for role: {role_name}"
         )
 
-    def get_lifecycle_functions(self, role_name: str) -> Dict[str, Callable]:
+    def get_lifecycle_functions(self, role_name: str) -> dict[str, Callable]:
         """Get lifecycle functions for a role."""
         return self.lifecycle_functions.get(role_name, {})
 
-    def _load_lifecycle_functions(self, role_name: str) -> Dict[str, Callable]:
+    def _load_lifecycle_functions(self, role_name: str) -> dict[str, Callable]:
         """Load lifecycle functions from role's Python module."""
         # Load from roles/{role_name}/lifecycle.py if it exists
         lifecycle_file = self.roles_directory / role_name / "lifecycle.py"
@@ -598,7 +598,7 @@ class RoleRegistry:
             return self._load_functions_from_file(lifecycle_file)
         return {}
 
-    def _load_functions_from_file(self, lifecycle_file: Path) -> Dict[str, Callable]:
+    def _load_functions_from_file(self, lifecycle_file: Path) -> dict[str, Callable]:
         """Load all functions from a Python file."""
         try:
             # Load the module dynamically
@@ -631,7 +631,7 @@ class RoleRegistry:
 
     # Fast-reply role methods for fast-path routing
 
-    def get_fast_reply_roles(self) -> List[RoleDefinition]:
+    def get_fast_reply_roles(self) -> list[RoleDefinition]:
         """
         Return roles marked with fast_reply: true that provide meaningful direct output.
         Uses caching for performance optimization.
@@ -672,7 +672,7 @@ class RoleRegistry:
             return False
         return role.config.get("role", {}).get("fast_reply", False)
 
-    def get_fast_reply_role_summaries(self) -> List[Dict[str, str]]:
+    def get_fast_reply_role_summaries(self) -> list[dict[str, str]]:
         """
         Get summaries of fast-reply roles for routing prompts.
 

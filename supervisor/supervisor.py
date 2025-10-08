@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Optional
 
 from common.message_bus import MessageBus
-from common.request_model import RequestMetadata
+
+# Removed unused import: from common.request_model import RequestMetadata
 from config.anthropic_config import AnthropicConfig
 from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig

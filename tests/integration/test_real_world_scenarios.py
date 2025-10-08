@@ -134,7 +134,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -228,7 +227,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -351,7 +349,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -451,7 +448,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls with proper TaskDescription objects
             from common.task_graph import TaskDescription
 
@@ -501,7 +497,7 @@ task_scheduling:
 
             # Verify context isolation between tenants
             all_contexts = []
-            for tenant_id, request_ids in tenant_results.items():
+            for _tenant_id, request_ids in tenant_results.items():
                 for request_id in request_ids:
                     context = supervisor.workflow_engine.get_request_context(request_id)
                     all_contexts.append(context.context_id)
@@ -525,7 +521,8 @@ task_scheduling:
         )
 
         # Simulate processing a large batch of items (reduced for performance)
-        batch_items = [
+        # Create batch items but don't store unused variable
+        [
             f"Process document {i}: Analyze content and extract key information"
             for i in range(5)  # Reduced from 20 for performance
         ]
@@ -547,7 +544,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -565,7 +561,8 @@ task_scheduling:
             )
 
             request_id = supervisor.workflow_engine.handle_request(batch_request)
-            context = supervisor.workflow_engine.get_request_context(request_id)
+            # Get context for verification but don't store unused variable
+            supervisor.workflow_engine.get_request_context(request_id)
 
             # Simulate processing with periodic checkpoints
             checkpoints = []
@@ -654,7 +651,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -738,7 +734,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -849,7 +844,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -920,7 +914,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),

@@ -21,7 +21,7 @@ class MessageBus:
         arbitrary_types_allowed = True
 
     def __init__(self):
-        self._subscribers: Dict[MessageType, Dict[Any, List[Callable]]] = {}
+        self._subscribers: dict[MessageType, dict[Any, list[Callable]]] = {}
         self._lock = threading.Lock()
         self._running = False
 
@@ -48,7 +48,7 @@ class MessageBus:
             subscribers_copy = self._subscribers[message_type].copy()
 
         # Release the lock before executing the callbacks
-        for subscriber, callbacks in subscribers_copy.items():
+        for _subscriber, callbacks in subscribers_copy.items():
             for callback in callbacks:
                 # Start a new thread for each callback
                 callback_thread = threading.Thread(target=callback, args=(message,))

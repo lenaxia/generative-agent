@@ -207,7 +207,7 @@ class TestConfigManagerUnit:
             config_data = config_manager.load_config()
             # If no exception, verify it returns empty dict or handles gracefully
             assert isinstance(config_data, dict)
-        except (IOError, yaml.YAMLError):
+        except (OSError, yaml.YAMLError):
             # If exception is raised, that's also acceptable
             pass
 
@@ -305,7 +305,7 @@ class TestConfigManagerUnit:
 
         # Verify mock configuration structure
         assert len(mock_configs) == 3  # STRONG, WEAK, DEFAULT
-        for llm_type, type_configs in mock_configs.items():
+        for _llm_type, type_configs in mock_configs.items():
             assert len(type_configs) == 3  # anthropic, bedrock, openai
             assert all("name" in config for config in type_configs)
             assert all("provider" in config for config in type_configs)

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @tool
 def summarize_text(
     text: str, max_length: int = 200, summary_type: str = "general"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Summarize text content - converted from SummarizerAgent.
 
@@ -167,7 +167,7 @@ def create_key_facts_summary(text: str, max_length: int) -> str:
     # Sort by score and take top sentences
     scored_sentences.sort(key=lambda x: x[0], reverse=True)
 
-    for score, sentence in scored_sentences:
+    for _score, sentence in scored_sentences:
         words_in_sentence = len(sentence.split())
         if current_words + words_in_sentence <= max_length:
             key_sentences.append(sentence)
@@ -179,7 +179,7 @@ def create_key_facts_summary(text: str, max_length: int) -> str:
 
 
 @tool
-def analyze_text_complexity(text: str) -> Dict[str, Any]:
+def analyze_text_complexity(text: str) -> dict[str, Any]:
     """
     Analyze text complexity and readability.
 
@@ -238,7 +238,7 @@ def analyze_text_complexity(text: str) -> Dict[str, Any]:
 
 
 @tool
-def extract_key_phrases(text: str, max_phrases: int = 10) -> Dict[str, Any]:
+def extract_key_phrases(text: str, max_phrases: int = 10) -> dict[str, Any]:
     """
     Extract key phrases from text.
 
@@ -339,7 +339,7 @@ def extract_key_phrases(text: str, max_phrases: int = 10) -> Dict[str, Any]:
 
 
 @tool
-def compare_texts(text1: str, text2: str) -> Dict[str, Any]:
+def compare_texts(text1: str, text2: str) -> dict[str, Any]:
     """
     Compare two texts for similarity and differences.
 
@@ -398,12 +398,12 @@ SUMMARIZER_TOOLS = {
 }
 
 
-def get_summarizer_tools() -> Dict[str, Any]:
+def get_summarizer_tools() -> dict[str, Any]:
     """Get all available summarizer tools."""
     return SUMMARIZER_TOOLS
 
 
-def get_summarizer_tool_descriptions() -> Dict[str, str]:
+def get_summarizer_tool_descriptions() -> dict[str, str]:
     """Get descriptions of all summarizer tools."""
     return {
         "summarize_text": "Create concise summaries of text content",

@@ -45,7 +45,8 @@ class TestComprehensiveUniversalAgent:
                 prompt="Create a comprehensive plan",
             )
         ]
-        task_graph = TaskGraph(tasks=tasks, dependencies=[])
+        # Create task graph but don't store unused variable
+        TaskGraph(tasks=tasks, dependencies=[])
         return TaskContext.from_tasks(
             tasks=tasks, dependencies=[], request_id="test_123"
         )
@@ -65,13 +66,13 @@ class TestComprehensiveUniversalAgent:
         """Test role assumption with semantic model selection."""
         # Test planning role (should use STRONG model)
         with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
-
             mock_model = Mock()
             universal_agent.llm_factory.create_strands_model.return_value = mock_model
             mock_agent_instance = Mock()
             mock_agent_class.return_value = mock_agent_instance
 
-            agent = universal_agent.assume_role(
+            # Assume role but don't store unused agent variable
+            universal_agent.assume_role(
                 role="planning", llm_type=LLMType.STRONG, context=None, tools=[]
             )
 
@@ -80,13 +81,13 @@ class TestComprehensiveUniversalAgent:
 
         # Test search role (should use WEAK model)
         with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
-
             mock_model = Mock()
             universal_agent.llm_factory.create_strands_model.return_value = mock_model
             mock_agent_instance = Mock()
             mock_agent_class.return_value = mock_agent_instance
 
-            agent = universal_agent.assume_role(
+            # Assume role but don't store unused agent variable
+            universal_agent.assume_role(
                 role="search", llm_type=LLMType.WEAK, context=None, tools=[]
             )
 
@@ -220,7 +221,6 @@ class TestComprehensiveUniversalAgent:
             patch.object(universal_agent, "_create_strands_model") as mock_create,
             patch("llm_provider.universal_agent.Agent") as mock_agent_class,
         ):
-
             mock_model = Mock()
             mock_create.return_value = mock_model
             mock_agent_instance = Mock()

@@ -28,7 +28,7 @@ class MockProgrammaticRole(ProgrammaticRole):
             "execution_type": "programmatic",
         }
 
-    def parse_instruction(self, instruction: str) -> Dict[str, Any]:
+    def parse_instruction(self, instruction: str) -> dict[str, Any]:
         return {"query": instruction, "parsed": True}
 
 
@@ -281,13 +281,10 @@ class TestHybridUniversalAgent:
                 universal_agent, "execute_llm_task", return_value="llm_fallback"
             ):
                 # This test verifies the concept - actual fallback implementation would be in execute_task
-                try:
+                with pytest.raises(Exception, match="Prog failed"):
                     universal_agent.execute_programmatic_task(
                         "test", "test_prog_role", None
                     )
-                    assert False, "Should have raised exception"
-                except Exception as e:
-                    assert "Prog failed" in str(e)
 
                     # Fallback would work
                     fallback_result = universal_agent.execute_llm_task(

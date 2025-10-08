@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 async def fetch_weather_data(
-    instruction: str, context: TaskContext, parameters: Dict
-) -> Dict[str, Any]:
+    instruction: str, context: TaskContext, parameters: dict
+) -> dict[str, Any]:
     """
     Pre-processor: Fetch weather data before LLM call.
 
@@ -62,8 +62,8 @@ async def fetch_weather_data(
 
 
 async def validate_location(
-    instruction: str, context: TaskContext, parameters: Dict
-) -> Dict[str, Any]:
+    instruction: str, context: TaskContext, parameters: dict
+) -> dict[str, Any]:
     """
     Pre-processor: Validate and normalize location parameter.
 
@@ -115,7 +115,7 @@ async def validate_location(
         return {"validation_error": str(e), "validation_status": "invalid"}
 
 
-async def format_for_tts(llm_result: str, context: TaskContext, pre_data: Dict) -> str:
+async def format_for_tts(llm_result: str, context: TaskContext, pre_data: dict) -> str:
     """
     Post-processor: Format LLM result for text-to-speech.
 
@@ -162,7 +162,7 @@ async def format_for_tts(llm_result: str, context: TaskContext, pre_data: Dict) 
         return llm_result  # Return original on failure
 
 
-async def pii_scrubber(llm_result: str, context: TaskContext, pre_data: Dict) -> str:
+async def pii_scrubber(llm_result: str, context: TaskContext, pre_data: dict) -> str:
     """
     Post-processor: Remove sensitive data from weather responses.
 
@@ -199,7 +199,7 @@ async def pii_scrubber(llm_result: str, context: TaskContext, pre_data: Dict) ->
         return llm_result  # Return original on failure
 
 
-async def audit_log(llm_result: str, context: TaskContext, pre_data: Dict) -> str:
+async def audit_log(llm_result: str, context: TaskContext, pre_data: dict) -> str:
     """
     Post-processor: Log interaction for compliance and monitoring.
 
@@ -217,7 +217,7 @@ async def audit_log(llm_result: str, context: TaskContext, pre_data: Dict) -> st
         timeframe = None
 
         # Get location from pre-processing data
-        for func_name, data in pre_data.items():
+        for _func_name, data in pre_data.items():
             if isinstance(data, dict):
                 if "location_resolved" in data:
                     location = data["location_resolved"]

@@ -136,7 +136,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -215,7 +214,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -311,7 +309,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -411,7 +408,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -423,7 +419,8 @@ task_scheduling:
 
             # Simulate message bus events
             for message_type in message_types_to_test:
-                test_message = {
+                # Create test message but don't store unused variable
+                {
                     "type": message_type.value,
                     "timestamp": time.time(),
                     "data": {"test": "message"},
@@ -474,7 +471,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -536,7 +532,7 @@ task_scheduling:
         # Test only light load scenario for performance
         load_scenarios = [("light_load", 5, "Light load with 5 concurrent requests")]
 
-        for scenario_name, num_requests, description in load_scenarios:
+        for scenario_name, num_requests, _description in load_scenarios:
             with (
                 patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
                 patch.object(
@@ -546,7 +542,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -622,7 +617,7 @@ task_scheduling:
             ("sequential_requests", "Process requests sequentially")
         ]
 
-        for scenario_name, description in consistency_scenarios:
+        for scenario_name, _description in consistency_scenarios:
             with (
                 patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
                 patch.object(
@@ -632,7 +627,6 @@ task_scheduling:
                     supervisor.workflow_engine, "_execute_dag_parallel"
                 ) as mock_dag,
             ):
-
                 # Mock the planning phase to avoid LLM calls
                 mock_plan.return_value = {
                     "task_graph": Mock(),
@@ -708,7 +702,6 @@ task_scheduling:
                 supervisor.workflow_engine, "_execute_dag_parallel"
             ) as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),

@@ -232,7 +232,8 @@ class TestWorkflowEnginePerformance:
         ):
             # Create WorkflowEngine
             start_time = time.time()
-            engine = WorkflowEngine(
+            # Create workflow engine but don't store unused variable
+            WorkflowEngine(
                 llm_factory=mock_factory,
                 message_bus=mock_message_bus,
                 roles_directory="test_roles",

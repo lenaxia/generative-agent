@@ -2,13 +2,12 @@
 Test CLI complexity refactor to ensure functionality is preserved.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-import sys
 import io
-from contextlib import redirect_stdout, redirect_stderr
+from unittest.mock import Mock, patch
 
-from cli import run_interactive_mode, show_system_status
+import pytest
+
+from cli import run_interactive_mode
 from supervisor.supervisor import Supervisor
 
 

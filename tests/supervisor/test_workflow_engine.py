@@ -127,7 +127,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -179,7 +178,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -230,7 +228,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -274,7 +271,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -327,7 +323,6 @@ class TestWorkflowEngine:
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
             patch.object(workflow_engine, "_process_task_queue") as mock_process_queue,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -367,7 +362,8 @@ class TestWorkflowEngine:
     def test_message_bus_event_handling(self, workflow_engine):
         """Test message bus event handling for workflow events."""
         # Test TASK_RESPONSE handling
-        task_response_data = {
+        # Create task response data but don't store unused variable
+        {
             "request_id": "test_workflow_123",
             "task_id": "test_task_456",
             "result": "Task completed successfully",
@@ -379,7 +375,8 @@ class TestWorkflowEngine:
         assert workflow_engine.message_bus.subscribe.called
 
         # Test AGENT_ERROR handling
-        error_data = {
+        # Create error data but don't store unused variable
+        {
             "request_id": "test_workflow_123",
             "task_id": "test_task_456",
             "error_message": "Task failed",
@@ -411,7 +408,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),
@@ -480,7 +476,6 @@ class TestWorkflowEngine:
             ) as mock_execute,
             patch.object(workflow_engine, "_execute_dag_parallel") as mock_dag,
         ):
-
             # Mock the planning phase to avoid LLM calls
             mock_plan.return_value = {
                 "task_graph": Mock(),

@@ -61,7 +61,7 @@ class LLMType(Enum):
 
 class LLMFactory:
     def __init__(
-        self, configs: Dict[LLMType, List[BaseConfig]], framework: str = "strands"
+        self, configs: dict[LLMType, list[BaseConfig]], framework: str = "strands"
     ):
         """
         Initialize LLMFactory with StrandsAgent support and performance caching.
@@ -75,12 +75,12 @@ class LLMFactory:
         self.prompt_library = PromptLibrary()
 
         # Performance optimization: Model and agent caching
-        self._model_cache: Dict[str, Any] = {}
-        self._agent_cache: Dict[str, Any] = {}
+        self._model_cache: dict[str, Any] = {}
+        self._agent_cache: dict[str, Any] = {}
         self._is_warmed = False
 
         # Enhanced caching infrastructure for agent pooling
-        self._agent_pool: Dict[str, Any] = {}  # Provider-based Agent pool
+        self._agent_pool: dict[str, Any] = {}  # Provider-based Agent pool
         self._pool_stats = {"hits": 0, "misses": 0, "created": 0}
 
         logger.info("LLMFactory initialized with caching and agent pooling enabled")
@@ -206,7 +206,7 @@ class LLMFactory:
         self,
         llm_type: LLMType,
         role: str,
-        tools: Optional[List] = None,
+        tools: Optional[list] = None,
         role_registry=None,
     ):
         """
@@ -258,7 +258,7 @@ class LLMFactory:
 
         return agent
 
-    def _hash_tools(self, tools: List) -> str:
+    def _hash_tools(self, tools: list) -> str:
         """
         Create a hash of the tools list for caching purposes.
 
@@ -333,7 +333,7 @@ class LLMFactory:
         self._is_warmed = False
         logger.info("Cleared all model and agent caches")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """
         Get statistics about cached models and agents.
 
@@ -385,7 +385,7 @@ class LLMFactory:
         """Check if StrandsAgent is available."""
         return STRANDS_AVAILABLE
 
-    def get_available_llm_types(self) -> List[LLMType]:
+    def get_available_llm_types(self) -> list[LLMType]:
         """Get list of available LLM types with configurations."""
         return list(self.configs.keys())
 
@@ -393,7 +393,7 @@ class LLMFactory:
         """Get number of configurations for the specified LLM type."""
         return len(self.configs.get(llm_type, []))
 
-    def validate_configuration(self) -> Dict[str, Any]:
+    def validate_configuration(self) -> dict[str, Any]:
         """
         Validate the factory configuration.
 
@@ -483,11 +483,13 @@ class LLMFactory:
                 self.get_agent(llm_type, provider)
                 logger.info(f"✅ Pre-warmed {provider}_{llm_type.value}")
             except Exception as e:
-                logger.warning(f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}")
+                logger.warning(
+                    f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}"
+                )
 
         logger.info(f"🔥 Agent pool warmed: {len(self._agent_pool)} agents ready")
 
-    def get_pool_stats(self) -> Dict[str, Any]:
+    def get_pool_stats(self) -> dict[str, Any]:
         """Get Agent pool performance statistics."""
         total_requests = self._pool_stats["hits"] + self._pool_stats["misses"]
         hit_rate = (
@@ -506,7 +508,7 @@ class LLMFactory:
     def _get_default_provider(self) -> str:
         """Get the default provider from available configurations."""
         # Return the first available provider type
-        for llm_type, configs in self.configs.items():
+        for _llm_type, configs in self.configs.items():
             if configs:
                 config = configs[0]
                 if hasattr(config, "provider_type"):
