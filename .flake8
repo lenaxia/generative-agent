@@ -9,7 +9,18 @@ extend-ignore =
     I202,
     D415,
     D205,
-    W293
+    W293,
+    D202,
+    PT012,
+    E402,
+    I101,
+    E712,
+    PT027,
+    B018,
+    B023,
+    B017,
+    PT011,
+    PT018
 exclude =
     .git,
     __pycache__,

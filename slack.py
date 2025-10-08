@@ -596,14 +596,14 @@ class IntelligentSlackBot:
         command = text[1:].lower().split()[0]
 
         if command == "status":
-            self._handle_status_command(say, logger)
+            self._handle_dm_status_command(say, logger)
         elif command == "help":
             self._handle_help_command(say)
         else:
             say(f"❌ Unknown command: `{text}`\n💡 Use `/help` for available commands")
 
-    def _handle_status_command(self, say, logger):
-        """Handle /status command."""
+    def _handle_dm_status_command(self, say, logger):
+        """Handle /status command in direct messages."""
         if not self.system_ready:
             say("🔄 AI system is starting up...")
             return

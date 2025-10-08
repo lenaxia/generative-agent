@@ -6,7 +6,7 @@ The planning LLM selects appropriate roles based on available role definitions.
 
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
 

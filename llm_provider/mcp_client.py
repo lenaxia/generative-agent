@@ -6,7 +6,7 @@ for the Universal Agent system, enabling access to external tool ecosystems.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 try:
     from mcp import StdioServerParameters, stdio_client

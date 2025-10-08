@@ -13,7 +13,7 @@ This role:
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from common.task_context import TaskContext
 from llm_provider.programmatic_role import ProgrammaticRole

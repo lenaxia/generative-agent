@@ -7,7 +7,7 @@ Designed for pure automation tasks, data collection, API integrations, and struc
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from common.task_context import TaskContext
 

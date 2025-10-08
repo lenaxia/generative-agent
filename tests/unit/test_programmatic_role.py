@@ -4,7 +4,7 @@ Tests the abstract base class for programmatic roles that execute directly
 without LLM processing, focusing on pure automation and data collection tasks.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from unittest.mock import Mock
 
 import pytest

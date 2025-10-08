@@ -6,7 +6,7 @@ that can be used by the Universal Agent for weather information retrieval.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 import requests
 from strands import tool

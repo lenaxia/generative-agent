@@ -5,7 +5,7 @@ Common file handling functionality that can be used across multiple roles.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 from strands import tool
 

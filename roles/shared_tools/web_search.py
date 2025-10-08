@@ -7,7 +7,7 @@ Provides both basic search and advanced filtered search capabilities.
 import logging
 import os
 import time
-from typing import Dict, Optional
+from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests

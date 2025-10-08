@@ -64,6 +64,11 @@ class ModuleNameFormatter(logging.Formatter):
 
 
 def configure_logging(logging_config: LoggingConfig):
+    """Configure logging based on the provided logging configuration.
+
+    Args:
+        logging_config: Configuration object containing logging settings.
+    """
     log_level = logging.getLevelName(logging_config.log_level.upper())
     log_file = logging_config.log_file
     disable_console_logging = logging_config.disable_console_logging

@@ -7,7 +7,6 @@ import ast
 import logging
 import re
 from datetime import datetime
-from typing import Dict, List
 
 from strands import tool
 

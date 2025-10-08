@@ -8,7 +8,7 @@ based on request complexity and available fast-reply capabilities.
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleDefinition, RoleRegistry

@@ -13,7 +13,7 @@ This role:
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from common.task_context import TaskContext
 from llm_provider.factory import LLMType

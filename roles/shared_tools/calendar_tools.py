@@ -5,7 +5,7 @@ They need to be implemented with real calendar integrations (Google Calendar, Ou
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from strands import tool
 
