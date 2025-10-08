@@ -1,6 +1,13 @@
+"""Universal Agent module for unified LLM interaction and role execution.
+
+This module provides the UniversalAgent class that serves as the main interface
+for executing roles, managing hybrid execution modes, and coordinating between
+different LLM providers and execution strategies.
+"""
+
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 # Import StrandsAgent - hard dependency, no fallbacks
 from strands import Agent
@@ -10,6 +17,7 @@ from strands_tools import calculator, file_read, shell
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
+from llm_provider.programmatic_role import ProgrammaticRole
 from llm_provider.role_registry import RoleDefinition, RoleRegistry
 from llm_provider.tool_registry import ToolRegistry
 
@@ -643,7 +651,7 @@ Focus on comprehensive, accurate analysis.""",
                     except Exception as e:
                         logger.debug(f"Could not reset conversation manager state: {e}")
 
-                logger.debug(f"✅ Updated agent context in place (same tools)")
+                logger.debug("✅ Updated agent context in place (same tools)")
                 return agent  # Return same agent instance
 
         except Exception as e:
@@ -683,7 +691,6 @@ Focus on comprehensive, accurate analysis.""",
         }
 
         return role_llm_mapping.get(role, LLMType.DEFAULT)
-        logger.info(f"Registered programmatic role: {name}")
 
     def _serialize_result(self, result: Any) -> str:
         """

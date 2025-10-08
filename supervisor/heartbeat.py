@@ -1,7 +1,14 @@
+"""Heartbeat monitoring module for system health and status tracking.
+
+This module provides heartbeat functionality for monitoring system health,
+tracking component status, and ensuring proper operation of the supervisor
+and its managed workflows.
+"""
+
 import logging
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
 
 import psutil
 

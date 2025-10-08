@@ -1,3 +1,9 @@
+"""Configuration manager module for supervisor settings and parameters.
+
+This module provides configuration management functionality for the supervisor
+system, handling settings, parameters, and configuration validation.
+"""
+
 import logging
 from typing import Optional
 
@@ -17,7 +23,7 @@ class ConfigManager(BaseModel):
 
     def load_config(self):
         try:
-            with open(self.config_file, "r") as f:
+            with open(self.config_file) as f:
                 config_data = yaml.safe_load(f)
             config = SupervisorConfig(**config_data)
             return config

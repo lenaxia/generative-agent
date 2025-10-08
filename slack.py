@@ -78,7 +78,7 @@ class IntelligentSlackBot:
             logger.error(f"❌ Failed to initialize Universal Agent system: {e}")
             self.system_ready = False
 
-    async def _get_user_info(self, user_id: str, client) -> Dict:
+    async def _get_user_info(self, user_id: str, client) -> dict:
         """Get user information from Slack API with caching."""
         if user_id in self.user_cache:
             return self.user_cache[user_id]
@@ -108,7 +108,7 @@ class IntelligentSlackBot:
             "display_name": user_id,
         }
 
-    async def _get_channel_info(self, channel_id: str, client) -> Dict:
+    async def _get_channel_info(self, channel_id: str, client) -> dict:
         """Get channel information from Slack API with caching."""
         if channel_id in self.channel_cache:
             return self.channel_cache[channel_id]
@@ -360,7 +360,7 @@ class IntelligentSlackBot:
             try:
                 status = self.supervisor.status()
                 if status:
-                    status_msg = f"🤖 *AI System Status*\n"
+                    status_msg = "🤖 *AI System Status*\n"
                     status_msg += f"• System: {status.get('status', 'unknown')}\n"
                     status_msg += (
                         f"• Running: {'✅' if status.get('running') else '❌'}\n"
@@ -387,7 +387,9 @@ class IntelligentSlackBot:
                         health_emoji = (
                             "✅"
                             if health_status == "healthy"
-                            else "⚠️" if health_status == "degraded" else "❓"
+                            else "⚠️"
+                            if health_status == "degraded"
+                            else "❓"
                         )
                         status_msg += (
                             f"• Health Status: {health_emoji} {health_status}\n"
@@ -583,7 +585,9 @@ class IntelligentSlackBot:
                             status_msg += (
                                 f"• System: {status.get('status', 'unknown')}\n"
                             )
-                            status_msg += f"• Running: {'✅' if status.get('running') else '❌'}\n"
+                            status_msg += (
+                                f"• Running: {'✅' if status.get('running') else '❌'}\n"
+                            )
 
                             if "workflow_engine" in status:
                                 we_status = status["workflow_engine"]
@@ -603,7 +607,9 @@ class IntelligentSlackBot:
                                 health_emoji = (
                                     "✅"
                                     if health_status == "healthy"
-                                    else "⚠️" if health_status == "degraded" else "❓"
+                                    else "⚠️"
+                                    if health_status == "degraded"
+                                    else "❓"
                                 )
                                 status_msg += (
                                     f"• Health Status: {health_emoji} {health_status}\n"

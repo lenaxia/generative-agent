@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def create_task_plan(instruction: str) -> Dict[str, Any]:
+def create_task_plan(instruction: str) -> dict[str, Any]:
     """
     Create a task plan by breaking down the instruction into manageable steps.
 
@@ -28,13 +28,13 @@ def create_task_plan(instruction: str) -> Dict[str, Any]:
             "instruction": instruction,
             "tasks": [
                 {
-                    "task_name": f"analyze_request",
+                    "task_name": "analyze_request",
                     "agent_id": "analysis_agent",
                     "task_type": "analysis",
                     "prompt": f"Analyze the following request: {instruction}",
                 },
                 {
-                    "task_name": f"execute_main_task",
+                    "task_name": "execute_main_task",
                     "agent_id": "execution_agent",
                     "task_type": "execution",
                     "prompt": f"Execute the main task: {instruction}",
@@ -52,7 +52,7 @@ def create_task_plan(instruction: str) -> Dict[str, Any]:
 
 
 @tool
-def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def analyze_task_dependencies(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Analyze dependencies between tasks.
 
@@ -84,7 +84,7 @@ def analyze_task_dependencies(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any
 
 
 @tool
-def validate_task_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
+def validate_task_plan(plan: dict[str, Any]) -> dict[str, Any]:
     """
     Validate a task plan for completeness and correctness.
 

@@ -56,7 +56,7 @@ def _get_calling_role() -> str:
 
             # Check local variables for role context
             local_vars = frame.f_locals
-            for _var_name in ["role_name", "role", "agent_name", "agent"]:
+            for var_name in ["role_name", "role", "agent_name", "agent"]:
                 if var_name in local_vars:
                     value = local_vars[var_name]
                     if isinstance(value, str) and value:
@@ -358,7 +358,7 @@ def redis_get_keys(pattern: str = "*") -> dict[str, Any]:
         prefixed_keys = client.keys(prefixed_pattern)
 
         # Remove role prefix from results
-        keys = [_unprefix_key(k, role) for _k in prefixed_keys]
+        keys = [_unprefix_key(k, role) for k in prefixed_keys]
 
         logger.debug(
             f"Redis get_keys: found {len(keys)} keys for pattern {prefixed_pattern}"

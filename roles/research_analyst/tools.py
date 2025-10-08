@@ -5,6 +5,7 @@ Specialized tools for research and analysis tasks.
 """
 
 import logging
+import statistics
 from datetime import datetime
 from typing import Dict, List
 
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 @tool
 def academic_search(
-    query: str, databases: List[str] = None, max_results: int = 10
-) -> Dict:
+    query: str, databases: list[str] = None, max_results: int = 10
+) -> dict:
     """
     Search academic databases for research papers and scholarly articles.
 
@@ -64,7 +65,7 @@ def academic_search(
 
 
 @tool
-def citation_formatter(papers: List[Dict], style: str = "APA") -> Dict:
+def citation_formatter(papers: list[dict], style: str = "APA") -> dict:
     """
     Format research citations in various academic styles.
 
@@ -104,7 +105,7 @@ def citation_formatter(papers: List[Dict], style: str = "APA") -> Dict:
         return {"style": style, "citations": [], "error": str(e)}
 
 
-def _format_apa_citation(paper: Dict) -> str:
+def _format_apa_citation(paper: dict) -> str:
     """Format citation in APA style."""
     authors = paper.get("authors", ["Unknown Author"])
     author_str = ", ".join(authors) if len(authors) <= 2 else f"{authors[0]} et al."
@@ -116,7 +117,7 @@ def _format_apa_citation(paper: Dict) -> str:
     return f"{author_str} ({year}). {title}. {journal}."
 
 
-def _format_mla_citation(paper: Dict) -> str:
+def _format_mla_citation(paper: dict) -> str:
     """Format citation in MLA style."""
     authors = paper.get("authors", ["Unknown Author"])
     author_str = authors[0] if authors else "Unknown Author"
@@ -128,7 +129,7 @@ def _format_mla_citation(paper: Dict) -> str:
     return f'{author_str}. "{title}." {journal}, {year}.'
 
 
-def _format_chicago_citation(paper: Dict) -> str:
+def _format_chicago_citation(paper: dict) -> str:
     """Format citation in Chicago style."""
     authors = paper.get("authors", ["Unknown Author"])
     author_str = authors[0] if authors else "Unknown Author"
@@ -140,7 +141,7 @@ def _format_chicago_citation(paper: Dict) -> str:
     return f'{author_str}. "{title}." {journal} ({year}).'
 
 
-def _format_ieee_citation(paper: Dict) -> str:
+def _format_ieee_citation(paper: dict) -> str:
     """Format citation in IEEE style."""
     authors = paper.get("authors", ["Unknown Author"])
     author_str = ", ".join(authors) if len(authors) <= 3 else f"{authors[0]} et al."
@@ -153,7 +154,7 @@ def _format_ieee_citation(paper: Dict) -> str:
 
 
 @tool
-def statistical_analyzer(data: List[float], analysis_type: str = "descriptive") -> Dict:
+def statistical_analyzer(data: list[float], analysis_type: str = "descriptive") -> dict:
     """
     Perform statistical analysis on numerical data.
 
@@ -190,7 +191,7 @@ def statistical_analyzer(data: List[float], analysis_type: str = "descriptive") 
         return {"success": False, "error": str(e), "analysis_type": analysis_type}
 
 
-def _descriptive_statistics(data: List[float]) -> Dict:
+def _descriptive_statistics(data: list[float]) -> dict:
     """Calculate descriptive statistics."""
     import statistics
 
@@ -214,7 +215,7 @@ def _descriptive_statistics(data: List[float]) -> Dict:
     }
 
 
-def _correlation_analysis(data: List[float]) -> Dict:
+def _correlation_analysis(data: list[float]) -> dict:
     """Analyze correlation patterns in data."""
     # Simple autocorrelation analysis
     if len(data) < 2:
@@ -234,13 +235,15 @@ def _correlation_analysis(data: List[float]) -> Dict:
         "trend_direction": (
             "positive"
             if correlation > 0.1
-            else "negative" if correlation < -0.1 else "neutral"
+            else "negative"
+            if correlation < -0.1
+            else "neutral"
         ),
         "correlation_strength": abs(correlation),
     }
 
 
-def _trend_analysis(data: List[float]) -> Dict:
+def _trend_analysis(data: list[float]) -> dict:
     """Analyze trends in time series data."""
     if len(data) < 3:
         return {
@@ -255,7 +258,9 @@ def _trend_analysis(data: List[float]) -> Dict:
     trend = (
         "increasing"
         if increases > decreases
-        else "decreasing" if decreases > increases else "stable"
+        else "decreasing"
+        if decreases > increases
+        else "stable"
     )
 
     return {
@@ -273,7 +278,7 @@ def _trend_analysis(data: List[float]) -> Dict:
     }
 
 
-def _calculate_correlation(x: List[float], y: List[float]) -> float:
+def _calculate_correlation(x: list[float], y: list[float]) -> float:
     """Calculate Pearson correlation coefficient."""
     if len(x) != len(y) or len(x) < 2:
         return 0.0
@@ -294,8 +299,8 @@ def _calculate_correlation(x: List[float], y: List[float]) -> float:
 
 @tool
 def research_report_generator(
-    findings: List[Dict], title: str, include_methodology: bool = True
-) -> Dict:
+    findings: list[dict], title: str, include_methodology: bool = True
+) -> dict:
     """
     Generate a structured research report from findings.
 

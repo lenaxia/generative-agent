@@ -1,3 +1,9 @@
+"""Prompt library module for managing reusable prompts and templates.
+
+This module provides a centralized library for storing, retrieving, and
+managing prompt templates used across different roles and agents in the system.
+"""
+
 import os
 from typing import Dict, List, Optional
 
@@ -16,7 +22,7 @@ class PromptLibrary:
         Args:
             prompt_dir: Directory containing prompt files (optional)
         """
-        self.prompts: Dict[str, str] = {}
+        self.prompts: dict[str, str] = {}
         self.prompt_dir = prompt_dir
         self._load_default_prompts()
 
@@ -140,7 +146,7 @@ Always:
             for filename in os.listdir(prompt_dir):
                 if filename.endswith((".yaml", ".yml")):
                     filepath = os.path.join(prompt_dir, filename)
-                    with open(filepath, "r", encoding="utf-8") as f:
+                    with open(filepath, encoding="utf-8") as f:
                         data = yaml.safe_load(f)
                         if isinstance(data, dict):
                             self.prompts.update(data)
@@ -179,7 +185,7 @@ Always:
         if role in self.prompts:
             del self.prompts[role]
 
-    def list_roles(self) -> List[str]:
+    def list_roles(self) -> list[str]:
         """
         Get a list of all available roles.
 
@@ -200,7 +206,7 @@ Always:
         """
         return role in self.prompts
 
-    def update_prompts(self, prompts: Dict[str, str]):
+    def update_prompts(self, prompts: dict[str, str]):
         """
         Update multiple prompts at once.
 
@@ -226,7 +232,7 @@ Always:
         Args:
             filepath: Path to load prompts from
         """
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = yaml.safe_load(f)
             if isinstance(data, dict):
                 self.prompts.update(data)

@@ -5,7 +5,7 @@ including credentials, model settings, and request parameters.
 """
 
 from collections.abc import Mapping
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Optional
 
 from config.base_config import BaseConfig, ModelConfig
 

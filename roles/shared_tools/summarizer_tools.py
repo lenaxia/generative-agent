@@ -8,7 +8,7 @@ that can be used by the Universal Agent for text summarization functionality.
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from strands import tool
 
@@ -375,9 +375,9 @@ def compare_texts(text1: str, text2: str) -> dict[str, Any]:
 
     result = {
         "similarity_score": round(similarity_score, 3),
-        "common_words": sorted(list(common_words))[:20],  # Top 20 common words
-        "unique_to_text1": sorted(list(unique_to_text1))[:10],  # Top 10 unique words
-        "unique_to_text2": sorted(list(unique_to_text2))[:10],  # Top 10 unique words
+        "common_words": sorted(common_words)[:20],  # Top 20 common words
+        "unique_to_text1": sorted(unique_to_text1)[:10],  # Top 10 unique words
+        "unique_to_text2": sorted(unique_to_text2)[:10],  # Top 10 unique words
         "text1_word_count": len(words1),
         "text2_word_count": len(words2),
         "common_word_count": len(common_words),

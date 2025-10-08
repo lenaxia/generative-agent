@@ -113,7 +113,7 @@ def demonstrate_enhanced_routing():
     for i, example in enumerate(examples, 1):
         print(f"\n{i}. Request: \"{example['request']}\"")
         print(f"   Expected route: {example['expected_route']}")
-        print(f"   Expected parameters:")
+        print("   Expected parameters:")
         for key, value in example["expected_parameters"].items():
             print(f"     - {key}: {value}")
 

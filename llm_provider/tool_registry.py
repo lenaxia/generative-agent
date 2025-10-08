@@ -1,3 +1,9 @@
+"""Tool registry module for managing and discovering available tools.
+
+This module provides functionality for registering, discovering, and managing
+tools that can be used by agents and roles within the system.
+"""
+
 import inspect
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
@@ -46,8 +52,8 @@ class ToolRegistry:
 
     def __init__(self):
         """Initialize the tool registry."""
-        self.tools: Dict[str, Dict[str, Any]] = {}
-        self.role_tools: Dict[str, List[str]] = {}
+        self.tools: dict[str, dict[str, Any]] = {}
+        self.role_tools: dict[str, list[str]] = {}
 
     @classmethod
     def get_global_registry(cls) -> "ToolRegistry":
@@ -115,7 +121,7 @@ class ToolRegistry:
                 if not self.role_tools[role]:
                     del self.role_tools[role]
 
-    def get_tool(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool(self, name: str) -> Optional[dict[str, Any]]:
         """
         Get tool information by name.
 
@@ -127,7 +133,7 @@ class ToolRegistry:
         """
         return self.tools.get(name)
 
-    def get_tools(self, tool_names: List[str]) -> List[Callable]:
+    def get_tools(self, tool_names: list[str]) -> list[Callable]:
         """
         Get tool functions by names.
 
@@ -143,7 +149,7 @@ class ToolRegistry:
                 tools.append(self.tools[name]["function"])
         return tools
 
-    def get_tools_for_role(self, role: str) -> List[str]:
+    def get_tools_for_role(self, role: str) -> list[str]:
         """
         Get tool names associated with a role.
 
@@ -155,7 +161,7 @@ class ToolRegistry:
         """
         return self.role_tools.get(role, []).copy()
 
-    def list_tools(self) -> List[str]:
+    def list_tools(self) -> list[str]:
         """
         Get list of all tool names.
 
@@ -164,7 +170,7 @@ class ToolRegistry:
         """
         return list(self.tools.keys())
 
-    def list_roles(self) -> List[str]:
+    def list_roles(self) -> list[str]:
         """
         Get list of all roles that have associated tools.
 
@@ -173,7 +179,7 @@ class ToolRegistry:
         """
         return list(self.role_tools.keys())
 
-    def search_tools(self, query: str) -> List[str]:
+    def search_tools(self, query: str) -> list[str]:
         """
         Search for tools by name or description.
 
@@ -195,7 +201,7 @@ class ToolRegistry:
 
         return matches
 
-    def get_tool_info(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_info(self, name: str) -> Optional[dict[str, Any]]:
         """
         Get detailed information about a tool.
 
@@ -249,7 +255,7 @@ class ToolRegistry:
         self.tools.clear()
         self.role_tools.clear()
 
-    def export_tools(self) -> Dict[str, Any]:
+    def export_tools(self) -> dict[str, Any]:
         """
         Export tool registry for serialization.
 
@@ -270,7 +276,7 @@ class ToolRegistry:
 
         return exported
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get registry statistics.
 
@@ -295,7 +301,7 @@ class ToolRegistry:
     description="Create a comprehensive task plan",
     role="planning",
 )
-def create_task_plan(instruction: str, available_agents: List[str]) -> Dict:
+def create_task_plan(instruction: str, available_agents: list[str]) -> dict:
     """Create a task plan from user instruction - converted from PlanningAgent."""
     return {
         "plan": f"Plan for: {instruction}",
@@ -306,7 +312,7 @@ def create_task_plan(instruction: str, available_agents: List[str]) -> Dict:
 
 
 @tool(name="web_search", description="Search the web for information", role="search")
-def web_search(query: str, num_results: int = 5) -> Dict:
+def web_search(query: str, num_results: int = 5) -> dict:
     """Search the web for information - converted from SearchAgent."""
     return {
         "query": query,
@@ -330,7 +336,7 @@ def summarize_text(text: str, max_length: int = 200) -> str:
     description="Get weather information for a location",
     role="weather",
 )
-def get_weather(location: str) -> Dict:
+def get_weather(location: str) -> dict:
     """Get weather information - converted from WeatherAgent."""
     return {
         "location": location,
@@ -342,7 +348,7 @@ def get_weather(location: str) -> Dict:
 
 
 @tool(name="send_slack_message", description="Send a message to Slack", role="slack")
-def send_slack_message(channel: str, message: str) -> Dict:
+def send_slack_message(channel: str, message: str) -> dict:
     """Send Slack message - converted from SlackAgent."""
     return {
         "channel": channel,

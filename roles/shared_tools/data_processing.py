@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def analyze_data(data: Union[List, Dict], analysis_type: str = "summary") -> Dict:
+def analyze_data(data: Union[list, dict], analysis_type: str = "summary") -> dict:
     """
     Perform basic data analysis on structured data.
 
@@ -46,14 +46,14 @@ def analyze_data(data: Union[List, Dict], analysis_type: str = "summary") -> Dic
         return {"success": False, "error": str(e), "analysis_type": analysis_type}
 
 
-def _analyze_summary(data: Union[List, Dict]) -> Dict:
+def _analyze_summary(data: Union[list, dict]) -> dict:
     """Generate summary analysis of data."""
     if isinstance(data, list):
         return {
             "success": True,
             "data_type": "list",
             "total_items": len(data),
-            "item_types": list(set(type(item).__name__ for item in data)),
+            "item_types": list({type(item).__name__ for item in data}),
             "sample_items": data[:3] if data else [],
             "is_empty": len(data) == 0,
         }
@@ -63,7 +63,7 @@ def _analyze_summary(data: Union[List, Dict]) -> Dict:
             "data_type": "dict",
             "total_keys": len(data),
             "keys": list(data.keys()),
-            "value_types": list(set(type(value).__name__ for value in data.values())),
+            "value_types": list({type(value).__name__ for value in data.values()}),
             "sample_entries": dict(list(data.items())[:3]) if data else {},
             "is_empty": len(data) == 0,
         }
@@ -76,7 +76,7 @@ def _analyze_summary(data: Union[List, Dict]) -> Dict:
         }
 
 
-def _analyze_statistics(data: Union[List, Dict]) -> Dict:
+def _analyze_statistics(data: Union[list, dict]) -> dict:
     """Generate statistical analysis of numerical data."""
     try:
         # Extract numerical values
@@ -110,7 +110,7 @@ def _analyze_statistics(data: Union[List, Dict]) -> Dict:
         return {"success": False, "error": f"Statistical analysis failed: {e}"}
 
 
-def _analyze_structure(data: Union[List, Dict]) -> Dict:
+def _analyze_structure(data: Union[list, dict]) -> dict:
     """Analyze the structure of complex data."""
 
     def get_structure(obj, max_depth=3, current_depth=0):
@@ -139,7 +139,7 @@ def _analyze_structure(data: Union[List, Dict]) -> Dict:
 
 
 @tool
-def format_output(data: Any, format_type: str = "json", pretty: bool = True) -> Dict:
+def format_output(data: Any, format_type: str = "json", pretty: bool = True) -> dict:
     """
     Format data for output in various formats.
 
@@ -217,7 +217,7 @@ def _format_as_list(data: Any) -> str:
 
 
 @tool
-def extract_key_information(text: str, info_type: str = "entities") -> Dict:
+def extract_key_information(text: str, info_type: str = "entities") -> dict:
     """
     Extract key information from text.
 
@@ -277,7 +277,7 @@ def extract_key_information(text: str, info_type: str = "entities") -> Dict:
 @tool
 def perform_comparative_analysis(
     data1: Any, data2: Any, comparison_type: str = "basic"
-) -> Dict:
+) -> dict:
     """
     Perform comparative analysis between two datasets or pieces of information.
 
@@ -308,13 +308,13 @@ def perform_comparative_analysis(
         return {"success": False, "error": str(e), "comparison_type": comparison_type}
 
 
-def _basic_comparison(data1: Any, data2: Any) -> Dict:
+def _basic_comparison(data1: Any, data2: Any) -> dict:
     """Perform basic comparison between two pieces of data."""
     return {
         "success": True,
         "data1_type": type(data1).__name__,
         "data2_type": type(data2).__name__,
-        "types_match": type(data1) == type(data2),
+        "types_match": type(data1) is type(data2),
         "data1_size": len(str(data1)),
         "data2_size": len(str(data2)),
         "size_difference": len(str(data1)) - len(str(data2)),
@@ -323,7 +323,7 @@ def _basic_comparison(data1: Any, data2: Any) -> Dict:
     }
 
 
-def _statistical_comparison(data1: Any, data2: Any) -> Dict:
+def _statistical_comparison(data1: Any, data2: Any) -> dict:
     """Perform statistical comparison between numerical datasets."""
     try:
         # Extract numerical values
@@ -372,7 +372,7 @@ def _statistical_comparison(data1: Any, data2: Any) -> Dict:
         return {"success": False, "error": f"Statistical comparison failed: {e}"}
 
 
-def _structural_comparison(data1: Any, data2: Any) -> Dict:
+def _structural_comparison(data1: Any, data2: Any) -> dict:
     """Compare the structure of two complex data objects."""
 
     def get_structure_signature(obj):
@@ -409,7 +409,7 @@ def _calculate_complexity(data: Any) -> int:
 
 
 @tool
-def generate_insights(data: Any, focus_area: str = "patterns") -> Dict:
+def generate_insights(data: Any, focus_area: str = "patterns") -> dict:
     """
     Generate insights and observations from data.
 
@@ -451,7 +451,7 @@ def generate_insights(data: Any, focus_area: str = "patterns") -> Dict:
         return {"success": False, "error": str(e), "focus_area": focus_area}
 
 
-def _identify_patterns(data: Any) -> List[str]:
+def _identify_patterns(data: Any) -> list[str]:
     """Identify patterns in data."""
     patterns = []
 
@@ -476,7 +476,7 @@ def _identify_patterns(data: Any) -> List[str]:
     return patterns or ["No clear patterns identified"]
 
 
-def _identify_trends(data: Any) -> List[str]:
+def _identify_trends(data: Any) -> list[str]:
     """Identify trends in data."""
     trends = []
 
@@ -492,7 +492,7 @@ def _identify_trends(data: Any) -> List[str]:
     return trends or ["No clear trends identified"]
 
 
-def _identify_anomalies(data: Any) -> List[str]:
+def _identify_anomalies(data: Any) -> list[str]:
     """Identify anomalies or outliers in data."""
     anomalies = []
 
@@ -509,7 +509,7 @@ def _identify_anomalies(data: Any) -> List[str]:
     return anomalies or ["No significant anomalies detected"]
 
 
-def _identify_relationships(data: Any) -> List[str]:
+def _identify_relationships(data: Any) -> list[str]:
     """Identify relationships within data."""
     relationships = []
 

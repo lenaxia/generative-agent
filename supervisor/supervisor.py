@@ -1,3 +1,10 @@
+"""Main supervisor module for workflow orchestration and management.
+
+This module provides the core Supervisor class that orchestrates workflows,
+manages agent execution, coordinates between different components, and
+ensures proper system operation and monitoring.
+"""
+
 import logging
 import sys
 import time

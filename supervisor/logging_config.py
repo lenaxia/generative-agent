@@ -1,3 +1,10 @@
+"""Logging configuration module for the supervisor system.
+
+This module provides centralized logging configuration, formatters, and
+handlers for the supervisor and its components, ensuring consistent
+logging across the entire system.
+"""
+
 import json
 import logging
 import os

@@ -40,9 +40,9 @@ class ConfigManager:
             config_path: Path to main configuration file
         """
         self.config_path = config_path
-        self.config_data: Dict[str, Any] = {}
+        self.config_data: dict[str, Any] = {}
 
-    def load_config(self, validate: bool = True) -> Dict[str, Any]:
+    def load_config(self, validate: bool = True) -> dict[str, Any]:
         """
         Load configuration from file.
 
@@ -59,7 +59,7 @@ class ConfigManager:
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path) as f:
                 self.config_data = yaml.safe_load(f) or {}
 
             # Substitute environment variables
@@ -217,7 +217,7 @@ class ConfigManager:
         """Get MCP configuration file path."""
         return self.get_config("mcp.config_file", "config/mcp_config.yaml")
 
-    def get_llm_config(self, provider: str) -> Dict[str, Any]:
+    def get_llm_config(self, provider: str) -> dict[str, Any]:
         """
         Get LLM provider configuration.
 
@@ -229,7 +229,7 @@ class ConfigManager:
         """
         return self.get_config(f"llm_providers.{provider}", {})
 
-    def get_role_llm_mapping(self) -> Dict[str, str]:
+    def get_role_llm_mapping(self) -> dict[str, str]:
         """Get role to LLM type mapping."""
         return self.get_config(
             "universal_agent.role_llm_mapping",
@@ -304,7 +304,6 @@ def get_config_manager(config_path: str = "config.yaml") -> ConfigManager:
 
 def reload_config():
     """Reload global configuration."""
-    global _config_manager
     if _config_manager:
         _config_manager.reload_config()
 
@@ -347,6 +346,6 @@ def is_universal_agent_enabled() -> bool:
     return get_config_manager().is_universal_agent_enabled()
 
 
-def get_role_llm_mapping() -> Dict[str, str]:
+def get_role_llm_mapping() -> dict[str, str]:
     """Get role to LLM type mapping from global config."""
     return get_config_manager().get_role_llm_mapping()

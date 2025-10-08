@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @tool
 def send_slack_message(
     channel: str, message: str, thread_ts: Optional[str] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Send a message to a Slack channel using real Slack API.
 
@@ -124,7 +124,7 @@ def send_slack_message(
         }
 
 
-def get_slack_channel_info(channel: str) -> Dict[str, Any]:
+def get_slack_channel_info(channel: str) -> dict[str, Any]:
     """
     Get information about a Slack channel.
 
@@ -157,7 +157,7 @@ def get_slack_channel_info(channel: str) -> Dict[str, Any]:
 
 def list_slack_channels(
     limit: int = 20, types: str = "public_channel"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     List available Slack channels.
 
@@ -215,7 +215,7 @@ def list_slack_channels(
     return result
 
 
-def format_slack_message(content: str, formatting: str = "plain") -> Dict[str, Any]:
+def format_slack_message(content: str, formatting: str = "plain") -> dict[str, Any]:
     """
     Format message content for Slack.
 
@@ -262,7 +262,7 @@ def format_slack_message(content: str, formatting: str = "plain") -> Dict[str, A
     return result
 
 
-def validate_slack_channel(channel: str) -> Dict[str, Any]:
+def validate_slack_channel(channel: str) -> dict[str, Any]:
     """
     Validate Slack channel name format.
 
@@ -317,7 +317,7 @@ def validate_slack_channel(channel: str) -> Dict[str, Any]:
     return result
 
 
-def get_slack_user_info(user_id: str) -> Dict[str, Any]:
+def get_slack_user_info(user_id: str) -> dict[str, Any]:
     """
     Get information about a Slack user.
 
@@ -339,10 +339,9 @@ def get_slack_user_info(user_id: str) -> Dict[str, Any]:
         "is_bot": False,
         "is_admin": False,
         "timezone": "America/New_York",
-        "status": "active",
+        "status": "success",
         "timestamp": datetime.now().isoformat(),
         "mock": True,
-        "status": "success",
     }
 
     logger.info(f"User info retrieved for {user_id}")
@@ -360,12 +359,12 @@ SLACK_TOOLS = {
 }
 
 
-def get_slack_tools() -> Dict[str, Any]:
+def get_slack_tools() -> dict[str, Any]:
     """Get all available Slack tools."""
     return SLACK_TOOLS
 
 
-def get_slack_tool_descriptions() -> Dict[str, str]:
+def get_slack_tool_descriptions() -> dict[str, str]:
     """Get descriptions of all Slack tools."""
     return {
         "send_slack_message": "Send a message to a Slack channel",

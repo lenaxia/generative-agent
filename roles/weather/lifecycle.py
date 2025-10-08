@@ -7,7 +7,7 @@ These functions handle data fetching and result formatting for the weather role.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from common.task_context import TaskContext
 from roles.shared_tools.weather_tools import get_weather, get_weather_forecast

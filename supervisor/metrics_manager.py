@@ -1,3 +1,10 @@
+"""Metrics management module for collecting and reporting system metrics.
+
+This module provides functionality for collecting, aggregating, and reporting
+performance metrics, statistics, and operational data from the supervisor
+and its managed workflows.
+"""
+
 import logging
 from pathlib import Path
 from typing import Dict, Optional
@@ -11,7 +18,7 @@ logger = logging.getLogger(__name__)
 class MetricsManager(BaseModel):
     # TODO: Enable configuration of the metrics manager
     # config: BaseModel = Field(..., description="The configuration object")
-    metrics: Dict[str, Dict] = Field(
+    metrics: dict[str, dict] = Field(
         default_factory=dict, description="Dictionary to store metrics"
     )
 
@@ -21,7 +28,7 @@ class MetricsManager(BaseModel):
     def __init__(self):
         super().__init__()
 
-    def get_metrics(self, request_id: Optional[str] = None) -> Dict:
+    def get_metrics(self, request_id: Optional[str] = None) -> dict:
         try:
             if request_id:
                 return self.metrics.get(request_id, {})
@@ -30,7 +37,7 @@ class MetricsManager(BaseModel):
             logger.error(f"Error getting metrics: {e}")
             return {}
 
-    def update_metrics(self, request_id: str, updates: Dict):
+    def update_metrics(self, request_id: str, updates: dict):
         try:
             if request_id not in self.metrics:
                 self.metrics[request_id] = {}
@@ -38,7 +45,7 @@ class MetricsManager(BaseModel):
         except Exception as e:
             logger.error(f"Error updating metrics for request '{request_id}': {e}")
 
-    def delta_metrics(self, request_id: str, increments: Dict):
+    def delta_metrics(self, request_id: str, increments: dict):
         try:
             if request_id not in self.metrics:
                 self.metrics[request_id] = {}
@@ -49,7 +56,7 @@ class MetricsManager(BaseModel):
         except Exception as e:
             logger.error(f"Error incrementing metrics for request '{request_id}': {e}")
 
-    def persist_metrics(self, request_id: str, request_data: Dict):
+    def persist_metrics(self, request_id: str, request_data: dict):
         try:
             # TODO: Implement logic to persist the request data and metrics
             #       to a persistent storage (e.g., database, file system)
@@ -64,7 +71,7 @@ class MetricsManager(BaseModel):
         except Exception as e:
             logger.error(f"Error persisting metrics for request '{request_id}': {e}")
 
-    def load_metrics(self, request_id: str) -> Dict:
+    def load_metrics(self, request_id: str) -> dict:
         try:
             storage_path = Path("storage") / f"{request_id}.yaml"
             if not storage_path.exists():
@@ -73,7 +80,7 @@ class MetricsManager(BaseModel):
                 )
                 return {}
 
-            with open(storage_path, "r") as f:
+            with open(storage_path) as f:
                 request_data = yaml.safe_load(f)
 
             logger.info(

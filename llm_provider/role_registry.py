@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Import ProgrammaticRole for type hints (avoid circular import)
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import yaml
 

@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Optional
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
