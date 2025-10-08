@@ -3,8 +3,11 @@ max-line-length = 88
 extend-ignore =
     E203,
     W503,
-    E501
-exclude = 
+    E501,
+    I100,
+    I201,
+    I202
+exclude =
     .git,
     __pycache__,
     venv,

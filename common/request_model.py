@@ -4,7 +4,7 @@ Defines data structures for request handling, metadata management,
 and workflow coordination across the system components.
 """
 
-from typing import Dict, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
