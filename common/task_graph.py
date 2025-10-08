@@ -1,3 +1,9 @@
+"""Enhanced directed acyclic graph for task management with checkpointing.
+
+Provides task dependency management, execution tracking, and state persistence
+for complex workflow orchestration in the StrandsAgent system.
+"""
+
 import logging
 import time
 import uuid
@@ -71,8 +77,8 @@ class TaskDependency(BaseModel):
 
 
 class TaskPlanOutput(BaseModel):
-    tasks: List[TaskDescription] = None
-    dependencies: Optional[List[TaskDependency]] = None
+    tasks: list[TaskDescription] = None
+    dependencies: Optional[list[TaskDependency]] = None
 
     @field_validator("tasks")
     def check_tasks(cls, tasks):
@@ -121,10 +127,10 @@ class TaskNode(BaseModel):
     status: TaskStatus = Field(
         TaskStatus.PENDING, description="Current status of the task"
     )
-    inbound_edges: List["TaskEdge"] = Field(
+    inbound_edges: list["TaskEdge"] = Field(
         [], description="List of incoming edges to this task node"
     )
-    outbound_edges: List["TaskEdge"] = Field(
+    outbound_edges: list["TaskEdge"] = Field(
         [], description="List of outgoing edges from this task node"
     )
     result: Optional[str] = Field(
@@ -156,7 +162,7 @@ class TaskNode(BaseModel):
     llm_type: Optional[str] = Field(
         None, description="LLM type for execution (e.g., 'STRONG', 'WEAK', 'DEFAULT')"
     )
-    required_tools: List[str] = Field(
+    required_tools: list[str] = Field(
         default_factory=list, description="List of tools required for this task"
     )
     task_context: dict = Field(
@@ -190,11 +196,11 @@ class TaskNode(BaseModel):
         """Get the LLM type for execution."""
         return self.llm_type
 
-    def set_required_tools(self, tools: List[str]):
+    def set_required_tools(self, tools: list[str]):
         """Set the required tools for this task."""
         self.required_tools = tools.copy()
 
-    def get_required_tools(self) -> List[str]:
+    def get_required_tools(self) -> list[str]:
         """Get the required tools for this task."""
         return self.required_tools.copy()
 
@@ -216,13 +222,13 @@ class TaskEdge(BaseModel):
 
 
 class TaskGraph:
-    nodes: Dict[str, TaskNode]
-    edges: List[TaskEdge]
-    task_name_map: Dict[str, str]  # Map task_name to task_id
+    nodes: dict[str, TaskNode]
+    edges: list[TaskEdge]
+    task_name_map: dict[str, str]  # Map task_name to task_id
     start_time: Optional[float] = Field(
         ..., description="The time that the request arrived"
     )
-    history: List[str] = Field(..., description="History of the task graph calls")
+    history: list[str] = Field(..., description="History of the task graph calls")
     graph_id: Optional[str] = Field(
         None, description="Unique identifier for the task graph"
     )
@@ -231,20 +237,20 @@ class TaskGraph:
     )
 
     # New fields for external state management
-    conversation_history: List[Dict] = Field(
+    conversation_history: list[dict] = Field(
         default_factory=list, description="Conversation history"
     )
-    progressive_summary: List[str] = Field(
+    progressive_summary: list[str] = Field(
         default_factory=list, description="Progressive summary of task execution"
     )
-    metadata: Dict = Field(
+    metadata: dict = Field(
         default_factory=dict, description="Additional metadata for the task graph"
     )
 
     def __init__(
         self,
-        tasks: List[TaskDescription],
-        dependencies: Optional[List[Dict]] = None,
+        tasks: list[TaskDescription],
+        dependencies: Optional[list[dict]] = None,
         request_id: Optional[str] = "",
         max_history_size: int = 1000,
     ):
@@ -317,8 +323,8 @@ class TaskGraph:
         return self.nodes.get(task_id)
 
     def get_child_nodes(
-        self, nodes: Dict[str, TaskNode], node: TaskNode
-    ) -> List[TaskNode]:
+        self, nodes: dict[str, TaskNode], node: TaskNode
+    ) -> list[TaskNode]:
         child_nodes = []
         for edge in node.outbound_edges:
             child_nodes.append(nodes[edge.target_id])
@@ -327,14 +333,14 @@ class TaskGraph:
     def is_complete(self) -> bool:
         return all(node.status == TaskStatus.COMPLETED for node in self.nodes.values())
 
-    def get_failed_tasks(self) -> List[TaskNode]:
+    def get_failed_tasks(self) -> list[TaskNode]:
         return [
             node
             for node in self.nodes.values()
             if node.status in [TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED]
         ]
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         nodes_data = [
             {
                 "task_id": node.task_id,
@@ -348,7 +354,7 @@ class TaskGraph:
         ]
         return {"nodes": nodes_data, "edges": edges_data}
 
-    def get_entrypoint_nodes(self) -> List[TaskNode]:
+    def get_entrypoint_nodes(self) -> list[TaskNode]:
         """
         Returns a list of all top-level leaf nodes in the task graph.
         A top-level leaf node is a node that has no inbound edges.
@@ -366,7 +372,7 @@ class TaskGraph:
         # Return the list of top-level leaf nodes
         return top_level_leaf_nodes
 
-    def get_terminal_nodes(self) -> List[TaskNode]:
+    def get_terminal_nodes(self) -> list[TaskNode]:
         """
         Returns a list of all terminal nodes in the task graph.
         A terminal node is a node that has no outbound edges.
@@ -379,7 +385,7 @@ class TaskGraph:
 
         return terminal_nodes
 
-    def get_ready_tasks(self) -> List[TaskNode]:
+    def get_ready_tasks(self) -> list[TaskNode]:
         ready_nodes = []
         for node in self.nodes.values():
             if node.status == TaskStatus.PENDING and all(
@@ -389,7 +395,7 @@ class TaskGraph:
                 ready_nodes.append(node)
         return ready_nodes
 
-    def get_task_history(self, task_id: str) -> List[str]:
+    def get_task_history(self, task_id: str) -> list[str]:
         """
         Get the history of a specific task node, either a full history of all previous tasks or just the results of the parent tasks.
         Determines whether or not to provide full history by checking the `include_full_history` attribute of the task node.
@@ -425,7 +431,7 @@ class TaskGraph:
 
         return history
 
-    def create_checkpoint(self) -> Dict:
+    def create_checkpoint(self) -> dict:
         """
         Create a checkpoint of the current task graph state.
 
@@ -475,7 +481,7 @@ class TaskGraph:
         }
         return checkpoint
 
-    def resume_from_checkpoint(self, checkpoint: Dict):
+    def resume_from_checkpoint(self, checkpoint: dict):
         """
         Resume task graph execution from a checkpoint.
 
@@ -663,7 +669,7 @@ class TaskGraph:
 
     def mark_task_completed(
         self, task_id: str, result: Optional[str] = None
-    ) -> List[TaskNode]:
+    ) -> list[TaskNode]:
         """
         Enhanced version that also updates progressive summary.
         """

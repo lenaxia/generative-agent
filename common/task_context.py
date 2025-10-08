@@ -1,3 +1,9 @@
+"""External state management for the StrandsAgent Universal Agent System.
+
+Provides task context management, state persistence, and coordination
+for complex workflow execution across system components.
+"""
+
 import time
 import uuid
 from enum import Enum
@@ -48,8 +54,8 @@ class TaskContext:
     @classmethod
     def from_tasks(
         cls,
-        tasks: List[TaskDescription],
-        dependencies: Optional[List[TaskDependency]] = None,
+        tasks: list[TaskDescription],
+        dependencies: Optional[list[TaskDependency]] = None,
         request_id: Optional[str] = None,
         context_id: Optional[str] = None,
     ) -> "TaskContext":
@@ -71,7 +77,7 @@ class TaskContext:
         return cls(task_graph=task_graph, context_id=context_id)
 
     @classmethod
-    def from_checkpoint(cls, checkpoint: Dict) -> "TaskContext":
+    def from_checkpoint(cls, checkpoint: dict) -> "TaskContext":
         """
         Create TaskContext from a checkpoint.
 
@@ -104,7 +110,7 @@ class TaskContext:
         return context
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "TaskContext":
+    def from_dict(cls, data: dict) -> "TaskContext":
         """
         Create TaskContext from serialized dictionary.
 
@@ -129,7 +135,7 @@ class TaskContext:
         """Add a system message to conversation history."""
         self.task_graph.add_conversation_entry("system", content)
 
-    def get_conversation_history(self) -> List[Dict]:
+    def get_conversation_history(self) -> list[dict]:
         """Get the complete conversation history."""
         return self.task_graph.conversation_history.copy()
 
@@ -138,7 +144,7 @@ class TaskContext:
         """Add to the progressive summary."""
         self.task_graph.add_to_progressive_summary(summary)
 
-    def get_progressive_summary(self) -> List[Dict]:
+    def get_progressive_summary(self) -> list[dict]:
         """Get the progressive summary."""
         return self.task_graph.progressive_summary.copy()
 
@@ -172,7 +178,7 @@ class TaskContext:
         return self.task_graph.get_metadata(key, default)
 
     # Checkpoint Management
-    def create_checkpoint(self) -> Dict:
+    def create_checkpoint(self) -> dict:
         """
         Create a comprehensive checkpoint of the current state.
 
@@ -196,7 +202,7 @@ class TaskContext:
         return checkpoint
 
     # Serialization
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """
         Serialize TaskContext to dictionary.
 
@@ -206,11 +212,11 @@ class TaskContext:
         return self.create_checkpoint()
 
     # Task Execution Interface
-    def get_ready_tasks(self) -> List[TaskNode]:
+    def get_ready_tasks(self) -> list[TaskNode]:
         """Get tasks that are ready to execute."""
         return self.task_graph.get_ready_tasks()
 
-    def prepare_task_execution(self, task_id: str) -> Dict:
+    def prepare_task_execution(self, task_id: str) -> dict:
         """
         Prepare configuration for task execution.
 
@@ -222,7 +228,7 @@ class TaskContext:
         """
         return self.task_graph.prepare_task_execution(task_id)
 
-    def complete_task(self, task_id: str, result: str) -> List[TaskNode]:
+    def complete_task(self, task_id: str, result: str) -> list[TaskNode]:
         """
         Mark a task as completed and return next ready tasks.
 
@@ -241,7 +247,7 @@ class TaskContext:
         self.execution_state = ExecutionState.RUNNING
         self.start_time = time.time()
 
-    def pause_execution(self) -> Dict:
+    def pause_execution(self) -> dict:
         """
         Pause execution and return checkpoint.
 
@@ -251,7 +257,7 @@ class TaskContext:
         self.execution_state = ExecutionState.PAUSED
         return self.create_checkpoint()
 
-    def resume_execution(self, checkpoint: Optional[Dict] = None):
+    def resume_execution(self, checkpoint: Optional[dict] = None):
         """
         Resume execution from checkpoint or current state.
 
@@ -288,7 +294,7 @@ class TaskContext:
         return self.task_graph.is_complete()
 
     # Performance Metrics
-    def get_performance_metrics(self) -> Dict:
+    def get_performance_metrics(self) -> dict:
         """
         Get performance metrics for the task execution.
 
