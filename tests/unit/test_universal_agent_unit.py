@@ -85,25 +85,23 @@ class TestUniversalAgentUnit:
     def test_assume_role_planning(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume planning role with STRONG LLM."""
         with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
-            # Mock the LLM factory to return a mock model
-            mock_model_instance = Mock()
-            universal_agent.llm_factory.create_strands_model.return_value = (
-                mock_model_instance
-            )
+            # Mock the LLM factory to return a mock agent
+            mock_agent_instance = Mock()
+            universal_agent.llm_factory.get_agent.return_value = mock_agent_instance
             mock_agent_class.return_value = mock_strands_agent
 
             # Execute
             agent = universal_agent.assume_role("planning", LLMType.STRONG)
 
-            # Verify model creation through factory
-            universal_agent.llm_factory.create_strands_model.assert_called_once_with(
+            # Verify agent retrieval through factory
+            universal_agent.llm_factory.get_agent.assert_called_once_with(
                 LLMType.STRONG
             )
 
             # Verify agent creation with planning prompt
             mock_agent_class.assert_called_once()
             call_args = mock_agent_class.call_args
-            assert call_args[1]["model"] == mock_model_instance
+            assert call_args[1]["model"] == mock_agent_instance.model
             assert "planning specialist agent" in call_args[1]["system_prompt"]
             assert "Break down complex tasks" in call_args[1]["system_prompt"]
 
@@ -121,25 +119,21 @@ class TestUniversalAgentUnit:
     def test_assume_role_search(self, universal_agent, mock_strands_agent):
         """Test Universal Agent can assume search role with WEAK LLM."""
         with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
-            # Mock the LLM factory to return a mock model
-            mock_model_instance = Mock()
-            universal_agent.llm_factory.create_strands_model.return_value = (
-                mock_model_instance
-            )
+            # Mock the LLM factory to return a mock agent
+            mock_agent_instance = Mock()
+            universal_agent.llm_factory.get_agent.return_value = mock_agent_instance
             mock_agent_class.return_value = mock_strands_agent
 
             # Execute
             universal_agent.assume_role("search", LLMType.WEAK)
 
-            # Verify model creation through factory
-            universal_agent.llm_factory.create_strands_model.assert_called_once_with(
-                LLMType.WEAK
-            )
+            # Verify agent retrieval through factory
+            universal_agent.llm_factory.get_agent.assert_called_once_with(LLMType.WEAK)
 
-            # Verify agent creation with modern search pipeline prompt
+            # Verify agent creation with search prompt
             call_args = mock_agent_class.call_args
-            assert "automated search pipeline agent" in call_args[1]["system_prompt"]
-            assert "search_and_scrape_pipeline" in call_args[1]["system_prompt"]
+            assert "web search specialist" in call_args[1]["system_prompt"]
+            assert "search" in call_args[1]["system_prompt"]
 
             # Verify state tracking
             assert universal_agent.current_role == "search"

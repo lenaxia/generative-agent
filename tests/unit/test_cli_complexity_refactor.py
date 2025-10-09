@@ -201,7 +201,15 @@ class TestCLIComplexityRefactor:
         self, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that keyboard interrupts are handled correctly."""
-        mock_input.side_effect = KeyboardInterrupt()
+
+        # Simulate KeyboardInterrupt that gets caught by outer handler
+        def raise_keyboard_interrupt(*args, **kwargs):
+            raise KeyboardInterrupt()
+
+        mock_input.side_effect = raise_keyboard_interrupt
+
+        # Mock supervisor.start to also raise KeyboardInterrupt to trigger outer handler
+        mock_supervisor.start.side_effect = KeyboardInterrupt()
 
         with patch("sys.stdout", new_callable=io.StringIO):
             run_interactive_mode(mock_supervisor)

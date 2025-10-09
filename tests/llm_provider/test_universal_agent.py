@@ -35,17 +35,20 @@ class TestUniversalAgent(unittest.TestCase):
             ) as mock_update_context,
         ):
             mock_agent_instance = Mock()
+            mock_updated_agent = Mock()
             mock_get_agent.return_value = mock_agent_instance
+            mock_update_context.return_value = mock_updated_agent
 
             agent = self.universal_agent.assume_role("planning", LLMType.STRONG)
 
-            # Verify agent was obtained from pool and stored
+            # Verify agent was obtained from pool and context updated
             mock_get_agent.assert_called_once_with(LLMType.STRONG)
             mock_update_context.assert_called_once()
-            assert self.universal_agent.current_agent == mock_agent_instance
+            # The current_agent should be the updated agent, not the original
+            assert self.universal_agent.current_agent == mock_updated_agent
             assert self.universal_agent.current_role == "planning"
             assert self.universal_agent.current_llm_type == LLMType.STRONG
-            assert agent == mock_agent_instance
+            assert agent == mock_updated_agent
 
     def test_assume_role_with_tools(self):
         """Test role assumption with specific tools."""
@@ -58,16 +61,18 @@ class TestUniversalAgent(unittest.TestCase):
             ) as mock_update_context,
         ):
             mock_agent_instance = Mock()
+            mock_updated_agent = Mock()
             mock_get_agent.return_value = mock_agent_instance
+            mock_update_context.return_value = mock_updated_agent
 
             agent = self.universal_agent.assume_role(
                 "search", LLMType.WEAK, tools=["tool1", "tool2"]
             )
 
-            # Verify agent was obtained from pool
+            # Verify agent was obtained from pool and context updated
             mock_get_agent.assert_called_once_with(LLMType.WEAK)
             mock_update_context.assert_called_once()
-            assert agent == mock_agent_instance
+            assert agent == mock_updated_agent
 
     def test_execute_task_with_current_agent(self):
         """Test task execution with current agent."""
@@ -174,7 +179,9 @@ class TestUniversalAgent(unittest.TestCase):
             ) as mock_update_context,
         ):
             mock_agent_instance = Mock()
+            mock_updated_agent = Mock()
             mock_get_agent.return_value = mock_agent_instance
+            mock_update_context.return_value = mock_updated_agent
 
             agent = self.universal_agent.assume_role(
                 "planning", LLMType.DEFAULT, context=context
@@ -183,7 +190,7 @@ class TestUniversalAgent(unittest.TestCase):
             # Should work without errors and use agent pooling
             mock_get_agent.assert_called_once_with(LLMType.DEFAULT)
             mock_update_context.assert_called_once()
-            assert agent == mock_agent_instance
+            assert agent == mock_updated_agent
 
     def test_reset(self):
         """Test resetting the Universal Agent state."""

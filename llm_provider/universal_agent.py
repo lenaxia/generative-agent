@@ -81,6 +81,24 @@ class UniversalAgent:
             role = "default"
             role_def = self.role_registry.get_role(role)
 
+        # If even default role doesn't exist, create a basic fallback
+        if not role_def:
+            logger.warning("Default role not found, creating basic fallback agent")
+            llm_type = llm_type or LLMType.DEFAULT
+            agent = self.llm_factory.get_agent(llm_type)
+
+            # Create basic agent with minimal configuration
+            basic_agent = self._update_agent_context(
+                agent, "You are a helpful AI assistant.", []
+            )
+
+            # Store current configuration
+            self.current_agent = basic_agent if basic_agent is not None else agent
+            self.current_role = "basic"  # Mark as basic fallback role
+            self.current_llm_type = llm_type
+
+            return self.current_agent
+
         # Get pooled Agent from LLMFactory (< 0.01s for cache hit)
         llm_type = llm_type or self._determine_llm_type_for_role(role)
         agent = self.llm_factory.get_agent(llm_type)
@@ -470,18 +488,20 @@ Focus on comprehensive, accurate analysis.""",
             logger.warning(f"Failed to merge model configs: {e}, using base model")
             return base_model
 
-    def _get_system_prompt_from_role(self, role_def: RoleDefinition) -> str:
+    def _get_system_prompt_from_role(self, role_def) -> str:
         """Get system prompt from role definition."""
-        prompts = role_def.config.get("prompts", {})
+        # Handle both dict and RoleDefinition objects
+        if isinstance(role_def, dict):
+            prompts = role_def.get("config", {}).get("prompts", {})
+        else:
+            prompts = role_def.config.get("prompts", {})
         return prompts.get("system", "You are a helpful AI assistant.")
 
-    def _assemble_role_tools(
-        self, role_def: RoleDefinition, additional_tools: list[str]
-    ) -> list:
+    def _assemble_role_tools(self, role_def, additional_tools: list[str]) -> list:
         r"""\1
 
         Args:
-            role_def: Role definition
+            role_def: Role definition (dict or RoleDefinition object)
             additional_tools: Additional tool names to include
 
         Returns:
@@ -494,35 +514,48 @@ Focus on comprehensive, accurate analysis.""",
         tools.extend(builtin_tools)
 
         # 2. Auto-include ALL custom tools from role's tools.py
-        tools.extend(role_def.custom_tools)
-
-        # 3. Add specified shared tools
-        shared_tool_names = role_def.config.get("tools", {}).get("shared", [])
-        for tool_name in shared_tool_names:
-            shared_tool = self.role_registry.get_shared_tool(tool_name)
-            if shared_tool:
-                tools.append(shared_tool)
+        if role_def:
+            if isinstance(role_def, dict):
+                custom_tools = role_def.get("custom_tools", [])
+                shared_tool_names = (
+                    role_def.get("config", {}).get("tools", {}).get("shared", [])
+                )
+                role_name = role_def.get("name", "unknown")
+                config = role_def.get("config", {})
             else:
-                logger.debug(
-                    f"Shared tool '{tool_name}' not found for role '{role_def.name}' - may be available as custom tool"
+                custom_tools = getattr(role_def, "custom_tools", [])
+                shared_tool_names = role_def.config.get("tools", {}).get("shared", [])
+                role_name = role_def.name
+                config = role_def.config
+
+            tools.extend(custom_tools)
+
+            # 3. Add specified shared tools
+            for tool_name in shared_tool_names:
+                shared_tool = self.role_registry.get_shared_tool(tool_name)
+                if shared_tool:
+                    tools.append(shared_tool)
+                else:
+                    logger.debug(
+                        f"Shared tool '{tool_name}' not found for role '{role_name}' - may be available as custom tool"
+                    )
+
+            # 5. Add MCP tools if available
+            if self.mcp_manager:
+                mcp_tools = self.mcp_manager.get_tools_for_role(role_name)
+                tools.extend(mcp_tools)
+
+            # 6. TODO: Add automatically selected tools if enabled
+            if config.get("tools", {}).get("automatic", False):
+                # This would use LLM to select additional tools
+                # For now, we'll implement this in a future iteration
+                logger.info(
+                    f"Automatic tool selection enabled for role '{role_name}' (not yet implemented)"
                 )
 
         # 4. Add additional tools from registry
         additional_role_tools = self.tool_registry.get_tools(additional_tools)
         tools.extend(additional_role_tools)
-
-        # 5. Add MCP tools if available
-        if self.mcp_manager:
-            mcp_tools = self.mcp_manager.get_tools_for_role(role_def.name)
-            tools.extend(mcp_tools)
-
-        # 6. TODO: Add automatically selected tools if enabled
-        if role_def.config.get("tools", {}).get("automatic", False):
-            # This would use LLM to select additional tools
-            # For now, we'll implement this in a future iteration
-            logger.info(
-                f"Automatic tool selection enabled for role '{role_def.name}' (not yet implemented)"
-            )
 
         return tools
 

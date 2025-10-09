@@ -78,14 +78,18 @@ class TestWebScrapingTool:
         assert "error" in result
         assert "Empty URL provided" in result["error"]
 
-    def test_scrape_webpage_invalid_url(self):
+    @patch("roles.shared_tools.web_search.requests.get")
+    def test_scrape_webpage_invalid_url(self, mock_requests):
         """Test scraping with invalid URL."""
+        # Mock the request to fail quickly instead of timing out
+        mock_requests.side_effect = requests.exceptions.ConnectionError("Invalid URL")
+
         result = scrape_webpage("not-a-url")
 
         assert result["url"] == "https://not-a-url"
         assert "error" in result
         # The function will try to make HTTP request and fail, which is expected behavior
-        assert "error" in result
+        assert "HTTP error" in result["error"]
 
     @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
     @patch("roles.shared_tools.web_search.requests.get")

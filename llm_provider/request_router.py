@@ -14,6 +14,13 @@ from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleDefinition, RoleRegistry
 
 # Import Agent from strands (same as UniversalAgent)
+try:
+    from strands import Agent
+except ImportError:
+    # Fallback for testing when strands is not available
+    from llm_provider.factory import LLMFactory
+
+    Agent = LLMFactory.Agent
 
 logger = logging.getLogger(__name__)
 

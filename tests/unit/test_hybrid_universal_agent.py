@@ -147,21 +147,38 @@ class TestHybridUniversalAgent:
         """Test that execute_task routes to correct execution path."""
         mock_context = Mock(spec=TaskContext)
 
-        # Test programmatic routing
-        with patch.object(
-            universal_agent, "execute_programmatic_task", return_value="prog_result"
-        ) as mock_prog:
-            result = universal_agent.execute_task(
-                instruction="test instruction",
-                role="test_prog_role",
-                llm_type=LLMType.DEFAULT,
-                context=mock_context,
-            )
+        # Mock the role registry to return a valid role and execution type
+        with (
+            patch.object(universal_agent.role_registry, "get_role") as mock_get_role,
+            patch.object(
+                universal_agent.role_registry, "get_role_execution_type"
+            ) as mock_get_exec_type,
+        ):
+            mock_role_def = {
+                "name": "test_prog_role",
+                "config": {
+                    "prompts": {"system": "Test role"},
+                    "tools": {"shared": []},
+                },
+            }
+            mock_get_role.return_value = mock_role_def
+            mock_get_exec_type.return_value = "programmatic"
 
-            assert result == "prog_result"
-            mock_prog.assert_called_once_with(
-                "test instruction", "test_prog_role", mock_context
-            )
+            # Test programmatic routing
+            with patch.object(
+                universal_agent, "execute_programmatic_task", return_value="prog_result"
+            ) as mock_prog:
+                result = universal_agent.execute_task(
+                    instruction="test instruction",
+                    role="test_prog_role",
+                    llm_type=LLMType.DEFAULT,
+                    context=mock_context,
+                )
+
+                assert result == "prog_result"
+                mock_prog.assert_called_once_with(
+                    "test instruction", "test_prog_role", mock_context
+                )
 
         # Test LLM routing
         with patch.object(
@@ -213,24 +230,38 @@ class TestHybridUniversalAgent:
         """Test that hybrid execution tracks performance metrics."""
         mock_context = Mock(spec=TaskContext)
 
-        # Execute programmatic task
-        with patch.object(
-            universal_agent, "execute_programmatic_task", return_value="prog_result"
+        # Test that different execution paths can be used
+        with (
+            patch.object(
+                universal_agent.role_registry,
+                "get_role_execution_type",
+                return_value="programmatic",
+            ),
+            patch.object(
+                universal_agent, "execute_programmatic_task", return_value="prog_result"
+            ),
         ):
-            universal_agent.execute_task(
+            result1 = universal_agent.execute_task(
                 "test", "test_prog_role", LLMType.DEFAULT, mock_context
             )
 
-        # Execute LLM task
-        with patch.object(
-            universal_agent, "execute_llm_task", return_value="llm_result"
+        with (
+            patch.object(
+                universal_agent.role_registry,
+                "get_role_execution_type",
+                return_value="llm",
+            ),
+            patch.object(
+                universal_agent, "execute_llm_task", return_value="llm_result"
+            ),
         ):
-            universal_agent.execute_task(
+            result2 = universal_agent.execute_task(
                 "test", "test_llm_role", LLMType.DEFAULT, mock_context
             )
 
-        # Should have called role type detection for routing
-        assert universal_agent.role_registry.is_programmatic_role.call_count >= 2
+        # Should have executed both paths successfully
+        assert result1 == "prog_result"
+        assert result2 == "llm_result"
 
     def test_backward_compatibility(self, universal_agent):
         """Test that existing Universal Agent functionality still works."""

@@ -49,7 +49,9 @@ def mock_llm_execution():
     instead of making real Bedrock API calls.
     """
 
-    def mock_execute_side_effect(instruction, role, llm_type, context=None):
+    def mock_execute_side_effect(
+        instruction, role, llm_type=None, context=None, extracted_parameters=None
+    ):
         """Return appropriate mock responses based on the role."""
         if role == "router":
             return _get_router_response(instruction)
@@ -71,15 +73,36 @@ def _get_router_response(instruction: str) -> str:
 
 def _extract_user_request(instruction_lower: str) -> str:
     """Extract user request from routing prompt."""
-    if "user request:" not in instruction_lower:
-        return instruction_lower
-
-    user_request_start = instruction_lower.find("user request:") + len("user request:")
-    user_request_end = instruction_lower.find("options:", user_request_start)
-    if user_request_end == -1:
+    # Handle both old and new formats
+    if "request:" in instruction_lower:
+        # New format: "Request: "Turn off the living room lights""
+        user_request_start = instruction_lower.find("request:") + len("request:")
+        # Look for end markers in order of preference
+        end_markers = ["available roles", "analyze the request", "options:", "\n\n"]
         user_request_end = len(instruction_lower)
-
-    return instruction_lower[user_request_start:user_request_end].strip().strip('"')
+        for marker in end_markers:
+            marker_pos = instruction_lower.find(marker, user_request_start)
+            if marker_pos != -1:
+                user_request_end = marker_pos
+                break
+        extracted = (
+            instruction_lower[user_request_start:user_request_end]
+            .strip()
+            .strip('"')
+            .strip()
+        )
+        return extracted
+    elif "user request:" in instruction_lower:
+        # Old format: "User Request: "Turn off the living room lights""
+        user_request_start = instruction_lower.find("user request:") + len(
+            "user request:"
+        )
+        user_request_end = instruction_lower.find("options:", user_request_start)
+        if user_request_end == -1:
+            user_request_end = len(instruction_lower)
+        return instruction_lower[user_request_start:user_request_end].strip().strip('"')
+    else:
+        return instruction_lower
 
 
 def _route_user_request(user_request: str) -> str:
