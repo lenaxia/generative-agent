@@ -26,6 +26,7 @@ class MessageType(Enum):
     AGENT_ERROR = "agent_error"
     SEND_MESSAGE = "send_message"
     INCOMING_REQUEST = "incoming_request"
+    TIMER_EXPIRED = "timer_expired"
 
 
 class MessageBus:

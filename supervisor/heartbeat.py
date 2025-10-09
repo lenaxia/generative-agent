@@ -43,6 +43,14 @@ class Heartbeat:
         self.health_status = "unknown"
         self.metrics = {}
 
+        # Initialize timer monitor if message bus is available
+        self.timer_monitor = None
+        if hasattr(supervisor, "message_bus") and supervisor.message_bus:
+            from supervisor.timer_monitor import TimerMonitor
+
+            self.timer_monitor = TimerMonitor(supervisor.message_bus)
+            logger.info("Timer monitor initialized")
+
     def start(self):
         """Start the heartbeat service"""
         if not self.thread.is_alive():
@@ -88,6 +96,9 @@ class Heartbeat:
 
             # Monitor system resources
             self._monitor_system_resources()
+
+            # Monitor timers
+            self._monitor_timers()
 
             # Perform maintenance tasks
             self._perform_maintenance()
@@ -272,6 +283,52 @@ class Heartbeat:
         except Exception as e:
             logger.error(f"Checkpoint cleanup failed: {e}")
 
+    def _monitor_timers(self):
+        """Check and process expired timers using thread-safe approach"""
+        if not self.timer_monitor:
+            return
+
+        try:
+            # Use thread-based execution to avoid blocking heartbeat
+            import threading
+
+            def run_timer_check():
+                """Run timer check in separate thread"""
+                try:
+                    # Create new event loop for this thread
+                    import asyncio
+
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    # Check for expired timers
+                    expired_timers = loop.run_until_complete(
+                        self.timer_monitor.check_expired_timers()
+                    )
+
+                    # Process each expired timer
+                    for timer in expired_timers:
+                        loop.run_until_complete(
+                            self.timer_monitor.process_expired_timer(timer)
+                        )
+
+                    # Cleanup stale processing timers periodically
+                    loop.run_until_complete(
+                        self.timer_monitor.cleanup_stale_processing_timers()
+                    )
+
+                    loop.close()
+
+                except Exception as e:
+                    logger.error(f"Timer check thread failed: {e}")
+
+            # Run timer check in separate thread to avoid blocking heartbeat
+            timer_thread = threading.Thread(target=run_timer_check, daemon=True)
+            timer_thread.start()
+
+        except Exception as e:
+            logger.error(f"Timer monitoring failed: {e}")
+
     def _update_metrics(self):
         """Update heartbeat metrics"""
         self.metrics["heartbeat"] = {
@@ -280,6 +337,10 @@ class Heartbeat:
             "health_status": self.health_status,
             "thread_alive": self.thread.is_alive(),
         }
+
+        # Add timer monitoring metrics
+        if self.timer_monitor:
+            self.metrics["timer_monitor"] = self.timer_monitor.get_monitoring_stats()
 
     def _perform_health_check(self):
         """Perform comprehensive health check"""
