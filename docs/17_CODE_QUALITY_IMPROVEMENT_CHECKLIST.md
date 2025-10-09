@@ -2,8 +2,7 @@
 
 ## Rules
 
-- If there is a way to resolve a linting risk programmatically with minimal risk, do so with a script
-- If it seems like linting rules/tools are conflicting with each other, than reconcile the rules
+- Regularly run `make lint` to validate that your code is healthy
 - Always use the venv at ./venv/bin/activate
 - ALWAYS use test driven development, write tests first
 - Never assume tests pass, run the tests and positively verify that the test passed
