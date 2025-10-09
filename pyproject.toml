@@ -7,17 +7,21 @@ name = "strands_agent"
 version = "1.0.0"
 description = "StrandsAgent Universal Agent System - Production-ready workflow management platform"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
+license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
+
+[tool.setuptools.packages.find]
+include = ["llm_provider*", "supervisor*", "common*", "config*", "roles*"]
+exclude = ["agents*", "tests*", ".benchmarks*", ".roo*"]
 
 [tool.black]
 line-length = 88
