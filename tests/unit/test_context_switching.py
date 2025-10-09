@@ -286,18 +286,32 @@ class TestContextSwitching:
             assert result == new_agent
 
     def test_determine_llm_type_for_role(self, universal_agent):
-        """Test _determine_llm_type_for_role method."""
-        # Test router role should use WEAK model for fast routing
-        llm_type = universal_agent._determine_llm_type_for_role("router")
-        assert llm_type == LLMType.WEAK
+        """Test _determine_llm_type_for_role method with dynamic role registry."""
+        # Create a real role registry for this test instead of using mocks
+        from llm_provider.role_registry import RoleRegistry
 
-        # Test weather role should use DEFAULT model
+        real_role_registry = RoleRegistry("roles")
+        universal_agent.role_registry = real_role_registry
+
+        # Test weather role should use WEAK model (as defined in YAML)
         llm_type = universal_agent._determine_llm_type_for_role("weather")
-        assert llm_type == LLMType.DEFAULT
+        assert llm_type == LLMType.WEAK
 
         # Test planning role should use STRONG model for complex tasks
         llm_type = universal_agent._determine_llm_type_for_role("planning")
         assert llm_type == LLMType.STRONG
+
+        # Test search role should use WEAK model (as defined in YAML)
+        llm_type = universal_agent._determine_llm_type_for_role("search")
+        assert llm_type == LLMType.WEAK
+
+        # Test default role should use DEFAULT model
+        llm_type = universal_agent._determine_llm_type_for_role("default")
+        assert llm_type == LLMType.DEFAULT
+
+        # Test unknown role should fallback to DEFAULT
+        llm_type = universal_agent._determine_llm_type_for_role("unknown_role")
+        assert llm_type == LLMType.DEFAULT
 
         # Test unknown role should default to DEFAULT
         llm_type = universal_agent._determine_llm_type_for_role("unknown_role")

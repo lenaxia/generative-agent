@@ -144,8 +144,8 @@ markers = [
     "unit: marks tests as unit tests",
     "llm_provider: marks tests as LLM provider tests",
     "benchmark: marks tests as performance benchmarks",
+    "asyncio: marks tests as async tests",
 ]
-timeout = 300
 filterwarnings = [
     "ignore::UserWarning",
     "ignore::DeprecationWarning",

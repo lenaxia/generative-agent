@@ -5,6 +5,7 @@ role:
   name: "planning"
   version: "1.0.0"
   description: "Specialized role for task planning and decomposition"
+  llm_type: "STRONG" # Planning requires complex reasoning and analysis
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -16,10 +17,10 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.3              # Balanced for creative planning
-  max_tokens: 4096             # Standard token limit
-  max_context: 128000          # Large context for complex planning
-  top_p: 0.9                   # Focused sampling
+  temperature: 0.3 # Balanced for creative planning
+  max_tokens: 4096 # Standard token limit
+  max_context: 128000 # Large context for complex planning
+  top_p: 0.9 # Focused sampling
 
 # Prompts
 prompts:
@@ -35,7 +36,7 @@ prompts:
 tools:
   # Automatic tool selection via LLM
   automatic: true
-  
+
   # Custom tools are automatically loaded from tools.py
   # No shared tools needed - planning tools are custom to this role
 

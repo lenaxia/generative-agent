@@ -5,6 +5,7 @@ role:
   name: "search"
   version: "1.0.0"
   description: "Specialized role for web search, information retrieval, and content extraction"
+  llm_type: "WEAK" # Search queries are straightforward and don't need complex reasoning
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -19,10 +20,10 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.2              # Low temperature for factual searches
-  max_tokens: 2048             # Moderate token limit for search results
-  max_context: 64000           # Standard context for search tasks
-  top_p: 0.9                   # Focused sampling
+  temperature: 0.2 # Low temperature for factual searches
+  max_tokens: 2048 # Moderate token limit for search results
+  max_context: 64000 # Standard context for search tasks
+  top_p: 0.9 # Focused sampling
 
 # Prompts
 prompts:
@@ -34,27 +35,27 @@ prompts:
     4. **Academic Search**: Use search_academic for scholarly content
     5. **Pipeline Search**: Use search_and_scrape_pipeline when content extraction is needed
     6. **Wikipedia Search**: Use wikipedia_search_pipeline for Wikipedia content
-    
+
     **Tool Selection Priority:**
     - For general information: Use web_search (fastest, most reliable)
     - For news/current events: Use search_news
     - For academic research: Use search_academic
     - For specific domains: Use search_with_filters
     - Only use pipeline tools if content extraction is specifically requested
-    
+
     Always provide clear, well-structured results with source citations.
 
 # Tool Configuration
 tools:
   # Automatic tool selection via LLM
   automatic: true
-  
+
   # Tavily-based search tools (primary)
   shared:
-    - "web_search"              # Primary Tavily search tool
-    - "search_with_filters"     # Filtered Tavily search
-    - "search_news"             # News-specific search
-    - "search_academic"         # Academic search
+    - "web_search" # Primary Tavily search tool
+    - "search_with_filters" # Filtered Tavily search
+    - "search_news" # News-specific search
+    - "search_academic" # Academic search
     # Pipeline tools (secondary - for content extraction)
     - "search_and_scrape_pipeline"
     - "wikipedia_search_pipeline"

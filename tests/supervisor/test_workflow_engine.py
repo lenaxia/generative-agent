@@ -434,24 +434,35 @@ class TestWorkflowEngine:
             assert "performance_metrics" in status
 
     def test_role_based_task_delegation(self, workflow_engine):
-        """Test role-based task delegation with LLM type optimization."""
-        # Test different roles and their LLM type mappings
+        """Test role-based task delegation with dynamic LLM type optimization."""
+        # Test different roles and their dynamic LLM type mappings
         role_test_cases = [
-            ("planning_agent", "planning", LLMType.STRONG),
-            ("search_agent", "search", LLMType.WEAK),
-            ("weather_agent", "weather", LLMType.WEAK),
-            ("summarizer_agent", "summarizer", LLMType.DEFAULT),
-            ("slack_agent", "slack", LLMType.DEFAULT),
+            ("planning_agent", "planning"),
+            ("search_agent", "search"),
+            ("weather_agent", "weather"),
+            ("coding_agent", "coding"),
+            ("analysis_agent", "analysis"),
         ]
 
-        for agent_id, expected_role, expected_llm_type in role_test_cases:
-            # Test role determination
+        for agent_id, expected_role in role_test_cases:
+            # Test role determination (dynamic removal of _agent suffix)
             role = workflow_engine._determine_role_from_agent_id(agent_id)
             assert role == expected_role
 
-            # Test LLM type optimization
+            # Test LLM type optimization (now dynamic from role registry)
             llm_type = workflow_engine._determine_llm_type_for_role(role)
-            assert llm_type == expected_llm_type
+            # Verify it returns a valid LLM type (should be one of WEAK, DEFAULT, STRONG)
+            assert llm_type in [LLMType.WEAK, LLMType.DEFAULT, LLMType.STRONG]
+
+            # Verify specific mappings based on role definitions
+            if role in ["planning", "coding", "analysis"]:
+                assert (
+                    llm_type == LLMType.STRONG
+                ), f"Expected STRONG for {role}, got {llm_type}"
+            elif role in ["search", "weather"]:
+                assert (
+                    llm_type == LLMType.WEAK
+                ), f"Expected WEAK for {role}, got {llm_type}"
 
     def test_workflow_cleanup_and_resource_management(self, workflow_engine):
         """Test workflow cleanup and resource management."""

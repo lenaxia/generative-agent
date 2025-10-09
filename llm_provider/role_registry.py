@@ -291,6 +291,44 @@ class RoleRegistry:
         """Get all shared tools."""
         return self.shared_tools.copy()
 
+    def get_role_llm_type(self, role_name: str) -> str:
+        """Get the LLM type for a role from its definition.
+
+        Args:
+            role_name: Name of the role
+
+        Returns:
+            str: LLM type (WEAK, DEFAULT, STRONG) or DEFAULT if not specified
+        """
+        role_def = self.get_role(role_name)
+        if not role_def:
+            return "DEFAULT"
+
+        # Get LLM type from role configuration
+        role_config = role_def.config.get("role", {})
+        llm_type = role_config.get("llm_type", "DEFAULT")
+
+        # Validate LLM type
+        valid_types = ["WEAK", "DEFAULT", "STRONG"]
+        if llm_type not in valid_types:
+            logger.warning(
+                f"Invalid LLM type '{llm_type}' for role '{role_name}', using DEFAULT"
+            )
+            return "DEFAULT"
+
+        return llm_type
+
+    def get_all_role_llm_mappings(self) -> dict[str, str]:
+        """Get LLM type mappings for all roles.
+
+        Returns:
+            dict: Mapping of role names to LLM types
+        """
+        mappings = {}
+        for role_name in self.roles.keys():
+            mappings[role_name] = self.get_role_llm_type(role_name)
+        return mappings
+
     def validate_role(self, role_name: str) -> dict[str, Any]:
         """Validate a role definition.
 

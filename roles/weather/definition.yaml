@@ -5,8 +5,9 @@ role:
   name: "weather"
   version: "2.0.0"
   description: "Weather role with pre-processing data fetching and post-processing formatting"
-  execution_type: "hybrid"  # Changed from "llm" to "hybrid"
-  fast_reply: true  # Enable fast-path routing for weather queries
+  execution_type: "hybrid" # Changed from "llm" to "hybrid"
+  fast_reply: true # Enable fast-path routing for weather queries
+  llm_type: "WEAK" # Weather queries are simple and don't need complex reasoning
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -23,7 +24,7 @@ parameters:
     required: true
     description: "City, state, country, or coordinates for weather lookup"
     examples: ["Seattle", "New York, NY", "90210", "47.6062,-122.3321"]
-  
+
   timeframe:
     type: "string"
     required: false
@@ -31,7 +32,7 @@ parameters:
     examples: ["current", "today", "tomorrow", "this week"]
     enum: ["current", "today", "tomorrow", "this week", "next week"]
     default: "current"
-  
+
   format:
     type: "string"
     required: false
@@ -48,8 +49,8 @@ lifecycle:
         uses_parameters: ["location", "timeframe", "format"]
       - name: "validate_location"
         uses_parameters: ["location"]
-    data_injection: true  
-    
+    data_injection: true
+
   post_processing:
     enabled: true
     functions:
@@ -66,34 +67,34 @@ prompts:
     You are a weather specialist. The weather data has already been fetched
     and is available in your context as pre-processed data. Focus on interpreting
     and explaining this data rather than fetching it.
-    
+
     Available data:
     - Current weather: {weather_current}
     - Location resolved: {location_resolved}
     - Data timestamp: {data_timestamp}
     - Timeframe requested: {timeframe_requested}
     - Format requested: {format_requested}
-    
+
     Provide a {format_requested} weather response:
     - brief: Concise summary with key conditions
     - detailed: Comprehensive analysis with all metrics
     - forecast: Extended forecast information
-    
+
     Interpret and explain this weather data in a natural, conversational way.
     Focus on what the user needs to know about the weather conditions.
     Always respond in natural language as your output will be converted to text to speech.
 
 # Model Parameters
 model_config:
-  temperature: 0.1              # Low temperature for factual weather data
-  max_tokens: 2048             # Standard token limit for weather responses
-  max_context: 32000           # Sufficient context for weather queries
-  top_p: 0.9                   # Focused sampling for accurate data
+  temperature: 0.1 # Low temperature for factual weather data
+  max_tokens: 2048 # Standard token limit for weather responses
+  max_context: 32000 # Sufficient context for weather queries
+  top_p: 0.9 # Focused sampling for accurate data
 
 # Tool Configuration - No weather tools needed since data is pre-fetched
 tools:
   automatic: false
-  shared: []  # No need for weather tools since data is pre-fetched
+  shared: [] # No need for weather tools since data is pre-fetched
 
 # Basic Capabilities
 capabilities:

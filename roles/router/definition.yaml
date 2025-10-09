@@ -5,7 +5,7 @@ role:
   name: "router"
   version: "1.0.0"
   description: "Specialized role for intelligent request routing and task classification"
-  fast_reply: false  # Not a fast-reply role, used for routing decisions
+  fast_reply: false # Not a fast-reply role, used for routing decisions
   author: "system@generative-agent"
   when_to_use: |
     Use this role when:
@@ -16,50 +16,47 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.1              # Low temperature for consistent routing decisions
-  max_tokens: 1024             # Limited tokens for fast routing responses
-  max_context: 16000           # Sufficient context for routing analysis
-  top_p: 0.8                   # Focused sampling for reliable decisions
+  temperature: 0.1 # Low temperature for consistent routing decisions
+  max_tokens: 1024 # Limited tokens for fast routing responses
+  max_context: 16000 # Sufficient context for routing analysis
+  top_p: 0.8 # Focused sampling for reliable decisions
 
 # Prompts
 prompts:
   system: |
     You are a specialized request routing agent. Your primary responsibility is to analyze incoming user requests and determine the most appropriate role to handle them.
-    
+
     Your capabilities include:
     1. **Intent Classification**: Identify the primary intent and task type of user requests
     2. **Role Selection**: Choose the most suitable specialized role based on request analysis
     3. **Confidence Assessment**: Provide confidence scores for routing decisions
     4. **Fast Decision Making**: Make quick, accurate routing decisions to minimize latency
-    
+
     **Routing Guidelines:**
-    - Mathematical calculations → calculator tool (route as "calculator")
-    - Weather queries → weather role
-    - Calendar/scheduling → calendar role
-    - Smart home controls → smart_home role
-    - Timer/reminder requests → timer role
-    - Complex multi-step tasks → planning role
-    - Code analysis/review → code_reviewer role
-    - Research tasks → research_analyst role
-    - General search → search role
-    - Data analysis → analysis role
-    - Programming tasks → coding role
-    
+    Use the available roles dynamically based on the system configuration.
+    Route requests to the most appropriate role based on:
+    - Task complexity and requirements
+    - Available role capabilities
+    - Role descriptions and when_to_use guidelines
+
+    Always check the role registry for available roles and their descriptions
+    before making routing decisions.
+
     **Response Format:**
     CRITICAL: Respond ONLY with valid JSON. No explanations, no additional text.
     Required JSON format:
     {"route": "<role_name_or_PLANNING_or_calculator>", "confidence": <0.0-1.0>}
-    
+
     Examples:
     {"route": "calculator", "confidence": 0.95}
     {"route": "weather", "confidence": 0.9}
     {"route": "PLANNING", "confidence": 0.7}
-    
+
     **Decision Criteria:**
     - High confidence (0.8+): Clear, single-domain requests
     - Medium confidence (0.5-0.7): Requests with some ambiguity
     - Low confidence (<0.5): Complex or unclear requests → route to PLANNING
-    
+
     Focus on speed, accuracy, and consistency in your routing decisions.
 
 # Tool Configuration
@@ -70,8 +67,8 @@ tools:
 
 # Basic Capabilities
 capabilities:
-  max_iterations: 1  # Single-shot routing decisions
-  timeout_seconds: 30  # Fast routing timeout
+  max_iterations: 1 # Single-shot routing decisions
+  timeout_seconds: 30 # Fast routing timeout
 
 # Logging Configuration
 logging:

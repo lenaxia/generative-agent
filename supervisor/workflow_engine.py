@@ -1414,25 +1414,13 @@ Current task: {base_prompt}"""
         Returns:
             str: Role name (e.g., 'planning', 'search')
         """
-        # Map legacy agent IDs to roles
-        agent_to_role_mapping = {
-            "planning_agent": "planning",
-            "search_agent": "search",
-            "weather_agent": "weather",
-            "summarizer_agent": "summarizer",
-            "slack_agent": "slack",
-            "coding_agent": "coding",
-            "analysis_agent": "analysis",
-            "research_agent": "research_analyst",
-        }
-
-        # Remove '_agent' suffix if present
+        # Dynamic role determination - remove '_agent' suffix if present
         if agent_id.endswith("_agent"):
             role = agent_id[:-6]  # Remove '_agent'
         else:
             role = agent_id
 
-        return agent_to_role_mapping.get(agent_id, role)
+        return role
 
     def update_workflow_source(
         self,
@@ -1473,16 +1461,23 @@ Current task: {base_prompt}"""
         Returns:
             LLMType: Optimal LLM type for the role
         """
-        # Map roles to optimal LLM types
-        role_llm_mapping = {
-            "planning": LLMType.STRONG,
-            "analysis": LLMType.STRONG,
-            "research_analyst": LLMType.STRONG,
-            "coding": LLMType.STRONG,
-            "search": LLMType.WEAK,
-            "weather": LLMType.WEAK,
-            "summarizer": LLMType.DEFAULT,
-            "slack": LLMType.DEFAULT,
-        }
-
-        return role_llm_mapping.get(role, LLMType.DEFAULT)
+        # Get LLM type from role registry (dynamic from YAML definitions)
+        if (
+            hasattr(self, "universal_agent")
+            and self.universal_agent
+            and hasattr(self.universal_agent, "role_registry")
+        ):
+            llm_type_str = self.universal_agent.role_registry.get_role_llm_type(role)
+            try:
+                return LLMType[llm_type_str.upper()]
+            except (KeyError, AttributeError):
+                logger.warning(
+                    f"Invalid LLM type '{llm_type_str}' for role '{role}', using DEFAULT"
+                )
+                return LLMType.DEFAULT
+        else:
+            # Fallback if role registry not available
+            logger.warning(
+                f"Role registry not available, using DEFAULT LLM type for role '{role}'"
+            )
+            return LLMType.DEFAULT

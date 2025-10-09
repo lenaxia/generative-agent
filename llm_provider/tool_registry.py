@@ -316,28 +316,5 @@ def summarize_text(text: str, max_length: int = 200) -> str:
     return text[:max_length] + "... [truncated]"
 
 
-@tool(
-    name="get_weather",
-    description="Get weather information for a location",
-    role="weather",
-)
-def get_weather(location: str) -> dict:
-    """Get weather information - converted from WeatherAgent."""
-    return {
-        "location": location,
-        "temperature": "22°C",
-        "condition": "Sunny",
-        "humidity": "65%",
-        "forecast": "Clear skies expected",
-    }
-
-
-@tool(name="send_slack_message", description="Send a message to Slack", role="slack")
-def send_slack_message(channel: str, message: str) -> dict:
-    """Send Slack message - converted from SlackAgent."""
-    return {
-        "channel": channel,
-        "message": message,
-        "status": "sent",
-        "timestamp": "2024-01-01T12:00:00Z",
-    }
+# Removed hardcoded tools - these should be defined in role-specific tools.py files
+# or shared_tools directory, not hardcoded in the registry

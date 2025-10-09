@@ -227,10 +227,23 @@ class ConfigManager:
         return self.get_config(f"llm_providers.{provider}", {})
 
     def get_role_llm_mapping(self) -> dict[str, str]:
-        """Get role to LLM type mapping."""
-        return self.get_config(
-            "universal_agent.role_llm_mapping",
-            {
+        """Get role to LLM type mapping from role registry.
+
+        Note: This method is deprecated. LLM types should be read directly
+        from role definitions via the RoleRegistry.get_role_llm_type() method.
+        """
+        # Try to get from role registry if available
+        try:
+            from llm_provider.role_registry import RoleRegistry
+
+            role_registry = RoleRegistry.get_global_registry()
+            return role_registry.get_all_role_llm_mappings()
+        except Exception as e:
+            # Fallback to basic defaults if role registry not available
+            logger.warning(
+                f"Could not get role LLM mappings from registry: {e}, using defaults"
+            )
+            return {
                 "planning": "STRONG",
                 "analysis": "STRONG",
                 "coding": "STRONG",
@@ -239,8 +252,7 @@ class ConfigManager:
                 "summarizer": "DEFAULT",
                 "slack": "DEFAULT",
                 "default": "DEFAULT",
-            },
-        )
+            }
 
     def get_log_level(self) -> str:
         """Get configured log level."""

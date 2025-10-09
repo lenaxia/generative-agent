@@ -5,7 +5,8 @@ role:
   name: "default"
   version: "1.0.0"
   description: "Default general-purpose role for routing and basic tasks"
-  fast_reply: false  # Not a fast-reply role, used for general tasks
+  fast_reply: false # Not a fast-reply role, used for general tasks
+  llm_type: "DEFAULT" # Standard model for general-purpose tasks
   author: "system@generative-agent"
   when_to_use: |
     Use this role when:
@@ -16,10 +17,10 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.3              # Balanced temperature for general tasks
-  max_tokens: 2048             # Standard token limit
-  max_context: 32000           # Standard context window
-  top_p: 0.9                   # Standard sampling
+  temperature: 0.3 # Balanced temperature for general tasks
+  max_tokens: 2048 # Standard token limit
+  max_context: 32000 # Standard context window
+  top_p: 0.9 # Standard sampling
 
 # Prompts
 prompts:
@@ -29,14 +30,14 @@ prompts:
     2. Analyze requests and provide appropriate routing decisions when needed
     3. Handle general tasks that don't require specialized expertise
     4. Maintain a professional and helpful tone
-    
+
     Focus on being clear, accurate, and helpful in all interactions.
 
 # Tool Configuration
 tools:
   # Disable automatic tool selection - use basic tools only
   automatic: false
-  
+
   # Basic shared tools for general functionality
   shared: []
 

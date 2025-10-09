@@ -5,6 +5,7 @@ role:
   name: "analysis"
   version: "1.0.0"
   description: "Specialized role for data analysis and analytical reasoning"
+  llm_type: "STRONG" # Analysis requires complex reasoning and deep thinking
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -18,10 +19,10 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.1              # Very low temperature for analytical precision
-  max_tokens: 6144             # Higher token limit for detailed analysis
-  max_context: 150000          # Large context for complex data analysis
-  top_p: 0.9                   # Focused sampling for accuracy
+  temperature: 0.1 # Very low temperature for analytical precision
+  max_tokens: 6144 # Higher token limit for detailed analysis
+  max_context: 150000 # Large context for complex data analysis
+  top_p: 0.9 # Focused sampling for accuracy
 
 # Prompts
 prompts:
@@ -31,7 +32,7 @@ prompts:
     2. Identify patterns and insights from given information
     3. Provide detailed analytical reports based on available data
     4. Make data-driven recommendations from provided sources
-    
+
     IMPORTANT: When previous task results are provided in your prompt, USE THEM as your primary data source.
     Do NOT perform additional searches or data collection - focus on analyzing the information already provided.
     Your job is to analyze, synthesize, and structure the given information, not to gather new data.
@@ -40,7 +41,7 @@ prompts:
 tools:
   # Automatic tool selection via LLM
   automatic: true
-  
+
   # Manually specified shared tools - ANALYSIS FOCUSED (no search tools)
   shared:
     - "analyze_data"
@@ -49,8 +50,8 @@ tools:
 
 # Basic Capabilities
 capabilities:
-  max_iterations: 12           # Allow thorough analysis iterations
-  timeout_seconds: 480         # 8 minutes for complex analysis
+  max_iterations: 12 # Allow thorough analysis iterations
+  timeout_seconds: 480 # 8 minutes for complex analysis
 
 # Logging Configuration
 logging:

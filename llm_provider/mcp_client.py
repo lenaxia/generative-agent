@@ -123,13 +123,22 @@ class MCPClientManager:
         Returns:
             List of tools suitable for the role
         """
-        role_tool_mapping = {
-            "planning": ["search", "docs", "documentation", "aws", "research"],
-            "search": ["search", "web", "query"],
-            "weather": ["weather", "forecast", "climate"],
-            "summarizer": ["text", "content", "document"],
-            "slack": ["slack", "message", "communication"],
-        }
+        # Get role definition to determine appropriate tools
+        try:
+            from llm_provider.role_registry import RoleRegistry
+
+            role_registry = RoleRegistry.get_global_registry()
+            role_def = role_registry.get_role(role)
+
+            if role_def and role_def.config.get("tools", {}).get("mcp_keywords"):
+                # Use MCP keywords from role definition if available
+                keywords = role_def.config["tools"]["mcp_keywords"]
+            else:
+                # Fallback to basic keywords based on role name
+                keywords = [role]  # Use role name as keyword
+        except Exception:
+            # Final fallback
+            keywords = [role]
 
         role_keywords = role_tool_mapping.get(role, [])
         if not role_keywords:
@@ -264,35 +273,6 @@ class MCPClientManager:
         self.server_configs.clear()
 
 
-# Predefined MCP server configurations for common use cases
-COMMON_MCP_SERVERS = {
-    "aws_docs": MCPServerConfig(
-        name="aws_docs",
-        command="uvx",
-        args=["awslabs.aws-documentation-mcp-server@latest"],
-        description="AWS documentation and service information",
-    ),
-    "web_search": MCPServerConfig(
-        name="web_search",
-        command="npx",
-        args=["@modelcontextprotocol/server-web-search"],
-        description="Web search capabilities",
-    ),
-    "weather": MCPServerConfig(
-        name="weather",
-        command="npx",
-        args=["@modelcontextprotocol/server-weather"],
-        description="Weather information and forecasts",
-    ),
-    "filesystem": MCPServerConfig(
-        name="filesystem",
-        command="npx",
-        args=["@modelcontextprotocol/server-filesystem"],
-        description="File system operations",
-    ),
-}
-
-
 def create_mcp_manager_with_defaults() -> MCPClientManager:
     """Create an MCP client manager with common servers pre-configured.
 
@@ -304,14 +284,5 @@ def create_mcp_manager_with_defaults() -> MCPClientManager:
     if not MCP_AVAILABLE:
         logger.warning("MCP not available, returning empty manager")
         return manager
-
-    # Register common servers
-    for server_config in COMMON_MCP_SERVERS.values():
-        manager.register_server(
-            server_config.name,
-            server_config.command,
-            server_config.args,
-            server_config.description,
-        )
 
     return manager

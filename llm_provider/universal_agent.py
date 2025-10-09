@@ -151,57 +151,18 @@ class UniversalAgent:
             role: Agent role
 
         Returns:
-            str: System prompt for the role
+            str: System prompt for the role from role definition
         """
-        role_prompts = {
-            "planning": """You are a planning specialist agent. Your role is to:
-1. Break down complex tasks into manageable steps
-2. Create detailed task plans with dependencies
-3. Identify required resources and constraints
-4. Provide structured planning output
-Focus on creating clear, actionable plans.""",
-            "search": """You are a search specialist agent. Your role is to:
-1. Perform web searches for information
-2. Find relevant and accurate information
-3. Summarize search results clearly
-4. Provide source citations
-Focus on finding the most relevant and up-to-date information.""",
-            "weather": """You are a weather information specialist agent. Your role is to:
-1. Retrieve current weather conditions
-2. Provide weather forecasts
-3. Explain weather patterns and phenomena
-4. Give location-specific weather data
-Focus on providing accurate, current weather information.""",
-            "summarizer": """You are a text summarization specialist agent. Your role is to:
-1. Create concise summaries of long texts
-2. Extract key points and main ideas
-3. Maintain important context and details
-4. Provide structured summary output
-Focus on creating clear, comprehensive summaries.""",
-            "slack": """You are a Slack integration specialist agent. Your role is to:
-1. Send messages to Slack channels
-2. Format messages appropriately for Slack
-3. Handle Slack-specific formatting and mentions
-4. Manage Slack workspace interactions
-Focus on effective Slack communication.""",
-            "coding": """You are a coding specialist agent. Your role is to:
-1. Write clean, efficient code
-2. Debug and fix code issues
-3. Explain code functionality
-4. Follow best practices and patterns
-Focus on producing high-quality, maintainable code.""",
-            "analysis": """You are an analysis specialist agent. Your role is to:
-1. Analyze data and information thoroughly
-2. Identify patterns and insights
-3. Provide detailed analytical reports
-4. Make data-driven recommendations
-Focus on comprehensive, accurate analysis.""",
-        }
+        # Get system prompt from role definition (dynamic from YAML)
+        role_def = self.role_registry.get_role(role)
+        if role_def:
+            prompts = role_def.config.get("prompts", {})
+            system_prompt = prompts.get("system", "")
+            if system_prompt:
+                return system_prompt
 
-        return role_prompts.get(
-            role,
-            "You are a helpful AI assistant. Provide accurate, helpful responses to user queries.",
-        )
+        # Fallback for roles without definitions
+        return "You are a helpful AI assistant. Provide accurate, helpful responses to user queries."
 
     def execute_task(
         self,
@@ -685,25 +646,17 @@ Focus on comprehensive, accurate analysis.""",
         Returns:
             LLMType: Appropriate model type for the role
         """
-        # Role-specific LLM type mapping for performance optimization
-        role_llm_mapping = {
-            # Fast routing roles use WEAK models
-            "router": LLMType.WEAK,
-            # Complex planning roles use STRONG models
-            "planning": LLMType.STRONG,
-            "analysis": LLMType.STRONG,
-            "coding": LLMType.STRONG,
-            # Standard roles use DEFAULT models
-            "weather": LLMType.DEFAULT,
-            "timer": LLMType.DEFAULT,
-            "calendar": LLMType.DEFAULT,
-            "search": LLMType.DEFAULT,
-            "summarizer": LLMType.DEFAULT,
-            "slack": LLMType.DEFAULT,
-            "default": LLMType.DEFAULT,
-        }
+        # Get LLM type from role registry (dynamic from YAML definitions)
+        llm_type_str = self.role_registry.get_role_llm_type(role)
 
-        return role_llm_mapping.get(role, LLMType.DEFAULT)
+        # Convert string to LLMType enum
+        try:
+            return LLMType[llm_type_str.upper()]
+        except (KeyError, AttributeError):
+            logger.warning(
+                f"Invalid LLM type '{llm_type_str}' for role '{role}', using DEFAULT"
+            )
+            return LLMType.DEFAULT
 
     def _serialize_result(self, result: Any) -> str:
         r"""\1
