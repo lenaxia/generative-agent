@@ -101,7 +101,7 @@ class TestHybridWeatherIntegration:
 
         # Mock all external dependencies
         with patch(
-            "roles.shared_tools.weather_tools.get_weather",
+            "roles.weather.tools.get_weather",
             return_value=mock_weather_data,
         ), patch(
             "asyncio.sleep",  # Mock sleep calls to speed up test
@@ -148,7 +148,7 @@ class TestHybridWeatherIntegration:
 
         # Mock all external dependencies
         with patch(
-            "roles.shared_tools.weather_tools.get_weather",
+            "roles.weather.tools.get_weather",
             return_value=mock_weather_data,
         ), patch(
             "asyncio.sleep",  # Mock sleep calls to speed up test
