@@ -237,13 +237,15 @@ Focus on comprehensive, accurate analysis.""",
                     # If loop is running, create a new task
                     import concurrent.futures
 
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        future = executor.submit(
-                            asyncio.run,
+                    def run_hybrid_task():
+                        return asyncio.run(
                             self._execute_hybrid_task(
                                 instruction, role, context, extracted_parameters
-                            ),
+                            )
                         )
+
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(run_hybrid_task)
                         return future.result()
                 else:
                     # If no loop is running, use asyncio.run
