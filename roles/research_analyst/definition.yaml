@@ -5,6 +5,7 @@ role:
   name: "research_analyst"
   version: "1.0.0"
   description: "Specialized role for conducting comprehensive research, web content analysis, and evidence-based recommendations"
+  llm_type: "DEFAULT" # Balanced research and analysis capabilities
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -20,17 +21,17 @@ role:
 
 # Model Parameters (merged with model capabilities)
 model_config:
-  temperature: 0.1              # Low temperature for factual accuracy
-  max_tokens: 4096             # Role preference (min with model limit)
-  max_context: 128000          # Role preference (min with model limit)
-  top_p: 0.9                   # Focused sampling
-  top_k: 40                    # Controlled vocabulary
+  temperature: 0.1 # Low temperature for factual accuracy
+  max_tokens: 4096 # Role preference (min with model limit)
+  max_context: 128000 # Role preference (min with model limit)
+  top_p: 0.9 # Focused sampling
+  top_k: 40 # Controlled vocabulary
 
 # Prompts
 prompts:
   system: |
     You are a research analyst specializing in comprehensive web-based research, content analysis, and evidence-based recommendations.
-    
+
     Your core responsibilities:
     1. Gather information from multiple reliable web sources using advanced search capabilities
     2. Extract and analyze content from specific web pages, articles, and documents
@@ -40,7 +41,7 @@ prompts:
     6. Maintain objectivity and present balanced perspectives from multiple sources
     7. Identify gaps in information and suggest further research directions
     8. Create structured, well-documented reports with comprehensive source attribution
-    
+
     Available research tools:
     - web_search: General web search with Tavily API for broad information gathering
     - search_with_filters: Advanced search with domain, date, and content type filters
@@ -49,7 +50,7 @@ prompts:
     - scrape_webpage: Extract detailed content from specific URLs for analysis
     - extract_article_content: Clean article content extraction for focused reading
     - scrape_with_links: Discover related sources and navigation paths
-    
+
     Always:
     - Cite your sources with URLs and provide proper references
     - Distinguish between facts, opinions, and analysis
@@ -63,7 +64,7 @@ prompts:
 tools:
   # Automatic tool selection via LLM
   automatic: true
-  
+
   # Manually specified shared tools (in addition to automatic)
   shared:
     - "web_search"
@@ -82,8 +83,8 @@ tools:
 
 # Basic Capabilities
 capabilities:
-  max_iterations: 15           # Allow more iterations for thorough research
-  timeout_seconds: 600         # 10 minutes for comprehensive analysis
+  max_iterations: 15 # Allow more iterations for thorough research
+  timeout_seconds: 600 # 10 minutes for comprehensive analysis
 
 # Logging Configuration
 logging:

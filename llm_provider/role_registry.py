@@ -8,14 +8,9 @@ import inspect
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-
-# Import ProgrammaticRole for type hints (avoid circular import)
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import yaml
-
-if TYPE_CHECKING:
-    from llm_provider.programmatic_role import ProgrammaticRole
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +42,10 @@ class RoleRegistry:
         self.roles_directory = Path(roles_directory)
 
         # Enhanced role storage for hybrid architecture
-        self.llm_roles: dict[str, RoleDefinition] = {}  # YAML-based roles
-        self.programmatic_roles: dict[
-            str, "ProgrammaticRole"
-        ] = {}  # Python-based roles
-        self.role_types: dict[str, str] = {}  # Role type mapping
+        self.llm_roles: dict[str, RoleDefinition] = {}  # All roles are hybrid now
+        self.role_types: dict[
+            str, str
+        ] = {}  # Role type mapping (kept for compatibility)
 
         # Hybrid role lifecycle support
         self.lifecycle_functions: dict[
@@ -103,9 +97,7 @@ class RoleRegistry:
         self._is_initialized = True
         self._fast_reply_roles_cache = None
 
-        logger.info(
-            f"Role registry refreshed with {len(self.llm_roles)} LLM roles and {len(self.programmatic_roles)} programmatic roles"
-        )
+        logger.info(f"Role registry refreshed with {len(self.llm_roles)} hybrid roles")
 
     def initialize_once(self):
         """Initialize the role registry if not already initialized.
@@ -408,19 +400,7 @@ class RoleRegistry:
         }
 
     # Enhanced methods for hybrid execution architecture
-
-    def register_programmatic_role(self, role: "ProgrammaticRole"):
-        """Register a programmatic role.
-
-        Args:
-            role: ProgrammaticRole instance to register
-        """
-        if not hasattr(role, "name") or not hasattr(role, "execute"):
-            raise TypeError("Object must be a ProgrammaticRole instance")
-
-        self.programmatic_roles[role.name] = role
-        self.role_types[role.name] = "programmatic"
-        logger.info(f"Registered programmatic role: {role.name}")
+    # Programmatic role methods removed - everything is hybrid now
 
     def register_llm_role(self, name: str, definition: RoleDefinition):
         """Register an LLM-based role.
@@ -452,119 +432,29 @@ class RoleRegistry:
         """
         return self.role_types.copy()
 
-    def is_programmatic_role(self, role_name: str) -> bool:
-        """Check if a role is programmatic.
+    # All programmatic role methods removed - everything is hybrid now
 
-        Args:
-            role_name: Name of the role to check
-
-        Returns:
-            True if role is programmatic, False otherwise
-        """
-        return role_name in self.programmatic_roles
-
-    def get_programmatic_role(self, role_name: str) -> Optional["ProgrammaticRole"]:
-        """Get a programmatic role by name.
-
-        Args:
-            role_name: Name of the programmatic role
-
-        Returns:
-            ProgrammaticRole instance or None if not found
-        """
-        return self.programmatic_roles.get(role_name)
-
-    def list_programmatic_roles(self) -> dict[str, "ProgrammaticRole"]:
-        """List all available programmatic roles.
-
-        Returns:
-            Dict of all programmatic roles
-        """
-        return self.programmatic_roles.copy()
-
-    def get_role_metrics(self, role_name: str) -> Optional[dict[str, Any]]:
-        """Get metrics for a programmatic role.
-
-        Args:
-            role_name: Name of the programmatic role
-
-        Returns:
-            Metrics dict or None if role not found
-        """
-        role = self.programmatic_roles.get(role_name)
-        return role.get_metrics() if role else None
-
-    def validate_programmatic_role(self, role_name: str) -> dict[str, Any]:
-        """Validate a programmatic role.
-
-        Args:
-            role_name: Name of the programmatic role to validate
-
-        Returns:
-            Validation result with status and any errors
-        """
-        if role_name not in self.programmatic_roles:
-            return {
-                "valid": False,
-                "errors": [f"Programmatic role '{role_name}' not found"],
-                "warnings": [],
-                "role_type": "programmatic",
-            }
-
-        role = self.programmatic_roles[role_name]
-        errors = []
-        warnings = []
-
-        # Check required attributes
-        if not hasattr(role, "name") or not role.name:
-            errors.append("Role missing name attribute")
-
-        if not hasattr(role, "description") or not role.description:
-            warnings.append("Role missing description")
-
-        if not hasattr(role, "execute") or not callable(role.execute):
-            errors.append("Role missing execute method")
-
-        if not hasattr(role, "parse_instruction") or not callable(
-            role.parse_instruction
-        ):
-            errors.append("Role missing parse_instruction method")
-
-        return {
-            "valid": len(errors) == 0,
-            "errors": errors,
-            "warnings": warnings,
-            "role_name": role_name,
-            "role_type": "programmatic",
-        }
+    # validate_programmatic_role method removed - everything is hybrid now
 
     def get_enhanced_statistics(self) -> dict[str, Any]:
-        """Get enhanced statistics about the role registry including programmatic roles.
+        """Get enhanced statistics about the role registry.
 
         Returns:
             Enhanced statistics about the role registry
         """
         base_stats = self.get_statistics()
 
-        # Add programmatic role statistics
-        programmatic_stats = {
-            "total_programmatic_roles": len(self.programmatic_roles),
-            "total_llm_roles": len(self.llm_roles),
+        # Add hybrid role statistics
+        hybrid_stats = {
+            "total_hybrid_roles": len(self.llm_roles),
             "role_type_distribution": {
-                "programmatic": len(self.programmatic_roles),
-                "llm": len(self.llm_roles),
-            },
-            "programmatic_role_metrics": {
-                name: role.get_metrics()
-                for name, role in self.programmatic_roles.items()
+                "hybrid": len(self.llm_roles),
             },
         }
 
         # Merge with base statistics
-        enhanced_stats = {**base_stats, **programmatic_stats}
-        enhanced_stats["total_all_roles"] = len(self.llm_roles) + len(
-            self.programmatic_roles
-        )
+        enhanced_stats = {**base_stats, **hybrid_stats}
+        enhanced_stats["total_all_roles"] = len(self.llm_roles)
 
         return enhanced_stats
 
@@ -584,18 +474,10 @@ class RoleRegistry:
             role_name: Name of the role
 
         Returns:
-            "hybrid", "programmatic", or "llm"
+            Always returns "hybrid" since all roles are hybrid now
         """
-        role_def = self.get_role(role_name)
-        if not role_def:
-            # Check if it's a programmatic role
-            if role_name in self.programmatic_roles:
-                return "programmatic"
-            return "llm"  # Default fallback
-
-        # Check role config for execution type
-        execution_type = role_def.config.get("role", {}).get("execution_type", "llm")
-        return execution_type
+        # All roles are hybrid now - no need to check execution type
+        return "hybrid"
 
     def register_lifecycle_functions(
         self, role_name: str, functions: dict[str, Callable]

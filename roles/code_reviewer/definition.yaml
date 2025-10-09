@@ -5,6 +5,7 @@ role:
   name: "code_reviewer"
   version: "1.0.0"
   description: "Specialized role for code review, analysis, and quality assessment"
+  llm_type: "DEFAULT" # Balanced analysis capabilities
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
@@ -18,16 +19,16 @@ role:
 
 # Model Parameters
 model_config:
-  temperature: 0.2              # Low temperature for consistent analysis
-  max_tokens: 8192             # Higher token limit for code analysis
-  max_context: 200000          # Large context for reviewing entire files
-  top_p: 0.95                  # Slightly higher for creative suggestions
+  temperature: 0.2 # Low temperature for consistent analysis
+  max_tokens: 8192 # Higher token limit for code analysis
+  max_context: 200000 # Large context for reviewing entire files
+  top_p: 0.95 # Slightly higher for creative suggestions
 
 # Prompts
 prompts:
   system: |
     You are a senior code reviewer specializing in software quality assurance and best practices.
-    
+
     Your core responsibilities:
     1. Analyze code for bugs, security vulnerabilities, and performance issues
     2. Ensure adherence to coding standards and best practices
@@ -35,7 +36,7 @@ prompts:
     4. Review architecture and design patterns
     5. Suggest optimizations and alternative approaches
     6. Generate clear, actionable feedback
-    
+
     Always:
     - Provide specific, actionable feedback
     - Explain the reasoning behind your suggestions
@@ -49,7 +50,7 @@ prompts:
 tools:
   # Automatic tool selection via LLM
   automatic: true
-  
+
   # Manually specified shared tools
   shared:
     - "read_file_content"
@@ -59,8 +60,8 @@ tools:
 
 # Basic Capabilities
 capabilities:
-  max_iterations: 12           # Allow multiple analysis passes
-  timeout_seconds: 450         # 7.5 minutes for thorough code review
+  max_iterations: 12 # Allow multiple analysis passes
+  timeout_seconds: 450 # 7.5 minutes for thorough code review
 
 # Logging Configuration
 logging:

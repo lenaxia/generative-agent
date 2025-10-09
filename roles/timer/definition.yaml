@@ -1,58 +1,113 @@
-# Timer Role Definition
+# Timer Role Definition - Enhanced Hybrid Pattern
 
 # Role Metadata
 role:
   name: "timer"
-  version: "1.0.0"
-  description: "Set timers, alarms, and reminders"
-  fast_reply: true  # Enable fast-path routing for timer operations
-  execution_type: "programmatic"  # Uses programmatic execution path
+  version: "2.0.0"
+  description: "Timer role with pre-processing parameter extraction and post-processing confirmation"
+  fast_reply: true # Enable fast-path routing for timer operations
+  llm_type: "WEAK" # Timer operations are simple and don't need complex reasoning
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
-    - Set countdown timers
-    - Create alarms for specific times
-    - Manage recurring reminders
+    - Set countdown timers with duration parsing
+    - Create alarms for specific times with time zone handling
+    - Manage recurring reminders efficiently
     - Cancel or modify existing timers
     - Get status of active timers
 
-# Model Parameters
-model_config:
-  temperature: 0.1              # Very low temperature for precise timing
-  max_tokens: 512              # Small token limit for simple timer operations
-  max_context: 8000            # Minimal context needed for timer operations
-  top_p: 0.9                   # Focused sampling for accurate timing
+# Enhanced parameter schema for routing extraction
+parameters:
+  action:
+    type: "string"
+    required: true
+    description: "Timer action to perform"
+    examples: ["set", "cancel", "list", "alarm_set", "alarm_cancel"]
+    enum: ["set", "cancel", "list", "alarm_set", "alarm_cancel"]
 
-# Prompts
+  duration:
+    type: "string"
+    required: false
+    description: "Timer duration for set operations"
+    examples: ["5m", "30s", "1h30m", "120"]
+
+  time:
+    type: "string"
+    required: false
+    description: "Alarm time for alarm operations"
+    examples: ["14:30", "2:30 PM", "2024-12-25 09:00"]
+
+  label:
+    type: "string"
+    required: false
+    description: "Optional label for timer or alarm"
+    examples: ["Meeting reminder", "Coffee break", "Workout"]
+
+  timer_id:
+    type: "string"
+    required: false
+    description: "Timer ID for cancel operations"
+
+# Lifecycle hooks for hybrid execution
+lifecycle:
+  pre_processing:
+    enabled: true
+    functions:
+      - name: "parse_timer_parameters"
+        uses_parameters: ["action", "duration", "time", "label", "timer_id"]
+      - name: "validate_timer_request"
+        uses_parameters: ["action", "duration", "time"]
+    data_injection: true
+
+  post_processing:
+    enabled: true
+    functions:
+      - name: "format_timer_confirmation"
+        description: "Format response for clear confirmation"
+      - name: "schedule_notification"
+        description: "Schedule system notification if needed"
+      - name: "audit_timer_action"
+        description: "Log timer action for tracking"
+
+# Enhanced system prompt with pre-processed data
 prompts:
   system: |
-    You are a timer and alarm specialist. Handle timing operations:
-    - Set countdown timers with clear duration parsing
-    - Create alarms for specific times with proper time zone handling
-    - Manage recurring reminders efficiently
-    - Provide clear confirmations and status updates
-    - Handle timer cancellations and modifications
-    
-    Always confirm timer details and provide clear feedback about
-    successful operations or any timing conflicts.
+    You are a timer and alarm specialist. The timer parameters have already been extracted
+    and validated in your context as pre-processed data. Focus on interpreting
+    and confirming the timer operation rather than parsing parameters.
 
-# Tool Configuration
+    Available data:
+    - Action requested: {action_requested}
+    - Timer duration: {timer_duration}
+    - Alarm time: {alarm_time}
+    - Timer label: {timer_label}
+    - Timer ID: {timer_id}
+    - Validation result: {validation_result}
+
+    Provide a clear confirmation of the timer operation:
+    - For "set": Confirm timer duration and when it will expire
+    - For "alarm_set": Confirm alarm time and any recurrence
+    - For "cancel": Confirm which timer/alarm was cancelled
+    - For "list": Summarize active timers in a clear format
+
+    Always respond in natural language as your output will be used for notifications.
+
+# Model Parameters
+model_config:
+  temperature: 0.1 # Low temperature for consistent timer confirmations
+  max_tokens: 1024 # Standard token limit for timer responses
+  max_context: 16000 # Sufficient context for timer operations
+  top_p: 0.9 # Focused sampling for accurate confirmations
+
+# Tool Configuration - No timer tools needed since operations are pre-processed
 tools:
-  # Use shared timer tools for timing functionality
   automatic: false
-  
-  # Manually specified shared tools for timer functionality
-  shared:
-    - "timer_set"
-    - "timer_cancel"
-    - "timer_list"
-    - "alarm_set"
-    - "alarm_cancel"
+  shared: [] # No need for timer tools since operations are pre-processed
 
 # Basic Capabilities
 capabilities:
-  max_iterations: 2
-  timeout_seconds: 30
+  max_iterations: 3
+  timeout_seconds: 60
 
 # Logging Configuration
 logging:

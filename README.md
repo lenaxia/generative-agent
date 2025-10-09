@@ -30,20 +30,20 @@ graph TD
         UA --> MCP[MCP Servers]
         UA --> LLM[StrandsAgent-only LLM Factory]
     end
-    
+
     subgraph "Enhanced State Management"
         TC[TaskContext] --> TG[TaskGraph - Enhanced]
         TC --> CH[Conversation History]
         TC --> PS[Progressive Summary]
         TC --> CP[Checkpoints]
     end
-    
+
     subgraph "Unified Orchestration"
         WE[WorkflowEngine] --> TC
         WE --> UA
         WE --> MB[Message Bus]
     end
-    
+
     subgraph "System Management"
         S[Supervisor] --> WE
         HB[Heartbeat] --> S
@@ -123,31 +123,38 @@ supervisor.start()
 
 ## Universal Agent Roles
 
-The Universal Agent supports three execution types for maximum flexibility:
+The Universal Agent uses a **unified hybrid architecture** where all roles support lifecycle hooks for maximum flexibility:
 
-### LLM Roles (Traditional)
-- **Planning**: Complex task planning and dependency analysis (uses STRONG models)
-- **Search**: Web search and information retrieval (uses WEAK models)
-- **Summarizer**: Text summarization and key point extraction (uses DEFAULT models)
-- **Slack**: Team communication and messaging (uses DEFAULT models)
+### Hybrid Roles with Lifecycle Hooks 🆕
 
-### Hybrid Roles (New Architecture) 🆕
 - **Weather**: Enhanced weather role with pre-processing data fetching and post-processing formatting
   - Pre-processing: Fetches weather data before LLM call
   - LLM processing: Interprets pre-fetched data
   - Post-processing: TTS formatting, PII scrubbing, audit logging
   - Parameter extraction: Automatic location, timeframe, and format detection
+- **Timer**: Timer and alarm management with parameter extraction and validation
+- **Calendar**: Calendar event management with time parsing and confirmation
+- **Smart Home**: Device control with parameter validation and status tracking
 
-### Programmatic Roles
-- **Data Collection**: Direct programmatic execution without LLM processing
-- **Search Data Collector**: Specialized search result processing
+### Hybrid-LLM Roles (Traditional LLM behavior)
 
-### Hybrid Role Benefits
+- **Planning**: Complex task planning and dependency analysis (uses STRONG models)
+- **Analysis**: Data analysis and analytical reasoning (uses STRONG models)
+- **Coding**: Code generation, debugging, and software development (uses STRONG models)
+- **Code Reviewer**: Code quality assessment and security analysis (uses DEFAULT models)
+- **Research Analyst**: Comprehensive research and evidence-based reports (uses DEFAULT models)
+- **Search**: Web search and information retrieval (uses WEAK models)
+- **Default**: General-purpose assistant capabilities (uses DEFAULT models)
+- **Router**: Request routing and task classification (uses WEAK models)
+
+### Hybrid Architecture Benefits
+
 - **33% fewer LLM calls**: Pre-processing eliminates tool calls during LLM execution
 - **Enhanced caching**: Structured parameters enable better cache hit rates
 - **Better security**: Built-in PII scrubbing and audit logging
 - **Consistent formatting**: Post-processing ensures uniform output
 - **Comprehensive monitoring**: Detailed timing for all lifecycle phases
+- **Unified execution**: All roles use the same execution path with optional lifecycle hooks
 
 ## Configuration
 
@@ -169,17 +176,17 @@ llm_providers:
 # Universal Agent Configuration
 universal_agent:
   role_llm_mapping:
-    planning: "STRONG"      # Complex reasoning
-    search: "WEAK"          # Simple search
-    weather: "WEAK"         # Simple lookup
-    summarizer: "DEFAULT"   # Text processing
-    slack: "DEFAULT"        # Conversational
+    planning: "STRONG" # Complex reasoning
+    search: "WEAK" # Simple search
+    weather: "WEAK" # Simple lookup
+    summarizer: "DEFAULT" # Text processing
+    slack: "DEFAULT" # Conversational
 
 # Heartbeat Configuration
 heartbeat:
   enabled: true
-  interval: 30                    # Heartbeat interval in seconds
-  health_check_interval: 60       # Health check interval in seconds
+  interval: 30 # Heartbeat interval in seconds
+  health_check_interval: 60 # Health check interval in seconds
 
 # Feature Flags
 feature_flags:
@@ -294,15 +301,19 @@ python -m pytest tests/supervisor/ -v   # WorkflowEngine tests
 The system includes a modern CLI with multiple usage modes:
 
 ### Interactive Mode
+
 ```bash
 python cli.py
 ```
+
 Starts an interactive session where you can:
+
 - Execute workflows with the Universal Agent
 - Check system status and health
 - Monitor workflow progress in real-time
 
 ### Single Command Mode
+
 ```bash
 # Execute a workflow and exit
 python cli.py --workflow "Plan a machine learning project"
@@ -315,6 +326,7 @@ python cli.py --config production.yaml
 ```
 
 ### CLI Features
+
 - **Real-time Status**: Live system health and workflow monitoring
 - **Multiple LLM Providers**: Supports Bedrock, Anthropic, and OpenAI
 - **Role-based Execution**: Automatic role selection (planning, search, weather, etc.)
@@ -336,9 +348,10 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ### New Hybrid Role Architecture 🆕
 
-The system now supports **Hybrid Role Lifecycle Architecture** that unifies LLM and programmatic execution:
+The system now supports **Hybrid Role Lifecycle Architecture** with unified execution for all roles:
 
 #### Key Features
+
 - **Parameter Extraction**: Single LLM call extracts both route and parameters
 - **Pre-processing Hooks**: Fetch data before LLM execution (eliminates tool calls)
 - **Post-processing Hooks**: Format results, scrub PII, audit logging
@@ -346,6 +359,7 @@ The system now supports **Hybrid Role Lifecycle Architecture** that unifies LLM 
 - **Enhanced Caching**: Structured parameters enable semantic caching
 
 #### Example: Enhanced Weather Role
+
 ```bash
 # Request: "What's the weather in Seattle?"
 # 1. Enhanced routing extracts: {"location": "Seattle", "timeframe": "current"}
@@ -362,12 +376,14 @@ See [`examples/hybrid_role_example.py`](examples/hybrid_role_example.py) for a w
 This system has been successfully migrated from LangChain to StrandsAgent. Key improvements include:
 
 ### Before Migration (LangChain-based)
+
 - 5 individual agent classes with complex orchestration
 - Tight coupling to LangChain framework
 - Limited pause/resume capabilities
 - Complex state management across multiple components
 
 ### After Migration (StrandsAgent-based)
+
 - 1 Universal Agent with role-based specialization
 - Clean abstraction over LLM frameworks
 - Complete pause/resume with external state management
@@ -494,6 +510,7 @@ This system represents a complete architectural evolution:
 The system now includes a revolutionary hybrid role execution model:
 
 #### Implementation Achievements
+
 - **Enhanced RoleRegistry**: Lifecycle function support and parameter schemas
 - **Enhanced RequestRouter**: Parameter extraction in single LLM call
 - **Enhanced UniversalAgent**: Hybrid execution with pre/post processing hooks
@@ -503,15 +520,16 @@ The system now includes a revolutionary hybrid role execution model:
 - **Full Documentation**: Migration guide and working examples
 
 #### Performance Impact
+
 - **Reduced LLM calls**: 3 → 2 calls per weather request (33% reduction)
 - **Enhanced caching**: Structured parameters improve cache hit rates
 - **Better monitoring**: Comprehensive execution time logging
 - **Improved security**: Built-in PII scrubbing and audit logging
 
 The migration maintained 100% functionality while achieving:
+
 - Zero LangChain dependencies
 - Simplified architecture (5 components → 1 Universal Agent)
 - Enhanced capabilities (pause/resume, external state, MCP integration, hybrid roles)
 - Production-ready features (health monitoring, deployment guides)
 - Comprehensive documentation and testing
-

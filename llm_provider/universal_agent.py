@@ -16,7 +16,6 @@ from strands_tools import calculator, file_read, shell
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
-from llm_provider.programmatic_role import ProgrammaticRole
 from llm_provider.role_registry import RoleDefinition, RoleRegistry
 from llm_provider.tool_registry import ToolRegistry
 
@@ -184,95 +183,42 @@ class UniversalAgent:
         Returns:
             str: Task result
         """
-        # Check execution type
-        execution_type = self.role_registry.get_role_execution_type(role)
+        # All roles use hybrid execution (with or without lifecycle hooks)
+        import asyncio
 
-        if execution_type == "hybrid":
-            # Run async hybrid execution in sync context
-            import asyncio
+        try:
+            # Try to get existing event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, create a new task
+                import concurrent.futures
 
-            try:
-                # Try to get existing event loop
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # If loop is running, create a new task
-                    import concurrent.futures
-
-                    def run_hybrid_task():
-                        return asyncio.run(
-                            self._execute_hybrid_task(
-                                instruction, role, context, extracted_parameters
-                            )
-                        )
-
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        future = executor.submit(run_hybrid_task)
-                        return future.result()
-                else:
-                    # If no loop is running, use asyncio.run
+                def run_hybrid_task():
                     return asyncio.run(
                         self._execute_hybrid_task(
                             instruction, role, context, extracted_parameters
                         )
                     )
-            except RuntimeError:
-                # Fallback: run in new event loop
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_hybrid_task)
+                    return future.result()
+            else:
+                # If no loop is running, use asyncio.run
                 return asyncio.run(
                     self._execute_hybrid_task(
                         instruction, role, context, extracted_parameters
                     )
                 )
-        elif execution_type == "programmatic":
-            return self.execute_programmatic_task(instruction, role, context)
-        else:
-            return self.execute_llm_task(instruction, role, llm_type, context)
+        except RuntimeError:
+            # Fallback: run in new event loop
+            return asyncio.run(
+                self._execute_hybrid_task(
+                    instruction, role, context, extracted_parameters
+                )
+            )
 
-    def is_programmatic_role(self, role: str) -> bool:
-        r"""\1
-
-        Args:
-            role: Role name to check
-
-        Returns:
-            bool: True if role uses programmatic execution
-        """
-        return self.role_registry.is_programmatic_role(role)
-
-    def get_role_type(self, role: str) -> str:
-        r"""\1
-
-        Args:
-            role: Role name
-
-        Returns:
-            str: "programmatic" or "llm"
-        """
-        return self.role_registry.get_role_type(role)
-
-    def execute_programmatic_task(
-        self, instruction: str, role: str, context: Optional[TaskContext] = None
-    ) -> str:
-        r"""\1
-
-        Args:
-            instruction: Task instruction
-            role: Programmatic role name
-            context: Optional task context
-
-        Returns:
-            str: Serialized task result
-        """
-        try:
-            programmatic_role = self.role_registry.get_programmatic_role(role)
-            if not programmatic_role:
-                return f"Programmatic role '{role}' not found"
-
-            result = programmatic_role.execute(instruction, context)
-            return self._serialize_result(result)
-
-        except Exception as e:
-            logger.error(f"Programmatic execution failed for role '{role}': {e}")
-            return f"Programmatic execution error: {str(e)}"
+    # Programmatic role methods removed - everything is hybrid now
 
     def execute_llm_task(
         self,
@@ -568,14 +514,7 @@ class UniversalAgent:
         self.current_role = None
         self.current_llm_type = None
 
-    def register_programmatic_role(self, name: str, role_instance: "ProgrammaticRole"):
-        r"""\1
-
-        Args:
-            name: Role name
-            role_instance: ProgrammaticRole instance
-        """
-        self.role_registry.register_programmatic_role(role_instance)
+    # register_programmatic_role method removed - everything is hybrid now
 
     def _update_agent_context(self, agent: Agent, system_prompt: str, tools: list[Any]):
         r"""\1

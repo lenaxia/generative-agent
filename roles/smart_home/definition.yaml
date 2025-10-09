@@ -1,52 +1,119 @@
-# Smart Home Role Definition
+# Smart Home Role Definition - Enhanced Hybrid Pattern
 
 # Role Metadata
 role:
   name: "smart_home"
-  version: "1.0.0" 
-  description: "Control smart home devices including lights, thermostat, and appliances"
-  fast_reply: true  # Enable fast-path routing for smart home operations
+  version: "2.0.0"
+  description: "Smart home role with pre-processing device parameter extraction and post-processing confirmation"
+  fast_reply: true # Enable fast-path routing for smart home operations
+  llm_type: "WEAK" # Smart home operations are straightforward
   author: "system@generative-agent"
   when_to_use: |
     Use this role when you need to:
-    - Turn lights on/off and adjust brightness
-    - Set thermostat temperature
-    - Control smart appliances and switches
+    - Turn lights on/off and adjust brightness with device validation
+    - Set thermostat temperature with range checking
+    - Control smart appliances and switches safely
     - Check device status and connectivity
     - Manage smart home scenes and automation
 
+# Enhanced parameter schema for routing extraction
+parameters:
+  action:
+    type: "string"
+    required: true
+    description: "Smart home action to perform"
+    examples:
+      [
+        "lights_on",
+        "lights_off",
+        "set_brightness",
+        "set_temperature",
+        "device_status",
+        "scene_activate",
+      ]
+    enum:
+      [
+        "lights_on",
+        "lights_off",
+        "set_brightness",
+        "set_temperature",
+        "device_status",
+        "scene_activate",
+      ]
+
+  device:
+    type: "string"
+    required: false
+    description: "Target device or room"
+    examples: ["living room", "bedroom", "kitchen", "thermostat", "all lights"]
+
+  value:
+    type: "string"
+    required: false
+    description: "Value for the operation (brightness %, temperature, etc.)"
+    examples: ["50%", "72°F", "25°C", "dim", "bright"]
+
+  scene:
+    type: "string"
+    required: false
+    description: "Scene name for scene operations"
+    examples: ["movie night", "bedtime", "morning", "away"]
+
+# Lifecycle hooks for hybrid execution
+lifecycle:
+  pre_processing:
+    enabled: true
+    functions:
+      - name: "parse_smart_home_parameters"
+        uses_parameters: ["action", "device", "value", "scene"]
+      - name: "validate_device_request"
+        uses_parameters: ["action", "device", "value"]
+    data_injection: true
+
+  post_processing:
+    enabled: true
+    functions:
+      - name: "format_device_confirmation"
+        description: "Format response for clear device operation confirmation"
+      - name: "update_device_status"
+        description: "Update device status tracking if needed"
+      - name: "audit_smart_home_action"
+        description: "Log smart home action for security tracking"
+
 # Model Parameters
 model_config:
-  temperature: 0.1              # Very low temperature for precise device control
-  max_tokens: 1024             # Moderate token limit for device operations
-  max_context: 16000           # Sufficient context for device queries
-  top_p: 0.9                   # Focused sampling for accurate control
+  temperature: 0.1 # Very low temperature for precise device control
+  max_tokens: 1024 # Moderate token limit for device operations
+  max_context: 16000 # Sufficient context for device queries
+  top_p: 0.9 # Focused sampling for accurate control
 
-# Prompts
+# Enhanced system prompt with pre-processed data
 prompts:
   system: |
-    You are a smart home control specialist. Control home devices efficiently:
-    - Turn lights on/off and adjust brightness levels
-    - Set thermostat temperature with proper validation
-    - Control smart appliances and switches safely
-    - Check device status and report connectivity issues
-    - Execute smart home scenes and automation routines
-    
-    Always confirm device actions and provide clear feedback about
-    successful operations or any device errors that occur.
+    You are a smart home control specialist. The device parameters have already been extracted
+    and validated in your context as pre-processed data. Focus on interpreting
+    and confirming the device operation rather than parsing commands.
 
-# Tool Configuration
+    Available data:
+    - Action requested: {action_requested}
+    - Target device: {target_device}
+    - Operation value: {operation_value}
+    - Scene name: {scene_name}
+    - Device validation: {device_validation}
+
+    Provide a clear confirmation of the smart home operation:
+    - For lights: Confirm which lights and their new state/brightness
+    - For thermostat: Confirm temperature setting and target device
+    - For devices: Confirm device action and expected result
+    - For scenes: Confirm scene activation and affected devices
+    - For status: Report current device states clearly
+
+    Always respond in natural language as your output will be used for confirmations.
+
+# Tool Configuration - No smart home tools needed since operations are pre-processed
 tools:
-  # Use shared smart home tools for device control
   automatic: false
-  
-  # Manually specified shared tools for smart home functionality
-  shared:
-    - "home_assistant_api"
-    - "smart_lights_control"
-    - "thermostat_control"
-    - "device_status_check"
-    - "scene_control"
+  shared: [] # No need for smart home tools since operations are pre-processed
 
 # Basic Capabilities
 capabilities:
