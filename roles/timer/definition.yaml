@@ -99,10 +99,17 @@ model_config:
   max_context: 16000 # Sufficient context for timer operations
   top_p: 0.9 # Focused sampling for accurate confirmations
 
-# Tool Configuration - No timer tools needed since operations are pre-processed
+# Tool Configuration - Use timer-specific tools
 tools:
-  automatic: false
-  shared: [] # No need for timer tools since operations are pre-processed
+  automatic: true
+  shared: []
+  role_specific:
+    - timer_set
+    - timer_cancel
+    - timer_list
+    - alarm_set
+    - alarm_cancel
+    - timer_snooze
 
 # Basic Capabilities
 capabilities:
