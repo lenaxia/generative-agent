@@ -230,6 +230,12 @@ class TimerMonitor:
             timer: Expired timer data
             next_timer_id: ID of next recurring timer if created
         """
+        # Extract notification metadata from timer
+        metadata = timer.get("metadata", {})
+        notification_channel = metadata.get("notification_channel")
+        notification_recipient = metadata.get("notification_recipient")
+        notification_priority = metadata.get("notification_priority")
+
         event_data = {
             "timer_id": timer["id"],
             "timer_name": timer.get("name"),
@@ -240,6 +246,11 @@ class TimerMonitor:
             "notification_config": timer.get("notification_config", {}),
             "expired_at": int(time.time()),
             "next_timer_id": next_timer_id,
+            # Include notification metadata
+            "notification_channel": notification_channel,
+            "notification_recipient": notification_recipient,
+            "notification_priority": notification_priority,
+            "metadata": metadata,
         }
 
         self.message_bus.publish(self, MessageType.TIMER_EXPIRED, event_data)

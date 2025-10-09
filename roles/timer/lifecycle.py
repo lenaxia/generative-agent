@@ -58,6 +58,7 @@ class TimerManager:
         actions: Optional[list[dict]] = None,
         recurring: Optional[dict] = None,
         timezone: str = "UTC",
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str:
         """Create a new timer with Redis persistence.
 
@@ -75,6 +76,7 @@ class TimerManager:
             actions: Actions to execute on expiry
             recurring: Recurring timer configuration
             timezone: Timer timezone
+            metadata: Additional metadata for the timer (notification preferences, etc.)
 
         Returns:
             Timer ID
@@ -123,6 +125,7 @@ class TimerManager:
             "notification_config": notification_config or {},
             "actions": actions or [],
             "recurring": recurring,
+            "metadata": metadata or {},
         }
 
         # Store in Redis
@@ -162,6 +165,7 @@ class TimerManager:
                     "notification_config",
                     "actions",
                     "recurring",
+                    "metadata",
                 ]:
                     try:
                         decoded_timer[key_str] = (

@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from strands import tool
 
-from .lifecycle import get_timer_manager
+from roles.timer.lifecycle import get_timer_manager
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,9 @@ def timer_set(
     custom_message: Optional[str] = None,
     user_id: str = "system",
     channel_id: str = "default",
+    notification_channel: Optional[str] = None,
+    notification_recipient: Optional[str] = None,
+    notification_priority: str = "medium",
 ) -> dict[str, Any]:
     """Set a countdown timer.
 
@@ -31,6 +34,9 @@ def timer_set(
         custom_message: Custom message when timer expires
         user_id: User who created the timer
         channel_id: Channel for notifications
+        notification_channel: Channel type for notifications (slack, email, etc.)
+        notification_recipient: Recipient identifier for notifications
+        notification_priority: Priority level (low, medium, high, critical)
 
     Returns:
         Dict containing timer creation result
@@ -39,7 +45,7 @@ def timer_set(
         timer_manager = get_timer_manager()
 
         # Parse duration to seconds
-        from .lifecycle import _parse_duration_to_seconds
+        from roles.timer.lifecycle import _parse_duration_to_seconds
 
         duration_seconds = _parse_duration_to_seconds(duration)
 
@@ -53,6 +59,15 @@ def timer_set(
         import asyncio
 
         async def _create_timer():
+            # Prepare notification metadata
+            notification_metadata = {}
+            if notification_channel:
+                notification_metadata["notification_channel"] = notification_channel
+            if notification_recipient:
+                notification_metadata["notification_recipient"] = notification_recipient
+            if notification_priority:
+                notification_metadata["notification_priority"] = notification_priority
+
             return await timer_manager.create_timer(
                 timer_type="countdown",
                 duration_seconds=duration_seconds,
@@ -61,6 +76,7 @@ def timer_set(
                 custom_message=custom_message or f"Timer for {duration} has expired!",
                 user_id=user_id,
                 channel_id=channel_id,
+                metadata=notification_metadata,
             )
 
         # Run async operation
@@ -212,6 +228,9 @@ def alarm_set(
     custom_message: Optional[str] = None,
     user_id: str = "system",
     channel_id: str = "default",
+    notification_channel: Optional[str] = None,
+    notification_recipient: Optional[str] = None,
+    notification_priority: str = "high",
 ) -> dict[str, Any]:
     """Set an alarm for a specific time.
 
@@ -222,6 +241,9 @@ def alarm_set(
         custom_message: Custom message when alarm triggers
         user_id: User who created the alarm
         channel_id: Channel for notifications
+        notification_channel: Channel type for notifications (slack, email, etc.)
+        notification_recipient: Recipient identifier for notifications
+        notification_priority: Priority level (low, medium, high, critical)
 
     Returns:
         Dict containing alarm creation result
@@ -230,7 +252,7 @@ def alarm_set(
         timer_manager = get_timer_manager()
 
         # Parse alarm time
-        from .lifecycle import _parse_alarm_time
+        from roles.timer.lifecycle import _parse_alarm_time
 
         alarm_datetime = _parse_alarm_time(time)
 
@@ -262,6 +284,15 @@ def alarm_set(
         import asyncio
 
         async def _create_alarm():
+            # Prepare notification metadata
+            notification_metadata = {}
+            if notification_channel:
+                notification_metadata["notification_channel"] = notification_channel
+            if notification_recipient:
+                notification_metadata["notification_recipient"] = notification_recipient
+            if notification_priority:
+                notification_metadata["notification_priority"] = notification_priority
+
             return await timer_manager.create_timer(
                 timer_type=timer_type,
                 alarm_time=alarm_datetime,
@@ -271,6 +302,7 @@ def alarm_set(
                 user_id=user_id,
                 channel_id=channel_id,
                 recurring=recurring_config,
+                metadata=notification_metadata,
             )
 
         # Run async operation

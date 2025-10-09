@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from common.communication_manager import DeliveryGuarantee
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
@@ -236,10 +237,10 @@ class TestUniversalAgentUnit:
             # Verify role was assumed
             mock_agent_class.assert_called_once()
 
-            # Verify agent was called with instruction
-            mock_strands_agent.assert_called_once_with(
-                "Analyze the data and provide insights"
-            )
+            # Verify agent was called with full prompt (role context + instruction)
+            call_args = mock_strands_agent.call_args[0][0]
+            assert "You are an analysis specialist agent" in call_args
+            assert "Analyze the data and provide insights" in call_args
 
             # Verify result
             assert result == "Task completed successfully"

@@ -12,12 +12,28 @@ import threading
 from typing import Any, Optional, Union
 
 try:
-    import aioredis
+    # Handle Python 3.12 compatibility issue with aioredis TimeoutError
+    import sys
+
     import redis
+
+    if sys.version_info >= (3, 12):
+        # For Python 3.12+, we need to handle the TimeoutError conflict
+        try:
+            import aioredis
+        except TypeError as e:
+            if "duplicate base class TimeoutError" in str(e):
+                # Skip aioredis for now in Python 3.12 due to compatibility issue
+                aioredis = None
+            else:
+                raise
+    else:
+        import aioredis
 
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
+    aioredis = None
 
 logger = logging.getLogger(__name__)
 
@@ -163,9 +179,9 @@ async def _get_async_redis_client():
     """Get or create asynchronous Redis client."""
     global _async_redis_client
 
-    if not REDIS_AVAILABLE:
+    if not REDIS_AVAILABLE or aioredis is None:
         raise ImportError(
-            "Redis not available. Install with: pip install aioredis>=2.0.0"
+            "Redis not available or aioredis has compatibility issues. Install with: pip install aioredis>=2.0.0"
         )
 
     if _async_redis_client is None:

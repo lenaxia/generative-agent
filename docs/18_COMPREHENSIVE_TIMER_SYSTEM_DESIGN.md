@@ -32,7 +32,7 @@ This document outlines the design and implementation of a comprehensive timer sy
 - [Architecture Overview](#architecture-overview)
 - [Core Components](#core-components)
 - [Timer Data Model](#timer-data-model)
-- [Communication Channel System](#communication-channel-system)
+- [Communication Channel System](#communication-channel-system) (Updated with Dynamic Loading)
 - [Timer Execution Engine](#timer-execution-engine)
 - [Integration Points](#integration-points)
 - [Advanced Features](#advanced-features)
@@ -79,9 +79,10 @@ graph TD
 1. **Minimal System Coupling**: Only one new MessageType, leverages existing infrastructure
 2. **Event-Driven Architecture**: Uses existing MessageBus for coordination
 3. **Redis-Based Persistence**: Timers survive system restarts
-4. **Multi-Channel Support**: Simultaneous notifications across platforms
+4. **Parallel Multi-Channel Support**: Simultaneous notifications across platforms
 5. **Request Trigger Integration**: Timers can initiate system requests
 6. **Extensible Design**: Easy to add new timer types and channels
+7. **Dynamic Channel Discovery**: Auto-discovery of channel handlers
 
 ## Core Components
 
@@ -125,14 +126,22 @@ Abstraction layer for multi-channel communication without tight coupling.
 
 **Key Responsibilities:**
 
-- Register and manage communication channels
-- Route notifications to appropriate channels
-- Handle channel failures and fallbacks
+- Dynamically discover and register channel handlers
+- Send notifications to multiple channels in parallel
+- Handle channel failures based on delivery guarantees
 - Support for rich message formatting per channel
+- Aggregate results from multiple channels
 
 ### 5. Channel Handlers (`common/channel_handlers/`)
 
-Pluggable channel implementations for different communication platforms.
+Dynamically loaded channel implementations for different communication platforms.
+
+**Channel Handler Structure:**
+
+- Each handler in its own file in `common/channel_handlers/`
+- Auto-discovery based on filename pattern (`*_handler.py`)
+- Consistent interface through `ChannelHandler` base class
+- Self-registration through class attributes
 
 **Supported Channels:**
 
@@ -142,6 +151,7 @@ Pluggable channel implementations for different communication platforms.
 - Sonos (audio announcements)
 - Home Assistant (mobile notifications)
 - WhatsApp (via API)
+- Custom handlers can be added by creating new files in the handlers directory
 
 ## Timer Data Model
 
@@ -813,16 +823,24 @@ timer_system:
 
 # Communication Channels
 communication_channels:
+  # Channel handlers are now dynamically loaded from common/channel_handlers/
+  # Each handler file should follow the naming pattern: *_handler.py
+  # Configuration is still provided here
+
+  # Default settings for all channel handlers
+  default:
+    auto_discover: true # Enable auto-discovery of handlers
+    handler_path: "common/channel_handlers"
+
+  # Individual channel configurations
   slack:
     enabled: true
-    handler: "common.channel_handlers.slack.SlackChannelHandler"
     config:
       bot_token: "${SLACK_BOT_TOKEN}"
       signing_secret: "${SLACK_SIGNING_SECRET}"
 
   sms:
     enabled: true
-    handler: "common.channel_handlers.sms.SMSChannelHandler"
     config:
       provider: "twilio" # or "aws_sns"
       account_sid: "${TWILIO_ACCOUNT_SID}"
@@ -831,21 +849,18 @@ communication_channels:
 
   sonos:
     enabled: false
-    handler: "common.channel_handlers.sonos.SonosChannelHandler"
     config:
       discovery_timeout: 5
       default_volume: 0.7
 
   home_assistant:
     enabled: false
-    handler: "common.channel_handlers.ha.HomeAssistantChannelHandler"
     config:
       base_url: "${HA_BASE_URL}"
       access_token: "${HA_ACCESS_TOKEN}"
 
   email:
     enabled: false
-    handler: "common.channel_handlers.email.EmailChannelHandler"
     config:
       smtp_host: "${SMTP_HOST}"
       smtp_port: 587
@@ -957,15 +972,35 @@ class CommunicationManager:
     def __init__(self, message_bus: MessageBus):
         """Initialize communication manager with message bus dependency"""
 
-    def register_channel(self, channel_id: str, handler: ChannelHandler):
-        """Register communication channel"""
+    def _discover_channel_handlers(self):
+        """Automatically discover and register available channel handlers"""
 
-    async def send_notification(self, channel_id: str, message: str,
-                               context: dict = None) -> dict:
-        """Send notification through channel"""
+    def register_channel(self, handler: ChannelHandler):
+        """Register communication channel handler"""
 
-    def get_available_channels(self) -> List[str]:
-        """Get list of available channel IDs"""
+    async def send_notification(self,
+                               message: str,
+                               channel_type: Optional[ChannelType] = None,
+                               recipient: Optional[str] = None,
+                               message_format: MessageFormat = MessageFormat.PLAIN_TEXT,
+                               delivery_guarantee: DeliveryGuarantee = DeliveryGuarantee.BEST_EFFORT,
+                               metadata: Optional[Dict[str, Any]] = None,
+                               additional_channels: Optional[List[ChannelType]] = None) -> Dict[str, Any]:
+        """Send notification to multiple channels in parallel with delivery guarantees"""
+
+    def get_available_channels(self) -> List[ChannelType]:
+        """Get list of available channel types"""
+```
+
+**Parallel Notification Response Format:**
+
+```python
+{
+    "success": True,  # True if any channel succeeded
+    "channels_succeeded": ["slack", "email"],  # List of successful channels
+    "channels_failed": ["sms"],  # List of failed channels
+    "primary_result": {...}  # Result from primary channel if successful
+}
 ```
 
 ## Examples
@@ -1007,7 +1042,8 @@ instruction = "Set a 1 hour timer - notify me on Slack and announce on Sonos"
                 "message": "Timer expired",
                 "volume": 0.7
             }
-        ]
+        ],
+        "delivery_guarantee": "at_least_once"  # Send to all channels in parallel
     }
 }
 ```
@@ -1336,6 +1372,16 @@ roles/timer/
 ├── definition.yaml          # Enhanced with source_channel parameter
 ├── lifecycle.py             # Contains TimerManager class + lifecycle functions
 └── tools.py                 # Timer-specific tools (moved from shared_tools)
+
+common/
+├── communication_manager.py # Updated with dynamic handler loading
+└── channel_handlers/        # Directory for all channel handlers
+    ├── __init__.py          # Package initialization
+    ├── console_handler.py   # Console output handler
+    ├── slack_handler.py     # Slack integration
+    ├── email_handler.py     # Email notifications
+    ├── sms_handler.py       # SMS notifications
+    └── ...                  # Additional handlers can be added here
 ```
 
 ### Enhanced Timer Role Definition
