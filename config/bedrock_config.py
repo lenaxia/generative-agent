@@ -25,7 +25,7 @@ class BedrockModelConfig(ModelConfig):
     signature_version: Optional[str] = "v4"
     defaults_mode: Optional[str] = "auto"
     beta_use_converse_api: bool = False
-    # Removed LangChain callback dependencies for StrandsAgent compatibility
+    # Removed callback dependencies for framework compatibility
     # callback_manager: Optional[BaseCallbackManager] = None
     # callbacks: Optional[Callbacks] = None
     credentials_profile_name: Optional[str] = None

@@ -1,7 +1,6 @@
-"""Weather tools for StrandsAgent - converted from WeatherAgent.
+"""Weather tools for the weather role.
 
-These tools replace the LangChain-based WeatherAgent with @tool decorated functions
-that can be used by the Universal Agent for weather information retrieval.
+These tools provide weather information retrieval functionality using @tool decorated functions.
 """
 
 import logging
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def get_weather(location: str) -> dict[str, Any]:
-    """Get weather information for a location - converted from WeatherAgent.
+    """Get weather information for a location.
 
     This tool can handle city names, ZIP codes, or coordinates and returns
     current weather information using the NOAA Weather API.
@@ -344,31 +343,3 @@ def validate_coordinates(lat: float, lon: float) -> dict[str, Any]:
         f"Coordinate validation: {'PASSED' if is_valid else 'FAILED'} with {len(errors)} errors"
     )
     return result
-
-
-# Tool registry for weather tools
-WEATHER_TOOLS = {
-    "get_weather": get_weather,
-    "check_weather": check_weather,
-    "city_to_coordinates": city_to_coordinates,
-    "zipcode_to_coordinates": zipcode_to_coordinates,
-    "get_weather_forecast": get_weather_forecast,
-    "validate_coordinates": validate_coordinates,
-}
-
-
-def get_weather_tools() -> dict[str, Any]:
-    """Get all available weather tools."""
-    return WEATHER_TOOLS
-
-
-def get_weather_tool_descriptions() -> dict[str, str]:
-    """Get descriptions of all weather tools."""
-    return {
-        "get_weather": "Get current weather for any location (city, ZIP, or coordinates)",
-        "check_weather": "Check weather for specific latitude/longitude coordinates",
-        "city_to_coordinates": "Convert city name to coordinates",
-        "zipcode_to_coordinates": "Convert ZIP code to coordinates",
-        "get_weather_forecast": "Get extended weather forecast for a location",
-        "validate_coordinates": "Validate latitude and longitude coordinates",
-    }

@@ -98,16 +98,16 @@ llm_providers:
         finally:
             os.unlink(config_file)
 
-    def test_supervisor_no_langchain_imports(self):
-        """Test that Supervisor can be imported without LangChain."""
-        # This test verifies that importing Supervisor doesn't require LangChain
+    def test_supervisor_no_legacy_imports(self):
+        """Test that Supervisor can be imported without legacy dependencies."""
+        # This test verifies that importing Supervisor doesn't require legacy frameworks
         try:
             pass
             # If we get here, the import succeeded without LangChain dependencies
             assert True
         except ImportError as e:
             if "langchain" in str(e).lower():
-                pytest.fail(f"Supervisor still has LangChain dependency: {e}")
+                pytest.fail(f"Supervisor still has legacy dependency: {e}")
             else:
                 # Some other import error, re-raise
                 raise

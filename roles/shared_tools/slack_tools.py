@@ -1,7 +1,6 @@
-"""Slack tools for StrandsAgent - converted from SlackAgent.
+"""Slack tools for the Universal Agent system.
 
-These tools replace the LangChain-based SlackAgent with @tool decorated functions
-that can be used by the Universal Agent for Slack integration functionality.
+These tools provide Slack integration functionality using @tool decorated functions.
 """
 
 import logging

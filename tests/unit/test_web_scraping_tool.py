@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import requests
 
-from roles.shared_tools.web_search import (
+from roles.search.tools import (
     extract_article_content,
     scrape_webpage,
     scrape_with_links,
@@ -14,10 +14,10 @@ from roles.shared_tools.web_search import (
 class TestWebScrapingTool:
     """Test cases for web scraping functionality."""
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.requests.get")
-    @patch("roles.shared_tools.web_search.BeautifulSoup")
-    @patch("roles.shared_tools.web_search.Document")
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", True)
+    @patch("roles.search.tools.requests.get")
+    @patch("roles.search.tools.BeautifulSoup")
+    @patch("roles.search.tools.Document")
     def test_scrape_webpage_success(self, mock_document, mock_bs, mock_requests):
         """Test successful webpage scraping with content extraction."""
         # Mock HTTP response
@@ -57,7 +57,7 @@ class TestWebScrapingTool:
         mock_requests.assert_called_once()
         mock_document.assert_called_once()
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", False)
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", False)
     def test_scrape_webpage_no_libraries(self):
         """Test scraping when libraries are not available."""
         result = scrape_webpage("https://example.com")
@@ -78,7 +78,7 @@ class TestWebScrapingTool:
         assert "error" in result
         assert "Empty URL provided" in result["error"]
 
-    @patch("roles.shared_tools.web_search.requests.get")
+    @patch("roles.search.tools.requests.get")
     def test_scrape_webpage_invalid_url(self, mock_requests):
         """Test scraping with invalid URL."""
         # Mock the request to fail quickly instead of timing out
@@ -91,8 +91,8 @@ class TestWebScrapingTool:
         # The function will try to make HTTP request and fail, which is expected behavior
         assert "HTTP error" in result["error"]
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.requests.get")
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", True)
+    @patch("roles.search.tools.requests.get")
     def test_scrape_webpage_http_error(self, mock_requests):
         """Test scraping when HTTP request fails."""
         mock_requests.side_effect = requests.exceptions.RequestException(
@@ -106,10 +106,10 @@ class TestWebScrapingTool:
         assert "HTTP error" in result["error"]
         assert "Connection failed" in result["error"]
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.requests.get")
-    @patch("roles.shared_tools.web_search.BeautifulSoup")
-    @patch("roles.shared_tools.web_search.Document")
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", True)
+    @patch("roles.search.tools.requests.get")
+    @patch("roles.search.tools.BeautifulSoup")
+    @patch("roles.search.tools.Document")
     def test_scrape_webpage_with_links(self, mock_document, mock_bs, mock_requests):
         """Test webpage scraping with link extraction."""
         # Mock HTTP response
@@ -148,7 +148,7 @@ class TestWebScrapingTool:
 
     def test_extract_article_content(self):
         """Test article content extraction (wrapper function)."""
-        with patch("roles.shared_tools.web_search.scrape_webpage") as mock_scrape:
+        with patch("roles.search.tools.scrape_webpage") as mock_scrape:
             mock_scrape.return_value = {
                 "url": "https://example.com",
                 "title": "Article Title",
@@ -169,7 +169,7 @@ class TestWebScrapingTool:
 
     def test_scrape_with_links(self):
         """Test scraping with links (wrapper function)."""
-        with patch("roles.shared_tools.web_search.scrape_webpage") as mock_scrape:
+        with patch("roles.search.tools.scrape_webpage") as mock_scrape:
             mock_scrape.return_value = {
                 "url": "https://example.com",
                 "title": "Page Title",
@@ -188,9 +188,9 @@ class TestWebScrapingTool:
             assert result["title"] == "Page Title"
             assert len(result["links"]) == 1
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.requests.get")
-    @patch("roles.shared_tools.web_search.BeautifulSoup")
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", True)
+    @patch("roles.search.tools.requests.get")
+    @patch("roles.search.tools.BeautifulSoup")
     def test_scrape_webpage_no_extract_content(self, mock_bs, mock_requests):
         """Test scraping without content extraction (raw text)."""
         # Mock HTTP response
@@ -215,7 +215,7 @@ class TestWebScrapingTool:
 
     def test_scrape_webpage_url_normalization(self):
         """Test URL normalization (adding https://)."""
-        with patch("roles.shared_tools.web_search.scrape_webpage") as mock_scrape:
+        with patch("roles.search.tools.scrape_webpage") as mock_scrape:
             # Mock the actual function to avoid recursion
             def side_effect(url, **kwargs):
                 return {"url": url, "title": "", "content": "", "links": []}

@@ -1,4 +1,4 @@
-"""Smart Home tools for StrandsAgent - Placeholder implementations.
+"""Smart Home tools for the smart_home role.
 
 These tools provide smart home device control stubs that throw NotImplementedError.
 They need to be implemented with real smart home integrations (Home Assistant, Philips Hue, etc.).

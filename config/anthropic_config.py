@@ -31,7 +31,7 @@ class AnthropicConfig(BaseConfig):
         timeout: Optional[float] = None,
         max_retries: Optional[int] = 2,
         api_base: Optional[str] = None,
-        # Removed LangChain callback dependencies for StrandsAgent compatibility
+        # Removed callback dependencies for framework compatibility
         # callback_manager: Optional[BaseCallbackManager] = None,
         # callbacks: Optional[Callbacks] = None,
         custom_get_token_ids: Optional[Callable[[str], list[int]]] = None,
@@ -80,7 +80,7 @@ class AnthropicConfig(BaseConfig):
         )
         self.timeout = os.environ.get("ANTHROPIC_TIMEOUT", timeout)
         # self.cache = os.environ.get("ANTHROPIC_CACHE", cache)  # Undefined variable
-        # Removed LangChain callback dependencies
+        # Removed callback dependencies
         # self.callback_manager = os.environ.get("ANTHROPIC_CALLBACK_MANAGER", callback_manager)
         # self.callbacks = os.environ.get("ANTHROPIC_CALLBACKS", callbacks)
         self.custom_get_token_ids = os.environ.get(

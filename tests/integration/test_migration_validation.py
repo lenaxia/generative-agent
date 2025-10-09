@@ -12,7 +12,7 @@ from supervisor.supervisor import Supervisor
 
 
 class TestMigrationValidation:
-    """Comprehensive tests to validate the migration from LangChain to StrandsAgent architecture."""
+    """Comprehensive tests to validate the modern agent architecture."""
 
     @pytest.fixture
     def mock_config_file(self, tmp_path):
@@ -66,9 +66,9 @@ task_scheduling:
             supervisor = Supervisor(mock_config_file)
             return supervisor
 
-    def test_langchain_to_strands_migration_compatibility(self, supervisor):
-        """Test that the new StrandsAgent architecture maintains compatibility with existing workflows."""
-        # Simulate legacy agent requests that would have been handled by LangChain agents
+    def test_modern_architecture_compatibility(self, supervisor):
+        """Test that the modern architecture maintains compatibility with existing workflows."""
+        # Simulate legacy agent requests that would have been handled by previous agents
         legacy_agent_scenarios = [
             {
                 "agent_type": "planning_agent",

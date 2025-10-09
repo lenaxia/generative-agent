@@ -13,10 +13,10 @@ import pytest
 # Import tool functions
 from llm_provider.factory import LLMFactory
 from llm_provider.planning_tools import analyze_task_dependencies, create_task_plan
+from roles.search.tools import web_search
 from roles.shared_tools.slack_tools import send_slack_message
 from roles.shared_tools.summarizer_tools import summarize_text
-from roles.shared_tools.weather_tools import get_weather, get_weather_forecast
-from roles.shared_tools.web_search import web_search
+from roles.weather.tools import get_weather, get_weather_forecast
 
 
 class TestToolFunctionsUnit:
@@ -82,7 +82,7 @@ class TestToolFunctionsUnit:
             # Cancel the alarm
             signal.alarm(0)
 
-    @patch("roles.shared_tools.web_search._get_tavily_client")
+    @patch("roles.search.tools._get_tavily_client")
     def test_search_tools(self, mock_get_client):
         """Test @tool search functions work correctly."""
         # Set a timeout using signal
@@ -344,7 +344,7 @@ class TestToolFunctionsUnit:
                 "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
             ):
                 # Test search tool with network error
-                with patch("roles.shared_tools.web_search.requests.get") as mock_get:
+                with patch("roles.search.tools.requests.get") as mock_get:
                     mock_get.side_effect = Exception("Network error")
 
                     # Web search tool handles errors gracefully, doesn't raise exceptions
@@ -448,7 +448,7 @@ class TestToolFunctionsUnit:
             ), patch("requests.get") as mock_get, patch(
                 "llm_provider.universal_agent.UniversalAgent"
             ) as mock_ua_class, patch(
-                "roles.shared_tools.web_search.requests.get"
+                "roles.search.tools.requests.get"
             ) as mock_web_get:
                 # Mock HTTP responses
                 mock_response = Mock()

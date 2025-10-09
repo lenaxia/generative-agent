@@ -117,7 +117,7 @@ class ConfigManager:
         framework_type = self.get_config("framework.type", "strands")
         if framework_type != "strands":
             errors.append(
-                "framework.type must be 'strands' (legacy 'langchain' no longer supported)"
+                "framework.type must be 'strands' (framework configuration required)"
             )
 
         # Validate LLM providers

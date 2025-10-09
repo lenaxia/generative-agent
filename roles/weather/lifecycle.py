@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from common.task_context import TaskContext
-from roles.shared_tools.weather_tools import get_weather, get_weather_forecast
+from roles.weather.tools import get_weather, get_weather_forecast
 
 logger = logging.getLogger(__name__)
 

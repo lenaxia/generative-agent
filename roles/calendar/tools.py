@@ -1,4 +1,4 @@
-"""Calendar tools for StrandsAgent - Placeholder implementations.
+"""Calendar tools for the calendar role.
 
 These tools provide calendar functionality stubs that throw NotImplementedError.
 They need to be implemented with real calendar integrations (Google Calendar, Outlook, etc.).

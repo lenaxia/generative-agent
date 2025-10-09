@@ -1,7 +1,6 @@
-"""Summarizer tools for StrandsAgent - converted from SummarizerAgent.
+"""Summarizer tools for the Universal Agent system.
 
-These tools replace the LangChain-based SummarizerAgent with @tool decorated functions
-that can be used by the Universal Agent for text summarization functionality.
+These tools provide text summarization functionality using @tool decorated functions.
 """
 
 import logging

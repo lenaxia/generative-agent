@@ -3,15 +3,15 @@
 import os
 from unittest.mock import Mock, patch
 
-from roles.shared_tools.web_search import search_with_filters, web_search
+from roles.search.tools import search_with_filters, web_search
 
 
 class TestWebSearchTool:
     """Test cases for web search functionality."""
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_web_search_success(self, mock_tavily_client):
         """Test successful web search with Tavily API."""
         # Mock Tavily client and response
@@ -69,8 +69,8 @@ class TestWebSearchTool:
         assert "TAVILY_API_KEY environment variable not set" in result["error"]
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_web_search_api_error(self, mock_tavily_client):
         """Test web search when Tavily API returns an error."""
         mock_client = Mock()
@@ -85,8 +85,8 @@ class TestWebSearchTool:
         assert "API Error" in result["error"]
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_web_search_empty_results(self, mock_tavily_client):
         """Test web search when API returns empty results."""
         mock_client = Mock()
@@ -100,8 +100,8 @@ class TestWebSearchTool:
         assert result["results"] == []
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_search_with_filters_success(self, mock_tavily_client):
         """Test filtered search with domain and content type."""
         mock_client = Mock()
@@ -141,8 +141,8 @@ class TestWebSearchTool:
         assert result["results"][0]["title"] == "Reddit Discussion"
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_search_with_filters_date_range(self, mock_tavily_client):
         """Test filtered search with date range."""
         mock_client = Mock()
@@ -184,8 +184,8 @@ class TestWebSearchTool:
         assert result["total_results"] == 0
 
     @patch.dict(os.environ, {"TAVILY_API_KEY": "test_key"})
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_web_search_large_num_results(self, mock_tavily_client):
         """Test web search with large number of results."""
         mock_client = Mock()

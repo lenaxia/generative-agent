@@ -73,8 +73,8 @@ class TestRoleToolIntegration:
                 tool in shared_tools
             ), f"Tool '{tool}' not found in research_analyst role"
 
-    @patch("roles.shared_tools.web_search.TAVILY_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.TavilyClient")
+    @patch("roles.search.tools.TAVILY_AVAILABLE", True)
+    @patch("roles.search.tools.TavilyClient")
     def test_search_role_can_use_web_search(self, mock_tavily_client, universal_agent):
         """Test that search role can successfully use web search tools."""
         # Mock Tavily client
@@ -114,9 +114,9 @@ class TestRoleToolIntegration:
             # For unit test, we just verify role assumption works
             assert universal_agent.current_role == "search"
 
-    @patch("roles.shared_tools.web_search.SCRAPING_AVAILABLE", True)
-    @patch("roles.shared_tools.web_search.requests.get")
-    @patch("roles.shared_tools.web_search.BeautifulSoup")
+    @patch("roles.search.tools.SCRAPING_AVAILABLE", True)
+    @patch("roles.search.tools.requests.get")
+    @patch("roles.search.tools.BeautifulSoup")
     def test_research_role_can_use_scraping(
         self, mock_bs, mock_requests, universal_agent
     ):

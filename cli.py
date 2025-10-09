@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""StrandsAgent Universal Agent System CLI.
+"""Universal Agent System CLI.
 
-Interactive command-line interface for the StrandsAgent Universal Agent System.
+Interactive command-line interface for the Universal Agent System.
 Provides workflow execution, system monitoring, and management capabilities.
 """
 
@@ -96,7 +96,7 @@ def clear_command_history():
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="StrandsAgent Universal Agent System CLI",
+        description="Universal Agent System CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

@@ -299,16 +299,16 @@ class TestPlanningTools:
         node = list(task_graph.nodes.values())[0]
         assert node.llm_type == "DEFAULT"
 
-    def test_planning_tools_no_langchain_dependencies(self):
-        """Test that planning tools don't import LangChain."""
-        # This test verifies that importing planning_tools doesn't require LangChain
+    def test_planning_tools_no_legacy_dependencies(self):
+        """Test that planning tools don't import legacy frameworks."""
+        # This test verifies that importing planning_tools doesn't require legacy frameworks
         try:
             pass
             # If we get here, the import succeeded without LangChain dependencies
             assert True
         except ImportError as e:
             if "langchain" in str(e).lower():
-                pytest.fail(f"Planning tools still have LangChain dependency: {e}")
+                pytest.fail(f"Planning tools still have legacy dependency: {e}")
             else:
                 # Some other import error, re-raise
                 raise

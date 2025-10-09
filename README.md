@@ -1,10 +1,10 @@
-# StrandsAgent Universal Agent System
+# Universal Agent System
 
 ## Overview
 
-The StrandsAgent Universal Agent System is a modern, production-ready workflow management platform that provides intelligent task delegation, external state management, and seamless integration with external tools through MCP (Model Context Protocol) servers.
+The Universal Agent System is a modern, production-ready workflow management platform that provides intelligent task delegation, external state management, and seamless integration with external tools through MCP (Model Context Protocol) servers.
 
-**🎉 Migration Complete**: Successfully migrated from LangChain to StrandsAgent with enhanced capabilities and simplified architecture.
+**🎉 Production Ready**: Built with modern AI framework providing enhanced capabilities and simplified architecture.
 
 ## Key Features
 
@@ -20,15 +20,15 @@ The StrandsAgent Universal Agent System is a modern, production-ready workflow m
 
 ## Architecture
 
-### Current Architecture (Post-Migration)
+### System Architecture
 
 ```mermaid
 graph TD
-    subgraph "StrandsAgent Universal Agent System"
+    subgraph "Universal Agent System"
         UA[Universal Agent] --> PL[Prompt Library]
         UA --> TR[Tool Registry - @tool functions]
         UA --> MCP[MCP Servers]
-        UA --> LLM[StrandsAgent-only LLM Factory]
+        UA --> LLM[LLM Factory]
     end
 
     subgraph "Enhanced State Management"
@@ -50,7 +50,7 @@ graph TD
     end
 ```
 
-**Final Architecture**: Supervisor → WorkflowEngine → Universal Agent → StrandsAgent
+**Final Architecture**: Supervisor → WorkflowEngine → Universal Agent → LLM Provider
 
 ### Key Components
 
@@ -371,31 +371,23 @@ The system now supports **Hybrid Role Lifecycle Architecture** with unified exec
 
 See [`examples/hybrid_role_example.py`](examples/hybrid_role_example.py) for a working demonstration.
 
-## Migration from LangChain
+## Architecture Benefits
 
-This system has been successfully migrated from LangChain to StrandsAgent. Key improvements include:
+This system provides significant advantages through its modern architecture:
 
-### Before Migration (LangChain-based)
+### Architecture Features
 
-- 5 individual agent classes with complex orchestration
-- Tight coupling to LangChain framework
-- Limited pause/resume capabilities
-- Complex state management across multiple components
-
-### After Migration (StrandsAgent-based)
-
-- 1 Universal Agent with role-based specialization
+- Universal Agent with role-based specialization
 - Clean abstraction over LLM frameworks
 - Complete pause/resume with external state management
 - Simplified architecture with enhanced capabilities
 
-### Migration Benefits
+### Key Benefits
 
-- **90% Code Reuse**: Leveraged existing TaskGraph, MessageBus, and configuration
 - **Simplified Testing**: Fewer components to test and mock
 - **Better Performance**: Reduced overhead from multiple agent instances
 - **Enhanced Capabilities**: Pause/resume, external state, MCP integration, task result sharing
-- **Cleaner Codebase**: Removed complex orchestration and coupling
+- **Cleaner Codebase**: Minimal orchestration complexity
 - **Efficiency Improvements**: Task result sharing eliminates duplicate work between dependent tasks
 
 ## Project Structure
@@ -430,7 +422,7 @@ generative-agent/
 │   ├── anthropic_config.py       # Anthropic configuration
 │   ├── openai_config.py          # OpenAI configuration
 │   └── mcp_config.yaml           # MCP server configuration
-├── agents/deprecated/             # Legacy LangChain agents (deprecated)
+├── agents/deprecated/             # Legacy agents (deprecated)
 ├── docs/                         # Comprehensive documentation
 ├── tests/                        # Comprehensive test suite
 ├── config.yaml                   # Main configuration file
@@ -501,7 +493,7 @@ This system represents a complete architectural evolution:
 
 **Phase 1-3**: Foundation and Universal Agent implementation
 **Phase 4-5**: MCP integration and comprehensive testing
-**Phase 6-7**: Architecture consolidation and LangChain removal
+**Phase 6-7**: Architecture consolidation and framework optimization
 **Phase 8**: Post-migration cleanup and production readiness
 **Phase 9**: 🆕 **Hybrid Role Lifecycle Architecture** - Advanced role execution with lifecycle hooks
 
@@ -528,7 +520,7 @@ The system now includes a revolutionary hybrid role execution model:
 
 The migration maintained 100% functionality while achieving:
 
-- Zero LangChain dependencies
+- Modern AI framework architecture
 - Simplified architecture (5 components → 1 Universal Agent)
 - Enhanced capabilities (pause/resume, external state, MCP integration, hybrid roles)
 - Production-ready features (health monitoring, deployment guides)
