@@ -62,7 +62,34 @@ graph TD
 
 ## Quick Start
 
-### Installation
+### Option 1: Docker Development Setup (Recommended)
+
+The fastest way to get started with a complete development environment including Redis:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/generative-agent.git
+cd generative-agent
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# One-command setup with Docker Redis
+make docker-setup
+
+# Start developing!
+python cli.py
+```
+
+This sets up:
+
+- Redis 7 container with persistent storage
+- Optimized Redis configuration for development
+- Health checks and monitoring
+- Optional Redis Commander web GUI
+
+### Option 2: Manual Installation
 
 ```bash
 # Clone the repository
@@ -75,15 +102,18 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install and configure Redis separately
+# See DEVELOPMENT_SETUP.md for Redis installation instructions
 ```
 
 ### Configuration
 
-Copy and customize the configuration file:
+The system works with default configuration, but you can customize:
 
 ```bash
-cp config.yaml.example config.yaml
-# Edit config.yaml with your settings
+# Configuration is already included in config.yaml
+# Edit config.yaml to customize Redis settings, LLM providers, etc.
 ```
 
 ### Basic Usage
@@ -256,6 +286,52 @@ def custom_analysis_tool(data: str, analysis_type: str) -> Dict:
 # Register tool with Universal Agent
 universal_agent.tool_registry.register_tool("custom_analysis", custom_analysis_tool)
 ```
+
+## Docker Development Environment
+
+The project includes a complete Docker-based development environment for easy setup and consistent development experience.
+
+### Quick Docker Setup
+
+```bash
+# Complete setup with one command
+make docker-setup
+
+# Or step by step:
+make docker-start        # Start Redis container
+make redis-cli          # Connect to Redis CLI
+make redis-commander    # Start Redis web GUI (http://localhost:8081)
+```
+
+### Docker Services
+
+- **Redis 7**: Latest stable Redis with optimized development configuration
+- **Redis Commander**: Optional web-based Redis management interface
+- **Persistent Storage**: Data persists between container restarts
+- **Health Checks**: Automatic health monitoring and recovery
+
+### Docker Commands
+
+| Command                | Description                            |
+| ---------------------- | -------------------------------------- |
+| `make docker-setup`    | Complete development environment setup |
+| `make docker-start`    | Start Redis container                  |
+| `make docker-stop`     | Stop all containers                    |
+| `make docker-logs`     | View container logs                    |
+| `make docker-test`     | Run Docker integration tests           |
+| `make redis-cli`       | Connect to Redis CLI                   |
+| `make redis-commander` | Start Redis GUI (port 8081)            |
+| `make docker-clean`    | Clean Docker resources                 |
+
+### Benefits
+
+- **Zero Configuration**: Works out of the box with sensible defaults
+- **Consistent Environment**: Same Redis version and configuration for all developers
+- **Easy Cleanup**: Remove everything with `make docker-clean`
+- **Performance Optimized**: Development-tuned Redis configuration
+- **Monitoring**: Built-in health checks and web-based management
+
+See [`docker/README.md`](docker/README.md) for detailed Docker configuration information.
 
 ## MCP Integration
 
