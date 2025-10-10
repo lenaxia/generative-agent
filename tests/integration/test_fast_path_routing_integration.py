@@ -78,12 +78,13 @@ class TestFastPathRoutingIntegration:
         assert result.startswith("fr_")  # Fast-reply ID format
         assert execution_time < 1.0  # Should be very fast in mock
 
-        # Verify the result is stored in fast_reply_results
-        assert result in workflow_engine.fast_reply_results
-        stored_result = workflow_engine.fast_reply_results[result]
-        assert stored_result["result"] == "Weather data retrieved"
-        assert stored_result["role"] == "weather"
-        assert stored_result["confidence"] == 0.9
+        # Verify the result is stored in unified active_workflows
+        assert result in workflow_engine.active_workflows
+        task_context = workflow_engine.active_workflows[result]
+        task_node = task_context.task_graph.nodes[result]
+        assert task_node.result == "Weather data retrieved"
+        assert task_node.role == "weather"
+        assert task_node.task_context["confidence"] == 0.9
 
     def test_fast_path_calendar_query_integration(
         self, workflow_engine, mock_llm_execution
@@ -101,11 +102,12 @@ class TestFastPathRoutingIntegration:
         assert result.startswith("fr_")
 
         # Verify the result is stored correctly
-        assert result in workflow_engine.fast_reply_results
-        stored_result = workflow_engine.fast_reply_results[result]
-        assert stored_result["result"] == "Task completed for role: calendar"
-        assert stored_result["role"] == "calendar"
-        assert stored_result["confidence"] == 0.85
+        assert result in workflow_engine.active_workflows
+        task_context = workflow_engine.active_workflows[result]
+        task_node = task_context.task_graph.nodes[result]
+        assert task_node.result == "Task completed for role: calendar"
+        assert task_node.role == "calendar"
+        assert task_node.task_context["confidence"] == 0.85
 
     def test_fast_path_timer_query_integration(
         self, workflow_engine, mock_llm_execution
@@ -123,11 +125,12 @@ class TestFastPathRoutingIntegration:
         assert result.startswith("fr_")
 
         # Verify the result is stored correctly
-        assert result in workflow_engine.fast_reply_results
-        stored_result = workflow_engine.fast_reply_results[result]
-        assert stored_result["result"] == "Task completed for role: timer"
-        assert stored_result["role"] == "timer"
-        assert stored_result["confidence"] == 0.95
+        assert result in workflow_engine.active_workflows
+        task_context = workflow_engine.active_workflows[result]
+        task_node = task_context.task_graph.nodes[result]
+        assert task_node.result == "Task completed for role: timer"
+        assert task_node.role == "timer"
+        assert task_node.task_context["confidence"] == 0.95
 
     def test_fast_path_smart_home_query_integration(
         self, workflow_engine, mock_llm_execution
@@ -145,11 +148,12 @@ class TestFastPathRoutingIntegration:
         assert result.startswith("fr_")
 
         # Verify the result is stored correctly
-        assert result in workflow_engine.fast_reply_results
-        stored_result = workflow_engine.fast_reply_results[result]
-        assert stored_result["result"] == "Task completed for role: smart_home"
-        assert stored_result["role"] == "smart_home"
-        assert stored_result["confidence"] == 0.88
+        assert result in workflow_engine.active_workflows
+        task_context = workflow_engine.active_workflows[result]
+        task_node = task_context.task_graph.nodes[result]
+        assert task_node.result == "Task completed for role: smart_home"
+        assert task_node.role == "smart_home"
+        assert task_node.task_context["confidence"] == 0.88
 
     def test_complex_workflow_fallback_integration(
         self, workflow_engine, mock_planning_phase
@@ -165,9 +169,8 @@ class TestFastPathRoutingIntegration:
 
         # Should return workflow ID (not fast-reply ID) due to PLANNING route
         assert result.startswith("wf_")
-        assert (
-            result not in workflow_engine.fast_reply_results
-        )  # Not stored as fast reply
+        # Complex workflows are stored in active_workflows but with different structure
+        assert result in workflow_engine.active_workflows
 
     def test_low_confidence_fallback_integration(
         self, workflow_engine, mock_planning_phase
@@ -183,7 +186,8 @@ class TestFastPathRoutingIntegration:
 
         # Should fallback to complex workflow due to low confidence (0.3 < 0.7 threshold)
         assert result.startswith("wf_")
-        assert result not in workflow_engine.fast_reply_results
+        # Complex workflows are stored in active_workflows
+        assert result in workflow_engine.active_workflows
 
     def test_fast_path_error_fallback_integration(
         self, workflow_engine, mock_planning_phase
@@ -214,7 +218,8 @@ class TestFastPathRoutingIntegration:
 
             # Should fallback to complex workflow due to execution error
             assert result.startswith("wf_")
-            assert result not in workflow_engine.fast_reply_results
+            # Complex workflows are stored in active_workflows
+            assert result in workflow_engine.active_workflows
 
     def test_fast_path_disabled_integration(
         self, mock_llm_factory, mock_message_bus, mock_planning_phase
@@ -245,7 +250,8 @@ class TestFastPathRoutingIntegration:
 
             # Should always use complex workflow when fast-path is disabled
             assert result.startswith("wf_")
-            assert result not in engine.fast_reply_results
+            # Complex workflows are stored in active_workflows
+            assert result in engine.active_workflows
 
 
 class TestFastPathRoutingPerformance:
@@ -393,7 +399,8 @@ class TestFastPathRoutingEdgeCases:
 
                 # Should fallback to complex workflow due to malformed routing response
                 assert result.startswith("wf_")
-                assert result not in workflow_engine.fast_reply_results
+                # Complex workflows are stored in active_workflows
+                assert result in workflow_engine.active_workflows
 
     def test_unknown_role_routing_integration(
         self, mock_llm_execution, mock_planning_phase
@@ -440,4 +447,5 @@ class TestFastPathRoutingEdgeCases:
 
                 # Should fallback to complex workflow due to unknown role error
                 assert result.startswith("wf_")
-                assert result not in workflow_engine.fast_reply_results
+                # Complex workflows are stored in active_workflows
+                assert result in workflow_engine.active_workflows

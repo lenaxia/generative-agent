@@ -311,12 +311,13 @@ class TestHybridWeatherIntegration:
             # Verify async execution was called for hybrid role (may be called multiple times due to event loop handling)
             assert mock_asyncio_run.called
 
-            # Verify result was stored with parameters
-            stored_result = self.workflow_engine.fast_reply_results[request_id]
-            assert stored_result["result"] == mock_result
-            assert stored_result["role"] == "weather"
-            assert stored_result["parameters"]["location"] == "Portland"
-            assert stored_result["parameters"]["timeframe"] == "today"
+            # Verify result was stored with parameters in unified storage
+            task_context = self.workflow_engine.active_workflows[request_id]
+            task_node = task_context.task_graph.nodes[request_id]
+            assert task_node.result == mock_result
+            assert task_node.role == "weather"
+            assert task_node.task_context["parameters"]["location"] == "Portland"
+            assert task_node.task_context["parameters"]["timeframe"] == "today"
 
     def test_parameter_validation_integration(self):
         """Test parameter validation works with enum constraints."""
@@ -365,10 +366,11 @@ class TestHybridWeatherIntegration:
                 request, routing_result
             )
 
-        # Verify result was stored
-        stored_result = self.workflow_engine.fast_reply_results[request_id]
-        assert stored_result["result"] == mock_result
-        assert stored_result["role"] == "default"
+        # Verify result was stored in unified storage
+        task_context = self.workflow_engine.active_workflows[request_id]
+        task_node = task_context.task_graph.nodes[request_id]
+        assert task_node.result == mock_result
+        assert task_node.role == "default"
 
 
 if __name__ == "__main__":

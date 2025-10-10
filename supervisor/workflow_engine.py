@@ -1097,55 +1097,42 @@ Current task: {base_prompt}"""
             Dict: Request status information
         """
         try:
-            # Check if it's a fast reply
-            if request_id in self.fast_reply_results:
-                return self._get_fast_reply_status(request_id)
-
-            # Check regular workflows
+            # Check unified active_workflows storage
             task_context = self.active_workflows.get(request_id)
             if not task_context:
                 return {"error": f"Request '{request_id}' not found"}
 
-            return self._get_regular_workflow_status(request_id, task_context)
+            # Determine if it's a fast reply or complex workflow
+            if request_id.startswith("fr_"):
+                return self._get_fast_reply_status(request_id, task_context)
+            else:
+                return self._get_regular_workflow_status(request_id, task_context)
 
         except Exception as e:
             logger.error(f"Error getting request status for '{request_id}': {e}")
             return {"error": str(e)}
 
-    def _get_fast_reply_status(self, request_id: str) -> dict:
-        """Get status for fast reply requests."""
-        fast_reply = self.fast_reply_results[request_id]
+    def _get_fast_reply_status(self, request_id: str, task_context) -> dict:
+        """Get status for fast reply requests from unified storage."""
+        task_node = task_context.task_graph.nodes.get(request_id)
+        if not task_node:
+            return {"error": f"Fast reply task node not found for '{request_id}'"}
 
-        # Complete duration tracking if not already done
-        self._complete_fast_reply_duration_tracking(request_id, fast_reply)
+        # Extract metadata from task_context
+        confidence = task_node.task_context.get("confidence", 0.0)
+        role = task_node.role or task_node.agent_id
 
         return {
             "request_id": request_id,
-            "execution_state": "COMPLETED",
-            "is_completed": True,
-            "result": fast_reply["result"],
-            "role": fast_reply["role"],
-            "confidence": fast_reply["confidence"],
-            "execution_time_ms": fast_reply.get("execution_time_ms", 0),
+            "execution_state": task_context.execution_state.value,
+            "is_completed": task_context.execution_state.value == "COMPLETED",
+            "result": task_node.result,
+            "role": role,
+            "confidence": confidence,
+            "execution_time_ms": (task_node.duration * 1000)
+            if task_node.duration
+            else 0,
         }
-
-    def _complete_fast_reply_duration_tracking(self, request_id: str, fast_reply: dict):
-        """Complete duration tracking for fast reply if needed."""
-        if (
-            hasattr(self, "duration_logger")
-            and request_id in self.duration_logger.active_workflows
-        ):
-            try:
-                self.duration_logger.complete_workflow_tracking(
-                    workflow_id=request_id,
-                    success=True,
-                    role=fast_reply.get("role"),
-                    confidence=fast_reply.get("confidence"),
-                )
-            except Exception as e:
-                logger.debug(
-                    f"Duration tracking already completed for {request_id}: {e}"
-                )
 
     def _get_regular_workflow_status(self, request_id: str, task_context) -> dict:
         """Get status for regular workflow requests."""
