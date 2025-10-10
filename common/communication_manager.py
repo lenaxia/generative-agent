@@ -30,6 +30,7 @@ class ChannelType(Enum):
     SONOS = "sonos"
     HOME_ASSISTANT = "home_assistant"
     WHATSAPP = "whatsapp"
+    VOICE = "voice"
     CONSOLE = "console"  # Default fallback channel
 
 
