@@ -18,7 +18,7 @@ This will show you the status of Docker, Docker daemon, and Docker Compose.
 
 **Error**: `URLSchemeUnknown: Not supported URL scheme http+docker`
 
-**Cause**: Older docker-compose versions (1.29.x) may have compatibility issues.
+**Cause**: Older docker compose versions (1.29.x) may have compatibility issues.
 
 **Solutions**:
 
@@ -27,24 +27,24 @@ This will show you the status of Docker, Docker daemon, and Docker Compose.
 ```bash
 # Install Docker Compose V2
 sudo apt-get update
-sudo apt-get install docker-compose-plugin
+sudo apt-get install docker compose-plugin
 
 # Verify installation
 docker compose version
 ```
 
-#### Option B: Update docker-compose V1
+#### Option B: Update docker compose V1
 
 ```bash
 # Remove old version
-sudo apt-get remove docker-compose
+sudo apt-get remove docker compose
 
 # Install latest version
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker compose
+sudo chmod +x /usr/local/bin/docker compose
 
 # Verify installation
-docker-compose --version
+docker compose version
 ```
 
 #### Option C: Use Docker Desktop
@@ -129,7 +129,7 @@ brew services stop redis
 
 #### Use different port
 
-Edit `docker-compose.yml` to use a different port:
+Edit `docker compose.yml` to use a different port:
 
 ```yaml
 services:
@@ -155,7 +155,7 @@ docker logs generative-agent-redis
 
 ```bash
 # Fix data directory permissions
-docker-compose down
+docker compose down
 docker volume rm generative-agent_redis_data
 make docker-start
 ```
@@ -216,7 +216,7 @@ If Makefile commands fail, try these manual commands:
 docker compose up -d redis
 
 # Using Docker Compose V1
-docker-compose up -d redis
+docker compose up -d redis
 
 # Using Docker directly
 docker run -d \
@@ -301,7 +301,7 @@ Update `config.yaml` with the cloud Redis connection details.
 
    ```bash
    docker --version
-   docker-compose --version  # or docker compose version
+   docker compose version  # or docker compose version
    ```
 
 2. **Run comprehensive check**:

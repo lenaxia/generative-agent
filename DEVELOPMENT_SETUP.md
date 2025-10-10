@@ -421,7 +421,7 @@ The application automatically detects Docker Redis when available:
 
 ```bash
 # Check if Redis container is running
-docker-compose ps
+docker compose ps
 
 # Check Redis logs
 make docker-logs

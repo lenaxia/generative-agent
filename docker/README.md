@@ -5,7 +5,7 @@ This directory contains Docker configuration files for the Universal Agent Syste
 ## Files
 
 - **`redis.conf`**: Redis configuration optimized for development
-- **`docker-compose.yml`**: Main Docker Compose configuration (in project root)
+- **`docker compose.yml`**: Main Docker Compose configuration (in project root)
 
 ## Quick Start
 
@@ -14,7 +14,7 @@ This directory contains Docker configuration files for the Universal Agent Syste
 make docker-setup
 
 # Or manually:
-docker-compose up -d redis
+docker compose up -d redis
 ```
 
 ## Redis Configuration
@@ -52,7 +52,7 @@ The Redis container is configured with development-friendly settings:
 make docker-start
 
 # Verify Redis is running
-docker-compose ps
+docker compose ps
 ```
 
 ### Connecting to Redis
@@ -118,26 +118,26 @@ make docker-start
 
 ```bash
 # Test Redis connectivity
-docker-compose exec redis redis-cli ping
+docker compose exec redis redis-cli ping
 
 # Check Redis configuration
-docker-compose exec redis redis-cli config get "*"
+docker compose exec redis redis-cli config get "*"
 
 # View detailed logs
-docker-compose logs redis -f
+docker compose logs redis -f
 ```
 
 ### Performance Issues
 
 ```bash
 # Monitor Redis performance
-docker-compose exec redis redis-cli --latency
+docker compose exec redis redis-cli --latency
 
 # Check memory usage
-docker-compose exec redis redis-cli info memory
+docker compose exec redis redis-cli info memory
 
 # Monitor slow queries
-docker-compose exec redis redis-cli slowlog get 10
+docker compose exec redis redis-cli slowlog get 10
 ```
 
 ## Configuration Customization
@@ -146,7 +146,7 @@ To modify Redis settings, edit `docker/redis.conf` and restart the container:
 
 ```bash
 # After editing redis.conf
-docker-compose restart redis
+docker compose restart redis
 ```
 
 Common customizations:
