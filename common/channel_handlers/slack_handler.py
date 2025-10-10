@@ -300,17 +300,14 @@ class SlackChannelHandler(ChannelHandler):
         def handle_message(event, say):
             if not event.get("bot_id"):  # Ignore bot messages
                 # Send to main thread via queue
-                asyncio.run_coroutine_threadsafe(
-                    self.message_queue.put(
-                        {
-                            "type": "incoming_message",
-                            "user_id": event["user"],
-                            "channel_id": event["channel"],
-                            "text": event.get("text", ""),
-                            "timestamp": event.get("ts"),
-                        }
-                    ),
-                    self._get_main_event_loop(),
+                self.message_queue.put(
+                    {
+                        "type": "incoming_message",
+                        "user_id": event["user"],
+                        "channel_id": event["channel"],
+                        "text": event.get("text", ""),
+                        "timestamp": event.get("ts"),
+                    }
                 )
 
         # Handle app mentions
@@ -322,17 +319,14 @@ class SlackChannelHandler(ChannelHandler):
                     f"📢 Processing app mention from user {event['user']}: {event.get('text', '')}"
                 )
                 # Send to main thread via queue
-                asyncio.run_coroutine_threadsafe(
-                    self.message_queue.put(
-                        {
-                            "type": "app_mention",
-                            "user_id": event["user"],
-                            "channel_id": event["channel"],
-                            "text": event.get("text", ""),
-                            "timestamp": event.get("ts"),
-                        }
-                    ),
-                    self._get_main_event_loop(),
+                self.message_queue.put(
+                    {
+                        "type": "app_mention",
+                        "user_id": event["user"],
+                        "channel_id": event["channel"],
+                        "text": event.get("text", ""),
+                        "timestamp": event.get("ts"),
+                    }
                 )
             else:
                 logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")
@@ -379,16 +373,6 @@ class SlackChannelHandler(ChannelHandler):
             logger.error(f"Slack WebSocket connection failed: {e}")
             if not self.shutdown_requested:
                 raise
-
-    def _get_main_event_loop(self):
-        """Get reference to main thread's event loop."""
-        # This is a simplified approach - in production you'd want to store
-        # the main loop reference during initialization
-        try:
-            return asyncio.get_event_loop()
-        except RuntimeError:
-            # If no event loop in current thread, create a new one
-            return asyncio.new_event_loop()
 
     async def _ask_question_impl(
         self, question: str, options: list[str], timeout: int
