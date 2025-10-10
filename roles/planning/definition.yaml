@@ -8,6 +8,8 @@ role:
   llm_type: "STRONG" # Planning requires complex reasoning and analysis
   author: "system@generative-agent"
   when_to_use: |
+    ONLY use this role when doing initial task planning,
+    or when explicitly asked to replan a task.
     Use this role when you need to:
     - Break down complex tasks into manageable steps
     - Create detailed task plans with dependencies
