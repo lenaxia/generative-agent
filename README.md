@@ -389,6 +389,37 @@ This system provides significant advantages through its modern architecture:
 - **Enhanced Capabilities**: Pause/resume, external state, MCP integration, task result sharing
 - **Cleaner Codebase**: Minimal orchestration complexity
 - **Efficiency Improvements**: Task result sharing eliminates duplicate work between dependent tasks
+- **Unified Result Storage**: All workflows (fast-reply and complex) use consistent TaskContext storage
+
+### Unified Result Architecture 🆕
+
+The system now uses **unified result storage** for both fast-reply and complex workflows:
+
+#### Before (Dual Storage)
+
+- **Fast-reply**: Results stored in `fast_reply_results` dict
+- **Complex workflows**: Results stored in `TaskContext` objects
+- **Problem**: Different retrieval mechanisms, inconsistent interfaces
+
+#### After (Unified Storage)
+
+- **All workflows**: Results stored in `TaskContext` with completed `TaskNode`
+- **Fast-reply**: Creates minimal `TaskContext` with single completed task
+- **Complex workflows**: Uses full DAG execution with multiple tasks
+- **Benefit**: Single retrieval mechanism, consistent interfaces, simplified Slack integration
+
+```python
+# Fast-reply now creates TaskContext like complex workflows
+task_node = TaskNode(
+    task_id=request_id,
+    task_name=f"fast_reply_{role}",
+    status=TaskStatus.COMPLETED,
+    result=result,  # Actual AI response stored here
+    role=role
+)
+task_context = TaskContext(task_graph, context_id=request_id)
+self.active_workflows[request_id] = task_context  # Unified storage
+```
 
 ## Project Structure
 

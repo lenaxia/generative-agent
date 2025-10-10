@@ -171,9 +171,6 @@ class WorkflowEngine:
 
         # Workflow tracking
         self.active_workflows: dict[str, TaskContext] = {}
-        self.fast_reply_results: dict[
-            str, dict[str, Any]
-        ] = {}  # Store fast reply results
 
         # Task scheduling
         self.task_queue: list[QueuedTask] = []
@@ -263,7 +260,7 @@ class WorkflowEngine:
         return self._handle_complex_workflow(request)
 
     def _handle_fast_reply(self, request: RequestMetadata, routing_result: dict) -> str:
-        """Execute fast-reply with hybrid role support and pre-extracted parameters."""
+        """Execute fast-reply with unified TaskContext storage."""
         try:
             request_id = "fr_" + str(uuid.uuid4()).split("-")[-1]
             role = routing_result["route"]
@@ -320,39 +317,45 @@ class WorkflowEngine:
                 confidence=routing_result.get("confidence"),
             )
 
-            # Store result with parameters
-            self._store_fast_reply_result(
-                request_id,
-                result,
+            # NEW: Create minimal TaskContext with completed TaskNode for unified storage
+            task_node = TaskNode(
+                task_id=request_id,
+                task_name=f"fast_reply_{role}",
+                request_id=request_id,
+                agent_id=role,
+                task_type="fast_reply",
+                prompt=request.prompt,
+                status=TaskStatus.COMPLETED,
+                result=result,
                 role=role,
-                confidence=routing_result.get("confidence"),
-                parameters=parameters,
+                llm_type="WEAK",
+                start_time=time.time(),
+                duration=0.0,  # Fast replies are essentially instantaneous
+                task_context={
+                    "confidence": routing_result.get("confidence"),
+                    "parameters": parameters,
+                    "execution_type": execution_type,
+                },
             )
 
+            # Create TaskGraph with single completed node
+            task_graph = TaskGraph(tasks=[], dependencies=[], request_id=request_id)
+            task_graph.nodes[request_id] = task_node
+
+            # Create TaskContext and store in active_workflows for unified retrieval
+            from common.task_context import ExecutionState, TaskContext
+
+            task_context = TaskContext(task_graph, context_id=request_id)
+            task_context.execution_state = ExecutionState.COMPLETED
+            task_context.end_time = time.time()
+            self.active_workflows[request_id] = task_context
+
+            logger.info(f"Fast-reply '{request_id}' stored in unified TaskContext")
             return request_id
 
         except Exception as e:
             logger.error(f"Fast-reply execution failed: {e}")
             return self._handle_complex_workflow(request)
-
-    def _store_fast_reply_result(
-        self,
-        request_id: str,
-        result: str,
-        role: str = None,
-        confidence: float = None,
-        parameters: dict = None,
-        execution_time_ms: float = None,
-    ):
-        """Enhanced result storage with parameters."""
-        self.fast_reply_results[request_id] = {
-            "result": result,
-            "role": role,
-            "confidence": confidence,
-            "parameters": parameters or {},
-            "execution_time_ms": execution_time_ms,
-            "timestamp": time.time(),
-        }
 
     def _handle_complex_workflow(self, request: RequestMetadata) -> str:
         """Existing complex workflow handling with duration tracking"""
