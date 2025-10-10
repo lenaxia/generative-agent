@@ -202,7 +202,6 @@ redis:
     socket_connect_timeout: 5
     socket_keepalive: true
     socket_keepalive_options: {}
-    connection_pool_max_connections: 50
     retry_on_timeout: true
     health_check_interval: 30
 
