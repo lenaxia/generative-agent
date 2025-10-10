@@ -347,7 +347,12 @@ class TestTimerTools:
     def test_alarm_recurring_patterns(self, mock_timer_manager):
         """Test different recurring patterns for alarms."""
         recurring_patterns = ["daily", "weekly", "weekdays", "weekends"]
-        future_time = (datetime.now() + timedelta(hours=1)).strftime("%H:%M")
+        # Use a future time for the alarm (ensure it's actually in the future)
+        future_datetime = datetime.now() + timedelta(hours=1)
+        # If we cross midnight, use a time later today instead
+        if future_datetime.date() > datetime.now().date():
+            future_datetime = datetime.now().replace(hour=23, minute=59)
+        future_time = future_datetime.strftime("%H:%M")
 
         mock_timer_manager.create_timer.return_value = "alarm_recurring"
 
