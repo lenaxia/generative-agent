@@ -584,32 +584,39 @@ def get_timer_manager() -> TimerManager:
 
 
 async def parse_timer_parameters(
-    action: str,
-    duration: Optional[str] = None,
-    time: Optional[str] = None,
-    label: Optional[str] = None,
-    timer_id: Optional[str] = None,
+    instruction: str,
+    context: Optional[Any] = None,
+    parameters: Optional[dict] = None,
     **kwargs,
 ) -> dict[str, Any]:
     """Parse and normalize timer parameters from user input.
 
     Args:
-        action: Timer action (set, cancel, list, alarm_set, alarm_cancel)
-        duration: Timer duration string (e.g., "5m", "1h30m", "120")
-        time: Alarm time string (e.g., "14:30", "2:30 PM")
-        label: Optional timer/alarm label
-        timer_id: Timer ID for cancel operations
+        instruction: The original user instruction
+        context: TaskContext (unused but required by Universal Agent)
+        parameters: Dict containing extracted parameters from routing
+        **kwargs: Additional keyword arguments
 
     Returns:
         Dict containing parsed and normalized parameters
     """
     try:
+        # Extract parameters from the routing result
+        if not parameters:
+            parameters = {}
+
+        action = parameters.get("action", "")
+        duration = parameters.get("duration", "")
+        time = parameters.get("time", "")
+        label = parameters.get("label", "")
+        timer_id = parameters.get("timer_id", "")
+
         parsed_data = {
             "action_requested": action,
             "timer_duration": None,
             "alarm_time": None,
-            "timer_label": label or "",
-            "timer_id": timer_id or "",
+            "timer_label": label,
+            "timer_id": timer_id,
             "duration_seconds": None,
             "alarm_datetime": None,
         }
@@ -637,25 +644,37 @@ async def parse_timer_parameters(
     except Exception as e:
         logger.error(f"Failed to parse timer parameters: {e}")
         return {
-            "action_requested": action,
+            "action_requested": action if "action" in locals() else "",
             "error": f"Parameter parsing failed: {str(e)}",
         }
 
 
 async def validate_timer_request(
-    action: str, duration: Optional[str] = None, time: Optional[str] = None, **kwargs
+    instruction: str,
+    context: Optional[Any] = None,
+    parameters: Optional[dict] = None,
+    **kwargs,
 ) -> dict[str, Any]:
     """Validate timer request parameters.
 
     Args:
-        action: Timer action to validate
-        duration: Duration string for validation
-        time: Time string for validation
+        instruction: The original user instruction
+        context: TaskContext (unused but required by Universal Agent)
+        parameters: Dict containing extracted parameters from routing
+        **kwargs: Additional keyword arguments
 
     Returns:
         Dict containing validation results
     """
     try:
+        # Extract parameters from the routing result
+        if not parameters:
+            parameters = {}
+
+        action = parameters.get("action", "")
+        duration = parameters.get("duration", "")
+        time = parameters.get("time", "")
+
         validation_result = {"valid": True, "errors": [], "warnings": []}
 
         # Validate action
@@ -706,11 +725,19 @@ async def validate_timer_request(
         }
 
 
-async def format_timer_confirmation(llm_response: str, **kwargs) -> str:
+async def format_timer_confirmation(
+    llm_response: str,
+    context: Optional[Any] = None,
+    pre_data: Optional[dict] = None,
+    **kwargs,
+) -> str:
     """Format the LLM response for clear timer confirmation.
 
     Args:
         llm_response: Raw response from LLM
+        context: TaskContext (unused but required by Universal Agent)
+        pre_data: Pre-processing data (unused but required by Universal Agent)
+        **kwargs: Additional keyword arguments
 
     Returns:
         Formatted confirmation message
@@ -731,36 +758,50 @@ async def format_timer_confirmation(llm_response: str, **kwargs) -> str:
         return f"Timer operation completed. (Formatting error: {str(e)})"
 
 
-async def schedule_notification(llm_response: str, **kwargs) -> dict[str, Any]:
+async def schedule_notification(
+    llm_response: str,
+    context: Optional[Any] = None,
+    pre_data: Optional[dict] = None,
+    **kwargs,
+) -> str:
     """Schedule system notification for timer/alarm (placeholder implementation).
 
     Args:
         llm_response: LLM response containing timer details
+        context: TaskContext (unused but required by Universal Agent)
+        pre_data: Pre-processing data (unused but required by Universal Agent)
+        **kwargs: Additional keyword arguments
 
     Returns:
-        Dict containing notification scheduling result
+        Original LLM response (post-processors should return string)
     """
     try:
         # Placeholder implementation - would integrate with system notifications
         logger.info("Timer notification scheduling requested (not implemented)")
-        return {
-            "notification_scheduled": False,
-            "message": "Notification scheduling not implemented - requires system integration",
-        }
+        # Post-processors should return the (potentially modified) LLM response
+        return llm_response
 
     except Exception as e:
         logger.error(f"Failed to schedule notification: {e}")
-        return {"notification_scheduled": False, "error": str(e)}
+        return llm_response
 
 
-async def audit_timer_action(llm_response: str, **kwargs) -> dict[str, Any]:
+async def audit_timer_action(
+    llm_response: str,
+    context: Optional[Any] = None,
+    pre_data: Optional[dict] = None,
+    **kwargs,
+) -> str:
     """Audit log timer action for tracking and compliance.
 
     Args:
         llm_response: LLM response containing timer details
+        context: TaskContext (unused but required by Universal Agent)
+        pre_data: Pre-processing data (unused but required by Universal Agent)
+        **kwargs: Additional keyword arguments
 
     Returns:
-        Dict containing audit logging result
+        Original LLM response (post-processors should return string)
     """
     try:
         # Log timer action for audit trail
@@ -772,14 +813,12 @@ async def audit_timer_action(llm_response: str, **kwargs) -> dict[str, Any]:
         }
 
         logger.info(f"Timer audit entry: {audit_entry}")
-        return {
-            "audit_logged": True,
-            "entry_id": f"timer_{int(datetime.now().timestamp())}",
-        }
+        # Post-processors should return the (potentially modified) LLM response
+        return llm_response
 
     except Exception as e:
         logger.error(f"Failed to audit timer action: {e}")
-        return {"audit_logged": False, "error": str(e)}
+        return llm_response
 
 
 def _parse_duration_to_seconds(duration_str: str) -> Optional[int]:
