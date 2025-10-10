@@ -528,11 +528,22 @@ class CommunicationManager:
 
     async def _initialize_all_channels(self):
         """Initialize all registered channel handlers."""
+        # Only initialize unique handlers (avoid duplicates from dual key storage)
+        initialized_handlers = set()
+
         for channel_id, handler in self.channels.items():
+            # Skip if we've already initialized this handler instance
+            if id(handler) in initialized_handlers:
+                continue
+
             handler.communication_manager = self
             success = await handler.validate_and_initialize()
             if not success:
-                logger.warning(f"Channel {channel_id} failed to initialize")
+                # Get descriptive error message
+                error_msg = handler._get_requirements_error_message()
+                logger.warning(f"{handler.channel_type.value} disabled: {error_msg}")
+
+            initialized_handlers.add(id(handler))
 
     def register_channel(self, handler: ChannelHandler) -> None:
         """
