@@ -124,20 +124,38 @@ class SlackChannelHandler(ChannelHandler):
         # Determine the channel to post to
         channel = recipient or self.default_channel
 
+        # Enhance message with @ mention if user_id is provided
+        user_id = metadata.get("user_id")
+        enhanced_message = self._format_message_with_mention(message, user_id)
+
         # Check if we have buttons to add
         buttons = metadata.get("buttons", [])
 
         # Prepare the payload based on available credentials
         if self.webhook_url:
             return await self._send_via_webhook(
-                message, channel, message_format, buttons, metadata
+                enhanced_message, channel, message_format, buttons, metadata
             )
         elif self.bot_token:
             return await self._send_via_api(
-                message, channel, message_format, buttons, metadata
+                enhanced_message, channel, message_format, buttons, metadata
             )
         else:
             return {"success": False, "error": "No Slack credentials configured"}
+
+    def _format_message_with_mention(self, message: str, user_id: Optional[str]) -> str:
+        """Format message with @ mention if user_id is provided.
+
+        Args:
+            message: Original message content
+            user_id: Slack user ID to mention (e.g., "U123456")
+
+        Returns:
+            Enhanced message with @ mention prepended if user_id provided
+        """
+        if user_id:
+            return f"<@{user_id}> {message}"
+        return message
 
     async def _send_via_webhook(
         self,
@@ -315,7 +333,7 @@ class SlackChannelHandler(ChannelHandler):
             # Ignore messages that mention the bot (these will be handled by app_mention)
             text = event.get("text", "")
             if text and self.bot_user_id and f"<@{self.bot_user_id}>" in text:
-                logger.info(
+                logger.debug(
                     f"🔕 Ignoring message with bot mention (will be handled by app_mention): {text}"
                 )
                 return
