@@ -558,8 +558,14 @@ class CommunicationManager:
         self, origin_channel: str, message_type: str, context: dict
     ) -> list[str]:
         """Determine which channels should receive the message."""
-        # Default: return to origin channel
-        channels = [origin_channel] if origin_channel else ["console"]
+        # Extract channel type from channel_id (format: "channel_type:actual_id")
+        if ":" in origin_channel:
+            channel_type = origin_channel.split(":", 1)[0]
+        else:
+            channel_type = origin_channel
+
+        # Default: return to origin channel type
+        channels = [channel_type] if channel_type else ["console"]
 
         # Special routing rules
         if message_type == "timer_expired":

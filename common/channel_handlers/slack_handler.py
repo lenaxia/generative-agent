@@ -49,6 +49,7 @@ class SlackChannelHandler(ChannelHandler):
         # WebSocket and bidirectional support
         self.slack_app = None
         self.socket_handler = None
+        self.bot_user_id = None  # Will be set when Slack app is initialized
         self.pending_questions = {}  # Track questions waiting for responses
         self.question_timeout = 300  # Default timeout for questions
         self.shutdown_flag = False  # Flag to signal shutdown
@@ -295,20 +296,43 @@ class SlackChannelHandler(ChannelHandler):
         self.slack_app = App(token=self.bot_token)
         self.socket_handler = SocketModeHandler(self.slack_app, self.app_token)
 
+        # Get bot user ID for duplicate message filtering
+        try:
+            auth_response = self.slack_app.client.auth_test()
+            self.bot_user_id = auth_response["user_id"]
+            logger.info(f"🤖 Bot user ID: {self.bot_user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to get bot user ID: {e}")
+            self.bot_user_id = None
+
         # Handle incoming messages
         @self.slack_app.event("message")
         def handle_message(event, say):
-            if not event.get("bot_id"):  # Ignore bot messages
-                # Send to main thread via queue
-                self.message_queue.put(
-                    {
-                        "type": "incoming_message",
-                        "user_id": event["user"],
-                        "channel_id": event["channel"],
-                        "text": event.get("text", ""),
-                        "timestamp": event.get("ts"),
-                    }
+            # Ignore bot messages
+            if event.get("bot_id"):
+                return
+
+            # Ignore messages that mention the bot (these will be handled by app_mention)
+            text = event.get("text", "")
+            if text and self.bot_user_id and f"<@{self.bot_user_id}>" in text:
+                logger.info(
+                    f"🔕 Ignoring message with bot mention (will be handled by app_mention): {text}"
                 )
+                return
+
+            # Only process direct messages or messages without bot mentions
+            logger.info(
+                f"📨 Processing direct message from user {event['user']}: {text}"
+            )
+            self.message_queue.put(
+                {
+                    "type": "incoming_message",
+                    "user_id": event["user"],
+                    "channel_id": event["channel"],
+                    "text": text,
+                    "timestamp": event.get("ts"),
+                }
+            )
 
         # Handle app mentions
         @self.slack_app.event("app_mention")

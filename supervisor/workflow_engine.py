@@ -369,6 +369,25 @@ class WorkflowEngine:
             self.active_workflows[request_id] = task_context
 
             logger.info(f"Fast-reply '{request_id}' stored in unified TaskContext")
+
+            # Send response back to the requester if response_requested is True
+            if request.response_requested:
+                logger.info(
+                    f"📤 Sending fast-reply result back to requester: {request.metadata.get('channel_id')}"
+                )
+                self.message_bus.publish(
+                    self,
+                    MessageType.SEND_MESSAGE,
+                    {
+                        "message": result,
+                        "context": {
+                            "channel_id": request.metadata.get("channel_id"),
+                            "user_id": request.metadata.get("user_id"),
+                            "request_id": request.metadata.get("request_id"),
+                        },
+                    },
+                )
+
             return request_id
 
         except Exception as e:
