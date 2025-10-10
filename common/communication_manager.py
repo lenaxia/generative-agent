@@ -262,6 +262,27 @@ class CommunicationManager:
 
         self._initialized = True
 
+    def initialize_sync(self):
+        """Initialize channels synchronously (for startup without event loop)."""
+        if self._initialized:
+            return
+
+        # Discover and register channel handlers synchronously
+        import asyncio
+
+        # Create a temporary event loop for initialization
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Run the async initialization
+        loop.run_until_complete(self._discover_and_initialize_channels())
+
+        self._initialized = True
+        logger.info("Communication manager channels initialized synchronously")
+
     def _setup_message_subscriptions(self):
         """Subscribe to all communication-related MessageBus events."""
         subscriptions = [

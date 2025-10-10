@@ -152,9 +152,9 @@ class Supervisor:
         from common.communication_manager import CommunicationManager
 
         self.communication_manager = CommunicationManager(self.message_bus)
-        logger.info(
-            "Communication manager created, will initialize channels when event loop is available"
-        )
+        # Initialize channels synchronously during startup
+        self.communication_manager.initialize_sync()
+        logger.info("Communication manager initialized with channel handlers")
 
     def _initialize_llm_factory(self):
         """Initialize LLM factory with provider configurations."""
