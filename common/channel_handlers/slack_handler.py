@@ -357,10 +357,10 @@ class SlackChannelHandler(ChannelHandler):
         # Handle app mentions
         @self.slack_app.event("app_mention")
         def handle_app_mention(event, say):
-            logger.info(f"🔔 Received app mention: {event}")
+            logger.debug(f"Received app mention: {event}")
             if not event.get("bot_id"):  # Ignore bot messages
-                logger.info(
-                    f"📢 Processing app mention from user {event['user']}: {event.get('text', '')}"
+                logger.debug(
+                    f"Processing app mention from user {event['user']}: {event.get('text', '')}"
                 )
                 # Send to main thread via queue
                 message_data = {
@@ -370,10 +370,10 @@ class SlackChannelHandler(ChannelHandler):
                     "text": event.get("text", ""),
                     "timestamp": event.get("ts"),
                 }
-                logger.info(f"📤 Adding app mention to message queue: {message_data}")
+                logger.debug(f"Adding app mention to message queue: {message_data}")
                 self.message_queue.put(message_data)
-                logger.info(
-                    f"✅ App mention successfully queued. Queue size: {self.message_queue.qsize()}"
+                logger.debug(
+                    f"App mention successfully queued. Queue size: {self.message_queue.qsize()}"
                 )
             else:
                 logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")

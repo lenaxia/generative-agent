@@ -360,8 +360,8 @@ class CommunicationManager:
                     while True:
                         try:
                             message = queue_obj.get_nowait()  # Non-blocking get
-                            logger.info(
-                                f"📨 Processing queued message from {channel_id}: {message}"
+                            logger.debug(
+                                f"Processing queued message from {channel_id}: {message}"
                             )
                             await self._handle_channel_message(channel_id, message)
                             queue_obj.task_done()
@@ -398,7 +398,7 @@ class CommunicationManager:
 
     async def _handle_channel_message(self, channel_id: str, message: dict):
         """Handle incoming message from channel background thread."""
-        logger.info(f"🔄 Handling channel message from {channel_id}: {message}")
+        logger.debug(f"Handling channel message from {channel_id}: {message}")
 
         if message["type"] == "incoming_message" or message["type"] == "app_mention":
             # Generate a unique request ID to track this request
@@ -429,8 +429,8 @@ class CommunicationManager:
                 response_requested=True,
             )
 
-            logger.info(
-                f"📤 Publishing INCOMING_REQUEST to message bus: {request_metadata}"
+            logger.debug(
+                f"Publishing INCOMING_REQUEST to message bus: {request_metadata}"
             )
 
             # Route to supervisor for processing
@@ -870,9 +870,10 @@ class CommunicationManager:
         Args:
             message: The timer expired event message
         """
-        timer_data = message.get("data", {})
+        # Timer data is published directly, not nested under "data"
+        timer_data = message
         timer_id = timer_data.get("timer_id")
-        timer_name = timer_data.get("name", "Timer")
+        timer_name = timer_data.get("timer_name", "Timer")
 
         if not timer_id:
             logger.error("Received timer expired event without timer_id")
@@ -890,9 +891,16 @@ class CommunicationManager:
                 logger.warning(f"Unknown notification channel: {notification_channel}")
 
         # Send the notification
-        notification_message = f"⏰ Timer expired: {timer_name}"
+        custom_message = timer_data.get("custom_message", f"{timer_name} expired!")
+        notification_message = f"⏰ {custom_message}"
+
+        # Determine target channel - use original channel_id from timer
+        original_channel_id = timer_data.get("channel_id", "default")
+        user_id = timer_data.get("user_id", "system")
+
         context = {
-            "channel_id": channel_type.value if channel_type else "console",
+            "channel_id": original_channel_id,
+            "user_id": user_id,
             "recipient": recipient,
             "delivery_guarantee": DeliveryGuarantee.AT_LEAST_ONCE,
             "message_type": "timer_expired",
