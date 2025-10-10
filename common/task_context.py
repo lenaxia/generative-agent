@@ -35,12 +35,20 @@ class TaskContext:
     conversation history, progressive summaries, and checkpointing functionality.
     """
 
-    def __init__(self, task_graph: TaskGraph, context_id: Optional[str] = None):
+    def __init__(
+        self,
+        task_graph: TaskGraph,
+        context_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        channel_id: Optional[str] = None,
+    ):
         """Initialize TaskContext with an existing TaskGraph.
 
         Args:
             task_graph (TaskGraph): The underlying task graph
             context_id (str, optional): Unique identifier for this context
+            user_id (str, optional): User ID from request metadata
+            channel_id (str, optional): Channel ID from request metadata
         """
         self.task_graph = task_graph
         self.context_id = context_id or f"ctx_{str(uuid.uuid4()).split('-')[-1]}"
@@ -48,6 +56,9 @@ class TaskContext:
         self.start_time = None
         self.end_time = None
         self.context_version = "1.0"
+        # Store request metadata for role lifecycle functions
+        self.user_id = user_id
+        self.channel_id = channel_id
 
     @classmethod
     def from_tasks(
@@ -56,6 +67,8 @@ class TaskContext:
         dependencies: Optional[list[TaskDependency]] = None,
         request_id: Optional[str] = None,
         context_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        channel_id: Optional[str] = None,
     ) -> "TaskContext":
         """Create TaskContext directly from tasks and dependencies.
 
@@ -64,6 +77,8 @@ class TaskContext:
             dependencies: List of task dependencies
             request_id: Request ID for the task graph
             context_id: Context ID for this TaskContext
+            user_id: User ID from request metadata
+            channel_id: Channel ID from request metadata
 
         Returns:
             TaskContext: New TaskContext instance
@@ -71,7 +86,12 @@ class TaskContext:
         task_graph = TaskGraph(
             tasks=tasks, dependencies=dependencies, request_id=request_id
         )
-        return cls(task_graph=task_graph, context_id=context_id)
+        return cls(
+            task_graph=task_graph,
+            context_id=context_id,
+            user_id=user_id,
+            channel_id=channel_id,
+        )
 
     @classmethod
     def from_checkpoint(cls, checkpoint: dict) -> "TaskContext":

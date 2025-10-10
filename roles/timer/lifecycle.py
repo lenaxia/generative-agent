@@ -599,7 +599,7 @@ async def parse_timer_parameters(
         instruction: The original user instruction
         context: TaskContext (unused but required by Universal Agent)
         parameters: Dict containing extracted parameters from routing
-        **kwargs: Additional keyword arguments
+        **kwargs: Additional keyword arguments including request metadata
 
     Returns:
         Dict containing parsed and normalized parameters
@@ -653,20 +653,23 @@ async def parse_timer_parameters(
                 channel_id = "default"
 
                 if context:
-                    # Extract user and channel from context
-                    if hasattr(context, "user_id"):
+                    # Extract user and channel from TaskContext
+                    if hasattr(context, "user_id") and context.user_id:
                         user_id = context.user_id
-                    elif isinstance(context, dict):
-                        user_id = context.get("user_id", "system")
-
-                    if hasattr(context, "channel_id"):
+                    if hasattr(context, "channel_id") and context.channel_id:
                         channel_id = context.channel_id
-                    elif isinstance(context, dict):
-                        channel_id = context.get("channel_id", "default")
 
-                    # For Slack integration, ensure channel_id has slack: prefix
-                    if channel_id != "default" and not channel_id.startswith("slack:"):
-                        channel_id = f"slack:{channel_id}"
+                    logger.info(
+                        f"Timer context from TaskContext: user_id={user_id}, channel_id={channel_id}"
+                    )
+
+                # Ensure proper channel format - don't modify if already properly formatted
+                if (
+                    channel_id
+                    and channel_id != "default"
+                    and not channel_id.startswith(("slack:", "console", "email", "sms"))
+                ):
+                    channel_id = f"slack:{channel_id}"
 
                 # Execute timer creation
                 timer_id = await timer_manager.create_timer(
@@ -821,11 +824,6 @@ async def format_timer_confirmation(
         # Clean up the response and ensure it's user-friendly
         formatted_response = llm_response.strip()
 
-        # Add timestamp for confirmation
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        formatted_response += f"\n\n⏰ Confirmed at {timestamp}"
-
-        logger.info("Timer confirmation formatted successfully")
         return formatted_response
 
     except Exception as e:

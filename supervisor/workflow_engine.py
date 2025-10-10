@@ -284,30 +284,55 @@ class WorkflowEngine:
 
             if execution_type == "hybrid":
                 # Get workflow context for user_id and channel_id
-                workflow_context = {}
-                if (
-                    hasattr(self, "duration_logger")
-                    and request_id in self.duration_logger.active_workflows
-                ):
-                    workflow_metrics = self.duration_logger.active_workflows[request_id]
+                user_id = None
+                channel_id = None
+
+                # First try to get from request metadata
+                if request.metadata:
+                    user_id = request.metadata.get("user_id")
+                    channel_id = request.metadata.get("channel_id")
+                    logger.info(
+                        f"Fast-reply context from request metadata: user_id={user_id}, channel_id={channel_id}"
+                    )
+
+                # Fallback to workflow metrics if not in metadata
+                if not user_id or not channel_id:
                     if (
-                        hasattr(workflow_metrics, "user_id")
-                        and workflow_metrics.user_id
+                        hasattr(self, "duration_logger")
+                        and request_id in self.duration_logger.active_workflows
                     ):
-                        workflow_context["user_id"] = workflow_metrics.user_id
-                    if (
-                        hasattr(workflow_metrics, "channel_id")
-                        and workflow_metrics.channel_id
-                    ):
-                        workflow_context["channel_id"] = workflow_metrics.channel_id
+                        workflow_metrics = self.duration_logger.active_workflows[
+                            request_id
+                        ]
+                        if (
+                            hasattr(workflow_metrics, "user_id")
+                            and workflow_metrics.user_id
+                        ):
+                            user_id = workflow_metrics.user_id
+                        if (
+                            hasattr(workflow_metrics, "channel_id")
+                            and workflow_metrics.channel_id
+                        ):
+                            channel_id = workflow_metrics.channel_id
+
+                # Create TaskContext with user_id and channel_id for lifecycle functions
+                from common.task_context import TaskContext
+                from common.task_graph import TaskGraph
+
+                task_graph = TaskGraph(tasks=[], dependencies=[])
+                task_context = TaskContext(
+                    task_graph=task_graph,
+                    context_id=request_id,
+                    user_id=user_id,
+                    channel_id=channel_id,
+                )
 
                 # Execute hybrid role with pre-extracted parameters
                 # execute_task is now synchronous and handles async internally
                 result = self.universal_agent.execute_task(
                     instruction=request.prompt,
                     role=role,
-                    llm_type=LLMType.WEAK,
-                    context=workflow_context if workflow_context else None,
+                    context=task_context,
                     extracted_parameters=parameters,
                 )
             else:

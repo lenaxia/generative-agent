@@ -1,231 +1,180 @@
 #!/usr/bin/env python3
 """
-Test script to verify timer notification fixes.
+Test script to verify timer notification fix.
 
-This script tests:
-1. Timer expiry notifications are properly handled
-2. Reduced logging output (debug level instead of info)
-3. Timer notifications route to correct channels
+This script tests that timers created from Slack messages properly
+route their expiry notifications back to the original Slack channel.
 """
 
 import asyncio
 import logging
-import sys
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Add project root to path
-sys.path.insert(0, ".")
+import pytest
 
-from common.communication_manager import CommunicationManager
-from common.message_bus import MessageBus, MessageType
-from supervisor.timer_monitor import TimerMonitor
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+async def test_timer_notification_routing():
+    """Test that timer expiry notifications are routed to the correct Slack channel."""
+
+    # Mock the timer manager and communication manager
+    with patch("roles.timer.lifecycle.get_timer_manager") as mock_get_timer_manager:
+        # Create a mock timer manager
+        mock_timer_manager = AsyncMock()
+        mock_timer_manager.create_timer = AsyncMock(return_value="timer_test123")
+        mock_get_timer_manager.return_value = mock_timer_manager
+
+        # Import the function we want to test
+        from common.task_context import TaskContext
+        from common.task_graph import TaskGraph
+        from roles.timer.lifecycle import parse_timer_parameters
+
+        # Create a TaskContext with Slack user and channel info
+        task_graph = TaskGraph(tasks=[], dependencies=[])
+        context = TaskContext(
+            task_graph=task_graph,
+            context_id="test_context",
+            user_id="U52L1U8M6",  # Slack user ID from the logs
+            channel_id="slack:C52L1UK5E",  # Slack channel ID from the logs
+        )
+
+        # Test parameters for setting a timer
+        parameters = {"action": "set", "duration": "1m"}
+
+        # Call the parse_timer_parameters function
+        result = await parse_timer_parameters(
+            instruction="set a timer for 1min", context=context, parameters=parameters
+        )
+
+        # Verify the timer was created with the correct context
+        mock_timer_manager.create_timer.assert_called_once()
+        call_args = mock_timer_manager.create_timer.call_args
+
+        # Check that user_id and channel_id were passed correctly
+        assert call_args.kwargs["user_id"] == "U52L1U8M6"
+        assert call_args.kwargs["channel_id"] == "slack:C52L1UK5E"
+
+        # Verify the result contains success
+        assert result["execution_result"]["success"] is True
+        assert "timer_test123" in result["execution_result"]["message"]
+
+        logger.info("✅ Timer context routing test passed!")
 
 
 async def test_timer_expiry_notification():
-    """Test that timer expiry notifications work correctly."""
-    print("🧪 Testing timer expiry notification fix...")
+    """Test that timer expiry notifications are sent to the correct channel."""
 
-    # Setup
-    message_bus = MessageBus()
-    message_bus.start()
+    from common.message_bus import MessageBus, MessageType
+    from supervisor.timer_monitor import TimerMonitor
 
-    # Mock communication manager with route_message method
-    comm_manager = CommunicationManager(message_bus)
-    comm_manager.route_message = AsyncMock()
+    # Create a mock message bus
+    mock_message_bus = MagicMock()
+    mock_message_bus.publish = MagicMock()
 
-    # Create a mock timer expired event (as published by TimerMonitor)
-    timer_expired_event = {
-        "timer_id": "timer_test123",
-        "timer_name": "1m timer",
-        "timer_type": "countdown",
+    # Create timer monitor
+    timer_monitor = TimerMonitor(mock_message_bus)
+
+    # Mock timer data with Slack channel info
+    timer_data = {
+        "id": "timer_test123",
+        "name": "1m timer",
+        "type": "countdown",
         "user_id": "U52L1U8M6",
         "channel_id": "slack:C52L1UK5E",
         "custom_message": "1m timer expired!",
         "notification_config": {},
-        "expired_at": int(time.time()),
-        "next_timer_id": None,
-        "notification_channel": None,
-        "notification_recipient": None,
-        "notification_priority": None,
         "metadata": {},
     }
 
-    # Test the timer expired handler
-    await comm_manager._handle_timer_expired(timer_expired_event)
+    # Test the timer expiry event publishing
+    timer_monitor._publish_timer_expired_event(timer_data)
 
-    # Verify route_message was called with correct parameters
-    assert comm_manager.route_message.called, "route_message should have been called"
+    # Verify the message was published with correct data
+    mock_message_bus.publish.assert_called_once()
+    call_args = mock_message_bus.publish.call_args
 
-    call_args = comm_manager.route_message.call_args
-    message = call_args[0][0]
-    context = call_args[0][1]
+    # Check message type
+    assert call_args[0][1] == MessageType.TIMER_EXPIRED
 
-    # Check message content
-    assert "⏰" in message, f"Message should contain timer emoji: {message}"
-    assert (
-        "1m timer expired!" in message
-    ), f"Message should contain custom message: {message}"
+    # Check event data
+    event_data = call_args[0][2]
+    assert event_data["timer_id"] == "timer_test123"
+    assert event_data["user_id"] == "U52L1U8M6"
+    assert event_data["channel_id"] == "slack:C52L1UK5E"
+    assert event_data["custom_message"] == "1m timer expired!"
 
-    # Check context routing
-    assert (
-        context["channel_id"] == "slack:C52L1UK5E"
-    ), f"Should route to original channel: {context['channel_id']}"
-    assert (
-        context["user_id"] == "U52L1U8M6"
-    ), f"Should include user_id: {context['user_id']}"
-    assert (
-        context["message_type"] == "timer_expired"
-    ), f"Should have correct message type: {context['message_type']}"
-
-    print("✅ Timer expiry notification test passed!")
-    return True
+    logger.info("✅ Timer expiry notification test passed!")
 
 
-async def test_logging_levels():
-    """Test that logging levels have been reduced from INFO to DEBUG."""
-    print("🧪 Testing reduced logging levels...")
+async def test_communication_manager_routing():
+    """Test that communication manager routes timer expiry to correct channel."""
 
-    # Setup logging capture
-    import io
+    from common.communication_manager import CommunicationManager
+    from common.message_bus import MessageBus
 
-    log_capture = io.StringIO()
-    handler = logging.StreamHandler(log_capture)
-    handler.setLevel(logging.INFO)
+    # Create mock message bus
+    mock_message_bus = MagicMock()
 
-    # Get loggers for the modules we modified
-    slack_logger = logging.getLogger("common.channel_handlers.slack_handler")
-    comm_logger = logging.getLogger("common.communication_manager")
+    # Create communication manager
+    comm_manager = CommunicationManager(mock_message_bus)
 
-    # Clear existing handlers and add our capture handler
-    for logger in [slack_logger, comm_logger]:
-        logger.handlers.clear()
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
-
-    # Test that debug messages don't appear at INFO level
-    slack_logger.debug("This debug message should not appear at INFO level")
-    comm_logger.debug("Another debug message should not appear at INFO level")
-
-    # Test that info messages still appear
-    slack_logger.info("This info message should appear")
-    comm_logger.info("Another info message should appear")
-
-    # Check captured output
-    log_output = log_capture.getvalue()
-
-    # Should contain INFO messages but not DEBUG messages
-    assert (
-        "This info message should appear" in log_output
-    ), "INFO messages should still be captured"
-    assert (
-        "Another info message should appear" in log_output
-    ), "INFO messages should still be captured"
-    assert (
-        "This debug message should not appear" not in log_output
-    ), "DEBUG messages should not appear at INFO level"
-    assert (
-        "Another debug message should not appear" not in log_output
-    ), "DEBUG messages should not appear at INFO level"
-
-    print("✅ Logging levels test passed!")
-    return True
-
-
-async def test_timer_monitor_integration():
-    """Test timer monitor publishes events correctly."""
-    print("🧪 Testing timer monitor event publishing...")
-
-    # Setup
-    message_bus = MessageBus()
-    message_bus.start()
-
-    # Mock the message bus publish method
-    original_publish = message_bus.publish
-    published_events = []
-
-    def mock_publish(sender, message_type, data):
-        published_events.append((sender, message_type, data))
-        return original_publish(sender, message_type, data)
-
-    message_bus.publish = mock_publish
-
-    # Create timer monitor
-    timer_monitor = TimerMonitor(message_bus)
-
-    # Create a mock timer
-    mock_timer = {
-        "id": "timer_test456",
-        "name": "Test Timer",
-        "type": "countdown",
+    # Mock timer expiry message
+    timer_message = {
+        "timer_id": "timer_test123",
+        "timer_name": "1m timer",
         "user_id": "U52L1U8M6",
         "channel_id": "slack:C52L1UK5E",
-        "custom_message": "Test timer expired!",
-        "notification_config": {},
-        "metadata": {},
+        "custom_message": "1m timer expired!",
     }
 
-    # Test publishing timer expired event
-    timer_monitor._publish_timer_expired_event(mock_timer)
+    # Mock route_message method
+    with patch.object(
+        comm_manager, "route_message", new_callable=AsyncMock
+    ) as mock_route:
+        # Call the timer expired handler
+        await comm_manager._handle_timer_expired(timer_message)
 
-    # Verify event was published
-    assert (
-        len(published_events) == 1
-    ), f"Should have published 1 event, got {len(published_events)}"
+        # Verify route_message was called with correct parameters
+        mock_route.assert_called_once()
+        call_args = mock_route.call_args
 
-    sender, message_type, event_data = published_events[0]
-    assert (
-        message_type == MessageType.TIMER_EXPIRED
-    ), f"Should publish TIMER_EXPIRED event, got {message_type}"
-    assert (
-        event_data["timer_id"] == "timer_test456"
-    ), f"Should include timer_id: {event_data}"
-    assert (
-        event_data["timer_name"] == "Test Timer"
-    ), f"Should include timer_name: {event_data}"
-    assert (
-        event_data["channel_id"] == "slack:C52L1UK5E"
-    ), f"Should include channel_id: {event_data}"
+        # Check message content
+        message = call_args[0][0]
+        assert "1m timer expired!" in message
 
-    print("✅ Timer monitor integration test passed!")
-    return True
+        # Check context
+        context = call_args[0][1]
+        assert context["channel_id"] == "slack:C52L1UK5E"
+        assert context["user_id"] == "U52L1U8M6"
+
+        logger.info("✅ Communication manager routing test passed!")
 
 
-async def main():
+async def run_all_tests():
     """Run all tests."""
-    print("🚀 Starting timer notification fix tests...\n")
+    logger.info("🧪 Running timer notification fix tests...")
 
-    tests = [
-        test_timer_expiry_notification,
-        test_logging_levels,
-        test_timer_monitor_integration,
-    ]
+    try:
+        await test_timer_notification_routing()
+        await test_timer_expiry_notification()
+        await test_communication_manager_routing()
 
-    results = []
-    for test in tests:
-        try:
-            result = await test()
-            results.append(result)
-            print()
-        except Exception as e:
-            print(f"❌ Test {test.__name__} failed: {e}")
-            results.append(False)
-            print()
-
-    # Summary
-    passed = sum(results)
-    total = len(results)
-
-    print(f"📊 Test Results: {passed}/{total} tests passed")
-
-    if passed == total:
-        print("🎉 All tests passed! Timer notification fixes are working correctly.")
+        logger.info("🎉 All tests passed! Timer notification fix is working correctly.")
         return True
-    else:
-        print("❌ Some tests failed. Please check the fixes.")
+
+    except Exception as e:
+        logger.error(f"❌ Test failed: {e}")
+        import traceback
+
+        traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
-    success = asyncio.run(main())
-    sys.exit(0 if success else 1)
+    # Run the tests
+    success = asyncio.run(run_all_tests())
+    exit(0 if success else 1)

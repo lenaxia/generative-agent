@@ -95,6 +95,8 @@ prompts:
     Always respond in natural language as your output will be used for notifications.
     Focus on the execution_result to determine success or failure.
 
+    An example response is "Timer 'Meeting reminder' set for 30 minutes. It will go off at 3:45 PM." or "Alarm set for 7:00 AM tomorrow."
+
 # Model Parameters
 model_config:
   temperature: 0.1 # Low temperature for consistent timer confirmations
