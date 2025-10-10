@@ -221,6 +221,23 @@ class CommunicationManager:
     - Message format conversion between channels
     """
 
+    _instance = None
+
+    @classmethod
+    def get_instance(cls) -> "CommunicationManager":
+        """Get or create the singleton instance of CommunicationManager.
+
+        Note: This method is deprecated. Use dependency injection instead.
+        """
+        if cls._instance is None:
+            # Create with a new MessageBus for backward compatibility
+            from common.message_bus import MessageBus
+
+            message_bus = MessageBus()
+            message_bus.start()
+            cls._instance = CommunicationManager(message_bus)
+        return cls._instance
+
     def __init__(self, message_bus: MessageBus):
         """Initialize the communication manager with supervisor's MessageBus."""
         self.message_bus = message_bus  # Use supervisor's MessageBus
@@ -462,7 +479,9 @@ class CommunicationManager:
         if not isinstance(handler, ChannelHandler):
             raise TypeError("Handler must be an instance of ChannelHandler")
 
+        # Store with both string key (new) and enum key (backward compatibility)
         self.channels[handler.channel_type.value] = handler
+        self.channels[handler.channel_type] = handler
         logger.info(f"Registered channel handler for {handler.channel_type.value}")
 
     def unregister_channel(self, channel_type: ChannelType) -> None:
@@ -472,10 +491,13 @@ class CommunicationManager:
         Args:
             channel_type: The type of channel to unregister
         """
+        # Remove both string and enum keys
         channel_id = channel_type.value
         if channel_id in self.channels:
             del self.channels[channel_id]
-            logger.info(f"Unregistered channel handler for {channel_type.value}")
+        if channel_type in self.channels:
+            del self.channels[channel_type]
+        logger.info(f"Unregistered channel handler for {channel_type.value}")
 
     async def send_notification(
         self,
@@ -628,3 +650,61 @@ class CommunicationManager:
             "metadata": {"timer_id": timer_id, "timer_data": timer_data},
         }
         await self.route_message(notification_message, context)
+
+    async def send_notification(
+        self,
+        message: str,
+        channel_type: Optional[ChannelType] = None,
+        recipient: Optional[str] = None,
+        message_format: MessageFormat = MessageFormat.PLAIN_TEXT,
+        delivery_guarantee: DeliveryGuarantee = DeliveryGuarantee.BEST_EFFORT,
+        metadata: Optional[dict[str, Any]] = None,
+        fallback_channels: Optional[list[ChannelType]] = None,
+    ) -> dict[str, Any]:
+        """
+        Send a notification through the specified channel with fallback support.
+
+        This method provides backward compatibility with the old API.
+        New code should use route_message() instead.
+
+        Args:
+            message: The message content
+            channel_type: Primary channel to use (defaults to default_channel)
+            recipient: Channel-specific recipient identifier
+            message_format: Format of the message content
+            delivery_guarantee: Delivery guarantee level
+            metadata: Additional channel-specific metadata
+            fallback_channels: List of fallback channels to try if primary fails
+
+        Returns:
+            Dict with status information about the delivery
+        """
+        # Convert to new route_message format
+        context = {
+            "channel_id": channel_type.value
+            if channel_type
+            else self.default_channel.value,
+            "recipient": recipient,
+            "message_format": message_format,
+            "delivery_guarantee": delivery_guarantee,
+            "metadata": metadata or {},
+            "message_type": "notification",
+        }
+
+        results = await self.route_message(message, context)
+
+        # Convert results back to old format for compatibility
+        if results and len(results) > 0:
+            # Return the first successful result
+            for result in results:
+                if result["result"]["success"]:
+                    return result["result"]
+            # If no success, return the first result
+            return results[0]["result"]
+        else:
+            return {"success": False, "error": "No channels available"}
+
+
+def get_communication_manager() -> CommunicationManager:
+    """Get the singleton instance of the CommunicationManager."""
+    return CommunicationManager.get_instance()
