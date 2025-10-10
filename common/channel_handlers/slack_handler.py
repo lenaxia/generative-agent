@@ -5,9 +5,11 @@ This handler provides integration with Slack for sending notifications
 with support for rich formatting and interactive buttons.
 """
 
+import asyncio
 import json
 import logging
 import os
+import threading
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -36,35 +38,47 @@ class SlackChannelHandler(ChannelHandler):
 
         # Extract configuration
         self.webhook_url = self.config.get("webhook_url")
-        self.bot_token = self.config.get("bot_token")
+        self.bot_token = os.environ.get("SLACK_BOT_TOKEN") or self.config.get(
+            "bot_token"
+        )
+        self.app_token = os.environ.get("SLACK_APP_TOKEN") or self.config.get(
+            "app_token"
+        )
         self.default_channel = self.config.get("default_channel", "#general")
 
-        # Validate configuration
-        if not (self.webhook_url or self.bot_token):
-            logger.warning("Slack handler initialized without webhook_url or bot_token")
-            self.enabled = False
+        # WebSocket and bidirectional support
+        self.slack_app = None
+        self.socket_handler = None
+        self.pending_questions = {}  # Track questions waiting for responses
+        self.question_timeout = 300  # Default timeout for questions
+
+        # Validate configuration - don't disable here, let _validate_requirements handle it
 
     def _validate_requirements(self) -> bool:
         """Validate Slack configuration."""
-        bot_token = os.environ.get("SLACK_BOT_TOKEN")
-        webhook_url = self.config.get("webhook_url")
-
-        if not (bot_token or webhook_url):
-            logger.error(
-                "SLACK_BOT_TOKEN environment variable or webhook_url config required"
-            )
+        # For bidirectional support, we need both bot token and app token
+        if self.bot_token and self.app_token:
+            return True
+        elif self.webhook_url or self.bot_token:
+            if not (self.bot_token and self.app_token):
+                logger.info(
+                    "Slack WebSocket disabled: using webhook/API-only mode (unidirectional)"
+                )
+            return True
+        else:
+            logger.error("SLACK_BOT_TOKEN/webhook_url required for Slack functionality")
             return False
-
-        return True
 
     def get_capabilities(self) -> dict[str, Any]:
         """Slack channel capabilities."""
+        # Only consider bidirectional if we have BOTH bot token AND app token
+        has_websocket = bool(self.bot_token and self.app_token)
         return {
             "supports_rich_text": True,
             "supports_buttons": True,
             "supports_images": True,
-            "bidirectional": False,  # Will be True when WebSocket is implemented
-            "requires_session": False,  # Will be True when WebSocket is implemented
+            "bidirectional": has_websocket,
+            "requires_session": has_websocket,
             "max_message_length": 4000,
         }
 
@@ -241,3 +255,152 @@ class SlackChannelHandler(ChannelHandler):
             blocks.append({"type": "actions", "elements": actions})
 
         return blocks
+
+    async def _background_session_loop(self):
+        """Run Slack WebSocket in background thread."""
+        if not (self.bot_token and self.app_token):
+            logger.warning("Slack WebSocket disabled: missing bot_token or app_token")
+            return
+
+        try:
+            # Import slack_bolt here to avoid dependency issues if not installed
+            from slack_bolt import App
+            from slack_bolt.adapter.socket_mode import SocketModeHandler
+        except ImportError:
+            logger.error(
+                "slack_bolt library required for WebSocket support: pip install slack-bolt"
+            )
+            return
+
+        # Create Slack app
+        self.slack_app = App(token=self.bot_token)
+        self.socket_handler = SocketModeHandler(self.slack_app, self.app_token)
+
+        # Handle incoming messages
+        @self.slack_app.event("message")
+        def handle_message(event, say):
+            if not event.get("bot_id"):  # Ignore bot messages
+                # Send to main thread via queue
+                asyncio.run_coroutine_threadsafe(
+                    self.message_queue.put(
+                        {
+                            "type": "incoming_message",
+                            "user_id": event["user"],
+                            "channel_id": event["channel"],
+                            "text": event.get("text", ""),
+                            "timestamp": event.get("ts"),
+                        }
+                    ),
+                    self._get_main_event_loop(),
+                )
+
+        # Handle button interactions
+        @self.slack_app.action(".*")  # Match all button actions
+        def handle_button_click(ack, body):
+            ack()  # Acknowledge button click
+
+            action_id = body["actions"][0]["action_id"]
+            value = body["actions"][0]["value"]
+            user_id = body["user"]["id"]
+            channel_id = body["channel"]["id"]
+
+            # Check if this is a response to a pending question
+            if action_id in self.pending_questions:
+                question_data = self.pending_questions[action_id]
+                question_data["response_future"].set_result(value)
+                del self.pending_questions[action_id]
+
+            # Also send to main thread for general processing
+            asyncio.run_coroutine_threadsafe(
+                self.message_queue.put(
+                    {
+                        "type": "user_response",
+                        "data": {
+                            "action_id": action_id,
+                            "value": value,
+                            "user_id": user_id,
+                            "channel_id": channel_id,
+                        },
+                    }
+                ),
+                self._get_main_event_loop(),
+            )
+
+        # Start WebSocket (blocks in this thread)
+        logger.info("Starting Slack WebSocket connection...")
+        await self.socket_handler.start_async()
+
+    def _get_main_event_loop(self):
+        """Get reference to main thread's event loop."""
+        # This is a simplified approach - in production you'd want to store
+        # the main loop reference during initialization
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            # If no event loop in current thread, create a new one
+            return asyncio.new_event_loop()
+
+    async def _ask_question_impl(
+        self, question: str, options: list[str], timeout: int
+    ) -> str:
+        """Ask question with Slack buttons and wait for response."""
+        if not self.get_capabilities().get("bidirectional", False):
+            raise NotImplementedError(
+                "Slack WebSocket not available for bidirectional communication"
+            )
+
+        # Generate unique action ID for this question
+        import uuid
+
+        action_id = f"question_{uuid.uuid4().hex[:8]}"
+
+        # Create buttons for options
+        buttons = []
+        for i, option in enumerate(options or ["Yes", "No"]):
+            buttons.append(
+                {
+                    "text": option,
+                    "value": option,
+                    "style": "primary" if i == 0 else "default",
+                }
+            )
+
+        # Create blocks with question and buttons
+        blocks = self._create_blocks_with_buttons(question, buttons)
+
+        # Set up response tracking
+        response_future = asyncio.Future()
+        self.pending_questions[action_id] = {
+            "question": question,
+            "options": options,
+            "response_future": response_future,
+        }
+
+        try:
+            # Send question via API
+            result = await self._send_via_api(
+                question,
+                self.default_channel,
+                MessageFormat.RICH_TEXT,
+                buttons,
+                {"blocks": blocks},
+            )
+
+            if not result.get("success"):
+                raise Exception(f"Failed to send question: {result.get('error')}")
+
+            # Wait for response with timeout
+            response = await asyncio.wait_for(response_future, timeout=timeout)
+            return response
+
+        except asyncio.TimeoutError:
+            # Clean up pending question
+            if action_id in self.pending_questions:
+                del self.pending_questions[action_id]
+            return "timeout"
+        except Exception as e:
+            # Clean up pending question
+            if action_id in self.pending_questions:
+                del self.pending_questions[action_id]
+            logger.error(f"Error asking Slack question: {e}")
+            raise
