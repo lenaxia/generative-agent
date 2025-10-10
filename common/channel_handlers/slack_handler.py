@@ -363,17 +363,27 @@ class SlackChannelHandler(ChannelHandler):
                     f"📢 Processing app mention from user {event['user']}: {event.get('text', '')}"
                 )
                 # Send to main thread via queue
-                self.message_queue.put(
-                    {
-                        "type": "app_mention",
-                        "user_id": event["user"],
-                        "channel_id": event["channel"],
-                        "text": event.get("text", ""),
-                        "timestamp": event.get("ts"),
-                    }
+                message_data = {
+                    "type": "app_mention",
+                    "user_id": event["user"],
+                    "channel_id": event["channel"],
+                    "text": event.get("text", ""),
+                    "timestamp": event.get("ts"),
+                }
+                logger.info(f"📤 Adding app mention to message queue: {message_data}")
+                self.message_queue.put(message_data)
+                logger.info(
+                    f"✅ App mention successfully queued. Queue size: {self.message_queue.qsize()}"
                 )
             else:
                 logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")
+
+        # Log that event handlers are registered
+        logger.info("🎯 Event handlers registered:")
+        logger.info("   - message events")
+        logger.info("   - app_mention events")
+        logger.info("   - button action events")
+        logger.info("   - global event debugging")
 
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions
@@ -391,20 +401,18 @@ class SlackChannelHandler(ChannelHandler):
                 question_data["response_future"].set_result(value)
                 del self.pending_questions[action_id]
 
-            # Also send to main thread for general processing
-            asyncio.run_coroutine_threadsafe(
-                self.message_queue.put(
-                    {
-                        "type": "user_response",
-                        "data": {
-                            "action_id": action_id,
-                            "value": value,
-                            "user_id": user_id,
-                            "channel_id": channel_id,
-                        },
-                    }
-                ),
-                self._get_main_event_loop(),
+            # Send to main thread for general processing using thread-safe queue
+            # Fixed: Use direct put() since message_queue is a thread-safe queue.Queue(), not asyncio queue
+            self.message_queue.put(
+                {
+                    "type": "user_response",
+                    "data": {
+                        "action_id": action_id,
+                        "value": value,
+                        "user_id": user_id,
+                        "channel_id": channel_id,
+                    },
+                }
             )
 
         # Start WebSocket (blocks in this thread)
