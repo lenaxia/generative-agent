@@ -201,14 +201,9 @@ class TestEndToEndSlackWorkflow:
     @pytest.mark.asyncio
     async def test_complete_slack_workflow_no_duplicates(self):
         """Test complete workflow from Slack message to response without duplicates."""
-        # Create communication manager
+        # Create communication manager with mock message bus
         message_bus = Mock(spec=MessageBus)
         comm_manager = CommunicationManager(message_bus)
-
-        # Create mock workflow engine
-        mock_workflow_engine = Mock()
-        mock_workflow_engine.handle_request = Mock(return_value="workflow_123")
-        comm_manager.workflow_engine = mock_workflow_engine
 
         # Create mock Slack handler
         mock_slack_handler = Mock()
@@ -227,13 +222,19 @@ class TestEndToEndSlackWorkflow:
         # Process the app mention
         await comm_manager._handle_channel_message("slack", app_mention_message)
 
-        # Verify workflow was started once
-        mock_workflow_engine.handle_request.assert_called_once()
+        # Verify message was published to message bus
+        message_bus.publish.assert_called_once()
 
-        # Verify the request contains the correct information
-        call_args = mock_workflow_engine.handle_request.call_args[0][0]
-        assert isinstance(call_args, RequestMetadata)
-        assert call_args.prompt == "<@U07TCJFKF1C> what's the weather?"
-        assert call_args.metadata["user_id"] == "U123456"
-        assert call_args.metadata["channel_id"] == "slack:C123456"
-        assert call_args.response_requested is True
+        # Verify the published message is correct
+        call_args = message_bus.publish.call_args
+        assert call_args[0][1] == MessageType.INCOMING_REQUEST  # Message type
+
+        # Verify the RequestMetadata
+        request_metadata = call_args[0][2]
+        assert isinstance(request_metadata, RequestMetadata)
+        assert request_metadata.prompt == "<@U07TCJFKF1C> what's the weather?"
+        assert request_metadata.metadata["user_id"] == "U123456"
+        assert request_metadata.metadata["channel_id"] == "slack:C123456"
+        assert request_metadata.response_requested is True
+        assert request_metadata.source_id == "slack"
+        assert request_metadata.target_id == "workflow_engine"
