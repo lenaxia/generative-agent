@@ -269,6 +269,9 @@ def alarm_set(
     try:
         timer_manager = get_timer_manager()
 
+        if timer_manager is None:
+            return {"success": False, "error": "Timer manager not available"}
+
         # Parse alarm time
         from roles.timer.lifecycle import _parse_alarm_time
 

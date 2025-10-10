@@ -579,7 +579,11 @@ def get_timer_manager() -> TimerManager:
     """Get global timer manager instance."""
     global _timer_manager
     if _timer_manager is None:
-        _timer_manager = TimerManager()
+        try:
+            _timer_manager = TimerManager()
+        except Exception as e:
+            logger.error(f"Timer manager not available: {e}")
+            return None
     return _timer_manager
 
 
@@ -957,10 +961,15 @@ def _parse_alarm_time(time_str: str) -> Optional[datetime]:
             try:
                 parsed_time = datetime.strptime(time_str, fmt)
 
-                # If no date specified, assume today
+                # If no date specified, assume today or tomorrow if time has passed
                 if fmt in ["%H:%M", "%I:%M %p"]:
-                    today = datetime.now().date()
+                    now = datetime.now()
+                    today = now.date()
                     parsed_time = datetime.combine(today, parsed_time.time())
+
+                    # If the time has already passed today, assume tomorrow
+                    if parsed_time <= now:
+                        parsed_time = parsed_time + timedelta(days=1)
 
                 return parsed_time
 
