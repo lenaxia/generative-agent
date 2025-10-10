@@ -6,6 +6,7 @@ ensures proper system operation and monitoring.
 """
 
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -61,6 +62,7 @@ class Supervisor:
         logger.info("Initializing Supervisor...")
         self.config_file = config_file
         self.initialize_config_manager(config_file)
+        self._set_environment_variables()
         self.initialize_components()
         logger.info("Supervisor initialization complete.")
 
@@ -93,6 +95,20 @@ class Supervisor:
         logger.info("Loading config...")
         self.config = self.config_manager.load_config()
         logger.info("Config loaded successfully.")
+
+    def _set_environment_variables(self):
+        """Set environment variables from configuration."""
+        if not self.config_manager:
+            return
+
+        # Access the raw config data from config manager
+        raw_config = getattr(self.config_manager, "raw_config_data", {})
+        env_config = raw_config.get("environment", {})
+        if env_config:
+            logger.info("Setting environment variables from configuration...")
+            for key, value in env_config.items():
+                os.environ[key] = str(value)
+                logger.debug(f"Set environment variable: {key}={value}")
 
     def initialize_components(self):
         """Initializes all components of the supervisor.

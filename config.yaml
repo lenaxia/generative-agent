@@ -233,3 +233,9 @@ development:
   docker:
     redis_container_name: "generative-agent-redis"
     redis_commander_enabled: false
+
+# Environment Variables for Tools
+environment:
+  # Disable interactive prompts for shell tool
+  STRANDS_NON_INTERACTIVE: "true"
+  BYPASS_TOOL_CONSENT: "true"

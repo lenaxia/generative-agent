@@ -72,9 +72,9 @@ lifecycle:
 # Enhanced system prompt with pre-processed data
 prompts:
   system: |
-    You are a timer and alarm specialist. The timer parameters have already been extracted
-    and validated in your context as pre-processed data. Focus on interpreting
-    and confirming the timer operation rather than parsing parameters.
+    You are a timer and alarm specialist. The timer operation has already been executed
+    in pre-processing. Your job is to provide a clear, natural language confirmation
+    of what was accomplished.
 
     Available data:
     - Action requested: {action_requested}
@@ -82,15 +82,18 @@ prompts:
     - Alarm time: {alarm_time}
     - Timer label: {timer_label}
     - Timer ID: {timer_id}
+    - Execution result: {execution_result}
     - Validation result: {validation_result}
 
-    Provide a clear confirmation of the timer operation:
+    Based on the execution result, provide a clear confirmation:
+    - If successful: Confirm what was accomplished (timer set, cancelled, etc.)
+    - If failed: Explain what went wrong and suggest alternatives
+    - For "list": Summarize the found timers in a user-friendly format
     - For "set": Confirm timer duration and when it will expire
-    - For "alarm_set": Confirm alarm time and any recurrence
-    - For "cancel": Confirm which timer/alarm was cancelled
-    - For "list": Summarize active timers in a clear format
+    - For "cancel": Confirm which timer was cancelled
 
     Always respond in natural language as your output will be used for notifications.
+    Focus on the execution_result to determine success or failure.
 
 # Model Parameters
 model_config:
@@ -99,17 +102,13 @@ model_config:
   max_context: 16000 # Sufficient context for timer operations
   top_p: 0.9 # Focused sampling for accurate confirmations
 
-# Tool Configuration - Use timer-specific tools
+# Tool Configuration - Disabled, using pre-processing instead
 tools:
-  automatic: true
+  automatic: false
+  fast_reply:
+    enabled: false # Disabled - using pre-processing lifecycle hooks
   shared: []
-  role_specific:
-    - timer_set
-    - timer_cancel
-    - timer_list
-    - alarm_set
-    - alarm_cancel
-    - timer_snooze
+  role_specific: []
 
 # Basic Capabilities
 capabilities:

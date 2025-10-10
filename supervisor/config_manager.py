@@ -23,6 +23,7 @@ class ConfigManager(BaseModel):
     """
 
     config_file: Optional[str] = None
+    raw_config_data: Optional[dict] = None
 
     def __init__(self, config_file: str):
         """Initialize ConfigManager with configuration file path.
@@ -48,6 +49,8 @@ class ConfigManager(BaseModel):
         try:
             with open(self.config_file) as f:
                 config_data = yaml.safe_load(f)
+            # Store raw config data for access to non-Pydantic fields
+            self.raw_config_data = config_data
             config = SupervisorConfig(**config_data)
             return config
         except ValidationError as e:

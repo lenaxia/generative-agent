@@ -79,13 +79,19 @@ def timer_set(
                 metadata=notification_metadata,
             )
 
-        # Run async operation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Run async operation - handle existing event loop
         try:
-            timer_id = loop.run_until_complete(_create_timer())
-        finally:
-            loop.close()
+            # Try to get existing loop
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _create_timer())
+                timer_id = future.result()
+        except RuntimeError:
+            # No running loop, create new one
+            timer_id = asyncio.run(_create_timer())
 
         logger.info(f"Created timer {timer_id} for {duration}")
 
@@ -122,13 +128,19 @@ def timer_cancel(timer_id: str) -> dict[str, Any]:
         async def _cancel_timer():
             return await timer_manager.cancel_timer(timer_id)
 
-        # Run async operation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Run async operation - handle existing event loop
         try:
-            success = loop.run_until_complete(_cancel_timer())
-        finally:
-            loop.close()
+            # Try to get existing loop
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _cancel_timer())
+                success = future.result()
+        except RuntimeError:
+            # No running loop, create new one
+            success = asyncio.run(_cancel_timer())
 
         if success:
             logger.info(f"Cancelled timer {timer_id}")
@@ -176,13 +188,19 @@ def timer_list(
                 user_id=user_id, channel_id=channel_id, status=status
             )
 
-        # Run async operation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Run async operation - handle existing event loop
         try:
-            timers = loop.run_until_complete(_list_timers())
-        finally:
-            loop.close()
+            # Try to get existing loop
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _list_timers())
+                timers = future.result()
+        except RuntimeError:
+            # No running loop, create new one
+            timers = asyncio.run(_list_timers())
 
         # Format timer data for display
         formatted_timers = []
@@ -305,13 +323,19 @@ def alarm_set(
                 metadata=notification_metadata,
             )
 
-        # Run async operation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Run async operation - handle existing event loop
         try:
-            timer_id = loop.run_until_complete(_create_alarm())
-        finally:
-            loop.close()
+            # Try to get existing loop
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _create_alarm())
+                timer_id = future.result()
+        except RuntimeError:
+            # No running loop, create new one
+            timer_id = asyncio.run(_create_alarm())
 
         logger.info(f"Created alarm {timer_id} for {time}")
 
@@ -374,13 +398,19 @@ def timer_snooze(timer_id: str, snooze_minutes: int = 5) -> dict[str, Any]:
         async def _snooze_timer():
             return await timer_manager.snooze_timer(timer_id, snooze_seconds)
 
-        # Run async operation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Run async operation - handle existing event loop
         try:
-            success = loop.run_until_complete(_snooze_timer())
-        finally:
-            loop.close()
+            # Try to get existing loop
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _snooze_timer())
+                success = future.result()
+        except RuntimeError:
+            # No running loop, create new one
+            success = asyncio.run(_snooze_timer())
 
         if success:
             logger.info(f"Snoozed timer {timer_id} for {snooze_minutes} minutes")

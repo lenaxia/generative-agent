@@ -638,7 +638,60 @@ async def parse_timer_parameters(
                 parsed_data["alarm_time"] = time
                 parsed_data["alarm_datetime"] = alarm_datetime
 
-        logger.info(f"Parsed timer parameters: {parsed_data}")
+        # EXECUTE TIMER OPERATIONS IN PRE-PROCESSING
+        timer_manager = get_timer_manager()
+        execution_result = {}
+
+        try:
+            if action == "set" and parsed_data.get("duration_seconds"):
+                # Execute timer creation
+                timer_id = await timer_manager.create_timer(
+                    timer_type="countdown",
+                    duration_seconds=parsed_data["duration_seconds"],
+                    name=parsed_data.get("timer_label")
+                    or f"{parsed_data.get('timer_duration')} timer",
+                    label=parsed_data.get("timer_label", ""),
+                    user_id=context.get("user_id", "system") if context else "system",
+                    channel_id=context.get("channel_id", "default")
+                    if context
+                    else "default",
+                )
+                execution_result = {
+                    "success": True,
+                    "timer_id": timer_id,
+                    "message": f"Timer set for {parsed_data.get('timer_duration')}. Timer ID: {timer_id}",
+                }
+
+            elif action == "list":
+                # Execute timer listing
+                user_id = context.get("user_id") if context else None
+                timers = await timer_manager.list_timers(user_id=user_id)
+                execution_result = {
+                    "success": True,
+                    "timers": timers,
+                    "count": len(timers),
+                    "message": f"Found {len(timers)} active timers",
+                }
+
+            elif action == "cancel" and parsed_data.get("timer_id"):
+                # Execute timer cancellation
+                success = await timer_manager.cancel_timer(parsed_data["timer_id"])
+                execution_result = {
+                    "success": success,
+                    "message": f"Timer {parsed_data['timer_id']} {'cancelled' if success else 'not found'}",
+                }
+
+            parsed_data["execution_result"] = execution_result
+
+        except Exception as e:
+            logger.error(f"Timer operation failed: {e}")
+            parsed_data["execution_result"] = {
+                "success": False,
+                "error": str(e),
+                "message": f"Timer operation failed: {str(e)}",
+            }
+
+        logger.info(f"Parsed timer parameters with execution: {parsed_data}")
         return parsed_data
 
     except Exception as e:
