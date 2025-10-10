@@ -65,6 +65,16 @@ class SonosChannelHandler(ChannelHandler):
             logger.warning(f"Sonos device discovery failed: {e}")
             return False
 
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing Sonos requirements."""
+        try:
+            import soco
+
+            # If soco is available but no devices found
+            return "no Sonos devices discovered on network. Ensure Sonos speakers are powered on and connected to the same network"
+        except ImportError:
+            return "missing soco library. Install with: pip install soco"
+
     async def start_session(self):
         """Discover and cache Sonos devices."""
         if not self.soco_module:

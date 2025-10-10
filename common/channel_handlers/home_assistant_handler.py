@@ -87,6 +87,24 @@ class HomeAssistantChannelHandler(ChannelHandler):
             )
             return False
 
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing Home Assistant requirements."""
+        missing = []
+        if not self.access_token:
+            missing.append("HOME_ASSISTANT_TOKEN environment variable")
+        if not self.base_url:
+            missing.append("HOME_ASSISTANT_URL environment variable")
+
+        try:
+            import websockets
+        except ImportError:
+            missing.append("websockets library (pip install websockets)")
+
+        if missing:
+            return f"missing: {', '.join(missing)}"
+        else:
+            return "Home Assistant configuration incomplete"
+
     def get_capabilities(self) -> dict[str, Any]:
         """Home Assistant channel capabilities."""
         return {

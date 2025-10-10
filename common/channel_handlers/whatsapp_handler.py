@@ -96,6 +96,29 @@ class WhatsAppChannelHandler(ChannelHandler):
 
         return True
 
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing WhatsApp requirements."""
+        missing = []
+
+        if not self.phone_number:
+            missing.append("WHATSAPP_PHONE_NUMBER environment variable")
+
+        if self.api_provider == "twilio":
+            if not self.twilio_account_sid:
+                missing.append("TWILIO_ACCOUNT_SID environment variable")
+            if not self.twilio_auth_token:
+                missing.append("TWILIO_AUTH_TOKEN environment variable")
+        elif self.api_provider == "meta":
+            if not self.meta_access_token:
+                missing.append("WHATSAPP_ACCESS_TOKEN environment variable")
+            if not self.meta_phone_number_id:
+                missing.append("WHATSAPP_PHONE_NUMBER_ID environment variable")
+
+        if missing:
+            return f"missing: {', '.join(missing)}"
+        else:
+            return f"unsupported API provider: {self.api_provider}"
+
     def get_capabilities(self) -> dict[str, Any]:
         """WhatsApp channel capabilities."""
         return {

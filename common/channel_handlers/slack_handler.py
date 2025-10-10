@@ -69,6 +69,15 @@ class SlackChannelHandler(ChannelHandler):
             logger.error("SLACK_BOT_TOKEN/webhook_url required for Slack functionality")
             return False
 
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing Slack requirements."""
+        if not self.bot_token and not self.webhook_url:
+            return "missing SLACK_BOT_TOKEN environment variable or webhook_url config. Set SLACK_BOT_TOKEN and SLACK_APP_TOKEN for full WebSocket support, or webhook_url for basic notifications"
+        elif self.bot_token and not self.app_token:
+            return "missing SLACK_APP_TOKEN environment variable. Set SLACK_APP_TOKEN for bidirectional WebSocket support, or use webhook_url for unidirectional notifications"
+        else:
+            return "Slack configuration incomplete"
+
     def get_capabilities(self) -> dict[str, Any]:
         """Slack channel capabilities."""
         # Only consider bidirectional if we have BOTH bot token AND app token

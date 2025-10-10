@@ -112,6 +112,29 @@ class VoiceChannelHandler(ChannelHandler):
             logger.error(f"Voice requirements validation failed: {e}")
             return False
 
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing Voice requirements."""
+        missing = []
+        try:
+            import speech_recognition as sr
+        except ImportError:
+            missing.append("SpeechRecognition")
+
+        try:
+            import pyaudio
+        except ImportError:
+            missing.append("pyaudio")
+
+        try:
+            import pyttsx3
+        except ImportError:
+            missing.append("pyttsx3")
+
+        if missing:
+            return f"missing required libraries: {', '.join(missing)}. Install with: pip install {' '.join(missing)}"
+        else:
+            return "voice processing requirements not met (audio device or configuration issue)"
+
     async def start_session(self):
         """Initialize voice processing components."""
         try:

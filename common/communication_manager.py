@@ -70,8 +70,11 @@ class ChannelHandler:
 
     async def validate_and_initialize(self) -> bool:
         """Validate requirements and initialize channel."""
-        if not self._validate_requirements():
-            logger.warning(f"{self.channel_type.value} disabled: requirements not met")
+        validation_result = self._validate_requirements()
+        if not validation_result:
+            # Get more descriptive error message
+            error_msg = self._get_requirements_error_message()
+            logger.warning(f"{self.channel_type.value} disabled: {error_msg}")
             return False
 
         try:
@@ -86,6 +89,10 @@ class ChannelHandler:
         except Exception as e:
             logger.error(f"{self.channel_type.value} initialization failed: {e}")
             return False
+
+    def _get_requirements_error_message(self) -> str:
+        """Get descriptive error message for missing requirements. Override in subclasses."""
+        return "requirements not met"
 
     def _validate_requirements(self) -> bool:
         """Validate channel requirements (env vars, hardware, etc.). Override in subclasses."""
