@@ -5,7 +5,7 @@ from common.task_context import TaskContext
 from common.task_graph import TaskDescription, TaskGraph
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.tool_registry import ToolRegistry
-from llm_provider.universal_agent import UniversalAgent
+from llm_provider.universal_agent import ExecutionMode, UniversalAgent
 
 
 class TestUniversalAgent(unittest.TestCase):
@@ -104,8 +104,10 @@ class TestUniversalAgent(unittest.TestCase):
             # Execute task but don't store unused result
             self.universal_agent.execute_task("Search for information", role="search")
 
-            # Should switch roles (only 3 parameters in actual implementation)
-            mock_assume.assert_called_once_with("search", LLMType.DEFAULT, None)
+            # Should switch roles (now includes execution_mode parameter)
+            mock_assume.assert_called_once_with(
+                "search", LLMType.DEFAULT, None, execution_mode=ExecutionMode.FAST_REPLY
+            )
 
     def test_execute_task_fallback_methods(self):
         """Test task execution with different agent method signatures."""
