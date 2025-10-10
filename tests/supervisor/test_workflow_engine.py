@@ -30,9 +30,17 @@ class TestWorkflowEngine:
         return bus
 
     @pytest.fixture
-    def workflow_engine(self, mock_llm_factory, mock_message_bus):
-        """Create a WorkflowEngine for testing."""
-        return WorkflowEngine(mock_llm_factory, mock_message_bus)
+    def workflow_engine(self, mock_llm_factory, mock_message_bus, shared_role_registry):
+        """Create a WorkflowEngine for testing with shared role registry."""
+        from unittest.mock import patch
+
+        # Mock RoleRegistry creation to use shared instance
+        with patch("supervisor.workflow_engine.RoleRegistry") as mock_registry_class:
+            mock_registry_class.return_value = shared_role_registry
+            engine = WorkflowEngine(mock_llm_factory, mock_message_bus)
+
+        engine.role_registry = shared_role_registry
+        return engine
 
     def test_workflow_engine_initialization(
         self, workflow_engine, mock_llm_factory, mock_message_bus

@@ -49,11 +49,14 @@ class TestWorkflowEngineUnit:
         return agent
 
     @pytest.fixture
-    def workflow_engine(self, mock_llm_factory, mock_message_bus):
-        """Create WorkflowEngine instance for testing."""
-        with patch("supervisor.workflow_engine.UniversalAgent") as mock_ua_class:
+    def workflow_engine(self, mock_llm_factory, mock_message_bus, shared_role_registry):
+        """Create WorkflowEngine instance for testing with shared role registry."""
+        with patch("supervisor.workflow_engine.UniversalAgent") as mock_ua_class, patch(
+            "supervisor.workflow_engine.RoleRegistry"
+        ) as mock_registry_class:
             mock_ua_instance = Mock(spec=UniversalAgent)
             mock_ua_class.return_value = mock_ua_instance
+            mock_registry_class.return_value = shared_role_registry
 
             engine = WorkflowEngine(
                 llm_factory=mock_llm_factory,
@@ -64,8 +67,9 @@ class TestWorkflowEngineUnit:
                 checkpoint_interval=300,
             )
 
-            # Replace the universal agent with our mock
+            # Replace the universal agent and role registry with our mocks
             engine.universal_agent = mock_ua_instance
+            engine.role_registry = shared_role_registry
             return engine
 
     @pytest.fixture

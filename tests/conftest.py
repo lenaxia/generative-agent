@@ -1,6 +1,6 @@
 """Global pytest configuration and fixtures for the test suite."""
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -162,6 +162,29 @@ def shared_role_registry():
     Uses session scope to maximize performance benefits.
     """
     return RoleRegistry("roles")
+
+
+@pytest.fixture(autouse=True)
+def mock_slack_api():
+    """Global fixture to mock Slack API calls across all tests.
+
+    This prevents any test from making real network calls to Slack API,
+    avoiding network errors and improving test performance.
+    """
+    with patch("slack_sdk.WebClient") as mock_client_class:
+        mock_client = Mock()
+        mock_client.chat_postMessage.return_value = {
+            "ok": True,
+            "channel": "C1234567890",
+            "ts": "1234567890.123456",
+            "message": {"ts": "1234567890.123456", "text": "Test message"},
+        }
+        mock_client.conversations_list.return_value = {
+            "ok": True,
+            "channels": [{"id": "C1234567890", "name": "general"}],
+        }
+        mock_client_class.return_value = mock_client
+        yield mock_client
 
 
 @pytest.fixture

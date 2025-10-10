@@ -37,15 +37,28 @@ class TestTaskResultSharing:
         return agent
 
     @pytest.fixture
-    def workflow_engine(self, mock_llm_factory, mock_message_bus, mock_universal_agent):
-        """Create WorkflowEngine with mocked dependencies."""
-        engine = WorkflowEngine(
-            llm_factory=mock_llm_factory,
-            message_bus=mock_message_bus,
-            max_concurrent_tasks=2,
-            checkpoint_interval=60,
-        )
+    def workflow_engine(
+        self,
+        mock_llm_factory,
+        mock_message_bus,
+        mock_universal_agent,
+        shared_role_registry,
+    ):
+        """Create WorkflowEngine with mocked dependencies and shared role registry."""
+        from unittest.mock import patch
+
+        # Mock RoleRegistry creation to use shared instance
+        with patch("supervisor.workflow_engine.RoleRegistry") as mock_registry_class:
+            mock_registry_class.return_value = shared_role_registry
+            engine = WorkflowEngine(
+                llm_factory=mock_llm_factory,
+                message_bus=mock_message_bus,
+                max_concurrent_tasks=2,
+                checkpoint_interval=60,
+            )
+
         engine.universal_agent = mock_universal_agent
+        engine.role_registry = shared_role_registry
         return engine
 
     def test_dependent_task_receives_predecessor_results(
@@ -295,15 +308,28 @@ class TestTaskResultSharingIntegration:
         return agent
 
     @pytest.fixture
-    def workflow_engine(self, mock_llm_factory, mock_message_bus, mock_universal_agent):
-        """Create WorkflowEngine with mocked dependencies."""
-        engine = WorkflowEngine(
-            llm_factory=mock_llm_factory,
-            message_bus=mock_message_bus,
-            max_concurrent_tasks=2,
-            checkpoint_interval=60,
-        )
+    def workflow_engine(
+        self,
+        mock_llm_factory,
+        mock_message_bus,
+        mock_universal_agent,
+        shared_role_registry,
+    ):
+        """Create WorkflowEngine with mocked dependencies and shared role registry."""
+        from unittest.mock import patch
+
+        # Mock RoleRegistry creation to use shared instance
+        with patch("supervisor.workflow_engine.RoleRegistry") as mock_registry_class:
+            mock_registry_class.return_value = shared_role_registry
+            engine = WorkflowEngine(
+                llm_factory=mock_llm_factory,
+                message_bus=mock_message_bus,
+                max_concurrent_tasks=2,
+                checkpoint_interval=60,
+            )
+
         engine.universal_agent = mock_universal_agent
+        engine.role_registry = shared_role_registry
         return engine
 
     def test_real_task_graph_result_sharing(self):
