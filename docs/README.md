@@ -26,6 +26,7 @@ This directory contains all technical documentation for the Generative Agent pro
 | 18_COMPREHENSIVE_TIMER_SYSTEM_DESIGN.md          | Comprehensive timer system design and implementation             |
 | 19_UNIFIED_RESULT_STORAGE_ARCHITECTURE.md        | Unified result storage architecture design                       |
 | 20_UNIFIED_COMMUNICATION_ARCHITECTURE_DESIGN.md  | Multi-channel communication architecture with background threads |
+| 21_SLACK_WORKFLOW_INTEGRATION_FIX_DESIGN.md      | Design for fixing Slack message to workflow integration issue    |
 
 ## File Organization
 

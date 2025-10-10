@@ -57,8 +57,13 @@ class SlackChannelHandler(ChannelHandler):
 
     def _validate_requirements(self) -> bool:
         """Validate Slack configuration."""
+        logger.info(
+            f"Validating Slack configuration: bot_token={'***' if self.bot_token else None}, app_token={'***' if self.app_token else None}, webhook_url={'***' if self.webhook_url else None}"
+        )
+
         # For bidirectional support, we need both bot token and app token
         if self.bot_token and self.app_token:
+            logger.info("Slack WebSocket enabled: full bidirectional support available")
             return True
         elif self.webhook_url or self.bot_token:
             if not (self.bot_token and self.app_token):
@@ -268,6 +273,7 @@ class SlackChannelHandler(ChannelHandler):
 
     async def _background_session_loop(self):
         """Run Slack WebSocket in background thread."""
+        logger.info("🚀 Starting Slack WebSocket background session...")
         if not (self.bot_token and self.app_token):
             logger.warning("Slack WebSocket disabled: missing bot_token or app_token")
             return
@@ -276,6 +282,8 @@ class SlackChannelHandler(ChannelHandler):
             # Import slack_bolt here to avoid dependency issues if not installed
             from slack_bolt import App
             from slack_bolt.adapter.socket_mode import SocketModeHandler
+
+            logger.info("✅ Successfully imported slack_bolt")
         except ImportError:
             logger.error(
                 "slack_bolt library required for WebSocket support: pip install slack-bolt"
@@ -283,6 +291,7 @@ class SlackChannelHandler(ChannelHandler):
             return
 
         # Create Slack app
+        logger.info("🔧 Creating Slack app and socket handler...")
         self.slack_app = App(token=self.bot_token)
         self.socket_handler = SocketModeHandler(self.slack_app, self.app_token)
 
@@ -307,7 +316,11 @@ class SlackChannelHandler(ChannelHandler):
         # Handle app mentions
         @self.slack_app.event("app_mention")
         def handle_app_mention(event, say):
+            logger.info(f"🔔 Received app mention: {event}")
             if not event.get("bot_id"):  # Ignore bot messages
+                logger.info(
+                    f"📢 Processing app mention from user {event['user']}: {event.get('text', '')}"
+                )
                 # Send to main thread via queue
                 asyncio.run_coroutine_threadsafe(
                     self.message_queue.put(
@@ -321,6 +334,8 @@ class SlackChannelHandler(ChannelHandler):
                     ),
                     self._get_main_event_loop(),
                 )
+            else:
+                logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")
 
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions

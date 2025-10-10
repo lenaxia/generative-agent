@@ -154,6 +154,9 @@ class Supervisor:
         self.communication_manager = CommunicationManager(self.message_bus)
         # Initialize channels synchronously during startup
         self.communication_manager.initialize_sync()
+        
+        # Start the async queue processor after supervisor starts
+        # This will be handled in the start() method
         logger.info("Communication manager initialized with channel handlers")
 
     def _initialize_llm_factory(self):

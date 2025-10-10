@@ -128,6 +128,7 @@ class TestSlackAppMentionHandler:
         # Verify message was NOT queued (bot messages should be ignored)
         slack_handler.message_queue.put.assert_not_called()
 
+    @patch.dict("os.environ", {}, clear=True)  # Clear all environment variables
     def test_app_mention_handler_without_websocket_support(self):
         """Test that app_mention handler is not available without WebSocket support."""
         # Create handler without proper tokens (only webhook)
@@ -243,3 +244,48 @@ class TestSlackAppMentionHandler:
                 "timestamp": None,
             }
         )
+
+    @pytest.mark.asyncio
+    async def test_app_mention_integration_with_communication_manager(self):
+        """Test that app mentions are properly processed by the communication manager."""
+        from common.communication_manager import CommunicationManager
+        from common.message_bus import MessageBus, MessageType
+
+        # Create message bus and communication manager
+        message_bus = MessageBus()
+        message_bus.start()
+        comm_manager = CommunicationManager(message_bus)
+
+        # Track messages received by the message bus
+        received_messages = []
+
+        def capture_message(data):
+            received_messages.append(data)
+
+        # Subscribe to incoming requests
+        message_bus.subscribe(None, MessageType.INCOMING_REQUEST, capture_message)
+
+        # Simulate an app mention message from Slack handler
+        app_mention_message = {
+            "type": "app_mention",
+            "user_id": "U123456789",
+            "channel_id": "C987654321",
+            "text": "<@U0BOTUSER> hello there!",
+            "timestamp": "1234567890.123456",
+        }
+
+        # Process the message through communication manager
+        await comm_manager._handle_channel_message("slack", app_mention_message)
+
+        # Wait a bit for async processing
+        await asyncio.sleep(0.1)
+
+        # Verify the message was processed correctly
+        assert len(received_messages) == 1
+        message_data = received_messages[0]
+        assert message_data["request"] == "<@U0BOTUSER> hello there!"
+        assert message_data["user_id"] == "U123456789"
+        assert message_data["channel_id"] == "slack:C987654321"
+        assert message_data["source"] == "slack"
+
+        message_bus.stop()

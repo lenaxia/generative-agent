@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from common.message_bus import MessageBus, MessageType
+from common.request_model import RequestMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +262,9 @@ class CommunicationManager:
             str, threading.Thread
         ] = {}  # Track all background threads
         self._initialized = False
+        self._pending_requests: dict[
+            str, dict
+        ] = {}  # Track requests awaiting responses
 
         # Subscribe to communication events
         self._setup_message_subscriptions()
@@ -298,6 +302,38 @@ class CommunicationManager:
 
         self._initialized = True
         logger.info("Communication manager channels initialized synchronously")
+        
+        # Note: Queue processor will be started when supervisor starts its event loop
+        
+        # Start queue processor in background thread since we don't have an event loop
+        self.start_queue_processor_thread()
+
+    def start_queue_processor_thread(self):
+        """Start the queue processor in a background thread."""
+        if not self._initialized:
+            logger.warning("Communication manager not initialized, cannot start queue processor")
+            return
+            
+        logger.info("🚀 Starting channel queue processor in background thread...")
+        
+        def run_queue_processor():
+            """Run the queue processor in its own event loop."""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self._process_channel_queues())
+            except Exception as e:
+                logger.error(f"Queue processor error: {e}")
+            finally:
+                loop.close()
+        
+        queue_thread = threading.Thread(
+            target=run_queue_processor,
+            daemon=True,
+            name="communication_queue_processor"
+        )
+        queue_thread.start()
+        logger.info("✅ Channel queue processor thread started")
 
     def _setup_message_subscriptions(self):
         """Subscribe to all communication-related MessageBus events."""
@@ -305,6 +341,7 @@ class CommunicationManager:
             (MessageType.TIMER_EXPIRED, self._handle_timer_expired),
             (MessageType.SEND_MESSAGE, self._handle_send_message),
             (MessageType.AGENT_QUESTION, self._handle_agent_question),
+            (MessageType.TASK_RESPONSE, self._handle_task_response),
         ]
 
         for message_type, handler in subscriptions:
@@ -312,11 +349,13 @@ class CommunicationManager:
 
     async def _process_channel_queues(self):
         """Process incoming messages from channel background threads."""
+        logger.info("🔄 Starting channel queue processor...")
         while True:
             for channel_id, queue in self.channel_queues.items():
                 try:
                     while not queue.empty():
                         message = await queue.get()
+                        logger.info(f"📨 Processing queued message from {channel_id}: {message}")
                         await self._handle_channel_message(channel_id, message)
                 except asyncio.QueueEmpty:
                     pass
@@ -324,17 +363,44 @@ class CommunicationManager:
 
     async def _handle_channel_message(self, channel_id: str, message: dict):
         """Handle incoming message from channel background thread."""
-        if message["type"] == "incoming_message":
+        logger.info(f"🔄 Handling channel message from {channel_id}: {message}")
+        
+        if message["type"] == "incoming_message" or message["type"] == "app_mention":
+            # Generate a unique request ID to track this request
+            import uuid
+
+            request_id = str(uuid.uuid4())
+
+            # Store request info for response routing
+            full_channel_id = f"{channel_id}:{message['channel_id']}"
+            self._pending_requests[request_id] = {
+                "channel_id": full_channel_id,
+                "user_id": message["user_id"],
+                "source_channel": channel_id,
+                "original_message": message,
+            }
+
+            # Create proper RequestMetadata object for WorkflowEngine
+            request_metadata = RequestMetadata(
+                prompt=message["text"],
+                source_id=channel_id,
+                target_id="workflow_engine",
+                metadata={
+                    "user_id": message["user_id"],
+                    "channel_id": full_channel_id,
+                    "source": channel_id,
+                    "request_id": request_id,
+                },
+                response_requested=True
+            )
+            
+            logger.info(f"📤 Publishing INCOMING_REQUEST to message bus: {request_metadata}")
+            
             # Route to supervisor for processing
             self.message_bus.publish(
                 self,
                 MessageType.INCOMING_REQUEST,
-                {
-                    "request": message["text"],
-                    "user_id": message["user_id"],
-                    "channel_id": f"{channel_id}:{message['channel_id']}",
-                    "source": channel_id,
-                },
+                request_metadata,
             )
         elif message["type"] == "user_response":
             # Handle response to agent question
@@ -377,6 +443,53 @@ class CommunicationManager:
                         "question_id": question_data.get("question_id"),
                     },
                 )
+
+    async def _handle_task_response(self, message: dict[str, Any]) -> None:
+        """Handle task response events from the message bus."""
+        try:
+            logger.info(f"📥 Received TASK_RESPONSE: {message}")
+            
+            # Extract response data (handle actual workflow engine structure)
+            request_id = message.get("request_id")
+            response_text = message.get("result", message.get("response", ""))
+            task_id = message.get("task_id")
+            status = message.get("status")
+
+            if not request_id:
+                logger.warning(f"Received task response without request_id: {message}")
+                return
+                
+            if request_id not in self._pending_requests:
+                logger.warning(f"Received response for unknown request ID: {request_id}")
+                return
+
+            # Get the original request info
+            request_info = self._pending_requests.pop(request_id)
+            source_channel = request_info["source_channel"]
+            channel_id = request_info["channel_id"]
+            user_id = request_info["user_id"]
+
+            # Extract just the channel part (remove source prefix)
+            target_channel = (
+                channel_id.split(":", 1)[1] if ":" in channel_id else channel_id
+            )
+
+            logger.info(f"🎯 Routing response back to {source_channel}:{target_channel} for user {user_id}")
+
+            # Send response back to the originating channel
+            if source_channel in self.channels:
+                await self.channels[source_channel].send_notification(
+                    f"🤖 {response_text}",
+                    target_channel,
+                    MessageFormat.PLAIN_TEXT,
+                    {"user_id": user_id},
+                )
+                logger.info(f"✅ Sent response back to {source_channel}:{target_channel}")
+            else:
+                logger.warning(f"❌ Source channel {source_channel} not available for response")
+
+        except Exception as e:
+            logger.error(f"❌ Error handling task response: {e}")
 
     async def route_message(self, message: str, context: dict) -> list[dict]:
         """Route message to appropriate channels with fallback support."""
