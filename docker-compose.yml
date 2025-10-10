@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  # Redis service for data storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: generative-agent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - generative-agent-network
+
+  # Optional: Redis Commander for Redis GUI management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: generative-agent-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - generative-agent-network
+    profiles:
+      - tools
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  generative-agent-network:
+    driver: bridge

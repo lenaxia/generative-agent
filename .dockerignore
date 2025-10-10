@@ -1,0 +1,103 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Linting and formatting
+.mypy_cache/
+.flake8
+.pre-commit-config.yaml
+
+# Logs
+*.log
+logs/
+test.log
+
+# Cache files
+.cache/
+.benchmarks/
+
+# Development files
+.aider*
+*.tmp
+*.temp
+
+# Security reports
+bandit-report.json
+safety-report.json
+pip-audit-report.json
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+
+# Node modules (if any)
+node_modules/
+
+# Temporary files
+tmp/
+temp/

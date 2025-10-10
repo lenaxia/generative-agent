@@ -1,4 +1,4 @@
-.PHONY: help install-dev setup-pre-commit format lint test test-unit test-integration test-llm security-scan clean build check-all
+.PHONY: help install-dev setup-pre-commit format lint test test-unit test-integration test-llm security-scan clean build check-all docker-setup docker-start docker-stop docker-logs docker-test
 
 # Default target
 help:
@@ -28,6 +28,14 @@ help:
 	@echo "Build Commands:"
 	@echo "  build             Build package for distribution"
 	@echo "  clean             Clean build artifacts and cache files"
+	@echo ""
+	@echo "Docker Commands:"
+	@echo "  docker-setup      Set up development environment with Docker Redis"
+	@echo "  docker-start      Start Docker Redis container"
+	@echo "  docker-stop       Stop Docker containers"
+	@echo "  docker-logs       View Docker container logs"
+	@echo "  docker-test       Run tests with Docker Redis"
+	@echo "  redis-cli         Connect to Redis CLI in Docker container"
 	@echo ""
 	@echo "Usage: make <command>"
 
@@ -214,3 +222,66 @@ version:
 	@python --version
 	@pip --version
 	@echo "Project version: 1.0.0"
+
+# Docker Commands
+docker-setup:
+	@echo "🐳 Setting up development environment with Docker Redis..."
+	@./scripts/dev-setup.sh
+	@echo "✅ Docker development environment ready!"
+
+docker-start:
+	@echo "🐳 Starting Docker Redis container..."
+	docker-compose up -d redis
+	@echo "⏳ Waiting for Redis to be ready..."
+	@timeout 30 bash -c 'until docker-compose exec redis redis-cli ping > /dev/null 2>&1; do sleep 1; done'
+	@echo "✅ Redis container is ready!"
+
+docker-stop:
+	@echo "🐳 Stopping Docker containers..."
+	docker-compose down
+	@echo "✅ Docker containers stopped"
+
+docker-logs:
+	@echo "📋 Docker container logs:"
+	docker-compose logs redis
+
+docker-test: docker-start
+	@echo "🧪 Running tests with Docker Redis..."
+	timeout 900 python -m pytest tests/integration/test_docker_redis_setup.py -v --timeout=300
+	@echo "✅ Docker tests completed"
+
+redis-cli:
+	@echo "🔧 Connecting to Redis CLI..."
+	docker-compose exec redis redis-cli
+
+redis-commander:
+	@echo "🎛️  Starting Redis Commander (GUI)..."
+	docker-compose --profile tools up -d redis-commander
+	@echo "✅ Redis Commander available at http://localhost:8081 (admin/admin)"
+
+docker-clean:
+	@echo "🧹 Cleaning Docker resources..."
+	docker-compose down -v
+	docker system prune -f
+	@echo "✅ Docker cleanup completed"
+
+# Enhanced health check with Redis
+health-check-full: docker-start
+	@echo "🏥 Running comprehensive system health check..."
+	@timeout 300 python -c "\
+	print('🧪 System Health Check'); \
+	print('=' * 30); \
+	from roles.shared_tools.redis_tools import redis_health_check; \
+	health = redis_health_check(); \
+	print('Redis Health:', health); \
+	from llm_provider.role_registry import RoleRegistry; \
+	registry = RoleRegistry('roles'); \
+	print('✅ RoleRegistry initialized'); \
+	from llm_provider.universal_agent import UniversalAgent; \
+	from llm_provider.factory import LLMFactory; \
+	from unittest.mock import Mock; \
+	llm_factory = Mock(); \
+	agent = UniversalAgent(llm_factory, registry); \
+	print('✅ UniversalAgent initialized'); \
+	print('🎉 All systems operational!');"
+	@echo "✅ Comprehensive health check completed"

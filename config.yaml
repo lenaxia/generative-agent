@@ -11,22 +11,22 @@ llm_providers:
   bedrock:
     # Model mapping for semantic types
     models:
-      WEAK: "anthropic.claude-3-haiku-20240307-v1:0"      # Faster model for routing
-      DEFAULT: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"  # Fixed: Use Sonnet 3.5 instead of Sonnet 4
-      STRONG: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"   # Fixed: Use Sonnet 3.5 instead of Sonnet 4
-    
+      WEAK: "anthropic.claude-3-haiku-20240307-v1:0" # Faster model for routing
+      DEFAULT: "us.anthropic.claude-3-5-sonnet-20241022-v2:0" # Fixed: Use Sonnet 3.5 instead of Sonnet 4
+      STRONG: "us.anthropic.claude-3-5-sonnet-20241022-v2:0" # Fixed: Use Sonnet 3.5 instead of Sonnet 4
+
     # Default parameters
     parameters:
       temperature: 0.3
       max_tokens: 4096
       region: "us-west-2"
-    
+
     # Agent pool configuration
     agent_pool:
       enabled: true
       warm_on_startup: true
       max_pool_size: 10
-      cleanup_interval: 3600  # 1 hour
+      cleanup_interval: 3600 # 1 hour
 
   # OpenAI Configuration (optional)
   openai:
@@ -34,7 +34,7 @@ llm_providers:
       WEAK: "gpt-3.5-turbo"
       DEFAULT: "gpt-4"
       STRONG: "gpt-4-turbo"
-    
+
     parameters:
       temperature: 0.3
       max_tokens: 4096
@@ -49,32 +49,32 @@ universal_agent:
 role_system:
   # Directory containing role definitions
   roles_directory: "roles"
-  
+
   # Role registry settings
   registry:
-    auto_refresh: true           # Automatically refresh roles on startup
-    cache_definitions: true      # Cache role definitions in memory
-    validate_on_load: true       # Validate role definitions when loading
-  
+    auto_refresh: true # Automatically refresh roles on startup
+    cache_definitions: true # Cache role definitions in memory
+    validate_on_load: true # Validate role definitions when loading
+
   # Shared tools configuration
   shared_tools:
     directory: "roles/shared_tools"
-    auto_discover: true          # Automatically discover @tool functions
-    
+    auto_discover: true # Automatically discover @tool functions
+
   # Role selection settings
   selection:
-    use_llm_selection: true      # Use LLM for intelligent role selection
-    fallback_role: "default"     # Fallback when no role matches
-    selection_model: "WEAK"      # Model type for role selection (cost optimization)
+    use_llm_selection: true # Use LLM for intelligent role selection
+    fallback_role: "default" # Fallback when no role matches
+    selection_model: "WEAK" # Model type for role selection (cost optimization)
 
 # TaskGraph Configuration
 task_graph:
-  max_history_size: 1000          # Maximum number of history entries to keep
+  max_history_size: 1000 # Maximum number of history entries to keep
   enable_progressive_summary: true # Enable progressive summary functionality
-  checkpoint_compression: true    # Compress checkpoint data
-  agent_timeout: 300              # 5 minutes
+  checkpoint_compression: true # Compress checkpoint data
+  agent_timeout: 300 # 5 minutes
   enable_caching: true
-  cache_ttl: 3600                 # 1 hour
+  cache_ttl: 3600 # 1 hour
 
 # Task Management Configuration
 task_management:
@@ -88,8 +88,8 @@ task_management:
 # Request Manager Configuration
 request_manager:
   max_active_requests: 20
-  request_timeout: 1800    # 30 minutes
-  cleanup_interval: 300    # 5 minutes
+  request_timeout: 1800 # 30 minutes
+  cleanup_interval: 300 # 5 minutes
 
 # Message Bus Configuration
 message_bus:
@@ -103,10 +103,10 @@ logging:
   log_file: "logs/supervisor.log"
   log_file_max_size: 1024
   disable_console_logging: false
-  
+
   # Structured logging
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  
+
   # Component-specific log levels
   loggers:
     llm_provider: "DEBUG"
@@ -120,19 +120,19 @@ workflow_duration_logging:
   log_file: "logs/workflow_durations.jsonl"
   max_log_file_size_mb: 100
   enable_console_logging: true
-  
+
   # Performance monitoring settings
   performance_monitoring:
     track_cli_workflows: true
     track_slack_workflows: true
     track_api_workflows: true
-    
+
   # Analytics and reporting
   analytics:
     enable_performance_summary: true
     summary_interval_hours: 24
     retention_days: 30
-    
+
   # Log rotation settings
   rotation:
     enabled: true
@@ -147,9 +147,9 @@ mcp:
 # Heartbeat Configuration
 heartbeat:
   enabled: true
-  interval: 30                    # Heartbeat interval in seconds
-  health_check_interval: 60       # Health check interval in seconds
-  
+  interval: 30 # Heartbeat interval in seconds
+  health_check_interval: 60 # Health check interval in seconds
+
   # Maintenance settings
   maintenance:
     cleanup_old_workflows: true
@@ -170,28 +170,67 @@ feature_flags:
 # Fast-Path Routing Configuration
 fast_path:
   enabled: true
-  confidence_threshold: 0.7  # Minimum confidence for fast-path routing
-  max_response_time: 3.0     # Realistic target with Agent pooling only
-  fallback_on_error: true    # Fall back to planning on fast-path errors
-  
+  confidence_threshold: 0.7 # Minimum confidence for fast-path routing
+  max_response_time: 3.0 # Realistic target with Agent pooling only
+  fallback_on_error: true # Fall back to planning on fast-path errors
+
   # Performance optimizations
   performance:
-    agent_pool_warming: true      # Pre-warm Agent pool at startup
+    agent_pool_warming: true # Pre-warm Agent pool at startup
     pre_warm_metrics_client: true # Pre-create MetricsClient during startup to avoid workflow latency
-    skip_telemetry: false         # Keep telemetry for monitoring
-    minimal_logging: false        # Keep logging for debugging
-    
+    skip_telemetry: false # Keep telemetry for monitoring
+    minimal_logging: false # Keep logging for debugging
+
   # Monitoring
   monitoring:
     track_agent_pool_efficiency: true
     track_context_switch_performance: true
-  
+
   # Logging and monitoring
   log_routing_decisions: true
   track_performance_metrics: true
+
+# Redis Configuration
+redis:
+  enabled: true
+  connection:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    socket_timeout: 5
+    socket_connect_timeout: 5
+    socket_keepalive: true
+    socket_keepalive_options: {}
+    connection_pool_max_connections: 50
+    retry_on_timeout: true
+    health_check_interval: 30
+
+  # Development settings
+  development:
+    # Use Docker container when available
+    docker_host: "localhost"
+    docker_port: 6379
+
+  # Performance settings
+  performance:
+    max_connections: 50
+    connection_pool_timeout: 20
+    socket_timeout: 5
+
+  # Monitoring
+  monitoring:
+    enable_health_checks: true
+    log_slow_queries: true
+    slow_query_threshold_ms: 100
 
 # Development Settings
 development:
   debug_mode: false
   mock_llm_responses: false
   enable_profiling: false
+
+  # Docker development settings
+  docker:
+    redis_container_name: "generative-agent-redis"
+    redis_commander_enabled: false
