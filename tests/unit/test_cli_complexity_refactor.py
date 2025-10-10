@@ -27,25 +27,43 @@ class TestCLIComplexityRefactor:
         return supervisor
 
     @patch("cli.setup_readline")
+    @patch("cli._process_user_input")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_exit_command_functionality(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self,
+        mock_os_exit,
+        mock_input,
+        mock_process_input,
+        mock_setup_readline,
+        mock_supervisor,
     ):
         """Test that /exit command works correctly."""
         mock_input.return_value = "/exit"
+        # Mock _process_user_input to return True (exit) on first call
+        mock_process_input.return_value = True
 
         with patch("sys.stdout", new_callable=io.StringIO):
             run_interactive_mode(mock_supervisor)
 
         mock_supervisor.start.assert_called_once()
+        mock_process_input.assert_called_once_with("/exit", mock_supervisor)
         # supervisor.stop() is called twice: once in /exit command, once in finally block
         assert mock_supervisor.stop.call_count >= 1
+        # Verify os._exit was called
+        mock_os_exit.assert_called_once_with(0)
 
     @patch("cli.setup_readline")
     @patch("cli.show_system_status")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_status_command_functionality(
-        self, mock_input, mock_show_status, mock_setup_readline, mock_supervisor
+        self,
+        mock_os_exit,
+        mock_input,
+        mock_show_status,
+        mock_setup_readline,
+        mock_supervisor,
     ):
         """Test that /status command works correctly."""
         mock_input.side_effect = ["/status", "/exit"]
@@ -57,8 +75,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_help_command_functionality(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that /help command works correctly."""
         mock_input.side_effect = ["/help", "/exit"]
@@ -72,8 +91,14 @@ class TestCLIComplexityRefactor:
     @patch("cli.setup_readline")
     @patch("cli.show_command_history")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_history_command_functionality(
-        self, mock_input, mock_show_history, mock_setup_readline, mock_supervisor
+        self,
+        mock_os_exit,
+        mock_input,
+        mock_show_history,
+        mock_setup_readline,
+        mock_supervisor,
     ):
         """Test that /history command works correctly."""
         mock_input.side_effect = ["/history", "/exit"]
@@ -86,8 +111,14 @@ class TestCLIComplexityRefactor:
     @patch("cli.setup_readline")
     @patch("cli.clear_command_history")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_clear_command_functionality(
-        self, mock_input, mock_clear_history, mock_setup_readline, mock_supervisor
+        self,
+        mock_os_exit,
+        mock_input,
+        mock_clear_history,
+        mock_setup_readline,
+        mock_supervisor,
     ):
         """Test that /clear command works correctly."""
         mock_input.side_effect = ["/clear", "/exit"]
@@ -101,8 +132,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_workflow_execution_functionality(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that workflow execution works correctly."""
         mock_input.side_effect = ["test workflow instruction", "/exit"]
@@ -116,8 +148,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_short_workflow_instruction_handling(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that short workflow instructions are handled correctly."""
         mock_input.side_effect = ["hi", "/exit"]
@@ -131,8 +164,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_empty_input_handling(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that empty input is handled correctly."""
         mock_input.side_effect = ["", "/exit"]
@@ -145,8 +179,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_unknown_command_handling(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that unknown commands are handled correctly."""
         mock_input.side_effect = ["/unknown", "/exit"]
@@ -160,8 +195,9 @@ class TestCLIComplexityRefactor:
     @patch("cli.setup_readline")
     @patch("builtins.input")
     @patch("time.sleep")
+    @patch("os._exit")
     def test_workflow_monitoring_functionality(
-        self, mock_sleep, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_sleep, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that workflow monitoring works correctly."""
         mock_input.side_effect = ["test workflow", "/exit"]
@@ -179,8 +215,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_workflow_error_handling(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that workflow errors are handled correctly."""
         mock_input.side_effect = ["test workflow", "/exit"]
@@ -197,8 +234,9 @@ class TestCLIComplexityRefactor:
 
     @patch("cli.setup_readline")
     @patch("builtins.input")
+    @patch("os._exit")
     def test_keyboard_interrupt_handling(
-        self, mock_input, mock_setup_readline, mock_supervisor
+        self, mock_os_exit, mock_input, mock_setup_readline, mock_supervisor
     ):
         """Test that keyboard interrupts are handled correctly."""
 
