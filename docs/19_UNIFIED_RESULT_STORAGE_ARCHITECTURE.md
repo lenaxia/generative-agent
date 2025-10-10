@@ -204,3 +204,85 @@ The system now has:
 - ✅ **Simplified architecture** with reduced complexity
 
 This architectural improvement demonstrates the system's evolution toward cleaner, more maintainable design patterns while preserving the performance optimizations that make fast-reply workflows effective.
+
+## Execution-Mode Specific Tool Handling 🆕
+
+### Problem: Duplicate API Calls
+
+The original hybrid architecture had an issue where weather requests would fetch data twice:
+
+1. **Pre-processing**: Fetch weather data for LLM context
+2. **LLM Execution**: LLM would call `get_weather_forecast` tool, causing duplicate API calls
+
+### Solution: Execution-Mode Tool Configuration
+
+Added `ExecutionMode` enum with context-aware tool selection:
+
+```python
+class ExecutionMode(str, Enum):
+    FAST_REPLY = "fast_reply"      # No custom tools (pure hybrid)
+    WORKFLOW = "workflow"          # Tools based on configuration
+```
+
+### Role Configuration
+
+Roles can now specify tools per execution mode:
+
+```yaml
+# Weather role definition
+tools:
+  automatic: false # Don't auto-include all custom tools
+
+  # Execution-specific tool configuration
+  execution_modes:
+    fast_reply: [] # No tools for fast replies (pure hybrid)
+    workflow: ["get_weather_forecast"] # Allow forecast for complex requests
+```
+
+### Benefits
+
+- **Eliminates Duplicate API Calls**: Fast-reply modes use only pre-processed data
+- **Maintains Flexibility**: Complex workflows can still access tools when needed
+- **Type-Safe Configuration**: ExecutionMode enum prevents configuration errors
+- **Performance Optimized**: Fast-reply modes have minimal tool overhead
+
+### Implementation
+
+Fast-reply workflows now execute with:
+
+1. **Pre-processing**: Fetch all needed data
+2. **LLM Processing**: Interpret pre-fetched data (no tool calls)
+3. **Post-processing**: Format and audit results
+
+This achieves the original hybrid architecture goal of eliminating tool calls during LLM execution for simple requests.
+
+### Configuration Examples
+
+#### Pure Hybrid (No Tools)
+
+```yaml
+tools:
+  automatic: false
+  execution_modes:
+    fast_reply: [] # No tools - pure pre-processing
+    workflow: [] # No tools - pure pre-processing
+```
+
+#### Selective Tools
+
+```yaml
+tools:
+  automatic: false
+  execution_modes:
+    fast_reply: [] # No tools for fast replies
+    workflow: ["get_weather_forecast", "validate_coordinates"] # Specific tools for workflows
+```
+
+#### Full Tool Access
+
+```yaml
+tools:
+  automatic: true # All custom tools available for both modes
+```
+
+This execution-mode system provides fine-grained control over tool availability while maintaining the performance benefits of the hybrid architecture.

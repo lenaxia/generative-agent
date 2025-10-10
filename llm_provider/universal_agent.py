@@ -7,9 +7,19 @@ different LLM providers and execution strategies.
 
 import logging
 import time
+from enum import Enum
 from typing import Any, Optional
 
 from strands import Agent
+
+
+class ExecutionMode(str, Enum):
+    """Execution modes for role-based tool selection."""
+
+    FAST_REPLY = "fast_reply"
+    WORKFLOW = "workflow"
+
+
 from strands.models.bedrock import BedrockModel
 from strands_tools import calculator, file_read, shell
 
@@ -23,9 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class UniversalAgent:
-    r"""\1
-
-    This class provides a unified interface for creating role-specific agents
+    r"""This class provides a unified interface for creating role-specific agents
     while leveraging the semantic model types and prompt library from StrandsAgent.
     """
 
@@ -56,6 +64,7 @@ class UniversalAgent:
         llm_type: Optional[LLMType] = None,
         context: Optional[TaskContext] = None,
         tools: Optional[list[str]] = None,
+        execution_mode: Optional[ExecutionMode] = None,
     ):
         r"""\1
 
@@ -104,7 +113,7 @@ class UniversalAgent:
 
         # Update Agent context (business logic)
         system_prompt = self._get_system_prompt_from_role(role_def)
-        role_tools = self._assemble_role_tools(role_def, tools or [])
+        role_tools = self._assemble_role_tools(role_def, tools or [], execution_mode)
 
         # Context switching instead of Agent creation (< 0.01s)
         updated_agent = self._update_agent_context(agent, system_prompt, role_tools)
@@ -226,6 +235,7 @@ class UniversalAgent:
         role: str,
         llm_type: LLMType,
         context: Optional[TaskContext] = None,
+        execution_mode: ExecutionMode = ExecutionMode.WORKFLOW,
     ) -> str:
         r"""\1
 
@@ -234,12 +244,13 @@ class UniversalAgent:
             role: LLM role name
             llm_type: Model type for optimization
             context: Optional task context
+            execution_mode: Execution mode for tool selection
 
         Returns:
             str: Task result
         """
-        # Assume the specified role
-        agent = self.assume_role(role, llm_type, context)
+        # Assume the specified role with execution mode
+        agent = self.assume_role(role, llm_type, context, execution_mode=execution_mode)
 
         # Execute the task
         try:
@@ -406,12 +417,18 @@ class UniversalAgent:
             prompts = role_def.config.get("prompts", {})
         return prompts.get("system", "You are a helpful AI assistant.")
 
-    def _assemble_role_tools(self, role_def, additional_tools: list[str]) -> list:
+    def _assemble_role_tools(
+        self,
+        role_def,
+        additional_tools: list[str],
+        execution_mode: Optional[ExecutionMode] = None,
+    ) -> list:
         r"""\1
 
         Args:
             role_def: Role definition (dict or RoleDefinition object)
             additional_tools: Additional tool names to include
+            execution_mode: Execution mode for tool selection
 
         Returns:
             List of tool functions
@@ -422,7 +439,7 @@ class UniversalAgent:
         builtin_tools = [calculator, file_read, shell]
         tools.extend(builtin_tools)
 
-        # 2. Auto-include ALL custom tools from role's tools.py
+        # 2. Handle execution-specific tool configuration
         if role_def:
             if isinstance(role_def, dict):
                 custom_tools = role_def.get("custom_tools", [])
@@ -437,7 +454,21 @@ class UniversalAgent:
                 role_name = role_def.name
                 config = role_def.config
 
-            tools.extend(custom_tools)
+            # Execution-specific tool handling
+            tools_config = config.get("tools", {})
+            should_include_custom_tools = self._should_include_custom_tools(
+                tools_config, execution_mode, role_name
+            )
+
+            if should_include_custom_tools:
+                tools.extend(custom_tools)
+                logger.debug(
+                    f"Added {len(custom_tools)} custom tools for role '{role_name}' in {execution_mode} mode"
+                )
+            else:
+                logger.debug(
+                    f"Skipped {len(custom_tools)} custom tools for role '{role_name}' in {execution_mode} mode"
+                )
 
             # 3. Add specified shared tools
             for tool_name in shared_tool_names:
@@ -467,6 +498,59 @@ class UniversalAgent:
         tools.extend(additional_role_tools)
 
         return tools
+
+    def _should_include_custom_tools(
+        self,
+        tools_config: dict,
+        execution_mode: Optional[ExecutionMode],
+        role_name: str,
+    ) -> bool:
+        """Determine if custom tools should be included based on execution mode and configuration.
+
+        Args:
+            tools_config: Tools configuration from role definition
+            execution_mode: Current execution mode
+            role_name: Name of the role for logging
+
+        Returns:
+            bool: Whether to include custom tools
+        """
+        if not execution_mode:
+            # No execution mode specified, use automatic setting
+            return tools_config.get("automatic", True)
+
+        # Check for execution-specific configuration
+        if "execution_modes" in tools_config:
+            execution_modes = tools_config["execution_modes"]
+            mode_key = execution_mode.value
+            if mode_key in execution_modes:
+                mode_config = execution_modes[mode_key]
+                # If mode_config is a list, it's the available tools
+                if isinstance(mode_config, list):
+                    return len(mode_config) > 0
+                # If mode_config is a dict, check enabled flag
+                elif isinstance(mode_config, dict):
+                    return mode_config.get("enabled", False)
+
+            # If execution mode not found in config, use default behavior
+            logger.debug(
+                f"Execution mode '{execution_mode.value}' not configured for role '{role_name}', using default"
+            )
+
+        # Default behavior based on execution mode
+        if execution_mode == ExecutionMode.FAST_REPLY:
+            # Fast-reply modes: no tools by default unless explicitly configured
+            fast_reply_tools = tools_config.get("fast_reply", [])
+            if isinstance(fast_reply_tools, list):
+                return len(fast_reply_tools) > 0
+            elif isinstance(fast_reply_tools, dict):
+                return fast_reply_tools.get("enabled", False)
+            else:
+                # No fast_reply configuration, default to no tools for fast-reply
+                return False
+        else:
+            # Workflow mode: use automatic setting (default True for backward compatibility)
+            return tools_config.get("automatic", True)
 
     def _create_basic_agent(
         self,
@@ -659,7 +743,10 @@ class UniversalAgent:
                     role_def, instruction, pre_data
                 )
                 llm_result = self._execute_llm_with_context(
-                    enhanced_instruction, role, context
+                    enhanced_instruction,
+                    role,
+                    context,
+                    execution_mode=ExecutionMode.FAST_REPLY,
                 )
 
             # 3. Post-processing phase
@@ -827,7 +914,13 @@ class UniversalAgent:
         return str(pre_data)
 
     def _execute_llm_with_context(
-        self, instruction: str, role: str, context: Optional[TaskContext]
+        self,
+        instruction: str,
+        role: str,
+        context: Optional[TaskContext],
+        execution_mode: ExecutionMode = ExecutionMode.FAST_REPLY,
     ) -> str:
-        """Execute LLM with enhanced context."""
-        return self.execute_llm_task(instruction, role, LLMType.DEFAULT, context)
+        """Execute LLM with enhanced context and execution mode."""
+        return self.execute_llm_task(
+            instruction, role, LLMType.DEFAULT, context, execution_mode
+        )

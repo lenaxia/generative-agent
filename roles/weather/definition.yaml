@@ -90,10 +90,20 @@ model_config:
   max_context: 32000 # Sufficient context for weather queries
   top_p: 0.9 # Focused sampling for accurate data
 
-# Tool Configuration - No weather tools needed since data is pre-fetched
+# Tool Configuration - Execution-specific tool handling
 tools:
-  automatic: false
-  shared: [] # No need for weather tools since data is pre-fetched
+  automatic: false # Don't automatically include all custom tools
+  shared: [] # No shared tools needed
+
+  # Fast-reply mode: no tools (pure hybrid with pre-processing)
+  fast_reply:
+    enabled: false # No tools in fast-reply mode
+    available: [] # Explicitly no tools
+
+  # Execution-specific tool configuration
+  execution_modes:
+    fast_reply: [] # No tools for fast replies (pure hybrid with pre-processing)
+    workflow: ["get_weather_forecast"] # Allow forecast tool for complex workflows
 
 # Basic Capabilities
 capabilities:
