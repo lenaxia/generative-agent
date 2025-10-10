@@ -644,6 +644,26 @@ async def parse_timer_parameters(
 
         try:
             if action == "set" and parsed_data.get("duration_seconds"):
+                # Extract context information for proper notification routing
+                user_id = "system"
+                channel_id = "default"
+
+                if context:
+                    # Extract user and channel from context
+                    if hasattr(context, "user_id"):
+                        user_id = context.user_id
+                    elif isinstance(context, dict):
+                        user_id = context.get("user_id", "system")
+
+                    if hasattr(context, "channel_id"):
+                        channel_id = context.channel_id
+                    elif isinstance(context, dict):
+                        channel_id = context.get("channel_id", "default")
+
+                    # For Slack integration, ensure channel_id has slack: prefix
+                    if channel_id != "default" and not channel_id.startswith("slack:"):
+                        channel_id = f"slack:{channel_id}"
+
                 # Execute timer creation
                 timer_id = await timer_manager.create_timer(
                     timer_type="countdown",
@@ -651,10 +671,8 @@ async def parse_timer_parameters(
                     name=parsed_data.get("timer_label")
                     or f"{parsed_data.get('timer_duration')} timer",
                     label=parsed_data.get("timer_label", ""),
-                    user_id=context.get("user_id", "system") if context else "system",
-                    channel_id=context.get("channel_id", "default")
-                    if context
-                    else "default",
+                    user_id=user_id,
+                    channel_id=channel_id,
                 )
                 execution_result = {
                     "success": True,

@@ -12,6 +12,7 @@ import inspect
 import logging
 import os
 import pkgutil
+import threading
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -53,14 +54,97 @@ class MessageFormat(Enum):
 
 
 class ChannelHandler:
-    """Base class for all channel handlers."""
+    """Base class for all communication channel handlers."""
 
-    channel_type: ChannelType
+    channel_type: ChannelType  # Must be defined in subclasses
 
     def __init__(self, config: Optional[dict[str, Any]] = None):
         """Initialize the channel handler with optional configuration."""
         self.config = config or {}
-        self.enabled = self.config.get("enabled", True)
+        self.enabled = False
+        self.session_active = False
+        self.background_thread = None
+        self.message_queue = None
+        self.communication_manager = None  # Set by CommunicationManager
+
+    async def validate_and_initialize(self) -> bool:
+        """Validate requirements and initialize channel."""
+        if not self._validate_requirements():
+            logger.warning(f"{self.channel_type.value} disabled: requirements not met")
+            return False
+
+        try:
+            if self.requires_background_thread():
+                await self._start_background_thread()
+            else:
+                await self.start_session()
+
+            self.enabled = True
+            logger.info(f"{self.channel_type.value} channel initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"{self.channel_type.value} initialization failed: {e}")
+            return False
+
+    def _validate_requirements(self) -> bool:
+        """Validate channel requirements (env vars, hardware, etc.). Override in subclasses."""
+        return True
+
+    def requires_background_thread(self) -> bool:
+        """Return True if channel needs background thread for persistent connections."""
+        capabilities = self.get_capabilities()
+        return capabilities.get("requires_session", False) and capabilities.get(
+            "bidirectional", False
+        )
+
+    async def start_session(self):
+        """Start channel session. Override for stateless channels."""
+        self.session_active = True
+
+    async def _start_background_thread(self):
+        """Start background thread for stateful channels."""
+        self.message_queue = asyncio.Queue()
+        self.background_thread = threading.Thread(
+            target=self._run_background_session,
+            daemon=True,
+            name=f"{self.channel_type.value}_thread",
+        )
+        self.background_thread.start()
+
+        # Register queue with CommunicationManager
+        if self.communication_manager:
+            self.communication_manager.channel_queues[
+                self.channel_type.value
+            ] = self.message_queue
+
+    def _run_background_session(self):
+        """Run background session in dedicated thread."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            loop.run_until_complete(self._background_session_loop())
+        except Exception as e:
+            logger.error(f"{self.channel_type.value} background session failed: {e}")
+        finally:
+            loop.close()
+
+    async def _background_session_loop(self):
+        """Background session loop. Override in stateful channels."""
+        while True:
+            await asyncio.sleep(1)  # Default: do nothing
+
+    def get_capabilities(self) -> dict[str, Any]:
+        """Return channel capabilities. Must override in subclasses."""
+        return {
+            "supports_rich_text": False,
+            "supports_buttons": False,
+            "supports_audio": False,
+            "supports_images": False,
+            "bidirectional": False,
+            "requires_session": False,
+            "max_message_length": 1000,
+        }
 
     async def send_notification(
         self,
@@ -106,6 +190,24 @@ class ChannelHandler:
         """
         raise NotImplementedError("Channel handlers must implement _send method")
 
+    async def ask_question(
+        self, question: str, options: list[str] = None, timeout: int = 300
+    ) -> str:
+        """Ask user a question and wait for response. Override in bidirectional channels."""
+        if not self.get_capabilities().get("bidirectional", False):
+            raise NotImplementedError(
+                f"{self.channel_type.value} doesn't support bidirectional communication"
+            )
+        return await self._ask_question_impl(question, options, timeout)
+
+    async def _ask_question_impl(
+        self, question: str, options: list[str], timeout: int
+    ) -> str:
+        """Question implementation. Override in bidirectional channels."""
+        raise NotImplementedError(
+            "Bidirectional channels must implement _ask_question_impl"
+        )
+
 
 class CommunicationManager:
     """
@@ -118,34 +220,183 @@ class CommunicationManager:
     - Message format conversion between channels
     """
 
-    _instance = None
-
-    @classmethod
-    def get_instance(cls) -> "CommunicationManager":
-        """Get or create the singleton instance of CommunicationManager."""
-        if cls._instance is None:
-            cls._instance = CommunicationManager()
-        return cls._instance
-
-    def __init__(self):
-        """Initialize the communication manager."""
-        if CommunicationManager._instance is not None:
-            raise RuntimeError("Use get_instance() to get the CommunicationManager")
-
-        self.channels: dict[ChannelType, ChannelHandler] = {}
+    def __init__(self, message_bus: MessageBus):
+        """Initialize the communication manager with supervisor's MessageBus."""
+        self.message_bus = message_bus  # Use supervisor's MessageBus
+        self.channels: dict[str, ChannelHandler] = {}
+        self.channel_queues: dict[str, asyncio.Queue] = {}  # Thread communication
         self.default_channel = ChannelType.CONSOLE
-        self.message_bus = MessageBus()
-        self.message_bus.start()  # Start the message bus
+        self._initialized = False
 
-        # Subscribe to timer expired events
-        self.message_bus.subscribe(
-            self, MessageType.TIMER_EXPIRED, self._handle_timer_expired
-        )
+        # Subscribe to communication events
+        self._setup_message_subscriptions()
+
+    async def initialize(self):
+        """Initialize channels and start background tasks."""
+        if self._initialized:
+            return
 
         # Auto-discover and register available channel handlers
-        self._discover_channel_handlers()
+        await self._discover_and_initialize_channels()
 
-    def _discover_channel_handlers(self):
+        # Start queue processor for background thread communication
+        asyncio.create_task(self._process_channel_queues())
+
+        self._initialized = True
+
+    def _setup_message_subscriptions(self):
+        """Subscribe to all communication-related MessageBus events."""
+        subscriptions = [
+            (MessageType.TIMER_EXPIRED, self._handle_timer_expired),
+            (MessageType.SEND_MESSAGE, self._handle_send_message),
+            (MessageType.AGENT_QUESTION, self._handle_agent_question),
+        ]
+
+        for message_type, handler in subscriptions:
+            self.message_bus.subscribe(self, message_type, handler)
+
+    async def _process_channel_queues(self):
+        """Process incoming messages from channel background threads."""
+        while True:
+            for channel_id, queue in self.channel_queues.items():
+                try:
+                    while not queue.empty():
+                        message = await queue.get()
+                        await self._handle_channel_message(channel_id, message)
+                except asyncio.QueueEmpty:
+                    pass
+            await asyncio.sleep(0.1)  # Prevent busy loop
+
+    async def _handle_channel_message(self, channel_id: str, message: dict):
+        """Handle incoming message from channel background thread."""
+        if message["type"] == "incoming_message":
+            # Route to supervisor for processing
+            self.message_bus.publish(
+                self,
+                MessageType.INCOMING_REQUEST,
+                {
+                    "request": message["text"],
+                    "user_id": message["user_id"],
+                    "channel_id": f"{channel_id}:{message['channel_id']}",
+                    "source": channel_id,
+                },
+            )
+        elif message["type"] == "user_response":
+            # Handle response to agent question
+            self.message_bus.publish(self, MessageType.USER_RESPONSE, message["data"])
+
+    async def _handle_send_message(self, message: dict[str, Any]) -> None:
+        """Handle send message events from the message bus."""
+        await self.route_message(message.get("message", ""), message.get("context", {}))
+
+    async def _handle_agent_question(self, message: dict[str, Any]) -> None:
+        """Handle agent question events from the message bus."""
+        question_data = message.get("data", {})
+        question = question_data.get("question", "")
+        options = question_data.get("options", [])
+        timeout = question_data.get("timeout", 300)
+        origin_channel = question_data.get("channel_id", "console")
+
+        # Route question to appropriate channel
+        if origin_channel in self.channels:
+            try:
+                response = await self.channels[origin_channel].ask_question(
+                    question, options, timeout
+                )
+                self.message_bus.publish(
+                    self,
+                    MessageType.USER_RESPONSE,
+                    {
+                        "response": response,
+                        "question_id": question_data.get("question_id"),
+                    },
+                )
+            except Exception as e:
+                logger.error(f"Error asking question via {origin_channel}: {e}")
+                self.message_bus.publish(
+                    self,
+                    MessageType.USER_RESPONSE,
+                    {
+                        "response": "error",
+                        "error": str(e),
+                        "question_id": question_data.get("question_id"),
+                    },
+                )
+
+    async def route_message(self, message: str, context: dict) -> list[dict]:
+        """Route message to appropriate channels with fallback support."""
+        origin_channel = context.get("channel_id", "console")
+        delivery_guarantee = context.get(
+            "delivery_guarantee", DeliveryGuarantee.BEST_EFFORT
+        )
+        message_type = context.get("message_type", "notification")
+
+        # Determine target channels
+        target_channels = self._determine_target_channels(
+            origin_channel, message_type, context
+        )
+
+        # Send with appropriate delivery guarantee
+        return await self._send_with_delivery_guarantee(
+            message, target_channels, context, delivery_guarantee
+        )
+
+    def _determine_target_channels(
+        self, origin_channel: str, message_type: str, context: dict
+    ) -> list[str]:
+        """Determine which channels should receive the message."""
+        # Default: return to origin channel
+        channels = [origin_channel] if origin_channel else ["console"]
+
+        # Special routing rules
+        if message_type == "timer_expired":
+            # Timer notifications: origin + audio if user preferences allow
+            if self._should_add_audio_notification(context):
+                channels.append("sonos")
+        elif message_type == "music_control":
+            # Music control: always route to Sonos + origin for confirmation
+            channels = ["sonos"] + (
+                [origin_channel] if origin_channel != "sonos" else []
+            )
+        elif message_type == "smart_home_control":
+            # Smart home: origin + Home Assistant for device status
+            channels = [origin_channel, "home_assistant"]
+
+        return [ch for ch in channels if ch and ch in self.channels]
+
+    def _should_add_audio_notification(self, context: dict) -> bool:
+        """Check if audio notification should be added based on context."""
+        # Add logic based on user preferences, time of day, etc.
+        return context.get("audio_enabled", False)
+
+    async def _send_with_delivery_guarantee(
+        self,
+        message: str,
+        target_channels: list[str],
+        context: dict,
+        delivery_guarantee: DeliveryGuarantee,
+    ) -> list[dict]:
+        """Send message with specified delivery guarantee."""
+        results = []
+
+        for channel_id in target_channels:
+            if channel_id in self.channels:
+                result = await self.channels[channel_id].send_notification(
+                    message,
+                    context.get("recipient"),
+                    context.get("message_format", MessageFormat.PLAIN_TEXT),
+                    context.get("metadata", {}),
+                )
+                results.append({"channel": channel_id, "result": result})
+
+        return results
+
+    async def _discover_and_initialize_channels(self):
+        """Discover and initialize all available channel handlers."""
+        await self._discover_channel_handlers()
+        await self._initialize_all_channels()
+
+    async def _discover_channel_handlers(self):
         """Automatically discover and register available channel handlers."""
         try:
             # Get the directory where channel handlers are located
@@ -192,6 +443,14 @@ class CommunicationManager:
         except Exception as e:
             logger.error(f"Error during channel handler discovery: {str(e)}")
 
+    async def _initialize_all_channels(self):
+        """Initialize all registered channel handlers."""
+        for channel_id, handler in self.channels.items():
+            handler.communication_manager = self
+            success = await handler.validate_and_initialize()
+            if not success:
+                logger.warning(f"Channel {channel_id} failed to initialize")
+
     def register_channel(self, handler: ChannelHandler) -> None:
         """
         Register a new channel handler.
@@ -202,7 +461,7 @@ class CommunicationManager:
         if not isinstance(handler, ChannelHandler):
             raise TypeError("Handler must be an instance of ChannelHandler")
 
-        self.channels[handler.channel_type] = handler
+        self.channels[handler.channel_type.value] = handler
         logger.info(f"Registered channel handler for {handler.channel_type.value}")
 
     def unregister_channel(self, channel_type: ChannelType) -> None:
@@ -212,8 +471,9 @@ class CommunicationManager:
         Args:
             channel_type: The type of channel to unregister
         """
-        if channel_type in self.channels:
-            del self.channels[channel_type]
+        channel_id = channel_type.value
+        if channel_id in self.channels:
+            del self.channels[channel_id]
             logger.info(f"Unregistered channel handler for {channel_type.value}")
 
     async def send_notification(
@@ -359,16 +619,11 @@ class CommunicationManager:
 
         # Send the notification
         notification_message = f"⏰ Timer expired: {timer_name}"
-        await self.send_notification(
-            message=notification_message,
-            channel_type=channel_type,
-            recipient=recipient,
-            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
-            metadata={"timer_id": timer_id, "timer_data": timer_data},
-            additional_channels=[],  # Use default channels based on delivery guarantee
-        )
-
-
-def get_communication_manager() -> CommunicationManager:
-    """Get the singleton instance of the CommunicationManager."""
-    return CommunicationManager.get_instance()
+        context = {
+            "channel_id": channel_type.value if channel_type else "console",
+            "recipient": recipient,
+            "delivery_guarantee": DeliveryGuarantee.AT_LEAST_ONCE,
+            "message_type": "timer_expired",
+            "metadata": {"timer_id": timer_id, "timer_data": timer_data},
+        }
+        await self.route_message(notification_message, context)

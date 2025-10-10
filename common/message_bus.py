@@ -4,6 +4,7 @@ Provides message bus functionality for inter-component communication,
 event handling, and workflow coordination across the system.
 """
 
+import asyncio
 import logging
 import threading
 from enum import Enum
@@ -27,6 +28,8 @@ class MessageType(Enum):
     SEND_MESSAGE = "send_message"
     INCOMING_REQUEST = "incoming_request"
     TIMER_EXPIRED = "timer_expired"
+    AGENT_QUESTION = "agent_question"
+    USER_RESPONSE = "user_response"
 
 
 class MessageBus:
@@ -107,9 +110,31 @@ class MessageBus:
         # Release the lock before executing the callbacks
         for _subscriber, callbacks in subscribers_copy.items():
             for callback in callbacks:
-                # Start a new thread for each callback
-                callback_thread = threading.Thread(target=callback, args=(message,))
-                callback_thread.start()
+                # Check if callback is async
+                if asyncio.iscoroutinefunction(callback):
+                    # Schedule async callback in the event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        asyncio.create_task(callback(message))
+                    except RuntimeError:
+                        # No running event loop, start a new thread with event loop
+                        callback_thread = threading.Thread(
+                            target=self._run_async_callback, args=(callback, message)
+                        )
+                        callback_thread.start()
+                else:
+                    # Start a new thread for sync callback
+                    callback_thread = threading.Thread(target=callback, args=(message,))
+                    callback_thread.start()
+
+    def _run_async_callback(self, callback: Callable, message: Any):
+        """Run async callback in a new event loop."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(callback(message))
+        finally:
+            loop.close()
 
     def subscribe(self, subscriber, message_type: MessageType, callback: Callable):
         """Subscribe to messages of a specific type.

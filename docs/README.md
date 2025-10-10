@@ -4,29 +4,32 @@ This directory contains all technical documentation for the Generative Agent pro
 
 ## Documentation Files
 
-| Filename | Description |
-|----------|-------------|
-| 01_ARCHITECTURE_OVERVIEW.md | Overview of the system architecture |
-| 02_API_REFERENCE.md | API reference documentation |
-| 03_TROUBLESHOOTING_GUIDE.md | Guide for troubleshooting common issues |
-| 04_CONFIGURATION_GUIDE.md | Guide for configuring the system |
-| 05_TOOL_DEVELOPMENT_GUIDE.md | Guide for developing new tools |
-| 06_STRANDS_UNIVERSAL_AGENT_MIGRATION_PLAN.md | Plan for migrating to the Universal Agent |
-| 07_DEPLOYMENT_GUIDE.md | Guide for deploying the system |
-| 08_COMPREHENSIVE_TEST_PLAN.md | Comprehensive test plan |
-| 09_TASK_RESULT_SHARING.md | Documentation on task result sharing |
-| 10_HYBRID_EXECUTION_ARCHITECTURE_DESIGN.md | Design for hybrid execution architecture |
-| 11_FAST_PATH_ROUTING_DESIGN.md | Design for fast path routing |
-| 12_WORKFLOW_DURATION_LOGGING.md | Documentation on workflow duration logging |
-| 13_FAST_REPLY_PERFORMANCE_OPTIMIZATION_DESIGN.md | Design for fast reply performance optimization |
-| 14_HYBRID_ROLE_LIFECYCLE_DESIGN.md | Design for hybrid role lifecycle |
-| 15_HYBRID_ROLE_MIGRATION_GUIDE.md | Guide for migrating to hybrid roles |
-| 16_REDIS_SHARED_TOOLS_GUIDE.md | Guide for Redis shared tools |
-| 17_CODE_QUALITY_IMPROVEMENT_CHECKLIST.md | Systematic checklist for code quality improvements |
+| Filename                                         | Description                                                      |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| 01_ARCHITECTURE_OVERVIEW.md                      | Overview of the system architecture                              |
+| 02_API_REFERENCE.md                              | API reference documentation                                      |
+| 03_TROUBLESHOOTING_GUIDE.md                      | Guide for troubleshooting common issues                          |
+| 04_CONFIGURATION_GUIDE.md                        | Guide for configuring the system                                 |
+| 05_TOOL_DEVELOPMENT_GUIDE.md                     | Guide for developing new tools                                   |
+| 06_STRANDS_UNIVERSAL_AGENT_MIGRATION_PLAN.md     | Plan for migrating to the Universal Agent                        |
+| 07_DEPLOYMENT_GUIDE.md                           | Guide for deploying the system                                   |
+| 08_COMPREHENSIVE_TEST_PLAN.md                    | Comprehensive test plan                                          |
+| 09_TASK_RESULT_SHARING.md                        | Documentation on task result sharing                             |
+| 10_HYBRID_EXECUTION_ARCHITECTURE_DESIGN.md       | Design for hybrid execution architecture                         |
+| 11_FAST_PATH_ROUTING_DESIGN.md                   | Design for fast path routing                                     |
+| 12_WORKFLOW_DURATION_LOGGING.md                  | Documentation on workflow duration logging                       |
+| 13_FAST_REPLY_PERFORMANCE_OPTIMIZATION_DESIGN.md | Design for fast reply performance optimization                   |
+| 14_HYBRID_ROLE_LIFECYCLE_DESIGN.md               | Design for hybrid role lifecycle                                 |
+| 15_HYBRID_ROLE_MIGRATION_GUIDE.md                | Guide for migrating to hybrid roles                              |
+| 16_REDIS_SHARED_TOOLS_GUIDE.md                   | Guide for Redis shared tools                                     |
+| 17_CODE_QUALITY_IMPROVEMENT_CHECKLIST.md         | Systematic checklist for code quality improvements               |
+| 18_COMPREHENSIVE_TIMER_SYSTEM_DESIGN.md          | Comprehensive timer system design and implementation             |
+| 19_UNIFIED_RESULT_STORAGE_ARCHITECTURE.md        | Unified result storage architecture design                       |
+| 20_UNIFIED_COMMUNICATION_ARCHITECTURE_DESIGN.md  | Multi-channel communication architecture with background threads |
 
 ## File Organization
 
-The numeric prefixes (01_, 02_, etc.) represent the chronological order of document creation, with 01 being the oldest document. This organization makes it easier to understand the evolution of the project's design and implementation over time.
+The numeric prefixes (01*, 02*, etc.) represent the chronological order of document creation, with 01 being the oldest document. This organization makes it easier to understand the evolution of the project's design and implementation over time.
 
 ## Usage
 

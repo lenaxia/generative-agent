@@ -7,6 +7,7 @@ with support for rich formatting and interactive buttons.
 
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -42,6 +43,30 @@ class SlackChannelHandler(ChannelHandler):
         if not (self.webhook_url or self.bot_token):
             logger.warning("Slack handler initialized without webhook_url or bot_token")
             self.enabled = False
+
+    def _validate_requirements(self) -> bool:
+        """Validate Slack configuration."""
+        bot_token = os.environ.get("SLACK_BOT_TOKEN")
+        webhook_url = self.config.get("webhook_url")
+
+        if not (bot_token or webhook_url):
+            logger.error(
+                "SLACK_BOT_TOKEN environment variable or webhook_url config required"
+            )
+            return False
+
+        return True
+
+    def get_capabilities(self) -> dict[str, Any]:
+        """Slack channel capabilities."""
+        return {
+            "supports_rich_text": True,
+            "supports_buttons": True,
+            "supports_images": True,
+            "bidirectional": False,  # Will be True when WebSocket is implemented
+            "requires_session": False,  # Will be True when WebSocket is implemented
+            "max_message_length": 4000,
+        }
 
     async def _send(
         self,

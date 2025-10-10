@@ -64,6 +64,34 @@ class EmailChannelHandler(ChannelHandler):
             logger.warning("Email handler initialized without AWS credentials")
             self.enabled = False
 
+    def _validate_requirements(self) -> bool:
+        """Validate email configuration."""
+        if self.delivery_method == "smtp":
+            if not self.smtp_host:
+                logger.error("SMTP host required for email delivery")
+                return False
+        elif self.delivery_method == "ses":
+            if not (self.aws_access_key and self.aws_secret_key):
+                logger.error("AWS credentials required for SES email delivery")
+                return False
+        else:
+            logger.error(f"Unsupported email delivery method: {self.delivery_method}")
+            return False
+
+        return True
+
+    def get_capabilities(self) -> dict[str, Any]:
+        """Email channel capabilities."""
+        return {
+            "supports_rich_text": True,
+            "supports_buttons": False,
+            "supports_audio": False,
+            "supports_images": False,
+            "bidirectional": False,
+            "requires_session": False,
+            "max_message_length": 100000,  # Email can handle large messages
+        }
+
     async def _send(
         self,
         message: str,

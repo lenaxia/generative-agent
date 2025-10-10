@@ -29,6 +29,18 @@ class ConsoleChannelHandler(ChannelHandler):
         super().__init__(config)
         self.log_level = self.config.get("log_level", logging.INFO)
 
+    def get_capabilities(self) -> dict[str, Any]:
+        """Return console channel capabilities."""
+        return {
+            "supports_rich_text": False,
+            "supports_buttons": False,
+            "supports_audio": False,
+            "supports_images": False,
+            "bidirectional": False,
+            "requires_session": False,
+            "max_message_length": 10000,
+        }
+
     async def _send(
         self,
         message: str,

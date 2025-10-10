@@ -67,11 +67,80 @@ class IntelligentSlackBot:
             logger.info("🤖 Initializing Universal Agent system...")
             self.supervisor = Supervisor(self.config_path)
             self.supervisor.start()
+
+            # Subscribe to timer expired events
+            self._setup_timer_notifications()
+
             self.system_ready = True
             logger.info("✅ Universal Agent system ready!")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Universal Agent system: {e}")
             self.system_ready = False
+
+    def _setup_timer_notifications(self):
+        """Set up timer expiry notifications."""
+        try:
+            from common.message_bus import MessageType
+
+            # Subscribe to timer expired events
+            self.supervisor.message_bus.subscribe(
+                self, MessageType.TIMER_EXPIRED, self._handle_timer_expired
+            )
+            logger.info("✅ Subscribed to timer expiry notifications")
+        except Exception as e:
+            logger.error(f"❌ Failed to setup timer notifications: {e}")
+
+    async def _handle_timer_expired(self, event_data: dict):
+        """Handle timer expired events by sending Slack notifications."""
+        try:
+            logger.info(f"🔔 Timer expired: {event_data}")
+
+            # Extract timer information
+            timer_id = event_data.get("timer_id")
+            timer_name = event_data.get("timer_name", "Timer")
+            custom_message = event_data.get("custom_message", "Timer expired!")
+            user_id = event_data.get("user_id")
+            channel_id = event_data.get("channel_id")
+
+            # Format notification message
+            notification_text = f"🔔 **{timer_name}** has expired!\n{custom_message}"
+
+            # Send notification to appropriate channel
+            if channel_id and channel_id.startswith("slack:"):
+                # Extract Slack channel ID
+                slack_channel = channel_id.replace("slack:", "")
+
+                # Send to channel
+                await self.app.client.chat_postMessage(
+                    channel=slack_channel,
+                    text=notification_text,
+                    blocks=[
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": notification_text},
+                        },
+                        {
+                            "type": "context",
+                            "elements": [
+                                {"type": "mrkdwn", "text": f"Timer ID: `{timer_id}`"}
+                            ],
+                        },
+                    ],
+                )
+                logger.info(f"✅ Sent timer notification to {slack_channel}")
+            elif user_id:
+                # Send as DM to user
+                await self.app.client.chat_postMessage(
+                    channel=user_id, text=notification_text
+                )
+                logger.info(f"✅ Sent timer notification DM to {user_id}")
+            else:
+                logger.warning(
+                    f"⚠️ No valid channel or user for timer notification: {event_data}"
+                )
+
+        except Exception as e:
+            logger.error(f"❌ Failed to handle timer expired event: {e}")
 
     async def _get_user_info(self, user_id: str, client) -> dict:
         """Get user information from Slack API with caching."""

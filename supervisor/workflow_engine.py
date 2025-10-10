@@ -283,13 +283,31 @@ class WorkflowEngine:
             execution_type = self.role_registry.get_role_execution_type(role)
 
             if execution_type == "hybrid":
+                # Get workflow context for user_id and channel_id
+                workflow_context = {}
+                if (
+                    hasattr(self, "duration_logger")
+                    and request_id in self.duration_logger.active_workflows
+                ):
+                    workflow_metrics = self.duration_logger.active_workflows[request_id]
+                    if (
+                        hasattr(workflow_metrics, "user_id")
+                        and workflow_metrics.user_id
+                    ):
+                        workflow_context["user_id"] = workflow_metrics.user_id
+                    if (
+                        hasattr(workflow_metrics, "channel_id")
+                        and workflow_metrics.channel_id
+                    ):
+                        workflow_context["channel_id"] = workflow_metrics.channel_id
+
                 # Execute hybrid role with pre-extracted parameters
                 # execute_task is now synchronous and handles async internally
                 result = self.universal_agent.execute_task(
                     instruction=request.prompt,
                     role=role,
                     llm_type=LLMType.WEAK,
-                    context=None,
+                    context=workflow_context if workflow_context else None,
                     extracted_parameters=parameters,
                 )
             else:

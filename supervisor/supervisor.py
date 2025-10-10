@@ -49,6 +49,7 @@ class Supervisor:
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
     heartbeat: Optional[Heartbeat] = None
+    communication_manager: Optional[object] = None  # Import will be done in method
 
     def __init__(self, config_file: Optional[str] = None):
         """Initializes the Supervisor with the given configuration file.
@@ -126,6 +127,7 @@ class Supervisor:
 
         self._initialize_logging()
         self._initialize_message_bus()
+        self._initialize_communication_manager()
         self._initialize_llm_factory()
         self._initialize_workflow_engine()
         self._initialize_metrics_manager()
@@ -144,6 +146,15 @@ class Supervisor:
         """Initialize message bus."""
         self.message_bus = MessageBus()
         logger.info("Message bus initialized.")
+
+    def _initialize_communication_manager(self):
+        """Initialize communication manager with supervisor's MessageBus."""
+        from common.communication_manager import CommunicationManager
+
+        self.communication_manager = CommunicationManager(self.message_bus)
+        logger.info(
+            "Communication manager created, will initialize channels when event loop is available"
+        )
 
     def _initialize_llm_factory(self):
         """Initialize LLM factory with provider configurations."""
