@@ -445,7 +445,7 @@ def run_interactive_mode(supervisor: Supervisor):
             import time
 
             time.sleep(0.1)  # Brief pause for final cleanup
-            logger.info("🔄 Force exiting to prevent slack-bolt thread hanging...")
+            logger.info("🔄 Force exiting to clean up hanging threads")
             os._exit(0)
 
         except Exception as e:
