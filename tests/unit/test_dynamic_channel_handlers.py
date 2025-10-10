@@ -70,7 +70,9 @@ class TestDynamicChannelLoading(unittest.TestCase):
         self.manager.register_channel(email_handler)
 
         # Verify that the handlers were registered
-        self.assertEqual(len(self.manager.channels), 3)
+        self.assertEqual(
+            len(self.manager.channels), 6
+        )  # 3 handlers * 2 keys each (enum + string)
         self.assertIn(ChannelType.CONSOLE, self.manager.channels)
         self.assertIn(ChannelType.SLACK, self.manager.channels)
         self.assertIn(ChannelType.EMAIL, self.manager.channels)
@@ -95,7 +97,9 @@ class TestDynamicChannelLoading(unittest.TestCase):
             self.manager._discover_channel_handlers()
 
             # Verify that the console handler is still registered
-            self.assertEqual(len(self.manager.channels), 1)
+            self.assertEqual(
+                len(self.manager.channels), 2
+            )  # 1 handler * 2 keys (enum + string)
             self.assertIn(ChannelType.CONSOLE, self.manager.channels)
 
     @pytest.mark.asyncio
