@@ -1,4 +1,4 @@
-.PHONY: help install-dev setup-pre-commit format lint test test-unit test-integration test-llm security-scan clean build check-all docker-setup docker-start docker-stop docker-logs docker-test
+.PHONY: help install-dev setup-pre-commit format lint test test-unit test-integration test-llm security-scan clean build check-all docker-setup docker-start docker-stop docker-logs docker-test docker-check
 
 # Default target
 help:
@@ -35,6 +35,7 @@ help:
 	@echo "  docker-stop       Stop Docker containers"
 	@echo "  docker-logs       View Docker container logs"
 	@echo "  docker-test       Run tests with Docker Redis"
+	@echo "  docker-check      Check Docker environment and troubleshoot"
 	@echo "  redis-cli         Connect to Redis CLI in Docker container"
 	@echo ""
 	@echo "Usage: make <command>"
@@ -224,26 +225,58 @@ version:
 	@echo "Project version: 1.0.0"
 
 # Docker Commands
+# Detect Docker Compose command (docker-compose vs docker compose)
+DOCKER_COMPOSE_CMD := $(shell if command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; elif docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo ""; fi)
+
 docker-setup:
 	@echo "🐳 Setting up development environment with Docker Redis..."
+	@if [ -z "$(DOCKER_COMPOSE_CMD)" ]; then \
+		echo "❌ Docker Compose not found. Please install Docker Compose first."; \
+		echo "   Visit: https://docs.docker.com/compose/install/"; \
+		exit 1; \
+	fi
+	@if ! docker info >/dev/null 2>&1; then \
+		echo "❌ Docker daemon not running. Please start Docker first."; \
+		echo "   Try: sudo systemctl start docker  # Linux"; \
+		echo "   Or start Docker Desktop application"; \
+		exit 1; \
+	fi
 	@./scripts/dev-setup.sh
 	@echo "✅ Docker development environment ready!"
 
 docker-start:
 	@echo "🐳 Starting Docker Redis container..."
-	docker-compose up -d redis
+	@if [ -z "$(DOCKER_COMPOSE_CMD)" ]; then \
+		echo "❌ Docker Compose not found. Please install Docker Compose first."; \
+		exit 1; \
+	fi
+	@if ! docker info >/dev/null 2>&1; then \
+		echo "❌ Docker daemon not running. Please start Docker first."; \
+		exit 1; \
+	fi
+	$(DOCKER_COMPOSE_CMD) up -d redis
 	@echo "⏳ Waiting for Redis to be ready..."
-	@timeout 30 bash -c 'until docker-compose exec redis redis-cli ping > /dev/null 2>&1; do sleep 1; done'
+	@timeout 30 bash -c 'until $(DOCKER_COMPOSE_CMD) exec redis redis-cli ping > /dev/null 2>&1; do sleep 1; done'
 	@echo "✅ Redis container is ready!"
 
 docker-stop:
 	@echo "🐳 Stopping Docker containers..."
-	docker-compose down
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		$(DOCKER_COMPOSE_CMD) down; \
+	else \
+		echo "⚠️  Docker Compose not found, trying to stop containers manually..."; \
+		docker stop generative-agent-redis 2>/dev/null || true; \
+		docker stop generative-agent-redis-commander 2>/dev/null || true; \
+	fi
 	@echo "✅ Docker containers stopped"
 
 docker-logs:
 	@echo "📋 Docker container logs:"
-	docker-compose logs redis
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		$(DOCKER_COMPOSE_CMD) logs redis; \
+	else \
+		docker logs generative-agent-redis 2>/dev/null || echo "❌ Redis container not found"; \
+	fi
 
 docker-test: docker-start
 	@echo "🧪 Running tests with Docker Redis..."
@@ -252,18 +285,56 @@ docker-test: docker-start
 
 redis-cli:
 	@echo "🔧 Connecting to Redis CLI..."
-	docker-compose exec redis redis-cli
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		$(DOCKER_COMPOSE_CMD) exec redis redis-cli; \
+	else \
+		docker exec -it generative-agent-redis redis-cli; \
+	fi
 
 redis-commander:
 	@echo "🎛️  Starting Redis Commander (GUI)..."
-	docker-compose --profile tools up -d redis-commander
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		$(DOCKER_COMPOSE_CMD) --profile tools up -d redis-commander; \
+	else \
+		echo "❌ Docker Compose required for Redis Commander"; \
+		exit 1; \
+	fi
 	@echo "✅ Redis Commander available at http://localhost:8081 (admin/admin)"
 
 docker-clean:
 	@echo "🧹 Cleaning Docker resources..."
-	docker-compose down -v
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		$(DOCKER_COMPOSE_CMD) down -v; \
+	else \
+		echo "⚠️  Docker Compose not found, cleaning containers manually..."; \
+		docker stop generative-agent-redis generative-agent-redis-commander 2>/dev/null || true; \
+		docker rm generative-agent-redis generative-agent-redis-commander 2>/dev/null || true; \
+		docker volume rm generative-agent_redis_data 2>/dev/null || true; \
+	fi
 	docker system prune -f
 	@echo "✅ Docker cleanup completed"
+
+# Docker troubleshooting
+docker-check:
+	@echo "🔍 Docker Environment Check"
+	@echo "=========================="
+	@if command -v docker >/dev/null 2>&1; then \
+		echo "✅ Docker installed: $$(docker --version)"; \
+	else \
+		echo "❌ Docker not installed"; \
+	fi
+	@if docker info >/dev/null 2>&1; then \
+		echo "✅ Docker daemon running"; \
+	else \
+		echo "❌ Docker daemon not running"; \
+	fi
+	@if [ -n "$(DOCKER_COMPOSE_CMD)" ]; then \
+		echo "✅ Docker Compose available: $(DOCKER_COMPOSE_CMD)"; \
+	else \
+		echo "❌ Docker Compose not found"; \
+	fi
+	@echo ""
+	@echo "Docker Compose detection: '$(DOCKER_COMPOSE_CMD)'"
 
 # Enhanced health check with Redis
 health-check-full: docker-start
