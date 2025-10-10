@@ -67,6 +67,7 @@ class ChannelHandler:
         self.background_thread = None
         self.message_queue = None
         self.communication_manager = None  # Set by CommunicationManager
+        self.shutdown_requested = False  # Flag for graceful shutdown
 
     async def validate_and_initialize(self) -> bool:
         """Validate requirements and initialize channel."""
@@ -114,16 +115,20 @@ class ChannelHandler:
         self.message_queue = asyncio.Queue()
         self.background_thread = threading.Thread(
             target=self._run_background_session,
-            daemon=True,
+            daemon=True,  # Ensure daemon mode for clean shutdown
             name=f"{self.channel_type.value}_thread",
         )
         self.background_thread.start()
 
-        # Register queue with CommunicationManager
+        # Register queue and thread with CommunicationManager
         if self.communication_manager:
             self.communication_manager.channel_queues[
                 self.channel_type.value
             ] = self.message_queue
+            # Track the background thread for cleanup
+            self.communication_manager._background_threads[
+                self.channel_type.value
+            ] = self.background_thread
 
     def _run_background_session(self):
         """Run background session in dedicated thread."""
@@ -251,6 +256,10 @@ class CommunicationManager:
         self.channels: dict[str, ChannelHandler] = {}
         self.channel_queues: dict[str, asyncio.Queue] = {}  # Thread communication
         self.default_channel = ChannelType.CONSOLE
+        self._shutdown_called = False  # Prevent duplicate shutdowns
+        self._background_threads: dict[
+            str, threading.Thread
+        ] = {}  # Track all background threads
         self._initialized = False
 
         # Subscribe to communication events
@@ -779,6 +788,87 @@ class CommunicationManager:
             return results[0]["result"]
         else:
             return {"success": False, "error": "No channels available"}
+
+    async def shutdown(self):
+        """Shutdown all channel handlers and cleanup resources."""
+        if self._shutdown_called:
+            logger.debug("Communication manager shutdown already called, skipping...")
+            return
+
+        self._shutdown_called = True
+        logger.info("Shutting down communication manager...")
+
+        # First, set shutdown flag on all handlers to signal graceful shutdown
+        for channel_type, handler in self.channels.items():
+            if hasattr(handler, "shutdown_requested"):
+                handler.shutdown_requested = True
+
+        # Stop all channel handlers that have stop_session method
+        for channel_type, handler in self.channels.items():
+            try:
+                # Handle both string keys and enum keys
+                channel_name = (
+                    channel_type.value
+                    if hasattr(channel_type, "value")
+                    else str(channel_type)
+                )
+
+                if hasattr(handler, "stop_session"):
+                    logger.info(f"Stopping session for {channel_name} channel...")
+                    await handler.stop_session()
+                else:
+                    logger.debug(f"Channel {channel_name} has no stop_session method")
+            except Exception as e:
+                channel_name = (
+                    channel_type.value
+                    if hasattr(channel_type, "value")
+                    else str(channel_type)
+                )
+                logger.error(f"Error stopping {channel_name} channel: {e}")
+
+        # Forcefully terminate any remaining background threads
+        await self._terminate_background_threads()
+
+        logger.info("Communication manager shutdown complete")
+
+    async def _terminate_background_threads(self):
+        """Forcefully terminate all tracked background threads."""
+        if not self._background_threads:
+            logger.debug("No background threads to terminate")
+            return
+
+        logger.info(
+            f"Terminating {len(self._background_threads)} background threads..."
+        )
+
+        for channel_name, thread in self._background_threads.items():
+            try:
+                if thread.is_alive():
+                    logger.info(f"Waiting for {channel_name} thread to terminate...")
+                    # Give thread a very short time to terminate gracefully
+                    thread.join(timeout=0.5)
+
+                    if thread.is_alive():
+                        logger.warning(
+                            f"Thread {channel_name} did not terminate gracefully"
+                        )
+                        # Since Python doesn't have thread.terminate(), we rely on daemon=True
+                        # The thread will be forcefully terminated when the main process exits
+                    else:
+                        logger.info(f"Thread {channel_name} terminated successfully")
+                else:
+                    logger.debug(f"Thread {channel_name} already terminated")
+            except Exception as e:
+                logger.error(f"Error terminating thread {channel_name}: {e}")
+
+        # Clear the thread tracking
+        self._background_threads.clear()
+        logger.info("Background thread termination complete")
+
+        # Force garbage collection to help with cleanup
+        import gc
+
+        gc.collect()
 
 
 def get_communication_manager() -> CommunicationManager:

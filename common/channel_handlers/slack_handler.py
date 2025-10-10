@@ -51,6 +51,7 @@ class SlackChannelHandler(ChannelHandler):
         self.socket_handler = None
         self.pending_questions = {}  # Track questions waiting for responses
         self.question_timeout = 300  # Default timeout for questions
+        self.shutdown_flag = False  # Flag to signal shutdown
 
         # Validate configuration - don't disable here, let _validate_requirements handle it
 
@@ -303,6 +304,24 @@ class SlackChannelHandler(ChannelHandler):
                     self._get_main_event_loop(),
                 )
 
+        # Handle app mentions
+        @self.slack_app.event("app_mention")
+        def handle_app_mention(event, say):
+            if not event.get("bot_id"):  # Ignore bot messages
+                # Send to main thread via queue
+                asyncio.run_coroutine_threadsafe(
+                    self.message_queue.put(
+                        {
+                            "type": "app_mention",
+                            "user_id": event["user"],
+                            "channel_id": event["channel"],
+                            "text": event.get("text", ""),
+                            "timestamp": event.get("ts"),
+                        }
+                    ),
+                    self._get_main_event_loop(),
+                )
+
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions
         def handle_button_click(ack, body):
@@ -339,13 +358,12 @@ class SlackChannelHandler(ChannelHandler):
         logger.info("Starting Slack WebSocket connection...")
         # Use the correct method name for slack-bolt SocketModeHandler
         try:
-            await self.socket_handler.start_async()
-        except AttributeError:
-            # Fallback to synchronous start if start_async doesn't exist
-            import asyncio
-
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self.socket_handler.start)
+            # Run the socket handler with shutdown monitoring
+            await self._run_interruptible_socket_handler()
+        except Exception as e:
+            logger.error(f"Slack WebSocket connection failed: {e}")
+            if not self.shutdown_requested:
+                raise
 
     def _get_main_event_loop(self):
         """Get reference to main thread's event loop."""
@@ -421,3 +439,66 @@ class SlackChannelHandler(ChannelHandler):
                 del self.pending_questions[action_id]
             logger.error(f"Error asking Slack question: {e}")
             raise
+
+    async def _run_interruptible_socket_handler(self):
+        """Run socket handler with proper shutdown monitoring."""
+        try:
+            # Try async start first
+            if hasattr(self.socket_handler, "start_async"):
+                await self.socket_handler.start_async()
+            else:
+                # Fallback to synchronous start in executor
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, self.socket_handler.start)
+        except Exception as e:
+            if not self.shutdown_requested:
+                logger.error(f"Socket handler error: {e}")
+                raise
+            else:
+                logger.info("Socket handler stopped due to shutdown")
+
+    async def stop_session(self):
+        """Stop Slack WebSocket session and cleanup resources."""
+        logger.info("Stopping Slack WebSocket session...")
+        self.shutdown_requested = True
+
+        try:
+            # Stop the socket handler if it exists
+            if self.socket_handler:
+                try:
+                    # Try to stop synchronously first to avoid executor threads
+                    if hasattr(self.socket_handler, "close"):
+                        self.socket_handler.close()
+                    elif hasattr(self.socket_handler, "stop"):
+                        self.socket_handler.stop()
+                except Exception as e:
+                    logger.warning(f"Direct socket handler stop failed: {e}")
+                    # Fallback to executor only if direct call fails
+                    try:
+                        if hasattr(self.socket_handler, "close"):
+                            await asyncio.get_event_loop().run_in_executor(
+                                None, self.socket_handler.close
+                            )
+                        elif hasattr(self.socket_handler, "stop"):
+                            await asyncio.get_event_loop().run_in_executor(
+                                None, self.socket_handler.stop
+                            )
+                    except Exception as e2:
+                        logger.warning(
+                            f"Executor socket handler stop also failed: {e2}"
+                        )
+
+            # Clear pending questions
+            self.pending_questions.clear()
+
+            # Mark session as inactive
+            self.session_active = False
+
+            logger.info("Slack WebSocket session stopped successfully")
+
+        except Exception as e:
+            logger.error(f"Error stopping Slack session: {e}")
+        finally:
+            # Ensure cleanup even if there are errors
+            self.slack_app = None
+            self.socket_handler = None

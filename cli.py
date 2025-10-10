@@ -417,10 +417,42 @@ def run_interactive_mode(supervisor: Supervisor):
         sys.exit(1)
     finally:
         try:
+            # Clean up readline before stopping supervisor
+            try:
+                import atexit
+                import readline
+
+                # Save history before cleanup
+                history_file = os.path.expanduser("~/.strandsagent_history")
+                if os.path.exists(history_file):
+                    readline.write_history_file(history_file)
+
+                # Clear readline to help with thread cleanup
+                readline.clear_history()
+
+            except Exception as e:
+                logger.debug(f"Readline cleanup error: {e}")
+
             supervisor.stop()
             logger.info("✅ System shutdown complete")
-        except Exception:
-            pass
+
+            # Force exit to prevent hanging on slack-bolt internal threads
+            # This is necessary because slack-bolt's SocketModeHandler creates
+            # internal threads that don't terminate cleanly during Python shutdown.
+            # Our application components shut down properly, but the third-party
+            # library threads cause hanging in threading._shutdown().
+            import os
+            import time
+
+            time.sleep(0.1)  # Brief pause for final cleanup
+            logger.info("🔄 Force exiting to prevent slack-bolt thread hanging...")
+            os._exit(0)
+
+        except Exception as e:
+            logger.error(f"Error during shutdown: {e}")
+            import os
+
+            os._exit(1)
 
 
 if __name__ == "__main__":

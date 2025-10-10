@@ -349,7 +349,26 @@ class Supervisor:
         try:
             logger.info("Stopping Supervisor...")
 
-            # Stop heartbeat service first
+            # Stop communication manager first to cleanup channel handlers
+            if self.communication_manager:
+                import asyncio
+
+                try:
+                    # Run the async shutdown method
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # If we're in an async context, create a task
+                        asyncio.create_task(self.communication_manager.shutdown())
+                    else:
+                        # If we're in a sync context, run until complete
+                        loop.run_until_complete(self.communication_manager.shutdown())
+                except RuntimeError:
+                    # No event loop, create a new one
+                    asyncio.run(self.communication_manager.shutdown())
+                except Exception as e:
+                    logger.error(f"Error shutting down communication manager: {e}")
+
+            # Stop heartbeat service
             if self.heartbeat:
                 self.heartbeat.stop()
                 logger.info("Heartbeat service stopped.")
