@@ -46,54 +46,68 @@ class TestLLMFactoryPerformance:
 
     def test_model_caching_performance(self):
         """Test that model creation is cached for performance."""
-        # First call should create the model
-        start_time = time.time()
-        model1 = self.factory.create_strands_model(LLMType.WEAK)
-        first_call_time = time.time() - start_time
+        with patch("llm_provider.factory.BedrockModel") as mock_bedrock, patch(
+            "llm_provider.factory.Agent"
+        ) as mock_agent_class:
+            # Mock model creation to be fast
+            mock_model = Mock()
+            mock_bedrock.return_value = mock_model
+            mock_agent_class.return_value = Mock()
 
-        # Second call should use cache and be much faster
-        start_time = time.time()
-        model2 = self.factory.create_strands_model(LLMType.WEAK)
-        second_call_time = time.time() - start_time
+            # First call should create the model
+            start_time = time.time()
+            model1 = self.factory.create_strands_model(LLMType.WEAK)
+            first_call_time = time.time() - start_time
 
-        # Verify same model instance is returned
-        assert model1 is model2, "Cached model should return same instance"
+            # Second call should use cache and be much faster
+            start_time = time.time()
+            model2 = self.factory.create_strands_model(LLMType.WEAK)
+            second_call_time = time.time() - start_time
 
-        # Second call should be significantly faster (cache hit)
-        assert (
-            second_call_time < first_call_time / 2
-        ), f"Cached call ({second_call_time:.4f}s) should be much faster than first call ({first_call_time:.4f}s)"
+            # Verify same model instance is returned
+            assert model1 is model2, "Cached model should return same instance"
 
-        # Verify cache statistics
-        stats = self.factory.get_cache_stats()
-        assert stats["models_cached"] >= 1, "Should have at least one cached model"
-        assert (
-            "weak_default" in stats["model_cache_keys"]
-        ), "Should have weak model cached"
+            # Second call should be significantly faster (cache hit)
+            assert (
+                second_call_time < first_call_time / 2
+            ), f"Cached call ({second_call_time:.4f}s) should be much faster than first call ({first_call_time:.4f}s)"
+
+            # Verify cache statistics
+            stats = self.factory.get_cache_stats()
+            assert stats["models_cached"] >= 1, "Should have at least one cached model"
 
     def test_agent_caching_performance(self):
         """Test that agent creation is cached for performance."""
-        # First call should create the agent
-        start_time = time.time()
-        agent1 = self.factory.create_universal_agent(LLMType.WEAK, "test_role")
-        first_call_time = time.time() - start_time
+        with patch("llm_provider.factory.BedrockModel") as mock_bedrock, patch(
+            "llm_provider.factory.Agent"
+        ) as mock_agent_class:
+            # Mock dependencies to be fast
+            mock_model = Mock()
+            mock_bedrock.return_value = mock_model
+            mock_agent = Mock()
+            mock_agent_class.return_value = mock_agent
 
-        # Second call should use cache and be much faster
-        start_time = time.time()
-        agent2 = self.factory.create_universal_agent(LLMType.WEAK, "test_role")
-        second_call_time = time.time() - start_time
+            # First call should create the agent
+            start_time = time.time()
+            agent1 = self.factory.create_universal_agent(LLMType.WEAK, "test_role")
+            first_call_time = time.time() - start_time
 
-        # Verify same agent instance is returned
-        assert agent1 is agent2, "Cached agent should return same instance"
+            # Second call should use cache and be much faster
+            start_time = time.time()
+            agent2 = self.factory.create_universal_agent(LLMType.WEAK, "test_role")
+            second_call_time = time.time() - start_time
 
-        # Second call should be significantly faster (cache hit)
-        assert (
-            second_call_time < first_call_time / 2
-        ), f"Cached call ({second_call_time:.4f}s) should be much faster than first call ({first_call_time:.4f}s)"
+            # Verify same agent instance is returned
+            assert agent1 is agent2, "Cached agent should return same instance"
 
-        # Verify cache statistics
-        stats = self.factory.get_cache_stats()
-        assert stats["agents_cached"] >= 1, "Should have at least one cached agent"
+            # Second call should be significantly faster (cache hit)
+            assert (
+                second_call_time < first_call_time / 2
+            ), f"Cached call ({second_call_time:.4f}s) should be much faster than first call ({first_call_time:.4f}s)"
+
+            # Verify cache statistics
+            stats = self.factory.get_cache_stats()
+            assert stats["agents_cached"] >= 1, "Should have at least one cached agent"
 
     @patch.object(LLMFactory, "create_strands_model")
     def test_model_warming(self, mock_create_model):

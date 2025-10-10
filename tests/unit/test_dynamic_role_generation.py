@@ -140,11 +140,19 @@ class TestRoleFallbackBehavior:
 
     def test_basic_agent_creation_with_tools(self, universal_agent):
         """Test that basic agent creation works with additional tools."""
-        with patch("strands.Agent") as mock_agent_class:
+        with patch("strands.Agent") as mock_agent_class, patch(
+            "strands_tools.calculator"
+        ) as mock_calc, patch("strands_tools.file_read") as mock_file_read, patch(
+            "strands_tools.shell"
+        ) as mock_shell:
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 
-            # Test basic agent creation
+            # Mock the tool registry
+            universal_agent.tool_registry = Mock()
+            universal_agent.tool_registry.get_tools.return_value = [Mock()]
+
+            # Test basic agent creation with correct parameter name
             result = universal_agent._create_basic_agent(
                 LLMType.DEFAULT, None, ["test_tool"]
             )

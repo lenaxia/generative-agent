@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from common.task_graph import TaskGraph, TaskNode, TaskStatus
+from llm_provider.role_registry import RoleRegistry
 
 
 @pytest.fixture
@@ -150,6 +151,17 @@ def _get_role_response(role: str) -> str:
     }
 
     return role_responses.get(role, f"Task completed for role: {role}")
+
+
+@pytest.fixture(scope="session")
+def shared_role_registry():
+    """Shared RoleRegistry fixture for performance optimization.
+
+    This fixture creates a single RoleRegistry instance that's reused across
+    all tests in the session, avoiding expensive role loading on every test setup.
+    Uses session scope to maximize performance benefits.
+    """
+    return RoleRegistry("roles")
 
 
 @pytest.fixture

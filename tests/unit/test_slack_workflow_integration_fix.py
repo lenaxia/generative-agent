@@ -253,6 +253,7 @@ class TestEndToEndSlackFlow:
         """Test that Slack messages reach the workflow engine through thread-safe queues."""
         # Create communication manager with mock message bus
         message_bus = Mock(spec=MessageBus)
+        message_bus.publish = Mock()  # Mock the publish method
         communication_manager = CommunicationManager(message_bus)
 
         # Create thread-safe queue with Slack message
@@ -269,18 +270,16 @@ class TestEndToEndSlackFlow:
         # Register queue with communication manager
         communication_manager.channel_queues["slack"] = slack_queue
 
-        # Mock workflow engine start_workflow method
-        communication_manager.workflow_engine = Mock()
-        communication_manager.workflow_engine.start_workflow = AsyncMock(
-            return_value="workflow_123"
-        )
-
         # Process the message
         await communication_manager._handle_channel_message("slack", test_message)
 
-        # Verify workflow was started
-        communication_manager.workflow_engine.start_workflow.assert_called_once()
-        call_args = communication_manager.workflow_engine.start_workflow.call_args[0]
-        assert (
-            "what's the weather?" in call_args[0]
-        )  # Request text should contain the message
+        # Verify message was published to message bus (not directly to workflow engine)
+        message_bus.publish.assert_called_once()
+        call_args = message_bus.publish.call_args
+        # Check that it published an INCOMING_REQUEST message type
+        from common.message_bus import MessageType
+
+        assert call_args[0][1] == MessageType.INCOMING_REQUEST
+        # Check that the RequestMetadata contains the message text
+        request_metadata = call_args[0][2]
+        assert "what's the weather?" in request_metadata.prompt

@@ -283,9 +283,10 @@ class TestSlackAppMentionHandler:
         # Verify the message was processed correctly
         assert len(received_messages) == 1
         message_data = received_messages[0]
-        assert message_data["request"] == "<@U0BOTUSER> hello there!"
-        assert message_data["user_id"] == "U123456789"
-        assert message_data["channel_id"] == "slack:C987654321"
-        assert message_data["source"] == "slack"
+        # message_data is a RequestMetadata object, not a dict
+        assert message_data.prompt == "<@U0BOTUSER> hello there!"
+        assert message_data.metadata["user_id"] == "U123456789"
+        assert message_data.metadata["channel_id"] == "slack:C987654321"
+        assert message_data.metadata["source"] == "slack"
 
         message_bus.stop()

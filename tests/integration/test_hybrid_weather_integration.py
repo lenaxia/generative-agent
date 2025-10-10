@@ -22,13 +22,14 @@ class TestHybridWeatherIntegration:
     """Integration tests for hybrid weather role functionality."""
 
     def setup_method(self):
-        """Set up test fixtures."""
+        """Set up test fixtures using shared role registry for performance."""
         # Mock dependencies
         self.llm_factory = Mock(spec=LLMFactory)
         self.message_bus = Mock(spec=MessageBus)
 
-        # Create real role registry with weather role
-        self.role_registry = RoleRegistry("roles")
+    def _setup_with_shared_registry(self, role_registry):
+        """Complete setup with shared role registry."""
+        self.role_registry = role_registry
 
         # Create real universal agent
         self.universal_agent = UniversalAgent(self.llm_factory, self.role_registry)
@@ -38,16 +39,20 @@ class TestHybridWeatherIntegration:
             self.llm_factory, self.role_registry, self.universal_agent
         )
 
-        # Create workflow engine
-        self.workflow_engine = WorkflowEngine(self.llm_factory, self.message_bus)
+        # Create workflow engine with mocked role registry to avoid double loading
+        with patch("supervisor.workflow_engine.RoleRegistry") as mock_registry_class:
+            mock_registry_class.return_value = self.role_registry
+            self.workflow_engine = WorkflowEngine(self.llm_factory, self.message_bus)
 
-        # Override the workflow engine's components with our mocked ones
+        # Override the workflow engine's components with our shared ones
         self.workflow_engine.role_registry = self.role_registry
         self.workflow_engine.universal_agent = self.universal_agent
         self.workflow_engine.request_router = self.request_router
 
-    def test_weather_role_hybrid_detection(self):
+    def test_weather_role_hybrid_detection(self, shared_role_registry):
         """Test that weather role is properly detected as hybrid."""
+        self._setup_with_shared_registry(shared_role_registry)
+
         execution_type = self.role_registry.get_role_execution_type("weather")
         assert execution_type == "hybrid"
 
@@ -60,8 +65,9 @@ class TestHybridWeatherIntegration:
         assert "fetch_weather_data" in lifecycle_functions
         assert "format_for_tts" in lifecycle_functions
 
-    def test_enhanced_routing_with_weather_parameters(self):
+    def test_enhanced_routing_with_weather_parameters(self, shared_role_registry):
         """Test enhanced routing extracts weather parameters correctly."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Mock LLM response for routing - use Mock instead of patch to avoid coroutine issues
         mock_routing_response = """
         {
@@ -85,8 +91,9 @@ class TestHybridWeatherIntegration:
         assert result["parameters"]["format"] == "brief"
 
     @pytest.mark.asyncio
-    async def test_hybrid_weather_execution_flow(self):
+    async def test_hybrid_weather_execution_flow(self, shared_role_registry):
         """Test complete hybrid weather execution with lifecycle hooks."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Mock the weather tools to avoid external API calls
         mock_weather_data = {
             "weather": {
@@ -134,8 +141,9 @@ class TestHybridWeatherIntegration:
         assert "sunny" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_lifecycle_pre_processing(self):
+    async def test_lifecycle_pre_processing(self, shared_role_registry):
         """Test pre-processing lifecycle functions work correctly."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Get the weather role and its lifecycle functions
         self.role_registry.get_role("weather")
         lifecycle_functions = self.role_registry.get_lifecycle_functions("weather")
@@ -188,8 +196,9 @@ class TestHybridWeatherIntegration:
             )  # Should match the mock data
 
     @pytest.mark.asyncio
-    async def test_lifecycle_post_processing(self):
+    async def test_lifecycle_post_processing(self, shared_role_registry):
         """Test post-processing lifecycle functions work correctly."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Mock all external dependencies
         with patch(
             "asyncio.sleep",  # Mock sleep calls to speed up test
@@ -225,8 +234,9 @@ class TestHybridWeatherIntegration:
             assert "°F" not in tts_result  # Should be replaced
             assert "mph" not in tts_result  # Should be replaced
 
-    def test_workflow_engine_hybrid_integration(self):
+    def test_workflow_engine_hybrid_integration(self, shared_role_registry):
         """Test WorkflowEngine handles hybrid roles correctly."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Set a timeout using signal
         import signal
 
@@ -319,8 +329,9 @@ class TestHybridWeatherIntegration:
             assert task_node.task_context["parameters"]["location"] == "Portland"
             assert task_node.task_context["parameters"]["timeframe"] == "today"
 
-    def test_parameter_validation_integration(self):
+    def test_parameter_validation_integration(self, shared_role_registry):
         """Test parameter validation works with enum constraints."""
+        self._setup_with_shared_registry(shared_role_registry)
         parameters = self.role_registry.get_role_parameters("weather")
 
         # Test timeframe enum validation
@@ -339,8 +350,9 @@ class TestHybridWeatherIntegration:
         assert parameters["location"]["required"] is True
         assert parameters["timeframe"]["required"] is False
 
-    def test_backward_compatibility(self):
+    def test_backward_compatibility(self, shared_role_registry):
         """Test that non-hybrid roles still work correctly."""
+        self._setup_with_shared_registry(shared_role_registry)
         # Test with a non-hybrid role (should fall back to LLM execution)
         routing_result = {
             "route": "default",  # Non-hybrid role

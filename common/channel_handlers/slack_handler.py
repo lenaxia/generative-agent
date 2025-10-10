@@ -53,6 +53,8 @@ class SlackChannelHandler(ChannelHandler):
         self.pending_questions = {}  # Track questions waiting for responses
         self.question_timeout = 300  # Default timeout for questions
         self.shutdown_flag = False  # Flag to signal shutdown
+        self.session_active = False  # Track if WebSocket session is active
+        self.shutdown_requested = False  # Runtime shutdown flag
 
         # Validate configuration - don't disable here, let _validate_requirements handle it
 
