@@ -119,8 +119,8 @@ class TestDockerRedisSetup:
         # Read data back
         read_result = redis_read(test_key)
         assert read_result["success"] is True
-        assert read_result["data"]["message"] == test_data["message"]
-        assert read_result["data"]["test_id"] == test_data["test_id"]
+        assert read_result["value"]["message"] == test_data["message"]
+        assert read_result["value"]["test_id"] == test_data["test_id"]
 
     def test_dev_setup_script_exists(self):
         """Test that development setup script exists and is executable."""

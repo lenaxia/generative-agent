@@ -5,7 +5,7 @@ for Redis-based persistence and the comprehensive timer system.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from strands import tool
@@ -283,12 +283,21 @@ def alarm_set(
                 "error": f"Invalid time format '{time}'. Use formats like '14:30', '2:30 PM', '2024-12-25 09:00'",
             }
 
-        # Check if alarm time is in the future
-        if alarm_datetime <= datetime.now():
-            return {
-                "success": False,
-                "error": f"Alarm time '{time}' must be in the future",
-            }
+        # Check if alarm time is in the future, with smart handling for today/tomorrow
+        now = datetime.now()
+        if alarm_datetime <= now:
+            # If the time is only slightly in the past (within 2 hours), assume user meant tomorrow
+            time_diff = now - alarm_datetime
+            if time_diff.total_seconds() <= 7200:  # 2 hours
+                alarm_datetime = alarm_datetime + timedelta(days=1)
+                logger.info(
+                    f"Alarm time '{time}' was in the past, assuming tomorrow: {alarm_datetime}"
+                )
+            else:
+                return {
+                    "success": False,
+                    "error": f"Alarm time '{time}' must be in the future",
+                }
 
         # Determine timer type based on recurring pattern
         timer_type = "recurring" if recurring else "alarm"

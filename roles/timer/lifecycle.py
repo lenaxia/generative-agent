@@ -961,15 +961,10 @@ def _parse_alarm_time(time_str: str) -> Optional[datetime]:
             try:
                 parsed_time = datetime.strptime(time_str, fmt)
 
-                # If no date specified, assume today or tomorrow if time has passed
+                # If no date specified, assume today
                 if fmt in ["%H:%M", "%I:%M %p"]:
-                    now = datetime.now()
-                    today = now.date()
+                    today = datetime.now().date()
                     parsed_time = datetime.combine(today, parsed_time.time())
-
-                    # If the time has already passed today, assume tomorrow
-                    if parsed_time <= now:
-                        parsed_time = parsed_time + timedelta(days=1)
 
                 return parsed_time
 

@@ -809,3 +809,20 @@ def redis_health_check() -> dict[str, Any]:
             "error": str(e),
             "message": "Redis health check failed",
         }
+
+
+# Convenience aliases for backward compatibility
+
+
+async def get_key(key: str) -> dict[str, Any]:
+    """Async alias for redis_read with 'data' key for backward compatibility."""
+    result = redis_read(key)
+    if result.get("success") and "value" in result:
+        # Add 'data' key for backward compatibility
+        result["data"] = result["value"]
+    return result
+
+
+async def set_key(key: str, value: Any, ttl: Optional[int] = None) -> dict[str, Any]:
+    """Async alias for redis_write."""
+    return redis_write(key, value, ttl)
