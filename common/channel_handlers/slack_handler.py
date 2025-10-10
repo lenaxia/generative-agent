@@ -378,13 +378,6 @@ class SlackChannelHandler(ChannelHandler):
             else:
                 logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")
 
-        # Log that event handlers are registered
-        logger.info("🎯 Event handlers registered:")
-        logger.info("   - message events")
-        logger.info("   - app_mention events")
-        logger.info("   - button action events")
-        logger.info("   - global event debugging")
-
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions
         def handle_button_click(ack, body):
