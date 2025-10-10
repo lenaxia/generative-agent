@@ -396,7 +396,9 @@ class CommunicationManager:
     ) -> list[dict]:
         """Send message with specified delivery guarantee."""
         results = []
+        successful_delivery = False
 
+        # Try target channels first
         for channel_id in target_channels:
             if channel_id in self.channels:
                 result = await self.channels[channel_id].send_notification(
@@ -406,6 +408,41 @@ class CommunicationManager:
                     context.get("metadata", {}),
                 )
                 results.append({"channel": channel_id, "result": result})
+                if result.get("success"):
+                    successful_delivery = True
+
+        # If no successful delivery and we need guarantees, try fallback channels
+        if (
+            not successful_delivery
+            and delivery_guarantee != DeliveryGuarantee.BEST_EFFORT
+        ):
+            # Try all other available channels as fallbacks
+            for channel_id, handler in self.channels.items():
+                if channel_id not in target_channels and handler.enabled:
+                    result = await handler.send_notification(
+                        message,
+                        context.get("recipient"),
+                        context.get("message_format", MessageFormat.PLAIN_TEXT),
+                        context.get("metadata", {}),
+                    )
+                    results.append({"channel": channel_id, "result": result})
+                    if result.get("success"):
+                        successful_delivery = True
+                        logger.info(
+                            f"Message delivered via fallback channel: {channel_id}"
+                        )
+                        break  # Stop after first successful fallback
+
+        # If still no success and channel doesn't exist, try console as last resort
+        if not successful_delivery and "console" not in [r["channel"] for r in results]:
+            if "console" in self.channels:
+                result = await self.channels["console"].send_notification(
+                    message,
+                    context.get("recipient"),
+                    context.get("message_format", MessageFormat.PLAIN_TEXT),
+                    context.get("metadata", {}),
+                )
+                results.append({"channel": "console", "result": result})
 
         return results
 

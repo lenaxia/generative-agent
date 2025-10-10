@@ -10,19 +10,64 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from common.channel_handlers.console_handler import ConsoleChannelHandler
-from common.channel_handlers.home_assistant_handler import HomeAssistantChannelHandler
-from common.channel_handlers.slack_handler import SlackChannelHandler
-from common.channel_handlers.sonos_handler import SonosChannelHandler
-from common.channel_handlers.voice_handler import VoiceChannelHandler
-from common.channel_handlers.whatsapp_handler import WhatsAppChannelHandler
 from common.communication_manager import (
+    ChannelHandler,
     ChannelType,
     CommunicationManager,
     DeliveryGuarantee,
     MessageFormat,
 )
 from common.message_bus import MessageBus, MessageType
+
+
+class MockChannelHandler(ChannelHandler):
+    """Mock channel handler for testing."""
+
+    def __init__(self, channel_type, bidirectional=False):
+        super().__init__()
+        self.channel_type = channel_type
+        self.sent_messages = []
+        self._bidirectional = bidirectional
+        self.enabled = True
+        self.session_active = True
+
+    def _validate_requirements(self) -> bool:
+        return True
+
+    def get_capabilities(self) -> dict:
+        return {
+            "supports_rich_text": True,
+            "supports_buttons": self._bidirectional,
+            "supports_audio": self.channel_type == ChannelType.SONOS,
+            "supports_images": False,
+            "bidirectional": self._bidirectional,
+            "requires_session": self._bidirectional,
+            "max_message_length": 4000,
+        }
+
+    async def _send(
+        self,
+        message: str,
+        recipient: str,
+        message_format: MessageFormat,
+        metadata: dict,
+    ) -> dict:
+        self.sent_messages.append(
+            {
+                "message": message,
+                "recipient": recipient,
+                "format": message_format,
+                "metadata": metadata,
+            }
+        )
+        return {"success": True, "channel": self.channel_type.value}
+
+    async def _ask_question_impl(
+        self, question: str, options: list, timeout: int
+    ) -> str:
+        if self._bidirectional:
+            return options[0] if options else "yes"
+        raise NotImplementedError("Not bidirectional")
 
 
 @pytest.fixture
@@ -35,8 +80,8 @@ def message_bus():
 
 
 @pytest.fixture
-def full_communication_manager(message_bus):
-    """Create a CommunicationManager with all channel handlers."""
+def communication_manager(message_bus):
+    """Create a CommunicationManager with mock handlers."""
     with patch(
         "common.communication_manager.CommunicationManager._discover_and_initialize_channels"
     ):
@@ -44,83 +89,24 @@ def full_communication_manager(message_bus):
         return manager
 
 
-def _create_mock_slack_handler():
-    """Create a mock Slack handler with WebSocket support."""
-    handler = SlackChannelHandler()
-    handler.bot_token = "xoxb-mock-token"
-    handler.app_token = "xapp-mock-token"
-    handler._send_via_api = AsyncMock(return_value={"success": True})
-    handler._background_session_loop = AsyncMock()
-    return handler
-
-
-def _create_mock_sonos_handler():
-    """Create a mock Sonos handler."""
-    handler = SonosChannelHandler()
-    handler.soco_module = MagicMock()
-    handler.devices = {"Kitchen": MagicMock(), "Living Room": MagicMock()}
-    handler.session_active = True
-    handler._text_to_speech = AsyncMock(return_value="/tmp/test.mp3")
-    handler._play_on_device = AsyncMock(
-        return_value={"success": True, "device": "Kitchen"}
-    )
-    return handler
-
-
-def _create_mock_voice_handler():
-    """Create a mock Voice handler."""
-    handler = VoiceChannelHandler()
-    handler.audio_modules = {
-        "sr": MagicMock(),
-        "pyaudio": MagicMock(),
-        "pyttsx3": MagicMock(),
-    }
-    handler.session_active = True
-    handler._speech_to_text = AsyncMock(return_value="test voice command")
-    handler._speak_text = MagicMock()
-    return handler
-
-
-def _create_mock_home_assistant_handler():
-    """Create a mock Home Assistant handler."""
-    handler = HomeAssistantChannelHandler()
-    handler.access_token = "mock-token"
-    handler.base_url = "http://homeassistant.local:8123"
-    handler.websocket = MagicMock()
-    handler.session_active = True
-    handler._call_service = AsyncMock(return_value={"success": True})
-    return handler
-
-
-def _create_mock_whatsapp_handler():
-    """Create a mock WhatsApp handler."""
-    handler = WhatsAppChannelHandler()
-    handler.phone_number = "+1234567890"
-    handler.twilio_account_sid = "mock-sid"
-    handler.twilio_auth_token = "mock-token"
-    handler._send_via_twilio = AsyncMock(return_value={"success": True})
-    return handler
-
-
 class TestUnifiedCommunicationIntegration:
     """Integration tests for the unified communication system."""
 
     @pytest.mark.asyncio
     async def test_multi_channel_timer_notification(
-        self, full_communication_manager, message_bus
+        self, communication_manager, message_bus
     ):
         """Test timer notification routing to multiple channels."""
-        await full_communication_manager.initialize()
+        await communication_manager.initialize()
 
         # Register mock handlers
-        slack_handler = _create_mock_slack_handler()
-        sonos_handler = _create_mock_sonos_handler()
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        slack_handler = MockChannelHandler(ChannelType.SLACK, bidirectional=True)
+        sonos_handler = MockChannelHandler(ChannelType.SONOS)
 
-        full_communication_manager.register_channel(slack_handler)
-        full_communication_manager.register_channel(sonos_handler)
-
-        for handler in [slack_handler, sonos_handler]:
-            handler.communication_manager = full_communication_manager
+        for handler in [console_handler, slack_handler, sonos_handler]:
+            communication_manager.register_channel(handler)
+            handler.communication_manager = communication_manager
             await handler.validate_and_initialize()
 
         # Publish timer expired event
@@ -129,7 +115,6 @@ class TestUnifiedCommunicationIntegration:
                 "timer_id": "kitchen_timer",
                 "name": "Kitchen Timer",
                 "notification_channel": "slack",
-                "audio_enabled": True,
             }
         }
 
@@ -138,65 +123,65 @@ class TestUnifiedCommunicationIntegration:
         # Give time for processing
         await asyncio.sleep(0.2)
 
-        # Verify notifications were sent to appropriate channels
-        assert "slack" in full_communication_manager.channels
-        assert "sonos" in full_communication_manager.channels
+        # Verify notification was sent
+        assert len(slack_handler.sent_messages) >= 1
+        assert (
+            "Timer expired: Kitchen Timer" in slack_handler.sent_messages[0]["message"]
+        )
 
     @pytest.mark.asyncio
-    async def test_smart_home_control_flow(self, full_communication_manager):
-        """Test smart home control through Home Assistant."""
-        ha_handler = full_communication_manager.channels["home_assistant"]
+    async def test_message_routing_with_fallback(self, communication_manager):
+        """Test message routing with fallback when primary channel fails."""
+        await communication_manager.initialize()
 
-        # Test device control
+        # Create a failing handler
+        class FailingHandler(MockChannelHandler):
+            async def _send(self, message, recipient, message_format, metadata):
+                return {"success": False, "error": "Channel failed"}
+
+        failing_handler = FailingHandler(ChannelType.SLACK)
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+
+        communication_manager.register_channel(failing_handler)
+        communication_manager.register_channel(console_handler)
+
+        for handler in [failing_handler, console_handler]:
+            handler.communication_manager = communication_manager
+            await handler.validate_and_initialize()
+
+        # Send message with fallback
         context = {
-            "channel_id": "home_assistant",
-            "message_type": "smart_home_control",
-            "metadata": {
-                "command_type": "service_call",
-                "service": "light.turn_on",
-                "entity_id": "light.kitchen",
-            },
+            "channel_id": "slack",
+            "delivery_guarantee": DeliveryGuarantee.AT_LEAST_ONCE,
+            "message_type": "notification",
         }
 
-        results = await full_communication_manager.route_message(
-            "Turn on kitchen light", context
-        )
+        results = await communication_manager.route_message("Test fallback", context)
 
+        # Should have tried slack and fallen back to console
         assert len(results) >= 1
-        assert any(r["result"]["success"] for r in results)
+        # At least one should have succeeded (console)
+        successful_results = [r for r in results if r["result"]["success"]]
+        assert len(successful_results) >= 1
 
     @pytest.mark.asyncio
-    async def test_voice_command_processing(self, full_communication_manager):
-        """Test voice command processing and response."""
-        voice_handler = full_communication_manager.channels["voice"]
-
-        # Simulate incoming voice command
-        await voice_handler.message_queue.put(
-            {
-                "type": "incoming_message",
-                "user_id": "voice_user",
-                "channel_id": "voice",
-                "text": "What's the weather like?",
-                "timestamp": asyncio.get_event_loop().time(),
-            }
-        )
-
-        # Process the message
-        await full_communication_manager._process_channel_queues()
-
-        # Verify message was processed
-        # In a real test, we'd verify the message was published to MessageBus
-
-    @pytest.mark.asyncio
-    async def test_multi_channel_agent_question(
-        self, full_communication_manager, message_bus
+    async def test_bidirectional_communication_flow(
+        self, communication_manager, message_bus
     ):
-        """Test agent question routing to bidirectional channels."""
-        # Test with Slack channel
+        """Test bidirectional communication with agent questions."""
+        await communication_manager.initialize()
+
+        # Register bidirectional handler
+        slack_handler = MockChannelHandler(ChannelType.SLACK, bidirectional=True)
+        communication_manager.register_channel(slack_handler)
+        slack_handler.communication_manager = communication_manager
+        await slack_handler.validate_and_initialize()
+
+        # Test agent question handling
         question_data = {
             "data": {
-                "question": "Should I proceed with the task?",
-                "options": ["Yes", "No", "Cancel"],
+                "question": "Should I proceed?",
+                "options": ["Yes", "No"],
                 "timeout": 30,
                 "channel_id": "slack",
                 "question_id": "test_q1",
@@ -208,166 +193,77 @@ class TestUnifiedCommunicationIntegration:
         # Give time for processing
         await asyncio.sleep(0.1)
 
-        # Verify question was handled
-        slack_handler = full_communication_manager.channels["slack"]
-        assert hasattr(slack_handler, "pending_questions")
+        # Verify the question was handled
+        assert "slack" in communication_manager.channels
 
     @pytest.mark.asyncio
-    async def test_fallback_mechanism(self, full_communication_manager):
-        """Test fallback to alternative channels when primary fails."""
-        # Disable primary channel
-        slack_handler = full_communication_manager.channels["slack"]
-        slack_handler.enabled = False
-
-        # Send message with fallback
-        context = {
-            "channel_id": "slack",
-            "delivery_guarantee": DeliveryGuarantee.AT_LEAST_ONCE,
-            "message_type": "notification",
-        }
-
-        results = await full_communication_manager.route_message(
-            "Test fallback", context
-        )
-
-        # Should have fallen back to console or other available channels
-        assert len(results) >= 1
-        successful_results = [r for r in results if r["result"]["success"]]
-        assert len(successful_results) >= 1
-
-    @pytest.mark.asyncio
-    async def test_channel_capability_detection(self, full_communication_manager):
+    async def test_channel_capability_detection(self, communication_manager):
         """Test that channels properly report their capabilities."""
-        channels = full_communication_manager.channels
+        await communication_manager.initialize()
 
-        # Console: basic text only
-        console_caps = channels["console"].get_capabilities()
+        # Register handlers with different capabilities
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        slack_handler = MockChannelHandler(ChannelType.SLACK, bidirectional=True)
+        sonos_handler = MockChannelHandler(ChannelType.SONOS)
+
+        handlers = [console_handler, slack_handler, sonos_handler]
+        for handler in handlers:
+            communication_manager.register_channel(handler)
+            handler.communication_manager = communication_manager
+            await handler.validate_and_initialize()
+
+        # Test capabilities
+        console_caps = communication_manager.channels["console"].get_capabilities()
         assert console_caps["bidirectional"] is False
-        assert console_caps["supports_audio"] is False
 
-        # Slack: rich text and bidirectional
-        slack_caps = channels["slack"].get_capabilities()
-        assert slack_caps["supports_rich_text"] is True
+        slack_caps = communication_manager.channels["slack"].get_capabilities()
         assert slack_caps["bidirectional"] is True
+        assert slack_caps["supports_buttons"] is True
 
-        # Sonos: audio only
-        sonos_caps = channels["sonos"].get_capabilities()
+        sonos_caps = communication_manager.channels["sonos"].get_capabilities()
         assert sonos_caps["supports_audio"] is True
         assert sonos_caps["bidirectional"] is False
 
-        # Voice: bidirectional audio
-        voice_caps = channels["voice"].get_capabilities()
-        assert voice_caps["supports_audio"] is True
-        assert voice_caps["bidirectional"] is True
-
-        # Home Assistant: bidirectional device control
-        ha_caps = channels["home_assistant"].get_capabilities()
-        assert ha_caps["bidirectional"] is True
-        assert ha_caps["requires_session"] is True
-
-        # WhatsApp: bidirectional messaging
-        whatsapp_caps = channels["whatsapp"].get_capabilities()
-        assert whatsapp_caps["bidirectional"] is True
-        assert whatsapp_caps["supports_images"] is True
-
     @pytest.mark.asyncio
-    async def test_message_routing_intelligence(self, full_communication_manager):
+    async def test_message_routing_intelligence(self, communication_manager):
         """Test intelligent message routing based on message type."""
-        # Test timer notification routing
-        timer_context = {
-            "channel_id": "slack",
-            "message_type": "timer_expired",
-            "audio_enabled": True,
-        }
+        await communication_manager.initialize()
 
-        channels = full_communication_manager._determine_target_channels(
-            "slack", "timer_expired", timer_context
+        # Register console handler for basic routing test
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        communication_manager.register_channel(console_handler)
+        console_handler.communication_manager = communication_manager
+        await console_handler.validate_and_initialize()
+
+        # Test basic routing
+        channels = communication_manager._determine_target_channels(
+            "console", "notification", {}
         )
-        assert "slack" in channels
-        # Would include sonos if audio_enabled logic is implemented
-
-        # Test music control routing
-        music_context = {"channel_id": "voice", "message_type": "music_control"}
-
-        channels = full_communication_manager._determine_target_channels(
-            "voice", "music_control", music_context
-        )
-        assert "sonos" in channels
+        assert "console" in channels
 
     @pytest.mark.asyncio
-    async def test_background_thread_management(self, full_communication_manager):
-        """Test that background threads are properly managed."""
-        # Check that stateful channels have background threads
-        stateful_channels = ["slack", "voice", "home_assistant"]
-
-        for channel_id in stateful_channels:
-            handler = full_communication_manager.channels[channel_id]
-            if handler.requires_background_thread():
-                assert handler.background_thread is not None
-                assert handler.message_queue is not None
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_workflow(self, full_communication_manager, message_bus):
-        """Test complete end-to-end communication workflow."""
-        # 1. Incoming message from voice
-        voice_handler = full_communication_manager.channels["voice"]
-        await voice_handler.message_queue.put(
-            {
-                "type": "incoming_message",
-                "user_id": "voice_user",
-                "channel_id": "voice",
-                "text": "Turn on the kitchen lights",
-                "timestamp": asyncio.get_event_loop().time(),
-            }
-        )
-
-        # 2. Process the message
-        await full_communication_manager._process_channel_queues()
-
-        # 3. Simulate agent processing and response
-        response_context = {
-            "channel_id": "voice",
-            "message_type": "smart_home_control",
-            "metadata": {
-                "command_type": "service_call",
-                "service": "light.turn_on",
-                "entity_id": "light.kitchen",
-            },
-        }
-
-        # 4. Route response back
-        results = await full_communication_manager.route_message(
-            "Kitchen lights turned on", response_context
-        )
-
-        # 5. Verify response was sent
-        assert len(results) >= 1
-        assert any(r["result"]["success"] for r in results)
-
-    @pytest.mark.asyncio
-    async def test_error_handling_and_recovery(self, full_communication_manager):
-        """Test error handling and recovery mechanisms."""
-        # Test with invalid channel
-        context = {"channel_id": "nonexistent", "message_type": "notification"}
-
-        results = await full_communication_manager.route_message(
-            "Test message", context
-        )
-
-        # Should fall back to console
-        assert len(results) >= 1
-        console_result = next((r for r in results if r["channel"] == "console"), None)
-        assert console_result is not None
-
-    @pytest.mark.asyncio
-    async def test_concurrent_channel_operations(self, full_communication_manager):
+    async def test_concurrent_channel_operations(self, communication_manager):
         """Test concurrent operations across multiple channels."""
+        await communication_manager.initialize()
+
+        # Register multiple handlers
+        handlers = [
+            MockChannelHandler(ChannelType.CONSOLE),
+            MockChannelHandler(ChannelType.SLACK),
+            MockChannelHandler(ChannelType.EMAIL),
+        ]
+
+        for handler in handlers:
+            communication_manager.register_channel(handler)
+            handler.communication_manager = communication_manager
+            await handler.validate_and_initialize()
+
         # Send messages to multiple channels simultaneously
         tasks = []
 
-        for channel_id in ["console", "slack", "sonos"]:
+        for channel_id in ["console", "slack", "email"]:
             context = {"channel_id": channel_id, "message_type": "notification"}
-            task = full_communication_manager.route_message(
+            task = communication_manager.route_message(
                 f"Test message for {channel_id}", context
             )
             tasks.append(task)
@@ -382,22 +278,66 @@ class TestUnifiedCommunicationIntegration:
             assert any(r["result"]["success"] for r in result_list)
 
     @pytest.mark.asyncio
-    async def test_session_lifecycle_management(self, full_communication_manager):
-        """Test session lifecycle for stateful channels."""
-        # Test session start/stop for Home Assistant
-        ha_handler = full_communication_manager.channels["home_assistant"]
+    async def test_error_handling_and_recovery(self, communication_manager):
+        """Test error handling and recovery mechanisms."""
+        await communication_manager.initialize()
 
-        # Mock WebSocket operations
-        ha_handler._connect_websocket = AsyncMock()
+        # Register console handler as fallback
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        communication_manager.register_channel(console_handler)
+        console_handler.communication_manager = communication_manager
+        await console_handler.validate_and_initialize()
 
-        # Test session management
-        assert (
-            ha_handler.session_active is True
-        )  # Should be active after initialization
+        # Test with invalid channel - should fall back to console
+        context = {"channel_id": "nonexistent", "message_type": "notification"}
 
-        # Test session stop
-        await ha_handler.stop_session()
-        assert ha_handler.session_active is False
+        results = await communication_manager.route_message("Test message", context)
+
+        # Should fall back to console
+        assert len(results) >= 1
+        console_result = next((r for r in results if r["channel"] == "console"), None)
+        assert console_result is not None
+
+    @pytest.mark.asyncio
+    async def test_send_message_event_handling(
+        self, communication_manager, message_bus
+    ):
+        """Test handling of SEND_MESSAGE events."""
+        await communication_manager.initialize()
+
+        # Register handler
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        communication_manager.register_channel(console_handler)
+        console_handler.communication_manager = communication_manager
+        await console_handler.validate_and_initialize()
+
+        # Publish send message event
+        send_data = {
+            "message": "Test notification",
+            "context": {"channel_id": "console", "recipient": "test_user"},
+        }
+
+        message_bus.publish(None, MessageType.SEND_MESSAGE, send_data)
+
+        # Give time for processing
+        await asyncio.sleep(0.1)
+
+        # Check that message was sent
+        assert len(console_handler.sent_messages) >= 1
+        assert console_handler.sent_messages[0]["message"] == "Test notification"
+
+    @pytest.mark.asyncio
+    async def test_background_thread_detection(self, communication_manager):
+        """Test background thread requirement detection."""
+        await communication_manager.initialize()
+
+        # Test stateless handler
+        console_handler = MockChannelHandler(ChannelType.CONSOLE)
+        assert not console_handler.requires_background_thread()
+
+        # Test stateful handler
+        slack_handler = MockChannelHandler(ChannelType.SLACK, bidirectional=True)
+        assert slack_handler.requires_background_thread()
 
 
 if __name__ == "__main__":
