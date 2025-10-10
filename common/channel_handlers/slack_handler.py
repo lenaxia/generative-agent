@@ -337,7 +337,15 @@ class SlackChannelHandler(ChannelHandler):
 
         # Start WebSocket (blocks in this thread)
         logger.info("Starting Slack WebSocket connection...")
-        await self.socket_handler.start_async()
+        # Use the correct method name for slack-bolt SocketModeHandler
+        try:
+            await self.socket_handler.start_async()
+        except AttributeError:
+            # Fallback to synchronous start if start_async doesn't exist
+            import asyncio
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self.socket_handler.start)
 
     def _get_main_event_loop(self):
         """Get reference to main thread's event loop."""
