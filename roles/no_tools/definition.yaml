@@ -11,7 +11,10 @@ prompts:
     Provide direct, actionable responses without unnecessary elaboration.
 
 # Explicitly specify no tools
-tools: []
+tools:
+  # No tools needed for routing decisions
+  automatic: false
+  shared: []
 
 # No lifecycle functions needed for simple LLM calls
 lifecycle_functions: []

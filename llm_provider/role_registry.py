@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import yaml
+from pydantic import ValidationError
+
+from llm_provider.role_schema import validate_role_definition
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +146,20 @@ class RoleRegistry:
         # Load role configuration
         with open(definition_file) as f:
             config = yaml.safe_load(f)
+
+        # Validate role configuration against schema
+        try:
+            validated_config = validate_role_definition(config)
+            # Convert back to dict for compatibility with existing code
+            config = validated_config.dict()
+            logger.debug(f"Role {role_name} passed schema validation")
+        except ValidationError as e:
+            logger.error(f"Role {role_name} failed schema validation: {e}")
+            raise ValueError(
+                f"Invalid role definition for '{role_name}': {e}\n"
+                f"Please check {definition_file} for correct structure. "
+                f"Common issues: 'tools' should be a dict like {{automatic: false, shared: []}}, not a list []"
+            ) from e
 
         # Load custom tools if tools.py exists
         custom_tools = []
@@ -676,7 +693,9 @@ class RoleRegistry:
 
                     llm_utility = EventHandlerLLM(
                         llm_factory=self.message_bus.llm_factory,
-                        event_context=event_data,
+                        event_context=event_data
+                        if isinstance(event_data, dict)
+                        else {},
                     )
 
                     # Create context object with all dependencies
@@ -685,7 +704,9 @@ class RoleRegistry:
                         workflow_engine=self.message_bus.workflow_engine,
                         communication_manager=self.message_bus.communication_manager,
                         message_bus=self.message_bus,
-                        execution_context=event_data.get("execution_context", {}),
+                        execution_context=event_data.get("execution_context", {})
+                        if isinstance(event_data, dict)
+                        else {},
                     )
 
                     # Call handler with clean context object signature
