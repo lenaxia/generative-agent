@@ -84,13 +84,12 @@ class TestFastPathSystemValidation:
         """Test various fast-path routing scenarios."""
         fast_path_config = {"enabled": True, "confidence_threshold": 0.7}
 
-        with patch("supervisor.workflow_engine.MCPClientManager"), patch(
-            "supervisor.workflow_engine.RoleRegistry"
-        ) as mock_registry_class, patch(
-            "supervisor.workflow_engine.UniversalAgent"
-        ) as mock_ua_class, patch(
-            "supervisor.workflow_engine.RequestRouter"
-        ) as mock_router_class:
+        with (
+            patch("supervisor.workflow_engine.MCPClientManager"),
+            patch("supervisor.workflow_engine.RoleRegistry") as mock_registry_class,
+            patch("supervisor.workflow_engine.UniversalAgent") as mock_ua_class,
+            patch("supervisor.workflow_engine.RequestRouter") as mock_router_class,
+        ):
             # Mock the role registry to avoid loading real roles
             mock_registry = Mock()
             mock_registry.get_fast_reply_roles.return_value = []

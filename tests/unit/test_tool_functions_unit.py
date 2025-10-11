@@ -38,8 +38,12 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 # Mock the LLM response
                 mock_execute_task.return_value = '{"tasks": [{"task_id": "task_1", "task_name": "Plan web application", "agent_id": "planning", "task_type": "execution", "prompt": "Plan a project to build a web application", "llm_type": "DEFAULT", "status": "pending"}], "dependencies": []}'
@@ -155,10 +159,13 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("requests.get") as mock_get, patch(
-                "asyncio.sleep", return_value=None
-            ), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("requests.get") as mock_get,
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 # Setup mock current weather response
                 mock_response = Mock()
@@ -240,10 +247,15 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies including LLM calls
-            with patch(
-                "roles.shared_tools.summarizer_tools.summarize_text"
-            ) as mock_summarize_text, patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch(
+                    "roles.shared_tools.summarizer_tools.summarize_text"
+                ) as mock_summarize_text,
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 # Mock the summarize_text function
                 mock_summarize_text.return_value = {
@@ -296,10 +308,13 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("slack_sdk.WebClient") as mock_client_class, patch(
-                "asyncio.sleep", return_value=None
-            ), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("slack_sdk.WebClient") as mock_client_class,
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 mock_client = Mock()
                 mock_client.chat_postMessage.return_value = {
@@ -340,8 +355,12 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 # Test search tool with network error
                 with patch("roles.search.tools.requests.get") as mock_get:
@@ -391,8 +410,12 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 # Test planning tools with invalid input
                 with pytest.raises((ValueError, TypeError), match="instruction|agents"):
@@ -443,13 +466,16 @@ class TestToolFunctionsUnit:
 
         try:
             # Mock all external dependencies
-            with patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
-            ), patch("requests.get") as mock_get, patch(
-                "llm_provider.universal_agent.UniversalAgent"
-            ) as mock_ua_class, patch(
-                "roles.search.tools.requests.get"
-            ) as mock_web_get:
+            with (
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
+                patch("requests.get") as mock_get,
+                patch("llm_provider.universal_agent.UniversalAgent") as mock_ua_class,
+                patch("roles.search.tools.requests.get") as mock_web_get,
+            ):
                 # Mock HTTP responses
                 mock_response = Mock()
                 mock_response.status_code = 200

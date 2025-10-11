@@ -107,15 +107,19 @@ class TestHybridWeatherIntegration:
         }
 
         # Mock all external dependencies
-        with patch(
-            "roles.weather.tools.get_weather",
-            return_value=mock_weather_data,
-        ), patch(
-            "asyncio.sleep",  # Mock sleep calls to speed up test
-            return_value=None,
-        ), patch(
-            "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
-            return_value=Mock(),
+        with (
+            patch(
+                "roles.weather.tools.get_weather",
+                return_value=mock_weather_data,
+            ),
+            patch(
+                "asyncio.sleep",  # Mock sleep calls to speed up test
+                return_value=None,
+            ),
+            patch(
+                "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
+                return_value=Mock(),
+            ),
         ):
             # Mock LLM execution to return a weather response
             mock_llm_response = "It's currently 72°F and sunny in Seattle with 45% humidity and light winds at 5 mph."
@@ -155,15 +159,19 @@ class TestHybridWeatherIntegration:
         }
 
         # Mock all external dependencies
-        with patch(
-            "roles.weather.tools.get_weather",
-            return_value=mock_weather_data,
-        ), patch(
-            "asyncio.sleep",  # Mock sleep calls to speed up test
-            return_value=None,
-        ), patch(
-            "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
-            return_value=Mock(),
+        with (
+            patch(
+                "roles.weather.tools.get_weather",
+                return_value=mock_weather_data,
+            ),
+            patch(
+                "asyncio.sleep",  # Mock sleep calls to speed up test
+                return_value=None,
+            ),
+            patch(
+                "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
+                return_value=Mock(),
+            ),
         ):
             # Test fetch_weather_data pre-processor
             fetch_weather_data = lifecycle_functions["fetch_weather_data"]
@@ -200,12 +208,15 @@ class TestHybridWeatherIntegration:
         """Test post-processing lifecycle functions work correctly."""
         self._setup_with_shared_registry(shared_role_registry)
         # Mock all external dependencies
-        with patch(
-            "asyncio.sleep",  # Mock sleep calls to speed up test
-            return_value=None,
-        ), patch(
-            "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
-            return_value=Mock(),
+        with (
+            patch(
+                "asyncio.sleep",  # Mock sleep calls to speed up test
+                return_value=None,
+            ),
+            patch(
+                "roles.shared_tools.redis_tools._get_redis_client",  # Mock Redis
+                return_value=Mock(),
+            ),
         ):
             lifecycle_functions = self.role_registry.get_lifecycle_functions("weather")
 
@@ -304,10 +315,13 @@ class TestHybridWeatherIntegration:
             mock_result = "Today in Portland it will be partly cloudy with a high of 75 degrees Fahrenheit."
 
             # Mock all external dependencies
-            with patch(
-                "asyncio.run", return_value=mock_result
-            ) as mock_asyncio_run, patch("asyncio.sleep", return_value=None), patch(
-                "roles.shared_tools.redis_tools._get_redis_client", return_value=Mock()
+            with (
+                patch("asyncio.run", return_value=mock_result) as mock_asyncio_run,
+                patch("asyncio.sleep", return_value=None),
+                patch(
+                    "roles.shared_tools.redis_tools._get_redis_client",
+                    return_value=Mock(),
+                ),
             ):
                 with patch.object(
                     self.workflow_engine, "role_registry"

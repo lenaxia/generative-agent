@@ -87,11 +87,17 @@ class TestDynamicChannelLoading(unittest.TestCase):
 
         # Simulate an error during discovery by calling _discover_channel_handlers
         # with a patched glob that includes a broken handler
-        with patch(
-            "glob.glob",
-            return_value=["/path/to/console_handler.py", "/path/to/broken_handler.py"],
-        ), patch(
-            "importlib.import_module", side_effect=ImportError("Module not found")
+        with (
+            patch(
+                "glob.glob",
+                return_value=[
+                    "/path/to/console_handler.py",
+                    "/path/to/broken_handler.py",
+                ],
+            ),
+            patch(
+                "importlib.import_module", side_effect=ImportError("Module not found")
+            ),
         ):
             # This should not affect our already registered handler
             self.manager._discover_channel_handlers()

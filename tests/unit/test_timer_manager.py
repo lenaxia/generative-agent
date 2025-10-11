@@ -149,9 +149,11 @@ class TestTimerManager:
         """Test successful timer retrieval."""
         # Setup
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
 
@@ -183,9 +185,11 @@ class TestTimerManager:
         """Test successful timer cancellation."""
         # Setup
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
         mock_redis.hset.return_value = True
@@ -220,9 +224,11 @@ class TestTimerManager:
         # Setup
         mock_redis.smembers.return_value = {b"timer_123", b"timer_456"}
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
 
@@ -241,9 +247,11 @@ class TestTimerManager:
         # Setup
         mock_redis.smembers.return_value = {b"timer_123"}
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
 
@@ -263,9 +271,11 @@ class TestTimerManager:
         current_time = int(time.time())
         mock_redis.zrangebyscore.return_value = [b"timer_123", b"timer_456"]
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
 
@@ -285,9 +295,11 @@ class TestTimerManager:
         """Test updating timer status."""
         # Setup
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
         mock_redis.hset.return_value = True
@@ -304,9 +316,11 @@ class TestTimerManager:
         """Test snoozing a timer."""
         # Setup
         mock_redis.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in sample_timer_data.items()
         }
         mock_redis.hset.return_value = True

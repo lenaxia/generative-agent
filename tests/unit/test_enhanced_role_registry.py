@@ -107,9 +107,10 @@ class TestEnhancedRoleRegistry:
         # Mock the lifecycle module and handler function
         mock_handler = AsyncMock()
 
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.importlib.import_module"
-        ) as mock_import:
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch("llm_provider.role_registry.importlib.import_module") as mock_import,
+        ):
             # Mock the lifecycle module
             mock_lifecycle = Mock()
             mock_lifecycle.handle_timer_expiry_action = mock_handler
@@ -132,9 +133,10 @@ class TestEnhancedRoleRegistry:
         """Test successful loading of event handler from role lifecycle."""
         mock_handler = AsyncMock()
 
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.importlib.import_module"
-        ) as mock_import:
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch("llm_provider.role_registry.importlib.import_module") as mock_import,
+        ):
             # Mock the lifecycle module
             mock_lifecycle = Mock()
             mock_lifecycle.handle_timer_expiry = mock_handler
@@ -152,9 +154,10 @@ class TestEnhancedRoleRegistry:
 
     def test_load_role_handler_missing_function(self, mock_message_bus):
         """Test handling of missing handler function."""
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.importlib.import_module"
-        ) as mock_import:
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch("llm_provider.role_registry.importlib.import_module") as mock_import,
+        ):
             # Mock lifecycle module without the handler
             mock_lifecycle = Mock()
             # Configure the mock to not have the specific handler
@@ -179,9 +182,12 @@ class TestEnhancedRoleRegistry:
 
     def test_load_role_handler_import_error(self, mock_message_bus):
         """Test handling of import errors when loading handlers."""
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.importlib.import_module",
-            side_effect=ImportError("Module not found"),
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch(
+                "llm_provider.role_registry.importlib.import_module",
+                side_effect=ImportError("Module not found"),
+            ),
         ):
             registry = RoleRegistry(
                 roles_directory="test_roles", message_bus=mock_message_bus
@@ -196,9 +202,10 @@ class TestEnhancedRoleRegistry:
         """Test the enhanced handler wrapper with EventHandlerLLM injection."""
         mock_handler = AsyncMock()
 
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.importlib.import_module"
-        ) as mock_import:
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch("llm_provider.role_registry.importlib.import_module") as mock_import,
+        ):
             # Mock the lifecycle module
             mock_lifecycle = Mock()
             mock_lifecycle.handle_timer_expiry = mock_handler
@@ -235,22 +242,30 @@ class TestEnhancedRoleRegistry:
         self, mock_message_bus, sample_role_config_with_events
     ):
         """Test loading a role that includes event declarations."""
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.RoleRegistry._discover_roles", return_value=[]
-        ), patch("llm_provider.role_registry.RoleRegistry._load_shared_tools"):
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch(
+                "llm_provider.role_registry.RoleRegistry._discover_roles",
+                return_value=[],
+            ),
+            patch("llm_provider.role_registry.RoleRegistry._load_shared_tools"),
+        ):
             registry = RoleRegistry(
                 roles_directory="test_roles", message_bus=mock_message_bus
             )
 
             # Mock role loading
-            with patch("builtins.open", create=True) as mock_open, patch(
-                "yaml.safe_load", return_value=sample_role_config_with_events
-            ), patch(
-                "llm_provider.role_registry.RoleRegistry._load_custom_tools",
-                return_value=[],
-            ), patch(
-                "llm_provider.role_registry.RoleRegistry._load_lifecycle_functions",
-                return_value={},
+            with (
+                patch("builtins.open", create=True) as mock_open,
+                patch("yaml.safe_load", return_value=sample_role_config_with_events),
+                patch(
+                    "llm_provider.role_registry.RoleRegistry._load_custom_tools",
+                    return_value=[],
+                ),
+                patch(
+                    "llm_provider.role_registry.RoleRegistry._load_lifecycle_functions",
+                    return_value={},
+                ),
             ):
                 role_def = registry._load_role("timer")
 
@@ -308,10 +323,10 @@ class TestEnhancedRoleRegistry:
             },
         }
 
-        with patch("llm_provider.role_registry.Path.exists", return_value=True), patch(
-            "llm_provider.role_registry.Path.iterdir"
-        ) as mock_iterdir, patch(
-            "llm_provider.role_registry.RoleRegistry._load_shared_tools"
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=True),
+            patch("llm_provider.role_registry.Path.iterdir") as mock_iterdir,
+            patch("llm_provider.role_registry.RoleRegistry._load_shared_tools"),
         ):
             # Mock role directory structure
             mock_role_dir = Mock()
@@ -320,14 +335,17 @@ class TestEnhancedRoleRegistry:
             mock_role_dir.__truediv__ = lambda self, other: Mock(exists=lambda: True)
             mock_iterdir.return_value = [mock_role_dir]
 
-            with patch("builtins.open", create=True), patch(
-                "yaml.safe_load", return_value=sample_config
-            ), patch(
-                "llm_provider.role_registry.RoleRegistry._load_custom_tools",
-                return_value=[],
-            ), patch(
-                "llm_provider.role_registry.RoleRegistry._load_lifecycle_functions",
-                return_value={},
+            with (
+                patch("builtins.open", create=True),
+                patch("yaml.safe_load", return_value=sample_config),
+                patch(
+                    "llm_provider.role_registry.RoleRegistry._load_custom_tools",
+                    return_value=[],
+                ),
+                patch(
+                    "llm_provider.role_registry.RoleRegistry._load_lifecycle_functions",
+                    return_value={},
+                ),
             ):
                 registry = RoleRegistry(
                     roles_directory="test_roles", message_bus=mock_message_bus
@@ -338,9 +356,14 @@ class TestEnhancedRoleRegistry:
 
     def test_backward_compatibility_without_message_bus(self):
         """Test that RoleRegistry still works without MessageBus (backward compatibility)."""
-        with patch("llm_provider.role_registry.Path.exists", return_value=False), patch(
-            "llm_provider.role_registry.RoleRegistry._discover_roles", return_value=[]
-        ), patch("llm_provider.role_registry.RoleRegistry._load_shared_tools"):
+        with (
+            patch("llm_provider.role_registry.Path.exists", return_value=False),
+            patch(
+                "llm_provider.role_registry.RoleRegistry._discover_roles",
+                return_value=[],
+            ),
+            patch("llm_provider.role_registry.RoleRegistry._load_shared_tools"),
+        ):
             # Should not raise error when no MessageBus provided
             registry = RoleRegistry(roles_directory="test_roles")
 

@@ -1197,9 +1197,9 @@ Current task: {base_prompt}"""
             "result": task_node.result,
             "role": role,
             "confidence": confidence,
-            "execution_time_ms": (task_node.duration * 1000)
-            if task_node.duration
-            else 0,
+            "execution_time_ms": (
+                (task_node.duration * 1000) if task_node.duration else 0
+            ),
         }
 
     def _get_regular_workflow_status(self, request_id: str, task_context) -> dict:

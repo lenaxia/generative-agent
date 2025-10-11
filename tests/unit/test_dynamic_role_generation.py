@@ -140,11 +140,12 @@ class TestRoleFallbackBehavior:
 
     def test_basic_agent_creation_with_tools(self, universal_agent):
         """Test that basic agent creation works with additional tools."""
-        with patch("strands.Agent") as mock_agent_class, patch(
-            "strands_tools.calculator"
-        ) as mock_calc, patch("strands_tools.file_read") as mock_file_read, patch(
-            "strands_tools.shell"
-        ) as mock_shell:
+        with (
+            patch("strands.Agent") as mock_agent_class,
+            patch("strands_tools.calculator") as mock_calc,
+            patch("strands_tools.file_read") as mock_file_read,
+            patch("strands_tools.shell") as mock_shell,
+        ):
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 

@@ -108,9 +108,11 @@ class TestTimerCommunicationIntegration(unittest.TestCase):
         # Mock the timer retrieval
         self.mock_redis_instance.zrangebyscore.return_value = [timer_id.encode()]
         self.mock_redis_instance.hgetall.return_value = {
-            k.encode(): json.dumps(v).encode()
-            if isinstance(v, (dict, list))
-            else str(v).encode()
+            k.encode(): (
+                json.dumps(v).encode()
+                if isinstance(v, (dict, list))
+                else str(v).encode()
+            )
             for k, v in timer_data.items()
         }
 

@@ -46,9 +46,10 @@ class TestLLMFactoryPerformance:
 
     def test_model_caching_performance(self):
         """Test that model creation is cached for performance."""
-        with patch("llm_provider.factory.BedrockModel") as mock_bedrock, patch(
-            "llm_provider.factory.Agent"
-        ) as mock_agent_class:
+        with (
+            patch("llm_provider.factory.BedrockModel") as mock_bedrock,
+            patch("llm_provider.factory.Agent") as mock_agent_class,
+        ):
             # Mock model creation to be fast
             mock_model = Mock()
             mock_bedrock.return_value = mock_model
@@ -78,9 +79,10 @@ class TestLLMFactoryPerformance:
 
     def test_agent_caching_performance(self):
         """Test that agent creation is cached for performance."""
-        with patch("llm_provider.factory.BedrockModel") as mock_bedrock, patch(
-            "llm_provider.factory.Agent"
-        ) as mock_agent_class:
+        with (
+            patch("llm_provider.factory.BedrockModel") as mock_bedrock,
+            patch("llm_provider.factory.Agent") as mock_agent_class,
+        ):
             # Mock dependencies to be fast
             mock_model = Mock()
             mock_bedrock.return_value = mock_model

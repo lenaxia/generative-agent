@@ -1015,9 +1015,9 @@ class CommunicationManager:
         """
         # Convert to new route_message format
         context = {
-            "channel_id": channel_type.value
-            if channel_type
-            else self.default_channel.value,
+            "channel_id": (
+                channel_type.value if channel_type else self.default_channel.value
+            ),
             "recipient": recipient,
             "message_format": message_format,
             "delivery_guarantee": delivery_guarantee,

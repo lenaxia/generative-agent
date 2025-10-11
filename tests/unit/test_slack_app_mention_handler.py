@@ -166,7 +166,7 @@ class TestSlackAppMentionHandler:
             "type": "app_mention",
             "user": "U123456789",
             "channel": "C987654321",
-            "ts": "1234567890.123456"
+            "ts": "1234567890.123456",
             # No "text" field
         }
 
@@ -211,7 +211,7 @@ class TestSlackAppMentionHandler:
             "type": "app_mention",
             "user": "U123456789",
             "channel": "C987654321",
-            "text": "<@U0BOTUSER> hello there!"
+            "text": "<@U0BOTUSER> hello there!",
             # No "ts" field
         }
 

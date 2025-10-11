@@ -671,7 +671,7 @@ async def parse_timer_parameters(
                 ):
                     channel_id = f"slack:{channel_id}"
 
-                # Execute timer creation
+                # Execute timer creation with rich context for event handlers
                 timer_id = await timer_manager.create_timer(
                     timer_type="countdown",
                     duration_seconds=parsed_data["duration_seconds"],
@@ -680,6 +680,17 @@ async def parse_timer_parameters(
                     label=parsed_data.get("timer_label", ""),
                     user_id=user_id,
                     channel_id=channel_id,
+                    request_context={
+                        "original_request": context.get("original_user_input", ""),
+                        "execution_context": {
+                            "user_id": user_id,
+                            "channel": channel_id,
+                            "device_context": context.get("device_context", {}),
+                            "timestamp": datetime.now().isoformat(),
+                            "source": context.get("source", "unknown"),
+                        },
+                    },
+                    metadata={"supports_workflows": True, "event_driven": True},
                 )
                 execution_result = {
                     "success": True,
