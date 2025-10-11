@@ -288,11 +288,18 @@ class Heartbeat:
         }
 
         # Publish generic heartbeat - any role can subscribe
-        if hasattr(self.supervisor, "message_bus") and self.supervisor.message_bus:
-            self.supervisor.message_bus.publish(self, "HEARTBEAT_TICK", heartbeat_data)
-            logger.debug("Published HEARTBEAT_TICK event")
-        else:
-            logger.warning("Cannot publish HEARTBEAT_TICK - no message bus available")
+        try:
+            if hasattr(self.supervisor, "message_bus") and self.supervisor.message_bus:
+                self.supervisor.message_bus.publish(
+                    self, "HEARTBEAT_TICK", heartbeat_data
+                )
+                logger.debug("Published HEARTBEAT_TICK event")
+            else:
+                logger.warning(
+                    "Cannot publish HEARTBEAT_TICK - no message bus available"
+                )
+        except Exception as e:
+            logger.error(f"Failed to publish HEARTBEAT_TICK event: {e}")
 
     def _update_metrics(self):
         """Update heartbeat metrics"""
