@@ -92,6 +92,8 @@ class MessageTypeRegistry:
             "TASK_FAILED",
             "AGENT_ROLE_SWITCHED",
             "SYSTEM_HEALTH_CHECK",
+            "HEARTBEAT_TICK",
+            "FAST_HEARTBEAT_TICK",
         ]
         for event in core_events:
             self.register_event_type(event, "system", {})

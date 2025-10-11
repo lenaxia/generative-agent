@@ -43,13 +43,8 @@ class Heartbeat:
         self.health_status = "unknown"
         self.metrics = {}
 
-        # Initialize timer monitor if message bus is available
-        self.timer_monitor = None
-        if hasattr(supervisor, "message_bus") and supervisor.message_bus:
-            from supervisor.timer_monitor import TimerMonitor
-
-            self.timer_monitor = TimerMonitor(supervisor.message_bus)
-            logger.info("Timer monitor initialized")
+        # Timer monitoring is now handled by timer role via FAST_HEARTBEAT_TICK events
+        # No longer need timer_monitor in supervisor layer
 
     def start(self):
         """Start the heartbeat service"""
@@ -97,8 +92,8 @@ class Heartbeat:
             # Monitor system resources
             self._monitor_system_resources()
 
-            # Monitor timers
-            self._monitor_timers()
+            # Publish generic heartbeat events for role monitoring
+            self._publish_heartbeat_events()
 
             # Perform maintenance tasks
             self._perform_maintenance()

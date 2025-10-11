@@ -49,6 +49,9 @@ class Supervisor:
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
     heartbeat: Optional[Heartbeat] = None
+    fast_heartbeat: Optional[
+        object
+    ] = None  # FastHeartbeat for high-frequency monitoring
     communication_manager: Optional[object] = None  # Import will be done in method
 
     def __init__(self, config_file: Optional[str] = None):
@@ -132,6 +135,7 @@ class Supervisor:
         self._initialize_workflow_engine()
         self._initialize_metrics_manager()
         self._initialize_heartbeat_service()
+        self._initialize_fast_heartbeat_service()
 
         logger.info("Component initialization complete.")
 
@@ -299,6 +303,14 @@ class Supervisor:
             ),
         }
 
+    def _initialize_fast_heartbeat_service(self):
+        """Initialize FastHeartbeat service for high-frequency monitoring."""
+        from supervisor.fast_heartbeat import FastHeartbeat
+
+        # Initialize with 5-second interval for timer monitoring
+        self.fast_heartbeat = FastHeartbeat(self.message_bus, interval=5)
+        logger.info("FastHeartbeat service initialized with 5s interval.")
+
     def _initialize_metrics_manager(self):
         """Initialize metrics manager."""
         self.metrics_manager = MetricsManager()
@@ -345,6 +357,11 @@ class Supervisor:
                 self.heartbeat.start()
                 logger.info("Heartbeat service started.")
 
+            # Start fast heartbeat service
+            if self.fast_heartbeat:
+                self.fast_heartbeat.start()
+                logger.info("FastHeartbeat service started.")
+
             logger.info("Supervisor started successfully.")
         except Exception as e:
             logger.error(f"Error starting Supervisor: {e}")
@@ -376,7 +393,11 @@ class Supervisor:
                 except Exception as e:
                     logger.error(f"Error shutting down communication manager: {e}")
 
-            # Stop heartbeat service
+            # Stop heartbeat services
+            if self.fast_heartbeat:
+                self.fast_heartbeat.stop()
+                logger.info("FastHeartbeat service stopped.")
+
             if self.heartbeat:
                 self.heartbeat.stop()
                 logger.info("Heartbeat service stopped.")
