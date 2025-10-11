@@ -1002,10 +1002,10 @@ async def handle_timer_expiry_action(
     """
     try:
         timer_id = event_data.get("timer_id")
-        original_request = llm.get_original_request()
-        user_id = llm.get_user_id()
-        channel = llm.get_channel()
-        room = llm.get_context("device_context.room")
+        original_request = ctx.get_original_request()
+        user_id = ctx.get_user_id()
+        channel = ctx.get_channel()
+        room = ctx.get_context("device_context.room")
 
         logger.info(
             f"Processing timer expiry action for timer {timer_id}: {original_request}"
@@ -1025,7 +1025,7 @@ async def handle_timer_expiry_action(
         Answer: A or B
         """
 
-        action_decision = await llm.invoke(decision_prompt, model_type="WEAK")
+        action_decision = await ctx.invoke_llm(decision_prompt, model_type="WEAK")
         is_workflow = "A" in action_decision or "workflow" in action_decision.lower()
 
         if not is_workflow:

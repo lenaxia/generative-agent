@@ -84,17 +84,23 @@ class TestTimerEventWorkflows:
             "turn on bedroom lights to 50% brightness",  # Workflow instruction
         ]
 
-        # Create EventHandlerLLM
-        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        # Create EventHandlerContext
+        from common.event_handler_context import EventHandlerContext
 
-        # Call the handler
-        await handle_timer_expiry_action(
-            event_data=timer_expiry_event_data,
+        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        ctx = EventHandlerContext(
             llm=llm,
             workflow_engine=mock_workflow_engine,
             communication_manager=mock_communication_manager,
-            context=timer_expiry_event_data["execution_context"],
+            message_bus=Mock(),
+            execution_context=timer_expiry_event_data["execution_context"],
         )
+
+        # Ensure the workflow_engine mock is properly configured
+        mock_workflow_engine.start_workflow.return_value = "workflow_123"
+
+        # Call the handler
+        await handle_timer_expiry_action(timer_expiry_event_data, ctx)
 
         # Should create workflow, not send notification
         mock_workflow_engine.start_workflow.assert_called_once()
@@ -124,17 +130,20 @@ class TestTimerEventWorkflows:
         mock_model = mock_llm_factory.create_strands_model.return_value
         mock_model.invoke.return_value = "B) Send a notification"  # Decision response
 
-        # Create EventHandlerLLM
-        llm = EventHandlerLLM(mock_llm_factory, reminder_event_data)
+        # Create EventHandlerContext
+        from common.event_handler_context import EventHandlerContext
 
-        # Call the handler
-        await handle_timer_expiry_action(
-            event_data=reminder_event_data,
+        llm = EventHandlerLLM(mock_llm_factory, reminder_event_data)
+        ctx = EventHandlerContext(
             llm=llm,
             workflow_engine=mock_workflow_engine,
             communication_manager=mock_communication_manager,
-            context=reminder_event_data["execution_context"],
+            message_bus=Mock(),
+            execution_context=reminder_event_data["execution_context"],
         )
+
+        # Call the handler
+        await handle_timer_expiry_action(reminder_event_data, ctx)
 
         # Should send notification, not create workflow
         mock_communication_manager.send_notification.assert_called_once()
@@ -158,17 +167,20 @@ class TestTimerEventWorkflows:
         mock_model = mock_llm_factory.create_strands_model.return_value
         mock_model.invoke.side_effect = Exception("LLM error")
 
-        # Create EventHandlerLLM
-        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        # Create EventHandlerContext
+        from common.event_handler_context import EventHandlerContext
 
-        # Call the handler
-        await handle_timer_expiry_action(
-            event_data=timer_expiry_event_data,
+        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        ctx = EventHandlerContext(
             llm=llm,
             workflow_engine=mock_workflow_engine,
             communication_manager=mock_communication_manager,
-            context=timer_expiry_event_data["execution_context"],
+            message_bus=Mock(),
+            execution_context=timer_expiry_event_data["execution_context"],
         )
+
+        # Call the handler
+        await handle_timer_expiry_action(timer_expiry_event_data, ctx)
 
         # Should fallback to notification
         mock_communication_manager.send_notification.assert_called_once()
@@ -199,17 +211,20 @@ class TestTimerEventWorkflows:
             "Workflow creation failed"
         )
 
-        # Create EventHandlerLLM
-        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        # Create EventHandlerContext
+        from common.event_handler_context import EventHandlerContext
 
-        # Call the handler
-        await handle_timer_expiry_action(
-            event_data=timer_expiry_event_data,
+        llm = EventHandlerLLM(mock_llm_factory, timer_expiry_event_data)
+        ctx = EventHandlerContext(
             llm=llm,
             workflow_engine=mock_workflow_engine,
             communication_manager=mock_communication_manager,
-            context=timer_expiry_event_data["execution_context"],
+            message_bus=Mock(),
+            execution_context=timer_expiry_event_data["execution_context"],
         )
+
+        # Call the handler
+        await handle_timer_expiry_action(timer_expiry_event_data, ctx)
 
         # Should attempt workflow creation
         mock_workflow_engine.start_workflow.assert_called_once()
@@ -229,17 +244,20 @@ class TestTimerEventWorkflows:
             "execution_context": {"user_id": "U123456", "source": "location_service"},
         }
 
-        # Create EventHandlerLLM
-        llm = EventHandlerLLM(mock_llm_factory, location_event_data)
+        # Create EventHandlerContext
+        from common.event_handler_context import EventHandlerContext
 
-        # Call the handler (should not raise errors)
-        await handle_location_based_timer_update(
-            event_data=location_event_data,
+        llm = EventHandlerLLM(mock_llm_factory, location_event_data)
+        ctx = EventHandlerContext(
             llm=llm,
             workflow_engine=mock_workflow_engine,
             communication_manager=mock_communication_manager,
-            context=location_event_data["execution_context"],
+            message_bus=Mock(),
+            execution_context=location_event_data["execution_context"],
         )
+
+        # Call the handler (should not raise errors)
+        await handle_location_based_timer_update(location_event_data, ctx)
 
         # Currently just logs, so no assertions on external calls
         # This test ensures the handler doesn't crash
