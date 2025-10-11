@@ -159,6 +159,17 @@ heartbeat:
     cleanup_old_checkpoints: true
     checkpoint_retention_days: 7
 
+# Communication Configuration
+communication:
+  http_client:
+    thread_safe_fallback: true
+    timeout_seconds: 10
+    max_retries: 3
+
+  slack:
+    use_shared_session: true # Phase 2: Enable shared session pooling
+    session_pool_size: 5 # Connection pool size for better performance
+
 # Feature Flags
 feature_flags:
   enable_universal_agent: true

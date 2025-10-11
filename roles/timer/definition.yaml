@@ -96,6 +96,7 @@ prompts:
     Focus on the execution_result to determine success or failure.
 
     An example response is "Timer 'Meeting reminder' set for 30 minutes. It will go off at 3:45 PM." or "Alarm set for 7:00 AM tomorrow."
+    Feel free to add some variety.
 
 # Model Parameters
 model_config:

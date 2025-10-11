@@ -445,7 +445,20 @@ class CommunicationManager:
 
     async def _handle_send_message(self, message: dict[str, Any]) -> None:
         """Handle send message events from the message bus."""
-        await self.route_message(message.get("message", ""), message.get("context", {}))
+        logger.info(f"_handle_send_message called with: {message}")
+        message_text = message.get("message", "")
+        context = message.get("context", {})
+        logger.info(f"Routing message: '{message_text}' with context: {context}")
+
+        try:
+            result = await self.route_message(message_text, context)
+            logger.info(f"_handle_send_message completed successfully: {result}")
+        except Exception as e:
+            logger.error(f"Error in _handle_send_message: {e}")
+            import traceback
+
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            raise
 
     async def _handle_agent_question(self, message: dict[str, Any]) -> None:
         """Handle agent question events from the message bus."""
@@ -605,21 +618,57 @@ class CommunicationManager:
         delivery_guarantee: DeliveryGuarantee,
     ) -> list[dict]:
         """Send message with specified delivery guarantee."""
+        logger.info(
+            f"_send_with_delivery_guarantee called with target_channels: {target_channels}"
+        )
         results = []
         successful_delivery = False
 
         # Try target channels first
         for channel_id in target_channels:
+            logger.info(f"Trying to send to channel: {channel_id}")
             if channel_id in self.channels:
-                result = await self.channels[channel_id].send_notification(
-                    message,
-                    context.get("recipient"),
-                    context.get("message_format", MessageFormat.PLAIN_TEXT),
-                    context.get("metadata", {}),
+                logger.info(f"Channel {channel_id} found in self.channels")
+                try:
+                    logger.info(
+                        f"Calling send_notification on {channel_id} with message: '{message}'"
+                    )
+                    logger.info(
+                        f"send_notification context: recipient={context.get('recipient')}, format={context.get('message_format', MessageFormat.PLAIN_TEXT)}"
+                    )
+
+                    # Add timeout to prevent hanging
+                    result = await asyncio.wait_for(
+                        self.channels[channel_id].send_notification(
+                            message,
+                            context.get("recipient"),
+                            context.get("message_format", MessageFormat.PLAIN_TEXT),
+                            context.get("metadata", {}),
+                        ),
+                        timeout=10.0,  # 10 second timeout
+                    )
+                    logger.info(
+                        f"Channel {channel_id} send_notification result: {result}"
+                    )
+                    results.append({"channel": channel_id, "result": result})
+                    if result.get("success"):
+                        successful_delivery = True
+                        logger.info(f"Successful delivery via {channel_id}")
+                except Exception as e:
+                    logger.error(f"Error sending to channel {channel_id}: {e}")
+                    import traceback
+
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+                    results.append(
+                        {
+                            "channel": channel_id,
+                            "result": {"success": False, "error": str(e)},
+                        }
+                    )
+            else:
+                logger.warning(
+                    f"Channel {channel_id} not found in self.channels: {list(self.channels.keys())}"
                 )
-                results.append({"channel": channel_id, "result": result})
-                if result.get("success"):
-                    successful_delivery = True
 
         # If no successful delivery and we need guarantees, try fallback channels
         if (
@@ -913,29 +962,28 @@ class CommunicationManager:
         original_channel_id = timer_data.get("channel_id", "default")
         user_id = timer_data.get("user_id", "system")
 
-        context = {
-            "channel_id": original_channel_id,
-            "user_id": user_id,
-            "recipient": recipient,
-            "delivery_guarantee": DeliveryGuarantee.AT_LEAST_ONCE,
-            "message_type": "timer_expired",
-            "metadata": {"timer_id": timer_id, "timer_data": timer_data},
+        # Use the proven SEND_MESSAGE path directly (avoid recursive message bus call)
+        send_message_payload = {
+            "message": notification_message,
+            "context": {
+                "channel_id": original_channel_id,
+                "user_id": user_id,
+                "request_id": f"timer_expiry_{timer_id}",  # Add request_id like working messages
+                "source": "timer_expiry",  # Track source
+                "metadata": {"timer_id": timer_id, "timer_data": timer_data},
+            },
         }
 
         logger.info(
-            f"About to call route_message with message: '{notification_message}' and context: {context}"
+            f"Using SEND_MESSAGE path directly for timer expiry: {send_message_payload}"
         )
 
-        try:
-            result = await self.route_message(notification_message, context)
-            logger.info(f"Timer notification route_message result: {result}")
-            logger.info(f"Timer notification sent successfully: {timer_id}")
-        except Exception as e:
-            logger.error(f"Failed to send timer notification for {timer_id}: {e}")
-            import traceback
+        # Call _handle_send_message directly to use the proven working path
+        await self._handle_send_message(send_message_payload)
 
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            raise
+        logger.info(
+            f"Timer expiry notification processed via SEND_MESSAGE path for {timer_id}"
+        )
 
     async def send_notification(
         self,
