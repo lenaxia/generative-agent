@@ -273,7 +273,7 @@ class MessageBus:
             if event_type not in self._subscribers:
                 return
 
-            logger.info(f"Publishing message: [{event_type}] {message}")
+            logger.debug(f"Publishing message: [{event_type}] {message}")
 
             # Create a copy of the subscribers to avoid modifying the dictionary while iterating
             subscribers_copy = self._subscribers[event_type].copy()

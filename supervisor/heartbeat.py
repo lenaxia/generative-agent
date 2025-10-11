@@ -291,6 +291,8 @@ class Heartbeat:
         if hasattr(self.supervisor, "message_bus") and self.supervisor.message_bus:
             self.supervisor.message_bus.publish(self, "HEARTBEAT_TICK", heartbeat_data)
             logger.debug("Published HEARTBEAT_TICK event")
+        else:
+            logger.warning("Cannot publish HEARTBEAT_TICK - no message bus available")
 
     def _update_metrics(self):
         """Update heartbeat metrics"""
