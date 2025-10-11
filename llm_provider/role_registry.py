@@ -668,9 +668,10 @@ class RoleRegistry:
                     )
                     return None
 
-                # Wrap handler to provide required dependencies
+                # Wrap handler to provide EventHandlerContext
                 async def enhanced_handler(event_data):
                     # Create EventHandlerLLM utility for handlers
+                    from common.event_handler_context import EventHandlerContext
                     from common.event_handler_llm import EventHandlerLLM
 
                     llm_utility = EventHandlerLLM(
@@ -678,14 +679,17 @@ class RoleRegistry:
                         event_context=event_data,
                     )
 
-                    # Call handler with enhanced signature
-                    return await handler_func(
-                        event_data=event_data,
+                    # Create context object with all dependencies
+                    context = EventHandlerContext(
                         llm=llm_utility,
                         workflow_engine=self.message_bus.workflow_engine,
                         communication_manager=self.message_bus.communication_manager,
-                        context=event_data.get("execution_context", {}),
+                        message_bus=self.message_bus,
+                        execution_context=event_data.get("execution_context", {}),
                     )
+
+                    # Call handler with clean context object signature
+                    return await handler_func(event_data, context)
 
                 return enhanced_handler
             else:

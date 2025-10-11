@@ -110,6 +110,10 @@ events:
         user_id: "string"
 
   subscribes:
+    - event_type: "FAST_HEARTBEAT_TICK"
+      handler: "handle_heartbeat_monitoring"
+      description: "Monitor for expired timers on fast heartbeat (5s interval)"
+
     - event_type: "TIMER_EXPIRED"
       handler: "handle_timer_expiry_action"
       description: "Process expired timer by parsing action and creating appropriate workflow"

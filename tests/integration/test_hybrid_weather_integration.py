@@ -4,6 +4,7 @@ Tests the complete flow from request routing through parameter extraction,
 hybrid execution with lifecycle hooks, and result formatting.
 """
 
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -400,4 +401,6 @@ class TestHybridWeatherIntegration:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # Using sys.exit() with pytest.main() causes issues when running in a test suite
+    # Instead, just run the tests without calling sys.exit()
+    pytest.main(["-v", __file__])

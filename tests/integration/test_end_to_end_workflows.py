@@ -643,4 +643,6 @@ llm_providers:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # Using sys.exit() with pytest.main() causes issues when running in a test suite
+    # Instead, just run the tests without calling sys.exit()
+    pytest.main(["-v", __file__])

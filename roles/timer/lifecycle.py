@@ -988,11 +988,7 @@ def _parse_alarm_time(time_str: str) -> Optional[datetime]:
 
 # Event handler functions for dynamic event-driven architecture
 async def handle_timer_expiry_action(
-    event_data: dict[str, Any],
-    llm,  # EventHandlerLLM utility
-    workflow_engine,
-    communication_manager,
-    context: dict[str, Any],
+    event_data: dict[str, Any], ctx  # EventHandlerContext with all dependencies
 ):
     """Handle timer expiry by parsing action and creating workflows.
 
@@ -1002,10 +998,7 @@ async def handle_timer_expiry_action(
 
     Args:
         event_data: Timer expiry event data
-        llm: EventHandlerLLM utility for easy LLM access
-        workflow_engine: WorkflowEngine instance for creating workflows
-        communication_manager: CommunicationManager for notifications
-        context: Execution context (same as llm.get_context())
+        ctx: EventHandlerContext with llm, workflow_engine, communication_manager, etc.
     """
     try:
         timer_id = event_data.get("timer_id")
@@ -1037,15 +1030,7 @@ async def handle_timer_expiry_action(
 
         if not is_workflow:
             # Simple notification
-            from common.communication_manager import ChannelType, MessageFormat
-
-            await communication_manager.send_notification(
-                message=f"Timer reminder: {original_request}",
-                channels=[ChannelType.SLACK],
-                recipient=channel,
-                message_format=MessageFormat.PLAIN_TEXT,
-                metadata=context,
-            )
+            await ctx.send_notification(f"Timer reminder: {original_request}")
             logger.info(f"Sent timer notification: {original_request}")
         else:
             # Parse action and create workflow instruction
@@ -1063,56 +1048,33 @@ async def handle_timer_expiry_action(
             Return only the workflow instruction, nothing else.
             """
 
-            workflow_instruction = await llm.invoke(parsing_prompt, model_type="WEAK")
+            workflow_instruction = await ctx.invoke_llm(
+                parsing_prompt, model_type="WEAK"
+            )
 
             if workflow_instruction and workflow_instruction.strip():
                 # Create workflow with parsed instruction
-                workflow_id = await workflow_engine.start_workflow(
-                    instruction=workflow_instruction.strip(), context=context
-                )
+                workflow_id = await ctx.create_workflow(workflow_instruction.strip())
                 logger.info(f"Created workflow {workflow_id}: {workflow_instruction}")
             else:
                 # Fallback to notification if parsing failed
-                from common.communication_manager import ChannelType, MessageFormat
-
-                await communication_manager.send_notification(
-                    message=f"Timer reminder: {original_request}",
-                    channels=[ChannelType.SLACK],
-                    recipient=channel,
-                    message_format=MessageFormat.PLAIN_TEXT,
-                    metadata=context,
-                )
+                await ctx.send_notification(f"Timer reminder: {original_request}")
                 logger.info(f"Fallback notification sent: {original_request}")
 
     except Exception as e:
         logger.error(f"Error in timer expiry handler: {e}")
         # Always fallback to basic notification
-        from common.communication_manager import ChannelType, MessageFormat
-
-        await communication_manager.send_notification(
-            message=f"Timer reminder: {llm.get_original_request()}",
-            channels=[ChannelType.SLACK],
-            recipient=llm.get_channel(),
-            message_format=MessageFormat.PLAIN_TEXT,
-            metadata=context,
-        )
+        await ctx.send_notification(f"Timer reminder: {ctx.get_original_request()}")
 
 
 async def handle_location_based_timer_update(
-    event_data: dict[str, Any],
-    llm,  # EventHandlerLLM utility
-    workflow_engine,
-    communication_manager,
-    context: dict[str, Any],
+    event_data: dict[str, Any], ctx  # EventHandlerContext with all dependencies
 ):
     """Handle user location changes that affect pending timers.
 
     Args:
         event_data: Location change event data
-        llm: EventHandlerLLM utility for easy LLM access
-        workflow_engine: WorkflowEngine instance
-        communication_manager: CommunicationManager instance
-        context: Execution context
+        ctx: EventHandlerContext with all dependencies
     """
     try:
         logger.info(f"Handling location update for timers: {event_data}")
@@ -1130,3 +1092,80 @@ async def handle_location_based_timer_update(
     except Exception as e:
         logger.error(f"Error handling location-based timer update: {e}")
         return None
+
+
+async def handle_heartbeat_monitoring(
+    event_data: dict[str, Any], ctx  # EventHandlerContext with all dependencies
+):
+    """Handle fast heartbeat ticks by checking for expired timers.
+
+    This handler implements timer role self-monitoring, moving the timer
+    monitoring logic from the supervisor layer to the timer role itself
+    for proper separation of concerns.
+
+    Args:
+        event_data: Fast heartbeat event data
+        ctx: EventHandlerContext with all dependencies
+    """
+    try:
+        logger.debug("Timer role processing fast heartbeat tick")
+
+        # Get timer manager
+        timer_manager = get_timer_manager()
+        current_time = int(time.time())
+
+        # Check for expired timers
+        expired_timers = await timer_manager.get_expiring_timers(current_time)
+
+        if not expired_timers:
+            logger.debug("No expired timers found")
+            return
+
+        logger.info(f"Found {len(expired_timers)} expired timers to process")
+
+        # Process each expired timer
+        for timer in expired_timers:
+            try:
+                timer_id = timer.get("id")
+                logger.info(f"Processing expired timer: {timer_id}")
+
+                # Extract stored request_context for proper event format
+                request_context = timer.get("request_context", {})
+                original_request = request_context.get(
+                    "original_request", "Timer expired"
+                )
+                execution_context = request_context.get("execution_context", {})
+
+                # If no rich context available, create basic context from timer data
+                if not execution_context:
+                    execution_context = {
+                        "user_id": timer.get("user_id", "unknown"),
+                        "channel": timer.get("channel_id", "unknown"),
+                        "device_context": {},
+                        "timestamp": datetime.now().isoformat(),
+                        "source": "timer_monitor",
+                    }
+
+                # Publish TIMER_EXPIRED event in new format
+                timer_expired_data = {
+                    "timer_id": timer_id,
+                    "original_request": original_request,
+                    "execution_context": execution_context,
+                }
+
+                # Publish the event - this will trigger handle_timer_expiry_action
+                ctx.publish_event("TIMER_EXPIRED", timer_expired_data)
+
+                # Mark timer as processed (update status in Redis)
+                await timer_manager.update_timer_status(timer_id, "expired")
+
+                logger.info(f"Published TIMER_EXPIRED event for {timer_id}")
+
+            except Exception as e:
+                logger.error(
+                    f"Error processing expired timer {timer.get('id', 'unknown')}: {e}"
+                )
+                continue
+
+    except Exception as e:
+        logger.error(f"Error in heartbeat monitoring: {e}")
