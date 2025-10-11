@@ -1043,29 +1043,49 @@ async def handle_timer_expiry_action(
             notification_message = original_request
             channel_id = channel
 
-        # Send simple notification to the originating channel
-        if hasattr(ctx, "communication_manager") and ctx.communication_manager:
-            await ctx.communication_manager.send_notification(
-                message=notification_message, recipient=channel_id, user_id=user_id
-            )
+        # Send simple notification via message bus (SEND_MESSAGE event)
+        logger.info(f"Attempting to send notification for timer {timer_id}")
+        logger.info(f"Context has message_bus: {hasattr(ctx, 'message_bus')}")
+        if hasattr(ctx, "message_bus"):
+            logger.info(f"Message bus value: {ctx.message_bus}")
+
+        if hasattr(ctx, "message_bus") and ctx.message_bus:
+            from common.message_bus import MessageType
+
+            send_message_payload = {
+                "message": notification_message,
+                "context": {
+                    "user_id": user_id,
+                    "channel": channel_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "timer_expiry",
+                },
+            }
+
             logger.info(
-                f"Sent timer notification to {channel_id}: {notification_message}"
+                f"Publishing SEND_MESSAGE for timer {timer_id}: {notification_message} -> {channel_id}"
             )
+            logger.info(f"Payload: {send_message_payload}")
+
+            try:
+                ctx.message_bus.publish(
+                    None, MessageType.SEND_MESSAGE, send_message_payload
+                )
+                logger.info(f"Timer notification published successfully for {timer_id}")
+            except Exception as e:
+                logger.error(f"Failed to publish timer notification: {e}")
         else:
             logger.warning(
-                f"No communication manager available, cannot send notification for timer {timer_id}"
+                f"No message bus available, cannot send notification for timer {timer_id}"
             )
+            logger.warning(
+                f"hasattr(ctx, 'message_bus'): {hasattr(ctx, 'message_bus')}"
+            )
+            if hasattr(ctx, "message_bus"):
+                logger.warning(f"ctx.message_bus is None: {ctx.message_bus is None}")
 
     except Exception as e:
         logger.error(f"Error in timer expiry handler: {e}")
-        # Try to send a basic fallback notification
-        try:
-            if hasattr(ctx, "communication_manager") and ctx.communication_manager:
-                await ctx.communication_manager.send_notification(
-                    message="Timer expired", recipient="general"
-                )
-        except Exception as fallback_error:
-            logger.error(f"Failed to send fallback notification: {fallback_error}")
 
 
 async def handle_location_based_timer_update(
