@@ -681,13 +681,21 @@ async def parse_timer_parameters(
                     user_id=user_id,
                     channel_id=channel_id,
                     request_context={
-                        "original_request": context.get("original_user_input", ""),
+                        "original_request": context.get_metadata(
+                            "original_user_input", ""
+                        )
+                        if context
+                        else "",
                         "execution_context": {
                             "user_id": user_id,
                             "channel": channel_id,
-                            "device_context": context.get("device_context", {}),
+                            "device_context": context.get_metadata("device_context", {})
+                            if context
+                            else {},
                             "timestamp": datetime.now().isoformat(),
-                            "source": context.get("source", "unknown"),
+                            "source": context.get_metadata("source", "unknown")
+                            if context
+                            else "unknown",
                         },
                     },
                     metadata={"supports_workflows": True, "event_driven": True},
@@ -700,7 +708,7 @@ async def parse_timer_parameters(
 
             elif action == "list":
                 # Execute timer listing
-                user_id = context.get("user_id") if context else None
+                user_id = context.get_metadata("user_id") if context else None
                 timers = await timer_manager.list_timers(user_id=user_id)
                 execution_result = {
                     "success": True,
