@@ -3,8 +3,8 @@
 # Role Metadata
 role:
   name: "timer"
-  version: "2.0.0"
-  description: "Timer role with pre-processing parameter extraction and post-processing confirmation"
+  version: "3.0.0"
+  description: "Timer role with dynamic action support via event-driven workflows"
   fast_reply: true # Enable fast-path routing for timer operations
   llm_type: "WEAK" # Timer operations are simple and don't need complex reasoning
   author: "system@generative-agent"
@@ -47,6 +47,77 @@ parameters:
     type: "string"
     required: false
     description: "Timer ID for cancel operations"
+
+# Dynamic event declarations
+events:
+  publishes:
+    - event_type: "TIMER_EXPIRED"
+      description: "Timer has reached its expiry time and needs action processing"
+      data_schema:
+        timer_id:
+          type: "string"
+          required: true
+          description: "Unique identifier for the expired timer"
+        original_request:
+          type: "string"
+          required: true
+          description: "Original user request containing the action to execute"
+          examples:
+            ["turn on the lights", "remind me about meeting", "notify skylar"]
+        execution_context:
+          type: "object"
+          required: true
+          description: "Rich context needed to execute the action"
+          properties:
+            user_id:
+              type: "string"
+              description: "Slack user ID who created the timer"
+            channel:
+              type: "string"
+              description: "Channel where timer was created"
+            device_context:
+              type: "object"
+              description: "Device and room context for smart home actions"
+              properties:
+                room: "string"
+                device_id: "string"
+                available_devices: "array"
+            timestamp:
+              type: "string"
+              description: "ISO timestamp when timer was created"
+            source:
+              type: "string"
+              description: "Source of the request (slack, cli, api)"
+      example:
+        timer_id: "timer_abc123"
+        original_request: "turn on the lights"
+        execution_context:
+          user_id: "U123456"
+          channel: "#general"
+          device_context:
+            room: "bedroom"
+            device_id: "echo_dot_bedroom"
+            available_devices: ["bedroom_lights", "bedside_lamp"]
+          timestamp: "2025-01-01T22:30:00Z"
+          source: "slack"
+
+    - event_type: "TIMER_CREATED"
+      description: "New timer was successfully created"
+      data_schema:
+        timer_id: "string"
+        duration: "integer"
+        expires_at: "string"
+        user_id: "string"
+
+  subscribes:
+    - event_type: "TIMER_EXPIRED"
+      handler: "handle_timer_expiry_action"
+      description: "Process expired timer by parsing action and creating appropriate workflow"
+
+    - event_type: "USER_LOCATION_CHANGED"
+      handler: "handle_location_based_timer_update"
+      description: "Update timers that depend on user location"
+      condition: "event_data.affects_timers == true"
 
 # Lifecycle hooks for hybrid execution
 lifecycle:

@@ -129,8 +129,14 @@ class WorkflowEngine:
         # Initialize MCP manager
         self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
 
-        # Initialize role registry with performance optimization
-        self.role_registry = RoleRegistry(roles_directory)
+        # Initialize role registry with MessageBus for dynamic event registration
+        self.role_registry = RoleRegistry(roles_directory, message_bus=self.message_bus)
+
+        # Inject dependencies into MessageBus for event handler wrapping
+        self.message_bus.workflow_engine = self
+        self.message_bus.llm_factory = self.llm_factory
+        # communication_manager will be injected by Supervisor after WorkflowEngine initialization
+
         # Set this as the global registry to ensure consistency across the system
         RoleRegistry._global_registry = self.role_registry
         # Use initialize_once for performance - avoid repeated loading

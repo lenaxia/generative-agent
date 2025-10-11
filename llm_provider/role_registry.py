@@ -33,13 +33,15 @@ class RoleRegistry:
 
     _global_registry = None
 
-    def __init__(self, roles_directory: str = "roles"):
+    def __init__(self, roles_directory: str = "roles", message_bus=None):
         """Initialize the role registry.
 
         Args:
             roles_directory: Path to the roles directory
+            message_bus: Optional MessageBus for dynamic event registration
         """
         self.roles_directory = Path(roles_directory)
+        self.message_bus = message_bus
 
         # Enhanced role storage for hybrid architecture
         self.llm_roles: dict[str, RoleDefinition] = {}  # All roles are hybrid now
@@ -51,6 +53,11 @@ class RoleRegistry:
         self.lifecycle_functions: dict[
             str, dict[str, Callable]
         ] = {}  # role_name -> {func_name: func}
+
+        # Event handling support
+        self._role_event_handlers: dict[
+            str, dict[str, Callable]
+        ] = {}  # role_name -> {event_type: handler}
 
         # Backward compatibility - keep existing interface
         self.roles: dict[
@@ -147,6 +154,10 @@ class RoleRegistry:
         lifecycle_functions = self._load_lifecycle_functions(role_name)
         if lifecycle_functions:
             self.register_lifecycle_functions(role_name, lifecycle_functions)
+
+        # Auto-register events if MessageBus is available
+        if self.message_bus and "events" in config:
+            self._register_role_events(role_name, config["events"])
 
         return RoleDefinition(
             name=role_name,
@@ -588,3 +599,122 @@ class RoleRegistry:
             }
             for role in fast_roles
         ]
+
+    # Event registration and handling methods
+    def _register_role_events(self, role_name: str, events_config: dict[str, Any]):
+        """Register role's published and subscribed events.
+
+        Args:
+            role_name: Name of the role
+            events_config: Events configuration from role definition
+        """
+        # Register published events
+        if "publishes" in events_config:
+            for event_config in events_config["publishes"]:
+                self.message_bus.event_registry.register_event_type(
+                    event_config["event_type"],
+                    role_name,
+                    event_config.get("data_schema", {}),
+                    event_config.get("description", ""),
+                )
+
+        # Register subscriptions
+        if "subscribes" in events_config:
+            for subscription in events_config["subscribes"]:
+                event_type = subscription["event_type"]
+                handler_name = subscription["handler"]
+
+                # Load handler function from role's lifecycle
+                handler_func = self._load_role_handler(role_name, handler_name)
+
+                if handler_func:
+                    # Subscribe to MessageBus
+                    self.message_bus.subscribe(role_name, event_type, handler_func)
+                    self.message_bus.event_registry.register_subscription(
+                        event_type, role_name
+                    )
+
+                    # Track handler for role
+                    if role_name not in self._role_event_handlers:
+                        self._role_event_handlers[role_name] = {}
+                    self._role_event_handlers[role_name][event_type] = handler_func
+
+    def _load_role_handler(
+        self, role_name: str, handler_name: str
+    ) -> Optional[Callable]:
+        """Load event handler function from role's lifecycle module.
+
+        Args:
+            role_name: Name of the role
+            handler_name: Name of the handler function
+
+        Returns:
+            Wrapped handler function or None if not found
+        """
+        try:
+            # Import role's lifecycle module
+            import importlib
+
+            lifecycle_module = importlib.import_module(f"roles.{role_name}.lifecycle")
+
+            # Get handler function
+            if hasattr(lifecycle_module, handler_name):
+                handler_func = getattr(lifecycle_module, handler_name)
+
+                # Verify it's actually callable
+                if not callable(handler_func):
+                    logger.error(
+                        f"Handler '{handler_name}' in {role_name}.lifecycle is not callable"
+                    )
+                    return None
+
+                # Wrap handler to provide required dependencies
+                async def enhanced_handler(event_data):
+                    # Create EventHandlerLLM utility for handlers
+                    from common.event_handler_llm import EventHandlerLLM
+
+                    llm_utility = EventHandlerLLM(
+                        llm_factory=self.message_bus.llm_factory,
+                        event_context=event_data,
+                    )
+
+                    # Call handler with enhanced signature
+                    return await handler_func(
+                        event_data=event_data,
+                        llm=llm_utility,
+                        workflow_engine=self.message_bus.workflow_engine,
+                        communication_manager=self.message_bus.communication_manager,
+                        context=event_data.get("execution_context", {}),
+                    )
+
+                return enhanced_handler
+            else:
+                logger.error(
+                    f"Handler '{handler_name}' not found in {role_name}.lifecycle"
+                )
+                return None
+
+        except ImportError as e:
+            logger.error(
+                f"Could not import lifecycle module for role '{role_name}': {e}"
+            )
+            return None
+
+    def get_role_events_info(self, role_name: str) -> dict[str, Any]:
+        """Get event information for a specific role.
+
+        Args:
+            role_name: Name of the role
+
+        Returns:
+            Dictionary with role's event information
+        """
+        role_def = self.get_role(role_name)
+        if not role_def or "events" not in role_def:
+            return {"publishes": [], "subscribes": [], "handlers": []}
+
+        return {
+            "publishes": role_def["events"].get("publishes", []),
+            "subscribes": role_def["events"].get("subscribes", []),
+            "handlers": list(self._role_event_handlers.get(role_name, {}).keys()),
+        }

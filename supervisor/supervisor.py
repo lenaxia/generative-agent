@@ -154,7 +154,7 @@ class Supervisor:
         self.communication_manager = CommunicationManager(self.message_bus)
         # Initialize channels synchronously during startup
         self.communication_manager.initialize_sync()
-        
+
         # Start the async queue processor after supervisor starts
         # This will be handled in the start() method
         logger.info("Communication manager initialized with channel handlers")
@@ -250,6 +250,11 @@ class Supervisor:
             mcp_config_path=mcp_config_path,
             fast_path_config=fast_path_config,
         )
+
+        # Inject communication_manager into MessageBus for event handler dependencies
+        if hasattr(self, "communication_manager") and self.communication_manager:
+            self.message_bus.communication_manager = self.communication_manager
+
         logger.info(
             "WorkflowEngine initialized (consolidated RequestManager + TaskScheduler)."
         )

@@ -5,6 +5,29 @@
 **Status:** Design Phase
 **Priority:** High
 
+## Rules
+
+- Regularly run `make lint` to validate that your code is healthy
+- Always use the venv at ./venv/bin/activate
+- ALWAYS use test driven development, write tests first
+- Never assume tests pass, run the tests and positively verify that the test passed
+- ALWAYS run all tests after making any change to ensure they are still all passing, do not move on until relevant tests are passing
+- If a test fails, reflect deeply about why the test failed and fix it or fix the code
+- Always write multiple tests, including happy, unhappy path and corner cases
+- Always verify interfaces and data structures before writing code, do not assume the definition of a interface or data structure
+- When performing refactors, ALWAYS use grep to find all instances that need to be refactored
+- If you are stuck in a debugging cycle and can't seem to make forward progress, either ask for user input or take a step back and reflect on the broader scope of the code you're working on
+- ALWAYS make sure your tests are meaningful, do not mock excessively, only mock where ABSOLUTELY necessary.
+- Make a git commit after major changes have been completed
+- When refactoring an object, refactor it in place, do not create a new file just for the sake of preserving the old version, we have git for that reason. For instance, if refactoring RequestManager, do NOT create an EnhancedRequestManager, just refactor or rewrite RequestManager
+- ALWAYS Follow development and language best practices
+- Use the Context7 MCP server if you need documentation for something, make sure you're looking at the right version
+- Remember we are migrating AWAY from langchain TO strands agent
+- Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
+- Do not use fallbacks
+- Whenever you complete a phase, make sure to update this checklist
+- Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed
+
 ## Executive Summary
 
 This document outlines a comprehensive design for a **Dynamic Event-Driven Role Architecture** that enables roles to declare, publish, and subscribe to events without modifying core system code. This architecture supports complex delayed actions (like timer-triggered workflows), inter-role communication, and dynamic event type registration, while maintaining clean separation of concerns and leveraging existing workflow infrastructure.
@@ -1309,3 +1332,26 @@ async def handle_complex_timer_action(event_data, agent, workflow_engine, commun
 - ✅ **Context Management**: Automatic context merging and access
 
 This enhancement makes event handlers much more powerful and easier to write, while maintaining the clean architecture of the event-driven system.
+
+## Rules
+
+- Regularly run `make lint` to validate that your code is healthy
+- Always use the venv at ./venv/bin/activate
+- ALWAYS use test driven development, write tests first
+- Never assume tests pass, run the tests and positively verify that the test passed
+- ALWAYS run all tests after making any change to ensure they are still all passing, do not move on until relevant tests are passing
+- If a test fails, reflect deeply about why the test failed and fix it or fix the code
+- Always write multiple tests, including happy, unhappy path and corner cases
+- Always verify interfaces and data structures before writing code, do not assume the definition of a interface or data structure
+- When performing refactors, ALWAYS use grep to find all instances that need to be refactored
+- If you are stuck in a debugging cycle and can't seem to make forward progress, either ask for user input or take a step back and reflect on the broader scope of the code you're working on
+- ALWAYS make sure your tests are meaningful, do not mock excessively, only mock where ABSOLUTELY necessary.
+- Make a git commit after major changes have been completed
+- When refactoring an object, refactor it in place, do not create a new file just for the sake of preserving the old version, we have git for that reason. For instance, if refactoring RequestManager, do NOT create an EnhancedRequestManager, just refactor or rewrite RequestManager
+- ALWAYS Follow development and language best practices
+- Use the Context7 MCP server if you need documentation for something, make sure you're looking at the right version
+- Remember we are migrating AWAY from langchain TO strands agent
+- Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
+- Do not use fallbacks
+- Whenever you complete a phase, make sure to update this checklist
+- Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed

@@ -973,4 +973,149 @@ def _parse_alarm_time(time_str: str) -> Optional[datetime]:
 
     except Exception as e:
         logger.error(f"Failed to parse alarm time '{time_str}': {e}")
+
+
+# Event handler functions for dynamic event-driven architecture
+async def handle_timer_expiry_action(
+    event_data: dict[str, Any],
+    llm,  # EventHandlerLLM utility
+    workflow_engine,
+    communication_manager,
+    context: dict[str, Any],
+):
+    """Handle timer expiry by parsing action and creating workflows.
+
+    This function is called automatically when TIMER_EXPIRED events are published.
+    It uses LLM to parse the original timer request with current context and
+    creates appropriate workflows or notifications.
+
+    Args:
+        event_data: Timer expiry event data
+        llm: EventHandlerLLM utility for easy LLM access
+        workflow_engine: WorkflowEngine instance for creating workflows
+        communication_manager: CommunicationManager for notifications
+        context: Execution context (same as llm.get_context())
+    """
+    try:
+        timer_id = event_data.get("timer_id")
+        original_request = llm.get_original_request()
+        user_id = llm.get_user_id()
+        channel = llm.get_channel()
+        room = llm.get_context("device_context.room")
+
+        logger.info(
+            f"Processing timer expiry action for timer {timer_id}: {original_request}"
+        )
+
+        # Simple LLM call to determine action type
+        decision_prompt = f"""
+        For timer request '{original_request}' in room '{room}', should I:
+        A) Create a workflow (for actions like turning on lights, controlling devices)
+        B) Send a notification (for simple reminders)
+
+        Consider:
+        - If the request involves controlling devices, choose A
+        - If the request is just a reminder or notification, choose B
+        - If uncertain, choose B for safety
+
+        Answer: A or B
+        """
+
+        action_decision = await llm.invoke(decision_prompt, model_type="WEAK")
+        is_workflow = "A" in action_decision or "workflow" in action_decision.lower()
+
+        if not is_workflow:
+            # Simple notification
+            from common.communication_manager import ChannelType, MessageFormat
+
+            await communication_manager.send_notification(
+                message=f"Timer reminder: {original_request}",
+                channels=[ChannelType.SLACK],
+                recipient=channel,
+                message_format=MessageFormat.PLAIN_TEXT,
+                metadata=context,
+            )
+            logger.info(f"Sent timer notification: {original_request}")
+        else:
+            # Parse action and create workflow instruction
+            parsing_prompt = f"""
+            Parse this timer action into a clear workflow instruction:
+
+            Timer Action: "{original_request}"
+            Room: {room}
+            User: {user_id}
+            Current Time: {datetime.now().isoformat()}
+
+            Convert this into a specific, actionable workflow instruction.
+            For example: "turn on the lights" → "turn on bedroom lights to 50% brightness"
+
+            Return only the workflow instruction, nothing else.
+            """
+
+            workflow_instruction = await llm.invoke(parsing_prompt, model_type="WEAK")
+
+            if workflow_instruction and workflow_instruction.strip():
+                # Create workflow with parsed instruction
+                workflow_id = await workflow_engine.start_workflow(
+                    instruction=workflow_instruction.strip(), context=context
+                )
+                logger.info(f"Created workflow {workflow_id}: {workflow_instruction}")
+            else:
+                # Fallback to notification if parsing failed
+                from common.communication_manager import ChannelType, MessageFormat
+
+                await communication_manager.send_notification(
+                    message=f"Timer reminder: {original_request}",
+                    channels=[ChannelType.SLACK],
+                    recipient=channel,
+                    message_format=MessageFormat.PLAIN_TEXT,
+                    metadata=context,
+                )
+                logger.info(f"Fallback notification sent: {original_request}")
+
+    except Exception as e:
+        logger.error(f"Error in timer expiry handler: {e}")
+        # Always fallback to basic notification
+        from common.communication_manager import ChannelType, MessageFormat
+
+        await communication_manager.send_notification(
+            message=f"Timer reminder: {llm.get_original_request()}",
+            channels=[ChannelType.SLACK],
+            recipient=llm.get_channel(),
+            message_format=MessageFormat.PLAIN_TEXT,
+            metadata=context,
+        )
+
+
+async def handle_location_based_timer_update(
+    event_data: dict[str, Any],
+    llm,  # EventHandlerLLM utility
+    workflow_engine,
+    communication_manager,
+    context: dict[str, Any],
+):
+    """Handle user location changes that affect pending timers.
+
+    Args:
+        event_data: Location change event data
+        llm: EventHandlerLLM utility for easy LLM access
+        workflow_engine: WorkflowEngine instance
+        communication_manager: CommunicationManager instance
+        context: Execution context
+    """
+    try:
+        logger.info(f"Handling location update for timers: {event_data}")
+
+        # This is a placeholder for future location-based timer functionality
+        # Could check if any pending timers need location updates
+        # For now, just log the event
+
+        user_id = event_data.get("user_id", "unknown")
+        new_location = event_data.get("location", {})
+
+        logger.info(f"User {user_id} location changed to: {new_location}")
+        # Future: Update location-dependent timers
+
+    except Exception as e:
+        logger.error(f"Error handling location-based timer update: {e}")
         return None
