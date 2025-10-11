@@ -147,11 +147,9 @@ class RoleRegistry:
         with open(definition_file) as f:
             config = yaml.safe_load(f)
 
-        # Validate role configuration against schema
+        # Validate role configuration against schema (validation only, don't transform)
         try:
-            validated_config = validate_role_definition(config)
-            # Convert back to dict for compatibility with existing code
-            config = validated_config.dict()
+            validate_role_definition(config)
             logger.debug(f"Role {role_name} passed schema validation")
         except ValidationError as e:
             logger.error(f"Role {role_name} failed schema validation: {e}")
