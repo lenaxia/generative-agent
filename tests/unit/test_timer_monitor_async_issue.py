@@ -69,13 +69,11 @@ class TestTimerMonitorAsyncIssue(unittest.TestCase):
             "metadata": {},
         }
 
-        # Create timer monitor with mocked timer manager
-        mock_timer_manager = AsyncMock()
-        timer_monitor = TimerMonitor(self.message_bus, mock_timer_manager)
-
         # Simulate the exact scenario: sync method called from async context
         def sync_publish_scenario():
             """Simulate sync publish from timer monitor."""
+            # Create timer monitor (it gets its own timer manager)
+            timer_monitor = TimerMonitor(self.message_bus)
             timer_monitor._publish_timer_expired_event(timer_data)
 
         # Run in a thread to simulate the timer monitor context

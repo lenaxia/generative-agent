@@ -544,15 +544,24 @@ class CommunicationManager:
         )
         message_type = context.get("message_type", "notification")
 
+        logger.info(
+            f"route_message called: origin_channel={origin_channel}, message_type={message_type}"
+        )
+
         # Determine target channels
         target_channels = self._determine_target_channels(
             origin_channel, message_type, context
         )
 
+        logger.info(f"Target channels determined: {target_channels}")
+
         # Send with appropriate delivery guarantee
-        return await self._send_with_delivery_guarantee(
+        result = await self._send_with_delivery_guarantee(
             message, target_channels, context, delivery_guarantee
         )
+
+        logger.info(f"_send_with_delivery_guarantee result: {result}")
+        return result
 
     def _determine_target_channels(
         self, origin_channel: str, message_type: str, context: dict
@@ -870,13 +879,15 @@ class CommunicationManager:
         Args:
             message: The timer expired event message
         """
+        timer_id = message.get("timer_id")
+        logger.info(f"Processing timer expired event for timer: {timer_id}")
+        logger.info(f"Available channels: {list(self.channels.keys())}")
         logger.info(
-            f"Processing timer expired event for timer: {message.get('timer_id')}"
+            f"Enabled channels: {[ch for ch, handler in self.channels.items() if handler.enabled]}"
         )
 
         # Timer data is published directly, not nested under "data"
         timer_data = message
-        timer_id = timer_data.get("timer_id")
         timer_name = timer_data.get("timer_name", "Timer")
 
         if not timer_id:
@@ -911,11 +922,19 @@ class CommunicationManager:
             "metadata": {"timer_id": timer_id, "timer_data": timer_data},
         }
 
+        logger.info(
+            f"About to call route_message with message: '{notification_message}' and context: {context}"
+        )
+
         try:
             result = await self.route_message(notification_message, context)
+            logger.info(f"Timer notification route_message result: {result}")
             logger.info(f"Timer notification sent successfully: {timer_id}")
         except Exception as e:
             logger.error(f"Failed to send timer notification for {timer_id}: {e}")
+            import traceback
+
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
 
     async def send_notification(
