@@ -10,6 +10,9 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+from llm_provider.factory import LLMType
+from llm_provider.universal_agent import UniversalAgent
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,10 +64,7 @@ class EventHandlerLLM:
             context_str = f"\nContext: {json.dumps(merged_context, indent=2)}\n"
             prompt = f"{prompt}{context_str}"
 
-        # Use Universal Agent with default role (no tools) for simple LLM calls
-        from llm_provider.factory import LLMType
-        from llm_provider.universal_agent import UniversalAgent
-
+        # Use Universal Agent with no_tools role for simple LLM calls
         # Create Universal Agent using the factory
         universal_agent = UniversalAgent(self.llm_factory)
 
