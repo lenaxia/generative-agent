@@ -998,81 +998,74 @@ def _parse_alarm_time(time_str: str) -> Optional[datetime]:
 async def handle_timer_expiry_action(
     event_data: dict[str, Any], ctx  # EventHandlerContext with all dependencies
 ):
-    """Handle timer expiry by parsing action and creating workflows.
+    """Handle timer expiry by sending a simple notification to the originating channel.
 
     This function is called automatically when TIMER_EXPIRED events are published.
-    It uses LLM to parse the original timer request with current context and
-    creates appropriate workflows or notifications.
+    It sends a simple notification without calling the LLM to avoid complexity and errors.
 
     Args:
-        event_data: Timer expiry event data
-        ctx: EventHandlerContext with llm, workflow_engine, communication_manager, etc.
+        event_data: Timer expiry event data (dict or list)
+        ctx: EventHandlerContext with communication_manager, etc.
     """
     try:
-        timer_id = event_data.get("timer_id")
-        original_request = ctx.get_original_request()
-        user_id = ctx.get_user_id()
-        channel = ctx.get_channel()
-        room = ctx.get_context("device_context.room")
-
-        logger.info(
-            f"Processing timer expiry action for timer {timer_id}: {original_request}"
-        )
-
-        # Simple LLM call to determine action type
-        decision_prompt = f"""
-        For timer request '{original_request}' in room '{room}', should I:
-        A) Create a workflow (for actions like turning on lights, controlling devices)
-        B) Send a notification (for simple reminders)
-
-        Consider:
-        - If the request involves controlling devices, choose A
-        - If the request is just a reminder or notification, choose B
-        - If uncertain, choose B for safety
-
-        Answer: A or B
-        """
-
-        action_decision = await ctx.invoke_llm(decision_prompt, model_type="WEAK")
-        is_workflow = "A" in action_decision or "workflow" in action_decision.lower()
-
-        if not is_workflow:
-            # Simple notification
-            await ctx.send_notification(f"Timer reminder: {original_request}")
-            logger.info(f"Sent timer notification: {original_request}")
+        # Handle both dict and list event data formats
+        if isinstance(event_data, dict):
+            timer_id = event_data.get("timer_id", "unknown")
+            original_request = event_data.get("original_request", "Timer expired")
+            execution_context = event_data.get("execution_context", {})
+            user_id = execution_context.get("user_id", "unknown")
+            channel = execution_context.get("channel", "unknown")
+        elif isinstance(event_data, list) and len(event_data) > 0:
+            # Handle legacy list format: [timer_id, ...]
+            timer_id = event_data[0] if event_data else "unknown"
+            original_request = "Timer expired"
+            user_id = "unknown"
+            channel = "unknown"
         else:
-            # Parse action and create workflow instruction
-            parsing_prompt = f"""
-            Parse this timer action into a clear workflow instruction:
+            # Fallback for unexpected formats
+            timer_id = "unknown"
+            original_request = "Timer expired"
+            user_id = "unknown"
+            channel = "unknown"
 
-            Timer Action: "{original_request}"
-            Room: {room}
-            User: {user_id}
-            Current Time: {datetime.now().isoformat()}
+        logger.info(f"Processing timer expiry action for timer {timer_id}")
 
-            Convert this into a specific, actionable workflow instruction.
-            For example: "turn on the lights" → "turn on bedroom lights to 50% brightness"
+        # Get timer details from Redis to get custom message and channel info
+        timer_manager = get_timer_manager()
+        timer_data = await timer_manager.get_timer(timer_id)
 
-            Return only the workflow instruction, nothing else.
-            """
+        if timer_data:
+            # Use custom message if available, otherwise use original request
+            notification_message = timer_data.get("custom_message", original_request)
+            channel_id = timer_data.get("channel_id", channel)
+            user_id = timer_data.get("user_id", user_id)
+        else:
+            notification_message = original_request
+            channel_id = channel
 
-            workflow_instruction = await ctx.invoke_llm(
-                parsing_prompt, model_type="WEAK"
+        # Send simple notification to the originating channel
+        if hasattr(ctx, "communication_manager") and ctx.communication_manager:
+            await ctx.communication_manager.send_notification(
+                message=notification_message, recipient=channel_id, user_id=user_id
             )
-
-            if workflow_instruction and workflow_instruction.strip():
-                # Create workflow with parsed instruction
-                workflow_id = await ctx.create_workflow(workflow_instruction.strip())
-                logger.info(f"Created workflow {workflow_id}: {workflow_instruction}")
-            else:
-                # Fallback to notification if parsing failed
-                await ctx.send_notification(f"Timer reminder: {original_request}")
-                logger.info(f"Fallback notification sent: {original_request}")
+            logger.info(
+                f"Sent timer notification to {channel_id}: {notification_message}"
+            )
+        else:
+            logger.warning(
+                f"No communication manager available, cannot send notification for timer {timer_id}"
+            )
 
     except Exception as e:
         logger.error(f"Error in timer expiry handler: {e}")
-        # Always fallback to basic notification
-        await ctx.send_notification(f"Timer reminder: {ctx.get_original_request()}")
+        # Try to send a basic fallback notification
+        try:
+            if hasattr(ctx, "communication_manager") and ctx.communication_manager:
+                await ctx.communication_manager.send_notification(
+                    message="Timer expired", recipient="general"
+                )
+        except Exception as fallback_error:
+            logger.error(f"Failed to send fallback notification: {fallback_error}")
 
 
 async def handle_location_based_timer_update(
