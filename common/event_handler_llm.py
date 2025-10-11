@@ -61,13 +61,19 @@ class EventHandlerLLM:
             context_str = f"\nContext: {json.dumps(merged_context, indent=2)}\n"
             prompt = f"{prompt}{context_str}"
 
-        # Create LLM model directly (no agent wrapper)
+        # Use Universal Agent with default role (no tools) for simple LLM calls
         from llm_provider.factory import LLMType
+        from llm_provider.universal_agent import UniversalAgent
 
-        llm_model = self.llm_factory.create_strands_model(LLMType[model_type])
+        # Create Universal Agent using the factory
+        universal_agent = UniversalAgent(self.llm_factory)
 
-        # Make direct LLM call
-        return await llm_model.invoke(prompt)
+        # Execute LLM task with no_tools role (explicitly has no tools)
+        return universal_agent.execute_llm_task(
+            instruction=prompt,
+            role="no_tools",  # Explicit role with no tools
+            llm_type=LLMType[model_type],
+        )
 
     async def parse_json(
         self, prompt: str, model_type: str = "WEAK", context: dict[str, Any] = None
