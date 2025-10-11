@@ -64,9 +64,7 @@ class EventHandlerContext:
             Workflow ID
         """
         workflow_context = context or self.execution_context
-        return await self.workflow_engine.start_workflow(
-            instruction=instruction, context=workflow_context
-        )
+        return await self.workflow_engine.start_workflow(instruction=instruction)
 
     async def send_notification(
         self,
