@@ -61,7 +61,7 @@ class TimerMonitor:
                 if timer["id"] not in self.processing_timers
             ]
 
-            logger.info(f"Found {len(new_expired_timers)} new expired timers")
+            logger.debug(f"Found {len(new_expired_timers)} new expired timers")
             return new_expired_timers
 
         except Exception as e:

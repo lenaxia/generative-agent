@@ -870,6 +870,10 @@ class CommunicationManager:
         Args:
             message: The timer expired event message
         """
+        logger.info(
+            f"Processing timer expired event for timer: {message.get('timer_id')}"
+        )
+
         # Timer data is published directly, not nested under "data"
         timer_data = message
         timer_id = timer_data.get("timer_id")
@@ -906,7 +910,13 @@ class CommunicationManager:
             "message_type": "timer_expired",
             "metadata": {"timer_id": timer_id, "timer_data": timer_data},
         }
-        await self.route_message(notification_message, context)
+
+        try:
+            result = await self.route_message(notification_message, context)
+            logger.info(f"Timer notification sent successfully: {timer_id}")
+        except Exception as e:
+            logger.error(f"Failed to send timer notification for {timer_id}: {e}")
+            raise
 
     async def send_notification(
         self,
