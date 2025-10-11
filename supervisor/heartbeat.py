@@ -43,9 +43,6 @@ class Heartbeat:
         self.health_status = "unknown"
         self.metrics = {}
 
-        # Timer monitoring is now handled by timer role via FAST_HEARTBEAT_TICK events
-        # No longer need timer_monitor in supervisor layer
-
     def start(self):
         """Start the heartbeat service"""
         if not self.thread.is_alive():
@@ -279,6 +276,21 @@ class Heartbeat:
             logger.error(f"Checkpoint cleanup failed: {e}")
 
     # Timer monitoring removed - now handled by timer role via FAST_HEARTBEAT_TICK events
+
+    def _publish_heartbeat_events(self):
+        """Publish generic heartbeat events for role monitoring."""
+        from datetime import datetime
+
+        heartbeat_data = {
+            "timestamp": datetime.now().isoformat(),
+            "interval": self.interval,
+            "system_health": self.get_health_status(),
+        }
+
+        # Publish generic heartbeat - any role can subscribe
+        if hasattr(self.supervisor, "message_bus") and self.supervisor.message_bus:
+            self.supervisor.message_bus.publish(self, "HEARTBEAT_TICK", heartbeat_data)
+            logger.debug("Published HEARTBEAT_TICK event")
 
     def _update_metrics(self):
         """Update heartbeat metrics"""
