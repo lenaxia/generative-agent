@@ -1007,6 +1007,11 @@ async def handle_timer_expiry_action(
         event_data: Timer expiry event data (dict or list)
         ctx: EventHandlerContext with communication_manager, etc.
     """
+    logger.info("🚀 TIMER EXPIRY HANDLER CALLED!")
+    logger.info(f"Event data type: {type(event_data)}")
+    logger.info(f"Event data: {event_data}")
+    logger.info(f"Context type: {type(ctx)}")
+
     try:
         # Handle both dict and list event data formats
         if isinstance(event_data, dict):
@@ -1056,7 +1061,7 @@ async def handle_timer_expiry_action(
                 "message": notification_message,
                 "context": {
                     "user_id": user_id,
-                    "channel": channel_id,
+                    "channel_id": channel_id,  # Fixed: use channel_id not channel
                     "timestamp": datetime.now().isoformat(),
                     "source": "timer_expiry",
                 },
