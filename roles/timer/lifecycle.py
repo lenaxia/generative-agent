@@ -1013,20 +1013,29 @@ async def handle_timer_expiry_action(
     logger.info(f"Context type: {type(ctx)}")
 
     try:
+        logger.info("🔍 Starting event data parsing...")
+
         # Handle both dict and list event data formats
         if isinstance(event_data, dict):
+            logger.info("📋 Processing dict format event data")
             timer_id = event_data.get("timer_id", "unknown")
             original_request = event_data.get("original_request", "Timer expired")
             execution_context = event_data.get("execution_context", {})
             user_id = execution_context.get("user_id", "unknown")
             channel = execution_context.get("channel", "unknown")
+            logger.info(
+                f"📋 Extracted: timer_id={timer_id}, user_id={user_id}, channel={channel}"
+            )
         elif isinstance(event_data, list) and len(event_data) > 0:
+            logger.info("📋 Processing list format event data")
             # Handle legacy list format: [timer_id, ...]
             timer_id = event_data[0] if event_data else "unknown"
             original_request = "Timer expired"
             user_id = "unknown"
             channel = "unknown"
+            logger.info(f"📋 Extracted: timer_id={timer_id}")
         else:
+            logger.info("📋 Using fallback for unexpected format")
             # Fallback for unexpected formats
             timer_id = "unknown"
             original_request = "Timer expired"
@@ -1035,20 +1044,15 @@ async def handle_timer_expiry_action(
 
         logger.info(f"Processing timer expiry action for timer {timer_id}")
 
-        # Get timer details from Redis to get custom message and channel info
-        timer_manager = get_timer_manager()
-        timer_data = await timer_manager.get_timer(timer_id)
-
-        if timer_data:
-            # Use custom message if available, otherwise use original request
-            notification_message = timer_data.get("custom_message", original_request)
-            channel_id = timer_data.get("channel_id", channel)
-            user_id = timer_data.get("user_id", user_id)
-        else:
-            notification_message = original_request
-            channel_id = channel
+        # Skip Redis lookup (it hangs) - use simple notification with event data
+        notification_message = f"Timer {timer_id} expired!"
+        channel_id = channel  # Use channel from event data
+        logger.info(
+            f"🔍 Using simple notification: message='{notification_message}', channel='{channel_id}'"
+        )
 
         # Send simple notification via message bus (SEND_MESSAGE event)
+        logger.info(f"🔍 About to attempt notification send for timer {timer_id}")
         logger.info(f"Attempting to send notification for timer {timer_id}")
         logger.info(f"Context has message_bus: {hasattr(ctx, 'message_bus')}")
         if hasattr(ctx, "message_bus"):
