@@ -67,6 +67,14 @@ role_system:
     fallback_role: "default" # Fallback when no role matches
     selection_model: "WEAK" # Model type for role selection (cost optimization)
 
+  # LLM-friendly single-file role configuration
+  single_file_roles:
+    enabled: true # Enable single-file role pattern
+    role_pattern: "*.py" # Look for Python files, not directories
+    auto_discovery: true # Auto-discover register_role() functions
+    validate_structure: true # Validate role follows template structure
+    enforce_patterns: true # Enforce LLM-friendly patterns
+
 # TaskGraph Configuration
 task_graph:
   max_history_size: 1000 # Maximum number of history entries to keep
@@ -96,6 +104,13 @@ message_bus:
   max_subscribers: 100
   queue_size: 1000
   enable_persistence: false
+
+  # Intent processing configuration
+  intent_processing:
+    enabled: true
+    validate_intents: true
+    timeout_seconds: 30
+    max_concurrent_intents: 50
 
 # Logging Configuration
 logging:
@@ -177,6 +192,8 @@ feature_flags:
   enable_task_scheduling: true
   enable_pause_resume: true
   enable_heartbeat: true
+  enable_intent_processing: true # Enable new intent-based architecture
+  enable_single_event_loop: true # Enable single event loop threading model
 
 # Fast-Path Routing Configuration
 fast_path:

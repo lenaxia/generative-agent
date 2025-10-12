@@ -1,0 +1,243 @@
+"""
+Intent Processor for LLM-Safe Declarative Event Processing
+
+This module processes declarative intents returned by pure function event handlers,
+eliminating threading complexity by separating "what should happen" from "how to make it happen".
+
+Created: 2025-10-12
+Part of: Threading Architecture Improvements (Documents 25, 26, 27)
+"""
+
+import logging
+from typing import Any, Callable, Dict, List, Optional
+
+from common.intents import (
+    AuditIntent,
+    ErrorIntent,
+    Intent,
+    NotificationIntent,
+    WorkflowIntent,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class IntentProcessor:
+    """
+    LLM-SAFE: Processes declarative intents with comprehensive error handling.
+
+    This processor handles the "how to make it happen" part of the intent architecture,
+    allowing event handlers to be pure functions that return declarative intents.
+    """
+
+    def __init__(self, communication_manager=None, workflow_engine=None):
+        """
+        Initialize the intent processor.
+
+        Args:
+            communication_manager: Optional communication manager for notifications
+            workflow_engine: Optional workflow engine for starting workflows
+        """
+        self.communication_manager = communication_manager
+        self.workflow_engine = workflow_engine
+
+        # Core intent handlers (built-in)
+        self._core_handlers = {
+            NotificationIntent: self._process_notification,
+            AuditIntent: self._process_audit,
+            WorkflowIntent: self._process_workflow,
+            ErrorIntent: self._process_error,
+        }
+
+        # Role-specific intent handlers (registered dynamically)
+        self._role_handlers: dict[type, dict[str, Any]] = {}
+
+        # Metrics tracking
+        self._processed_count = 0
+
+    def register_role_intent_handler(
+        self, intent_type: type, handler_func: Callable, role_name: str
+    ):
+        """
+        Allow roles to register their own intent handlers.
+
+        Args:
+            intent_type: The intent class type to handle
+            handler_func: Async function to handle the intent
+            role_name: Name of the role registering the handler
+        """
+        self._role_handlers[intent_type] = {"handler": handler_func, "role": role_name}
+        logger.info(f"Registered {intent_type.__name__} handler for {role_name} role")
+
+    async def process_intents(self, intents: list[Intent]) -> dict[str, Any]:
+        """
+        Process list of intents with comprehensive error handling.
+
+        Args:
+            intents: List of intent objects to process
+
+        Returns:
+            Dict with processing results: processed count, failed count, errors
+        """
+        results = {"processed": 0, "failed": 0, "errors": []}
+
+        for intent in intents:
+            try:
+                # Validate before processing
+                if not intent.validate():
+                    results["errors"].append(f"Invalid intent: {intent}")
+                    results["failed"] += 1
+                    continue
+
+                # Process the intent
+                await self._process_single_intent(intent)
+                results["processed"] += 1
+                self._processed_count += 1
+
+            except Exception as e:
+                logger.error(f"Intent processing failed: {e}")
+                results["errors"].append(str(e))
+                results["failed"] += 1
+
+        return results
+
+    async def _process_single_intent(self, intent: Intent):
+        """
+        Process single intent with type-specific handling.
+
+        Args:
+            intent: Intent object to process
+        """
+        intent_type = type(intent)
+
+        # Check core handlers first
+        if intent_type in self._core_handlers:
+            await self._core_handlers[intent_type](intent)
+        # Check role-specific handlers
+        elif intent_type in self._role_handlers:
+            handler_info = self._role_handlers[intent_type]
+            await handler_info["handler"](intent)
+        else:
+            # Log warning but don't fail - allows for unknown intent types
+            logger.warning(f"No handler registered for intent type: {intent_type}")
+
+    async def _process_notification(self, intent: NotificationIntent):
+        """
+        Process notification intent.
+
+        Args:
+            intent: NotificationIntent to process
+        """
+        if not self.communication_manager:
+            logger.error("No communication manager available for notification")
+            return
+
+        try:
+            await self.communication_manager.send_notification(
+                message=intent.message, channel=intent.channel, user_id=intent.user_id
+            )
+            logger.debug(f"Notification sent: {intent.message[:50]}...")
+        except Exception as e:
+            logger.error(f"Failed to send notification: {e}")
+            raise
+
+    async def _process_audit(self, intent: AuditIntent):
+        """
+        Process audit intent.
+
+        Args:
+            intent: AuditIntent to process
+        """
+        audit_entry = {
+            "action": intent.action,
+            "details": intent.details,
+            "user_id": intent.user_id,
+            "severity": intent.severity,
+            "timestamp": intent.created_at,
+        }
+
+        # Log audit entry (in production, this might go to a dedicated audit system)
+        log_level = getattr(logging, intent.severity.upper(), logging.INFO)
+        logger.log(log_level, f"Audit: {intent.action} - {intent.details}")
+
+    async def _process_workflow(self, intent: WorkflowIntent):
+        """
+        Process workflow intent.
+
+        Args:
+            intent: WorkflowIntent to process
+        """
+        if not self.workflow_engine:
+            logger.error("No workflow engine available for workflow")
+            return
+
+        try:
+            workflow_id = await self.workflow_engine.start_workflow(
+                request=f"Execute {intent.workflow_type}", parameters=intent.parameters
+            )
+            logger.info(
+                f"Started workflow {workflow_id} from intent: {intent.workflow_type}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to start workflow: {e}")
+            raise
+
+    async def _process_error(self, intent: ErrorIntent):
+        """
+        Process error intent.
+
+        Args:
+            intent: ErrorIntent to process
+        """
+        error_entry = {
+            "error_type": intent.error_type,
+            "error_message": intent.error_message,
+            "error_details": intent.error_details,
+            "recoverable": intent.recoverable,
+            "user_id": intent.user_id,
+            "timestamp": intent.created_at,
+        }
+
+        # Log error with appropriate level
+        if intent.recoverable:
+            logger.warning(
+                f"Recoverable error: {intent.error_type} - {intent.error_message}"
+            )
+        else:
+            logger.error(
+                f"Non-recoverable error: {intent.error_type} - {intent.error_message}"
+            )
+
+        # In production, this might trigger alerts, create tickets, etc.
+        logger.debug(f"Error details: {intent.error_details}")
+
+    def get_processed_count(self) -> int:
+        """
+        Get total number of intents processed.
+
+        Returns:
+            Total count of successfully processed intents
+        """
+        return self._processed_count
+
+    def get_registered_handlers(self) -> dict[str, list[str]]:
+        """
+        Get information about registered intent handlers.
+
+        Returns:
+            Dict mapping handler types to role names
+        """
+        handlers_info = {
+            "core_handlers": [
+                handler.__name__ for handler in self._core_handlers.keys()
+            ],
+            "role_handlers": [
+                f"{handler_type.__name__} ({info['role']})"
+                for handler_type, info in self._role_handlers.items()
+            ],
+        }
+        return handlers_info
+
+    def reset_metrics(self):
+        """Reset processing metrics (useful for testing)."""
+        self._processed_count = 0

@@ -7,229 +7,71 @@
 **Context:** 100% LLM Development Environment
 **Companion:** Document 26 - High-Level Architecture Patterns
 
+## Rules
+
+- Regularly run `make lint` to validate that your code is healthy
+- Always use the venv at ./venv/bin/activate
+- ALWAYS use test driven development, write tests first
+- Never assume tests pass, run the tests and positively verify that the test passed
+- ALWAYS run all tests after making any change to ensure they are still all passing, do not move on until relevant tests are passing
+- If a test fails, reflect deeply about why the test failed and fix it or fix the code
+- Always write multiple tests, including happy, unhappy path and corner cases
+- Always verify interfaces and data structures before writing code, do not assume the definition of a interface or data structure
+- When performing refactors, ALWAYS use grep to find all instances that need to be refactored
+- If you are stuck in a debugging cycle and can't seem to make forward progress, either ask for user input or take a step back and reflect on the broader scope of the code you're working on
+- ALWAYS make sure your tests are meaningful, do not mock excessively, only mock where ABSOLUTELY necessary.
+- Make a git commit after major changes have been completed
+- When refactoring an object, refactor it in place, do not create a new file just for the sake of preserving the old version, we have git for that reason. For instance, if refactoring RequestManager, do NOT create an EnhancedRequestManager, just refactor or rewrite RequestManager
+- ALWAYS Follow development and language best practices
+- Use the Context7 MCP server if you need documentation for something, make sure you're looking at the right version
+- Remember we are migrating AWAY from langchain TO strands agent
+- Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
+- Do not use fallbacks. Fallbacks tend to be brittle and fragile. Do implement fallbacks of any kind.
+- Whenever you complete a phase, make sure to update this checklist
+- Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed
+- When you complete the implementation of a project add new todo items addressing outstanding technical debt related to what you just implemented, such as removing old code, updating documentation, searching for additional references, etc. Fix these issues, do not accept technical debt for the project being implemented.
+
 ## Executive Summary
 
-This document provides detailed implementation specifications for eliminating threading issues by evolving existing components **specifically for LLM-driven development**. All changes modify existing classes in-place while creating **LLM-friendly patterns** that AI agents can reliably implement and extend.
+This document provides detailed implementation specifications for eliminating threading issues through simplified, LLM-optimized architecture. All changes focus on creating predictable patterns that AI agents can reliably implement while eliminating threading complexity entirely.
 
-**LLM Development Principle:** Create explicit, predictable patterns that eliminate entire classes of errors while providing clear templates that AI agents can follow consistently.
+**LLM Development Principle:** Create the simplest possible implementation that eliminates error classes while providing clear templates that AI agents can follow consistently.
 
-## LLM Development Considerations
+## Simplified Implementation Strategy
 
-### **Critical Implementation Constraints for AI Development**
+### **Core Architecture Changes**
 
-#### **🚫 LLM Anti-Patterns to Avoid**
+#### **1. Single Event Loop Implementation**
 
-**1. Implicit Context Dependencies**
+**Goal:** Eliminate all background threads and threading complexity.
+**Implementation:** Modify existing `Supervisor` to use scheduled tasks instead of background threads.
 
-```python
-# DANGEROUS: LLM can't see where 'current_user' comes from
-async def handle_event(data):
-    await send_notification(data.message, current_user.channel)
-```
+#### **2. Single-File Role Architecture**
 
-**2. Context-Dependent Behavior**
+**Goal:** Consolidate each role into a single, LLM-friendly Python file.
+**Implementation:** Migrate from multi-file role structure to single-file pattern.
 
-```python
-# DANGEROUS: Behavior changes based on invisible context
-if threading.current_thread().name == "MainThread":
-    return await process_directly(data)
-```
+#### **3. Intent-Based Processing**
 
-**3. Hidden Side Effects**
+**Goal:** Separate declarative intents from imperative I/O operations.
+**Implementation:** Pure function event handlers returning intents, processed by infrastructure.
 
-```python
-# DANGEROUS: LLM doesn't know what can fail
-async def handle_timer():
-    await redis.set(key, value)  # Hidden Redis dependency
-    await http.post(url, data)   # Hidden HTTP dependency
-```
+## Phase 1: Foundation Implementation (Week 1)
 
-#### **✅ LLM-Safe Patterns to Implement**
+### **Task 1.1: Create Core Intent System**
 
-**1. Explicit Dependencies**
+**File:** `common/intents.py` (NEW FILE)
 
 ```python
-# SAFE: All dependencies visible in signature
-def handle_event(event_data: EventData, context: EventContext) -> List[Intent]:
-    # LLM can see exactly what's needed
-```
-
-**2. Pure Functions**
-
-```python
-# SAFE: No side effects, predictable output
-def create_notification_intent(message: str, channel: str) -> NotificationIntent:
-    return NotificationIntent(message=message, channel=channel)
-```
-
-**3. Declarative Results**
-
-```python
-# SAFE: Declare what should happen, don't do it
-return [
-    NotificationIntent(message="Timer expired", channel=context.channel),
-    AuditIntent(action="timer_expired", details={...})
-]
-```
-
-## Phase 1: LLM-Safe Single Event Loop Implementation (Weeks 1-2)
-
-### 1.1 Supervisor Component Evolution for LLM Development
-
-**File:** `supervisor/supervisor.py`
-
-#### LLM-Safe Implementation Changes
-
-```python
-# Enhanced supervisor.py - LLM-friendly patterns
+# LLM-SAFE: Core intent system with universal intents only
 from dataclasses import dataclass
-from typing import List, Optional
-import asyncio
-import logging
-
-@dataclass
-class SupervisorConfig:
-    """LLM-friendly: Explicit configuration structure."""
-    heartbeat_interval: int = 30
-    timer_check_interval: int = 5
-    use_background_threads: bool = False
-    enable_llm_safety: bool = True
-
-class Supervisor:
-    """LLM-optimized Supervisor with explicit patterns."""
-
-    def __init__(self, config_file: Optional[str] = None):
-        # LLM-SAFE: Explicit initialization, no hidden state
-        logger.info("Initializing LLM-safe Supervisor...")
-
-        # Explicit configuration loading
-        self.config_file = config_file
-        self.config = self._load_supervisor_config(config_file)
-
-        # Explicit state initialization
-        self.scheduled_tasks: List[asyncio.Task] = []
-        self.components_initialized = False
-
-        # Initialize components with explicit error handling
-        try:
-            self.initialize_config_manager(config_file)
-            self._set_environment_variables()
-            self.initialize_components()
-            self.components_initialized = True
-            logger.info("LLM-safe Supervisor initialization complete.")
-        except Exception as e:
-            logger.error(f"Supervisor initialization failed: {e}")
-            raise SupervisorInitializationError(f"Failed to initialize: {e}")
-
-    def _load_supervisor_config(self, config_file: Optional[str]) -> SupervisorConfig:
-        """LLM-SAFE: Explicit configuration loading with validation."""
-        if config_file:
-            # Load from file with explicit error handling
-            try:
-                config_data = self._read_config_file(config_file)
-                return SupervisorConfig(**config_data.get('supervisor', {}))
-            except Exception as e:
-                logger.warning(f"Failed to load config from {config_file}: {e}")
-                return SupervisorConfig()  # Safe defaults
-        else:
-            return SupervisorConfig()  # Safe defaults
-
-    def initialize_components(self):
-        """LLM-SAFE: Explicit component initialization with clear dependencies."""
-        # Existing component initialization preserved
-        self.initialize_llm_factory()
-        self.initialize_workflow_engine()
-        self.initialize_communication_manager()
-
-        # LLM-SAFE: Replace background threads with scheduled tasks
-        if not self.config.use_background_threads:
-            self._initialize_scheduled_tasks()
-        else:
-            # Legacy path for backward compatibility
-            logger.warning("Using legacy background threads - not LLM-safe")
-            self._initialize_background_threads()
-
-    def _initialize_scheduled_tasks(self):
-        """LLM-SAFE: Explicit task creation with clear error boundaries."""
-        try:
-            # Create heartbeat task with explicit error handling
-            heartbeat_task = asyncio.create_task(
-                self._heartbeat_loop_with_error_handling()
-            )
-            self.scheduled_tasks.append(heartbeat_task)
-
-            # Create timer monitoring task with explicit error handling
-            timer_task = asyncio.create_task(
-                self._timer_monitoring_loop_with_error_handling()
-            )
-            self.scheduled_tasks.append(timer_task)
-
-            logger.info(f"Initialized {len(self.scheduled_tasks)} scheduled tasks")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize scheduled tasks: {e}")
-            raise ScheduledTaskError(f"Task initialization failed: {e}")
-
-    async def _heartbeat_loop_with_error_handling(self):
-        """LLM-SAFE: Explicit error handling and recovery."""
-        while True:
-            try:
-                await self._perform_heartbeat_safely()
-                await asyncio.sleep(self.config.heartbeat_interval)
-            except Exception as e:
-                logger.error(f"Heartbeat error: {e}")
-                # LLM-SAFE: Explicit recovery strategy
-                await asyncio.sleep(5)  # Brief pause before retry
-                continue  # Explicit continue for clarity
-
-    async def _perform_heartbeat_safely(self):
-        """LLM-SAFE: Explicit operations with clear error boundaries."""
-        try:
-            # Explicit workflow cleanup
-            if self.workflow_engine and hasattr(self.workflow_engine, 'cleanup_old_workflows'):
-                await self.workflow_engine.cleanup_old_workflows()
-
-            # Explicit event publishing
-            if self.message_bus and hasattr(self.message_bus, 'publish'):
-                heartbeat_data = {
-                    "timestamp": time.time(),
-                    "active_workflows": len(getattr(self.workflow_engine, 'active_workflows', {})),
-                    "supervisor_status": "healthy"
-                }
-                self.message_bus.publish(self, "HEARTBEAT_TICK", heartbeat_data)
-
-        except Exception as e:
-            logger.error(f"Heartbeat operation failed: {e}")
-            # Don't re-raise - let the loop continue
-
-# LLM-SAFE: Explicit exception classes
-class SupervisorInitializationError(Exception):
-    """Explicit error for supervisor initialization failures."""
-    pass
-
-class ScheduledTaskError(Exception):
-    """Explicit error for scheduled task failures."""
-    pass
-```
-
-### 1.2 MessageBus Component Evolution for LLM Development
-
-**File:** `common/message_bus.py`
-
-#### LLM-Safe Implementation Changes
-
-```python
-# Enhanced message_bus.py - LLM development optimized
-from dataclasses import dataclass
-from typing import List, Union, Dict, Any, Optional
+from typing import Optional, Dict, Any
 from abc import ABC, abstractmethod
-import logging
 import time
 
-# LLM-SAFE: Explicit intent base classes with clear contracts
 @dataclass
 class Intent(ABC):
-    """Base class for all intents - LLM can extend this reliably."""
+    """LLM-SAFE: Base class for all intents."""
     created_at: float = None
 
     def __post_init__(self):
@@ -238,28 +80,26 @@ class Intent(ABC):
 
     @abstractmethod
     def validate(self) -> bool:
-        """All intents must implement validation - prevents LLM errors."""
+        """All intents must implement validation."""
         pass
 
 @dataclass
 class NotificationIntent(Intent):
-    """LLM-SAFE: Clear schema with validation."""
+    """Universal intent: Any role can send notifications."""
     message: str
     channel: str
     user_id: Optional[str] = None
     priority: str = "medium"  # "low", "medium", "high"
 
     def validate(self) -> bool:
-        """Explicit validation that LLMs can understand and extend."""
-        if not self.message or not self.channel:
-            return False
-        if self.priority not in ["low", "medium", "high"]:
-            return False
-        return True
+        return (
+            bool(self.message and self.channel) and
+            self.priority in ["low", "medium", "high"]
+        )
 
 @dataclass
 class AuditIntent(Intent):
-    """LLM-SAFE: Audit logging with clear structure."""
+    """Universal intent: Any role can audit actions."""
     action: str
     details: Dict[str, Any]
     user_id: Optional[str] = None
@@ -268,535 +108,670 @@ class AuditIntent(Intent):
         return bool(self.action and isinstance(self.details, dict))
 
 @dataclass
-class EventContext:
-    """LLM-SAFE: Explicit context that LLMs can see and use."""
-    channel_id: Optional[str] = None
-    user_id: Optional[str] = None
-    timestamp: float = None
-    source: str = "unknown"
+class WorkflowIntent(Intent):
+    """Universal intent: Any role can start workflows."""
+    workflow_type: str
+    parameters: Dict[str, Any]
+    priority: int = 1
 
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = time.time()
+    def validate(self) -> bool:
+        return bool(self.workflow_type and isinstance(self.parameters, dict))
+```
 
-class MessageBus:
-    """LLM-optimized MessageBus with explicit patterns."""
+### **Task 1.2: Create Intent Processor**
 
-    def __init__(self):
-        # LLM-SAFE: Explicit initialization
-        self._subscribers: Dict[str, Dict[str, List]] = {}
-        self._running = False
-        self._intent_processor: Optional[IntentProcessor] = None
-        self._enable_llm_safety = True
+**File:** `common/intent_processor.py` (NEW FILE)
 
-        # Explicit dependency placeholders
-        self.communication_manager = None
-        self.workflow_engine = None
-        self.llm_factory = None
+```python
+# LLM-SAFE: Intent processor with dynamic role registration
+import logging
+from typing import List, Dict, Any, Callable
+from common.intents import Intent, NotificationIntent, AuditIntent, WorkflowIntent
 
-    def start(self):
-        """LLM-SAFE: Explicit startup with clear dependencies."""
-        self._running = True
-        logger.info("MessageBus started in LLM-safe mode")
-
-        # Initialize intent processor when dependencies are available
-        if self._enable_llm_safety and self.communication_manager:
-            self._intent_processor = IntentProcessor(
-                communication_manager=self.communication_manager,
-                workflow_engine=self.workflow_engine
-            )
-            logger.info("Intent processor initialized for LLM development")
-
-    async def publish(self, sender, event_type: str, data: Any):
-        """LLM-SAFE: Enhanced publish with intent processing support."""
-        if not self._running:
-            logger.warning("MessageBus not running - ignoring publish")
-            return
-
-        # Create explicit event context
-        context = EventContext(
-            source=sender.__class__.__name__ if sender else "unknown",
-            timestamp=time.time()
-        )
-
-        # Process subscribers with explicit error handling
-        if event_type in self._subscribers:
-            for role_name, handlers in self._subscribers[event_type].items():
-                for handler in handlers:
-                    try:
-                        # LLM-SAFE: Handle both legacy and intent-based handlers
-                        result = await self._call_handler_safely(handler, data, context)
-
-                        # Process intents if returned
-                        if self._is_intent_list(result):
-                            await self._process_intents_safely(result)
-
-                    except Exception as e:
-                        logger.error(f"Handler error in {role_name}: {e}")
-                        # Continue processing other handlers
-
-    async def _call_handler_safely(self, handler, data: Any, context: EventContext):
-        """LLM-SAFE: Call handler with explicit error boundaries."""
-        try:
-            # Check if handler expects context parameter
-            import inspect
-            sig = inspect.signature(handler)
-
-            if len(sig.parameters) >= 2:
-                # New LLM-safe handler signature
-                return await handler(data, context)
-            else:
-                # Legacy handler signature
-                return await handler(data)
-
-        except Exception as e:
-            logger.error(f"Handler call failed: {e}")
-            raise HandlerExecutionError(f"Handler failed: {e}")
-
-    def _is_intent_list(self, result) -> bool:
-        """LLM-SAFE: Explicit type checking for intent lists."""
-        return (
-            isinstance(result, list) and
-            len(result) > 0 and
-            all(isinstance(item, Intent) for item in result)
-        )
-
-    async def _process_intents_safely(self, intents: List[Intent]):
-        """LLM-SAFE: Process intents with validation and error handling."""
-        if not self._intent_processor:
-            logger.warning("No intent processor available")
-            return
-
-        for intent in intents:
-            try:
-                # Validate intent before processing
-                if not intent.validate():
-                    logger.error(f"Invalid intent: {intent}")
-                    continue
-
-                await self._intent_processor.process_intent(intent)
-
-            except Exception as e:
-                logger.error(f"Intent processing failed for {intent}: {e}")
-                # Continue processing other intents
+logger = logging.getLogger(__name__)
 
 class IntentProcessor:
-    """LLM-SAFE: Explicit intent processing with clear error handling."""
+    """LLM-SAFE: Processes intents with role-specific handler registration."""
 
-    def __init__(self, communication_manager, workflow_engine):
+    def __init__(self, communication_manager=None, workflow_engine=None):
         self.communication_manager = communication_manager
         self.workflow_engine = workflow_engine
 
-    async def process_intent(self, intent: Intent):
-        """LLM-SAFE: Process single intent with explicit routing."""
-        try:
-            if isinstance(intent, NotificationIntent):
-                await self._process_notification_intent(intent)
-            elif isinstance(intent, AuditIntent):
-                await self._process_audit_intent(intent)
-            else:
-                logger.warning(f"Unknown intent type: {type(intent)}")
+        # Core intent handlers (built-in)
+        self._core_handlers = {
+            NotificationIntent: self._process_notification,
+            AuditIntent: self._process_audit,
+            WorkflowIntent: self._process_workflow
+        }
 
-        except Exception as e:
-            logger.error(f"Intent processing failed: {e}")
-            raise IntentProcessingError(f"Failed to process {type(intent)}: {e}")
+        # Role-specific handlers (registered dynamically)
+        self._role_handlers: Dict[type, Callable] = {}
 
-    async def _process_notification_intent(self, intent: NotificationIntent):
-        """LLM-SAFE: Explicit notification processing."""
-        if not self.communication_manager:
-            logger.error("No communication manager available")
-            return
+    def register_role_intent_handler(self, intent_type: type, handler: Callable):
+        """Allow roles to register their own intent handlers."""
+        self._role_handlers[intent_type] = handler
+        logger.info(f"Registered handler for {intent_type.__name__}")
 
-        try:
+    async def process_intents(self, intents: List[Intent]) -> Dict[str, Any]:
+        """Process list of intents with comprehensive error handling."""
+        results = {"processed": 0, "failed": 0, "errors": []}
+
+        for intent in intents:
+            try:
+                if not intent.validate():
+                    results["errors"].append(f"Invalid intent: {intent}")
+                    results["failed"] += 1
+                    continue
+
+                await self._process_single_intent(intent)
+                results["processed"] += 1
+
+            except Exception as e:
+                logger.error(f"Intent processing failed: {e}")
+                results["errors"].append(str(e))
+                results["failed"] += 1
+
+        return results
+
+    async def _process_single_intent(self, intent: Intent):
+        """Process single intent with type-specific handling."""
+        intent_type = type(intent)
+
+        # Check core handlers first
+        if intent_type in self._core_handlers:
+            await self._core_handlers[intent_type](intent)
+        # Check role-specific handlers
+        elif intent_type in self._role_handlers:
+            await self._role_handlers[intent_type](intent)
+        else:
+            logger.warning(f"No handler for intent type: {intent_type}")
+
+    async def _process_notification(self, intent: NotificationIntent):
+        """Process notification intent."""
+        if self.communication_manager:
             await self.communication_manager.send_notification(
                 message=intent.message,
                 channel=intent.channel,
                 user_id=intent.user_id
             )
-            logger.info(f"Notification sent: {intent.message[:50]}...")
 
-        except Exception as e:
-            logger.error(f"Notification failed: {e}")
-            raise NotificationError(f"Failed to send notification: {e}")
+    async def _process_audit(self, intent: AuditIntent):
+        """Process audit intent."""
+        logger.info(f"Audit: {intent.action} - {intent.details}")
 
-    async def _process_audit_intent(self, intent: AuditIntent):
-        """LLM-SAFE: Explicit audit logging."""
-        try:
-            audit_entry = {
-                "action": intent.action,
-                "details": intent.details,
-                "user_id": intent.user_id,
-                "timestamp": intent.created_at
-            }
-            logger.info(f"Audit: {audit_entry}")
-
-        except Exception as e:
-            logger.error(f"Audit logging failed: {e}")
-
-# LLM-SAFE: Explicit exception classes
-class HandlerExecutionError(Exception):
-    """Explicit error for handler execution failures."""
-    pass
-
-class IntentProcessingError(Exception):
-    """Explicit error for intent processing failures."""
-    pass
-
-class NotificationError(Exception):
-    """Explicit error for notification failures."""
-    pass
+    async def _process_workflow(self, intent: WorkflowIntent):
+        """Process workflow intent."""
+        if self.workflow_engine:
+            await self.workflow_engine.start_workflow(
+                request=f"Execute {intent.workflow_type}",
+                parameters=intent.parameters
+            )
 ```
 
-### 1.3 Role Handler Evolution for LLM Development
+### **Task 1.3: Single-File Role Template**
 
-**File:** `roles/timer/lifecycle.py`
-
-#### LLM-Safe Implementation Changes
+**File:** `roles/timer.py` (NEW FILE - Replaces timer/ directory)
 
 ```python
-# Enhanced roles/timer/lifecycle.py - LLM development template
+"""Timer role - LLM-friendly single file implementation."""
+
 from dataclasses import dataclass
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Dict, Any
 import time
 import logging
-from common.message_bus import Intent, NotificationIntent, AuditIntent, EventContext
+from common.intents import Intent, NotificationIntent, AuditIntent
+from strands import tool
 
 logger = logging.getLogger(__name__)
 
-# LLM-SAFE: Explicit data classes for event parsing
+# 1. ROLE METADATA (replaces definition.yaml)
+ROLE_CONFIG = {
+    "name": "timer",
+    "version": "3.0.0",
+    "description": "Timer and alarm management with event-driven workflows",
+    "llm_type": "WEAK",
+    "fast_reply": True,
+    "when_to_use": "Set timers, alarms, manage time-based reminders"
+}
+
+# 2. ROLE-SPECIFIC INTENTS (owned by timer role)
 @dataclass
-class TimerEventData:
-    """LLM-SAFE: Explicit structure for timer event data."""
-    timer_id: str
-    original_request: str
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+class TimerIntent(Intent):
+    """Timer-specific intent - owned by timer role."""
+    action: str  # "create", "cancel", "check"
+    timer_id: Optional[str] = None
+    duration: Optional[int] = None
+    label: Optional[str] = None
 
-    @classmethod
-    def from_raw_data(cls, raw_data: Any) -> 'TimerEventData':
-        """LLM-SAFE: Explicit parsing with error handling."""
-        try:
-            if isinstance(raw_data, list) and len(raw_data) >= 2:
-                return cls(
-                    timer_id=str(raw_data[0]),
-                    original_request=str(raw_data[1]),
-                    user_id=raw_data[2] if len(raw_data) > 2 else None,
-                    channel_id=raw_data[3] if len(raw_data) > 3 else None
-                )
-            elif isinstance(raw_data, dict):
-                return cls(
-                    timer_id=raw_data.get('timer_id', 'unknown'),
-                    original_request=raw_data.get('original_request', 'Unknown timer'),
-                    user_id=raw_data.get('user_id'),
-                    channel_id=raw_data.get('channel_id')
-                )
-            else:
-                # Fallback for unexpected data
-                return cls(
-                    timer_id='unknown',
-                    original_request=f'Unparseable timer data: {raw_data}'
-                )
-        except Exception as e:
-            logger.error(f"Failed to parse timer event data: {e}")
-            return cls(
-                timer_id='parse_error',
-                original_request=f'Parse error: {e}'
-            )
+    def validate(self) -> bool:
+        return bool(self.action and self.action in ["create", "cancel", "check"])
 
-# LLM-SAFE: Template function that LLMs can follow reliably
-def handle_timer_expiry_action(event_data: Any, context: EventContext) -> List[Intent]:
-    """
-    LLM-SAFE TEMPLATE: Timer expiry handler following explicit pattern.
-
-    This function serves as a template that LLMs can understand and replicate:
-    1. Parse input data explicitly
-    2. Create intents declaratively
-    3. Return results with no side effects
-
-    Args:
-        event_data: Raw event data (any format)
-        context: Explicit event context
-
-    Returns:
-        List of intents declaring what should happen
-    """
+# 3. EVENT HANDLERS (pure functions returning intents)
+def handle_timer_expiry(event_data: Any, context) -> List[Intent]:
+    """LLM-SAFE: Pure function for timer expiry events."""
     try:
-        # Step 1: Parse input data explicitly
-        timer_data = TimerEventData.from_raw_data(event_data)
+        # Parse event data
+        timer_id, request = _parse_timer_event_data(event_data)
 
-        # Step 2: Create intents based on business logic
-        intents = []
-
-        # Always create notification intent
-        notification_intent = NotificationIntent(
-            message=f"⏰ Timer expired: {timer_data.original_request}",
-            channel=timer_data.channel_id or context.channel_id or "general",
-            user_id=timer_data.user_id or context.user_id,
-            priority="medium"
-        )
-        intents.append(notification_intent)
-
-        # Always create audit intent
-        audit_intent = AuditIntent(
-            action="timer_expired",
-            details={
-                "timer_id": timer_data.timer_id,
-                "original_request": timer_data.original_request,
-                "channel": timer_data.channel_id or context.channel_id,
-                "processed_at": time.time()
-            },
-            user_id=timer_data.user_id or context.user_id
-        )
-        intents.append(audit_intent)
-
-        # Step 3: Return intents (no side effects)
-        logger.info(f"Created {len(intents)} intents for timer {timer_data.timer_id}")
-        return intents
+        # Create intents
+        return [
+            NotificationIntent(
+                message=f"⏰ Timer expired: {request}",
+                channel=context.channel_id or "general",
+                user_id=context.user_id,
+                priority="medium"
+            ),
+            AuditIntent(
+                action="timer_expired",
+                details={
+                    "timer_id": timer_id,
+                    "original_request": request,
+                    "processed_at": time.time()
+                },
+                user_id=context.user_id
+            )
+        ]
 
     except Exception as e:
         logger.error(f"Timer handler error: {e}")
-        # LLM-SAFE: Return error intent instead of raising
         return [
             NotificationIntent(
                 message=f"Timer processing error: {e}",
                 channel=context.channel_id or "general",
                 priority="high"
-            ),
-            AuditIntent(
-                action="timer_error",
-                details={"error": str(e), "event_data": str(event_data)},
-                user_id=context.user_id
             )
         ]
 
-# LLM-SAFE: Additional handler templates that LLMs can follow
-def handle_heartbeat_monitoring(event_data: Any, context: EventContext) -> List[Intent]:
-    """LLM-SAFE TEMPLATE: Heartbeat monitoring following same pattern."""
+def handle_heartbeat_monitoring(event_data: Any, context) -> List[Intent]:
+    """LLM-SAFE: Pure function for heartbeat monitoring."""
+    return [
+        TimerIntent(action="check", timer_id=None)
+    ]
+
+# 4. TOOLS (simplified, LLM-friendly)
+@tool
+def set_timer(duration: str, label: str = "") -> Dict[str, Any]:
+    """LLM-SAFE: Set a timer - returns intent for processing."""
     try:
-        current_time = int(time.time())
-
-        # Create intent to check for expired timers
-        return [
-            TimerCheckIntent(
-                current_time=current_time,
-                check_type="heartbeat_monitoring",
-                source="heartbeat"
+        duration_seconds = _parse_duration(duration)
+        return {
+            "success": True,
+            "message": f"Timer set for {duration}",
+            "intent": TimerIntent(
+                action="create",
+                duration=duration_seconds,
+                label=label
             )
-        ]
-
+        }
     except Exception as e:
-        logger.error(f"Heartbeat monitoring error: {e}")
-        return [
-            AuditIntent(
-                action="heartbeat_error",
-                details={"error": str(e)},
-                user_id=context.user_id
-            )
-        ]
+        return {"success": False, "error": str(e)}
 
-def handle_location_based_timer_update(event_data: Any, context: EventContext) -> List[Intent]:
-    """LLM-SAFE TEMPLATE: Location-based updates following same pattern."""
+@tool
+def cancel_timer(timer_id: str) -> Dict[str, Any]:
+    """LLM-SAFE: Cancel a timer - returns intent for processing."""
+    return {
+        "success": True,
+        "message": f"Timer {timer_id} cancelled",
+        "intent": TimerIntent(action="cancel", timer_id=timer_id)
+    }
+
+@tool
+def list_timers() -> Dict[str, Any]:
+    """LLM-SAFE: List timers - returns intent for processing."""
+    return {
+        "success": True,
+        "message": "Listing active timers",
+        "intent": TimerIntent(action="check")
+    }
+
+# 5. HELPER FUNCTIONS (minimal, focused)
+def _parse_timer_event_data(event_data: Any) -> tuple[str, str]:
+    """LLM-SAFE: Parse timer event data with error handling."""
     try:
-        # Parse location data
-        location_data = event_data if isinstance(event_data, dict) else {}
-
-        if not location_data.get('affects_timers'):
-            return []  # No action needed
-
-        return [
-            TimerUpdateIntent(
-                update_type="location_change",
-                location_data=location_data,
-                user_id=context.user_id
-            ),
-            AuditIntent(
-                action="location_timer_update",
-                details=location_data,
-                user_id=context.user_id
+        if isinstance(event_data, list) and len(event_data) >= 2:
+            return str(event_data[0]), str(event_data[1])
+        elif isinstance(event_data, dict):
+            return (
+                event_data.get('timer_id', 'unknown'),
+                event_data.get('original_request', 'Unknown timer')
             )
-        ]
-
+        else:
+            return 'unknown', f'Unparseable data: {event_data}'
     except Exception as e:
-        logger.error(f"Location update error: {e}")
-        return [
-            AuditIntent(
-                action="location_update_error",
-                details={"error": str(e)},
-                user_id=context.user_id
-            )
-        ]
+        return 'parse_error', f'Parse error: {e}'
 
-# LLM-SAFE: Additional intent types that LLMs can create
-@dataclass
-class TimerCheckIntent(Intent):
-    """LLM-SAFE: Intent for timer checking operations."""
-    current_time: int
-    check_type: str
-    source: str = "unknown"
+def _parse_duration(duration_str: str) -> int:
+    """LLM-SAFE: Simple duration parsing that LLMs can understand."""
+    try:
+        if duration_str.endswith('m'):
+            return int(duration_str[:-1]) * 60
+        elif duration_str.endswith('h'):
+            return int(duration_str[:-1]) * 3600
+        elif duration_str.endswith('s'):
+            return int(duration_str[:-1])
+        else:
+            return int(duration_str)  # Assume seconds
+    except ValueError:
+        raise ValueError(f"Invalid duration format: {duration_str}")
 
-    def validate(self) -> bool:
-        return bool(self.current_time and self.check_type)
+# 6. INTENT HANDLER REGISTRATION
+async def process_timer_intent(intent: TimerIntent):
+    """Process timer-specific intents - called by IntentProcessor."""
+    # This would interact with actual timer infrastructure
+    # For now, just log the intent
+    logger.info(f"Processing timer intent: {intent.action}")
 
-@dataclass
-class TimerUpdateIntent(Intent):
-    """LLM-SAFE: Intent for timer update operations."""
-    update_type: str
-    location_data: Dict[str, Any]
-    user_id: Optional[str] = None
+    # In full implementation, this would:
+    # - Create/cancel/check timers using timer manager
+    # - Return additional intents if needed
 
-    def validate(self) -> bool:
-        return bool(self.update_type and isinstance(self.location_data, dict))
+# 7. ROLE REGISTRATION (auto-discovery)
+def register_role():
+    """Auto-discovered by RoleRegistry - LLM can modify this."""
+    return {
+        "config": ROLE_CONFIG,
+        "event_handlers": {
+            "TIMER_EXPIRED": handle_timer_expiry,
+            "FAST_HEARTBEAT_TICK": handle_heartbeat_monitoring
+        },
+        "tools": [set_timer, cancel_timer, list_timers],
+        "intents": {
+            TimerIntent: process_timer_intent
+        }
+    }
 ```
 
-## LLM Development Testing Strategy
+## Phase 2: Component Evolution (Week 2)
 
-### LLM-Safe Test Templates
+### **Task 2.1: Enhanced MessageBus for Single-File Roles**
 
-**File:** `tests/llm_development/test_llm_safe_patterns.py`
+**File:** `common/message_bus.py` (MODIFY EXISTING)
 
 ```python
-# LLM-SAFE: Test templates that LLMs can understand and extend
-import pytest
-from unittest.mock import MagicMock
-from roles.timer.lifecycle import handle_timer_expiry_action, TimerEventData
-from common.message_bus import EventContext, NotificationIntent, AuditIntent
+# Enhanced MessageBus to work with single-file roles
+class MessageBus:
+    def __init__(self):
+        # Existing initialization preserved
+        self._subscribers = {}
+        self._running = False
 
-class TestLLMSafePatterns:
-    """Test templates for LLM development patterns."""
+        # NEW: Intent processing for single-file roles
+        self._intent_processor = None
+        self._enable_intent_processing = True
 
-    def test_timer_handler_with_list_data(self):
-        """LLM-SAFE: Test handler with list input (common format)."""
-        # Arrange
-        event_data = ["timer_123", "Meeting reminder", "user_456", "channel_789"]
-        context = EventContext(channel_id="C123", user_id="U456")
+    def start(self):
+        """Enhanced start with intent processing."""
+        self._running = True
+        logger.info("MessageBus started in LLM-safe mode")
 
-        # Act
-        intents = handle_timer_expiry_action(event_data, context)
+        # Initialize intent processor when dependencies available
+        if self._enable_intent_processing:
+            self._initialize_intent_processor()
 
-        # Assert
-        assert isinstance(intents, list)
-        assert len(intents) >= 2  # Should have notification + audit
+    def _initialize_intent_processor(self):
+        """Initialize intent processor with dependencies."""
+        from common.intent_processor import IntentProcessor
 
-        # Check notification intent
-        notification_intents = [i for i in intents if isinstance(i, NotificationIntent)]
-        assert len(notification_intents) == 1
-        assert "Meeting reminder" in notification_intents[0].message
-
-        # Check audit intent
-        audit_intents = [i for i in intents if isinstance(i, AuditIntent)]
-        assert len(audit_intents) == 1
-        assert audit_intents[0].action == "timer_expired"
-
-    def test_timer_handler_with_dict_data(self):
-        """LLM-SAFE: Test handler with dict input (alternative format)."""
-        # Arrange
-        event_data = {
-            "timer_id": "timer_456",
-            "original_request": "Coffee break",
-            "user_id": "user_789",
-            "channel_id": "channel_abc"
-        }
-        context = EventContext()
-
-        # Act
-        intents = handle_timer_expiry_action(event_data, context)
-
-        # Assert
-        assert isinstance(intents, list)
-        assert len(intents) >= 2
-
-        notification_intent = next(i for i in intents if isinstance(i, NotificationIntent))
-        assert "Coffee break" in notification_intent.message
-        assert notification_intent.channel == "channel_abc"
-
-    def test_timer_handler_with_invalid_data(self):
-        """LLM-SAFE: Test handler gracefully handles invalid input."""
-        # Arrange
-        event_data = "invalid_string_data"
-        context = EventContext(channel_id="fallback_channel")
-
-        # Act
-        intents = handle_timer_expiry_action(event_data, context)
-
-        # Assert - Should not raise exception, should return intents
-        assert isinstance(intents, list)
-        assert len(intents) >= 1
-
-        # Should have created fallback notification
-        notification_intent = next(i for i in intents if isinstance(i, NotificationIntent))
-        assert notification_intent.channel == "fallback_channel"
-
-    def test_intent_validation(self):
-        """LLM-SAFE: Test that all intents validate correctly."""
-        # Test valid notification intent
-        valid_notification = NotificationIntent(
-            message="Test message",
-            channel="test_channel",
-            priority="medium"
+        self._intent_processor = IntentProcessor(
+            communication_manager=getattr(self, 'communication_manager', None),
+            workflow_engine=getattr(self, 'workflow_engine', None)
         )
-        assert valid_notification.validate() == True
 
-        # Test invalid notification intent
-        invalid_notification = NotificationIntent(
-            message="",  # Empty message
-            channel="test_channel"
+    async def publish(self, publisher, event_type: str, message: Any):
+        """LLM-SAFE: Enhanced publish with intent processing."""
+        if not self._running:
+            return
+
+        # Create explicit context
+        context = self._create_event_context(publisher)
+
+        # Process subscribers
+        if event_type in self._subscribers:
+            for role_name, handlers in self._subscribers[event_type].items():
+                for handler in handlers:
+                    try:
+                        result = await handler(message, context)
+
+                        # Process intents if returned
+                        if self._is_intent_list(result):
+                            await self._process_intents(result)
+
+                    except Exception as e:
+                        logger.error(f"Handler error in {role_name}: {e}")
+
+    def _create_event_context(self, publisher):
+        """Create explicit event context."""
+        return type('EventContext', (), {
+            'channel_id': getattr(publisher, 'channel_id', None),
+            'user_id': getattr(publisher, 'user_id', None),
+            'timestamp': time.time(),
+            'source': publisher.__class__.__name__ if publisher else "unknown"
+        })()
+
+    def _is_intent_list(self, result) -> bool:
+        """Check if result is list of intents."""
+        return (
+            isinstance(result, list) and
+            len(result) > 0 and
+            all(hasattr(item, 'validate') for item in result)
         )
-        assert invalid_notification.validate() == False
 
-    def test_event_data_parsing(self):
-        """LLM-SAFE: Test explicit data parsing logic."""
-        # Test list parsing
-        list_data = ["timer_123", "Test message"]
-        parsed = TimerEventData.from_raw_data(list_data)
-        assert parsed.timer_id == "timer_123"
-        assert parsed.original_request == "Test message"
-
-        # Test dict parsing
-        dict_data = {"timer_id": "timer_456", "original_request": "Dict message"}
-        parsed = TimerEventData.from_raw_data(dict_data)
-        assert parsed.timer_id == "timer_456"
-        assert parsed.original_request == "Dict message"
-
-        # Test error handling
-        invalid_data = 12345
-        parsed = TimerEventData.from_raw_data(invalid_data)
-        assert parsed.timer_id == "unknown"
-        assert "Unparseable" in parsed.original_request
+    async def _process_intents(self, intents: List[Intent]):
+        """Process intents using intent processor."""
+        if self._intent_processor:
+            await self._intent_processor.process_intents(intents)
 ```
 
-## LLM Development Validation Checklist
+### **Task 2.2: Enhanced Supervisor for Single Event Loop**
 
-### **Phase 1 LLM-Safety Validation**
+**File:** `supervisor/supervisor.py` (MODIFY EXISTING)
 
-- [ ] All event handlers follow the same signature pattern: `(event_data, context) -> List[Intent]`
-- [ ] All intent classes have explicit validation methods
-- [ ] No functions have hidden side effects or implicit dependencies
-- [ ] All error conditions return intents instead of raising exceptions
-- [ ] All configuration is explicit and visible in function signatures
+```python
+# Enhanced Supervisor with single event loop
+import asyncio
+from typing import List
 
-### **LLM Development Anti-Pattern Detection**
+class Supervisor:
+    def __init__(self, config_file: Optional[str] = None):
+        # Existing initialization preserved
+        logger.info("Initializing LLM-safe Supervisor...")
+
+        # NEW: Single event loop management
+        self.scheduled_tasks: List[asyncio.Task] = []
+        self._use_single_event_loop = True
+
+        # Existing initialization continues
+        self.config_file = config_file
+        self.initialize_config_manager(config_file)
+        self._set_environment_variables()
+        self.initialize_components()
+        logger.info("LLM-safe Supervisor initialization complete.")
+
+    def initialize_components(self):
+        """Enhanced component initialization."""
+        # Existing component initialization preserved
+        self.initialize_llm_factory()
+        self.initialize_workflow_engine()
+        self.initialize_communication_manager()
+
+        # NEW: Use scheduled tasks instead of background threads
+        if self._use_single_event_loop:
+            self._initialize_scheduled_tasks()
+
+    def _initialize_scheduled_tasks(self):
+        """LLM-SAFE: Replace background threads with scheduled tasks."""
+        try:
+            # Heartbeat task
+            heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+            self.scheduled_tasks.append(heartbeat_task)
+
+            # Timer monitoring task
+            timer_task = asyncio.create_task(self._timer_monitoring_loop())
+            self.scheduled_tasks.append(timer_task)
+
+            logger.info(f"Initialized {len(self.scheduled_tasks)} scheduled tasks")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize scheduled tasks: {e}")
+            raise
+
+    async def _heartbeat_loop(self):
+        """LLM-SAFE: Heartbeat as scheduled task."""
+        while True:
+            try:
+                await self._perform_heartbeat()
+                await asyncio.sleep(30)
+            except Exception as e:
+                logger.error(f"Heartbeat error: {e}")
+                await asyncio.sleep(5)
+
+    async def _timer_monitoring_loop(self):
+        """LLM-SAFE: Timer monitoring as scheduled task."""
+        while True:
+            try:
+                await self._perform_timer_monitoring()
+                await asyncio.sleep(5)
+            except Exception as e:
+                logger.error(f"Timer monitoring error: {e}")
+                await asyncio.sleep(1)
+
+    async def _perform_heartbeat(self):
+        """LLM-SAFE: Heartbeat operations in main event loop."""
+        if self.workflow_engine:
+            await self.workflow_engine.cleanup_old_workflows()
+
+        if self.message_bus:
+            self.message_bus.publish(self, "HEARTBEAT_TICK", {
+                "timestamp": time.time(),
+                "active_workflows": len(getattr(self.workflow_engine, 'active_workflows', {}))
+            })
+
+    async def _perform_timer_monitoring(self):
+        """LLM-SAFE: Timer monitoring in main event loop."""
+        if self.message_bus:
+            self.message_bus.publish(self, "FAST_HEARTBEAT_TICK", {
+                "timestamp": time.time()
+            })
+```
+
+### **Task 2.3: Enhanced RoleRegistry for Single-File Roles**
+
+**File:** `llm_provider/role_registry.py` (MODIFY EXISTING)
+
+```python
+# Enhanced RoleRegistry for single-file role discovery
+import importlib
+import os
+from pathlib import Path
+
+class RoleRegistry:
+    def __init__(self, roles_directory: str = "roles", message_bus=None):
+        # Existing initialization preserved
+        self.roles_directory = roles_directory
+        self.message_bus = message_bus
+        self.roles = {}
+
+        # NEW: Intent processor integration
+        self.intent_processor = None
+
+    def set_intent_processor(self, intent_processor):
+        """Set intent processor for role intent registration."""
+        self.intent_processor = intent_processor
+        self._register_all_role_intents()
+
+    def discover_roles(self):
+        """LLM-SAFE: Discover single-file roles."""
+        roles_path = Path(self.roles_directory)
+
+        # Look for Python files (not directories)
+        for role_file in roles_path.glob("*.py"):
+            if role_file.name.startswith("_"):
+                continue  # Skip private files
+
+            role_name = role_file.stem
+            try:
+                self._load_single_file_role(role_name)
+            except Exception as e:
+                logger.error(f"Failed to load role {role_name}: {e}")
+
+    def _load_single_file_role(self, role_name: str):
+        """Load role from single Python file."""
+        try:
+            # Import role module
+            module = importlib.import_module(f"roles.{role_name}")
+
+            # Get role registration
+            if hasattr(module, 'register_role'):
+                role_info = module.register_role()
+
+                # Register role
+                self.roles[role_name] = role_info
+
+                # Register event handlers
+                self._register_event_handlers(role_name, role_info)
+
+                # Register intent handlers
+                self._register_intent_handlers(role_name, role_info)
+
+                logger.info(f"Loaded single-file role: {role_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to load role {role_name}: {e}")
+
+    def _register_event_handlers(self, role_name: str, role_info: dict):
+        """Register event handlers from single-file role."""
+        event_handlers = role_info.get('event_handlers', {})
+
+        for event_type, handler in event_handlers.items():
+            if self.message_bus:
+                self.message_bus.subscribe(role_name, event_type, handler)
+
+    def _register_intent_handlers(self, role_name: str, role_info: dict):
+        """Register intent handlers from single-file role."""
+        intent_handlers = role_info.get('intents', {})
+
+        if self.intent_processor:
+            for intent_type, handler in intent_handlers.items():
+                self.intent_processor.register_role_intent_handler(intent_type, handler)
+```
+
+## Phase 3: Testing & Validation (Week 3)
+
+### **Task 3.1: LLM-Safe Testing Patterns**
+
+**File:** `tests/llm_development/test_single_file_roles.py` (NEW FILE)
+
+```python
+# LLM-SAFE: Testing patterns for single-file roles
+import pytest
+from roles.timer import handle_timer_expiry, TimerIntent, ROLE_CONFIG
+
+class TestSingleFileRoles:
+    """Test templates for single-file role patterns."""
+
+    def test_role_config_structure(self):
+        """Verify role config follows expected structure."""
+        required_fields = ["name", "version", "description", "llm_type"]
+        for field in required_fields:
+            assert field in ROLE_CONFIG
+
+        assert ROLE_CONFIG["name"] == "timer"
+        assert ROLE_CONFIG["llm_type"] in ["WEAK", "DEFAULT", "STRONG"]
+
+    def test_timer_intent_validation(self):
+        """Test timer intent validation."""
+        valid_intent = TimerIntent(action="create", duration=300)
+        assert valid_intent.validate() == True
+
+        invalid_intent = TimerIntent(action="invalid_action")
+        assert invalid_intent.validate() == False
+
+    def test_pure_event_handler(self):
+        """Test event handler is pure function."""
+        event_data = ["timer_123", "Test reminder"]
+        context = type('Context', (), {
+            'channel_id': 'C123',
+            'user_id': 'U456'
+        })()
+
+        # Should return intents
+        intents = handle_timer_expiry(event_data, context)
+
+        assert isinstance(intents, list)
+        assert len(intents) >= 2
+        assert all(hasattr(intent, 'validate') for intent in intents)
+        assert all(intent.validate() for intent in intents)
+
+    def test_role_registration(self):
+        """Test role registration structure."""
+        from roles.timer import register_role
+
+        role_info = register_role()
+
+        required_keys = ["config", "event_handlers", "tools", "intents"]
+        for key in required_keys:
+            assert key in role_info
+
+        assert "TIMER_EXPIRED" in role_info["event_handlers"]
+        assert len(role_info["tools"]) > 0
+```
+
+## Implementation Validation
+
+### **Week 1 Validation Commands**
 
 ```bash
-# Validation scripts for LLM development safety
+# Test intent system
 python -c "
-# Check for implicit dependencies
-import ast
-import os
+from common.intents import NotificationIntent
+intent = NotificationIntent(message='test', channel='C123')
+assert intent.validate() == True
+print('✅ Intent system working')
+"
 
-def check_for_implicit_deps(file_path):
-    with open(file_path) as f:
-        tree = ast.parse(f.read())
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and node.id in ['current_user', 'global_config']:
-            print(f'⚠️  Implicit dependency found: {node.id} in {file_path}')
-
-# Check all role files
-for root, dirs, files in os.walk('roles'):
-    for file in files:
-        if file.endswith('.py'):
-            check_for_implicit_deps(os.path.join(root, file))
+# Test single-file role
+python -c "
+from roles.timer import register_role, ROLE_CONFIG
+role_info = register_role()
+assert 'config' in role_info
+assert role_info['config']['name'] == 'timer'
+print('✅ Single-file role working')
 "
 ```
 
-By following this LLM-optimized implementation guide, we create an architecture that enables AI agents to contribute effectively while preventing the common pitfalls that make LLM-generated code unreliable. The explicit patterns, clear error handling, and declarative approach make the system both thread-safe and LLM-safe.
+### **Week 2 Validation Commands**
+
+```bash
+# Test no background threads
+python -c "
+import threading
+from supervisor.supervisor import Supervisor
+initial_count = threading.active_count()
+supervisor = Supervisor('config.yaml')
+final_count = threading.active_count()
+assert final_count == initial_count
+print('✅ No background threads created')
+"
+
+# Test intent processing
+python -c "
+from common.intent_processor import IntentProcessor
+from common.intents import NotificationIntent
+from unittest.mock import AsyncMock
+import asyncio
+
+async def test():
+    processor = IntentProcessor(communication_manager=AsyncMock())
+    intents = [NotificationIntent(message='test', channel='C123')]
+    results = await processor.process_intents(intents)
+    assert results['processed'] == 1
+    print('✅ Intent processing working')
+
+asyncio.run(test())
+"
+```
+
+## Success Criteria
+
+### **Simplification Success**
+
+- ✅ Each role in single Python file
+- ✅ Role files under 300 lines each
+- ✅ No complex multi-file dependencies
+- ✅ Clear, consistent structure across all roles
+
+### **Threading Success**
+
+- ✅ Zero background threads in Supervisor
+- ✅ All operations in main event loop
+- ✅ No cross-thread async operations
+- ✅ Predictable, deterministic behavior
+
+### **LLM Development Success**
+
+- ✅ All roles follow same template pattern
+- ✅ Pure function event handlers
+- ✅ Explicit dependencies and validation
+- ✅ Clear error handling in all functions
+
+This simplified implementation eliminates threading complexity while creating an architecture that AI agents can reliably understand, modify, and extend.

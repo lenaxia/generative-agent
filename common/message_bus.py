@@ -7,8 +7,16 @@ event handling, and workflow coordination across the system.
 import asyncio
 import logging
 import threading
+import time
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set
+
+from common.enhanced_event_context import (
+    LLMSafeEventContext,
+    create_context_from_event_data,
+)
+from common.intent_processor import IntentProcessor
+from common.intents import Intent
 
 logger = logging.getLogger("supervisor")
 
@@ -207,6 +215,15 @@ class MessageBus:
         self._running = False
         self.event_registry = MessageTypeRegistry()
 
+        # NEW: Intent processing for LLM-safe architecture
+        self._intent_processor: Optional[IntentProcessor] = None
+        self._enable_intent_processing = True
+
+        # Dependencies for intent processor (set by supervisor)
+        self.communication_manager = None
+        self.workflow_engine = None
+        self.llm_factory = None
+
     def start(self):
         """Start the message bus to begin processing messages.
 
@@ -214,6 +231,11 @@ class MessageBus:
         process and deliver published messages to subscribers.
         """
         self._running = True
+        logger.info("MessageBus started in LLM-safe mode")
+
+        # Initialize intent processor when dependencies are available
+        if self._enable_intent_processing:
+            self._initialize_intent_processor()
 
     def stop(self):
         """Stop the message bus from processing messages.
@@ -429,3 +451,119 @@ class MessageBus:
                         for cb in self._subscribers[event_type][subscriber]
                         if cb != callback
                     ]
+
+    def _initialize_intent_processor(self):
+        """Initialize intent processor with available dependencies."""
+        if not self._intent_processor and self._enable_intent_processing:
+            self._intent_processor = IntentProcessor(
+                communication_manager=self.communication_manager,
+                workflow_engine=self.workflow_engine,
+            )
+            logger.info("Intent processor initialized")
+
+    def set_dependencies(
+        self, communication_manager=None, workflow_engine=None, llm_factory=None
+    ):
+        """Set dependencies for intent processing."""
+        if communication_manager:
+            self.communication_manager = communication_manager
+        if workflow_engine:
+            self.workflow_engine = workflow_engine
+        if llm_factory:
+            self.llm_factory = llm_factory
+
+        # Re-initialize intent processor with new dependencies
+        if self._running and self._enable_intent_processing:
+            self._initialize_intent_processor()
+
+    async def publish_async(self, publisher, event_type: str, message: Any):
+        """
+        LLM-SAFE: Enhanced publish with intent processing support.
+
+        This method supports pure function event handlers that return intents,
+        enabling thread-safe event processing without complex async operations.
+
+        Args:
+            publisher: The entity publishing the event
+            event_type: Type of event being published
+            message: Event data payload
+        """
+        if not self._running:
+            return
+
+        # Create explicit context for handlers
+        context = self._create_event_context(publisher, message)
+
+        # Process subscribers
+        if event_type in self._subscribers:
+            for role_name, handlers in self._subscribers[event_type].items():
+                for handler in handlers:
+                    try:
+                        # Call handler with appropriate parameters
+                        import inspect
+
+                        sig = inspect.signature(handler)
+                        param_count = len(sig.parameters)
+
+                        if asyncio.iscoroutinefunction(handler):
+                            if param_count >= 2:
+                                result = await handler(message, context)
+                            else:
+                                result = await handler(message)
+                        else:
+                            if param_count >= 2:
+                                result = handler(message, context)
+                            else:
+                                result = handler(message)
+
+                        # Process intents if returned
+                        if self._is_intent_list(result):
+                            await self._process_intents(result)
+
+                    except Exception as e:
+                        logger.error(f"Handler error in {role_name}: {e}")
+
+    def _create_event_context(self, publisher, message) -> LLMSafeEventContext:
+        """Create explicit event context for handlers."""
+        # Extract publisher information
+        user_id = getattr(publisher, "user_id", None)
+        channel_id = getattr(publisher, "channel_id", None)
+        source = publisher.__class__.__name__ if publisher else "unknown"
+
+        # Create context from event data
+        return create_context_from_event_data(
+            event_data=message, source=source, user_id=user_id, channel_id=channel_id
+        )
+
+    def _is_intent_list(self, result) -> bool:
+        """Check if result is list of intents."""
+        return (
+            isinstance(result, list)
+            and len(result) > 0
+            and all(isinstance(item, Intent) for item in result)
+        )
+
+    async def _process_intents(self, intents: list[Intent]):
+        """Process intents using intent processor."""
+        if self._intent_processor:
+            await self._intent_processor.process_intents(intents)
+        else:
+            logger.warning("No intent processor available - intents not processed")
+
+    def get_intent_processor_metrics(self) -> dict[str, Any]:
+        """Get metrics from intent processor."""
+        if self._intent_processor:
+            return {
+                "processed_count": self._intent_processor.get_processed_count(),
+                "registered_handlers": self._intent_processor.get_registered_handlers(),
+            }
+        return {"processed_count": 0, "registered_handlers": {}}
+
+    def enable_intent_processing(self, enable: bool = True):
+        """Enable or disable intent processing."""
+        self._enable_intent_processing = enable
+        if enable and self._running:
+            self._initialize_intent_processor()
+        elif not enable:
+            self._intent_processor = None
+        logger.info(f"Intent processing {'enabled' if enable else 'disabled'}")
