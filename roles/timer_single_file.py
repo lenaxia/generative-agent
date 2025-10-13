@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from strands import tool
+
 from common.enhanced_event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
@@ -129,6 +131,7 @@ def handle_heartbeat_monitoring(
 
 
 # 4. TOOLS (simplified, LLM-friendly)
+@tool
 def set_timer(duration: str, label: str = "") -> dict[str, Any]:
     """LLM-SAFE: Set a timer - returns success confirmation."""
     try:
@@ -143,6 +146,7 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+@tool
 def cancel_timer(timer_id: str) -> dict[str, Any]:
     """LLM-SAFE: Cancel a timer - returns success confirmation."""
     return {
@@ -152,6 +156,7 @@ def cancel_timer(timer_id: str) -> dict[str, Any]:
     }
 
 
+@tool
 def list_timers() -> dict[str, Any]:
     """LLM-SAFE: List timers - returns timer information."""
     return {
