@@ -30,6 +30,11 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",
     "fast_reply": True,
     "when_to_use": "Get current weather conditions, forecasts, convert location formats, validate weather data",
+    "tools": {
+        "automatic": False,  # No tools - weather data pre-fetched and injected into prompt
+        "shared": [],  # No shared tools needed
+        "include_builtin": False,  # No built-in tools (calculator, file_read, shell)
+    },
 }
 
 

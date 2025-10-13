@@ -436,8 +436,28 @@ class UniversalAgent:
             if hasattr(role_def, "name")
             else role_def.get("name", "unknown")
         )
-        if role_name != "router":
-            # Router role should only have its own tools, no built-in tools
+        # Check role's tools configuration to determine if built-in tools should be included
+        if role_def:
+            config = (
+                role_def.config
+                if hasattr(role_def, "config")
+                else role_def.get("config", {})
+            )
+            tools_config = config.get("tools", {})
+            include_builtin_tools = tools_config.get(
+                "include_builtin", True
+            )  # Default to True for backward compatibility
+
+            if include_builtin_tools:
+                builtin_tools = [calculator, file_read, shell]
+                tools.extend(builtin_tools)
+                logger.debug(f"Added built-in tools for role '{role_name}'")
+            else:
+                logger.debug(
+                    f"Excluded built-in tools for role '{role_name}' (role configuration)"
+                )
+        else:
+            # Fallback: include built-in tools if no role definition
             builtin_tools = [calculator, file_read, shell]
             tools.extend(builtin_tools)
 

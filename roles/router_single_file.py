@@ -48,6 +48,7 @@ ROLE_CONFIG = {
     "tools": {
         "automatic": False,  # No tools - JSON response only
         "shared": [],  # No shared tools needed
+        "include_builtin": False,  # No built-in tools (calculator, file_read, shell)
     },
     "prompts": {
         "system": """You are an intelligent request routing agent. Your job is to analyze user requests and respond with ONLY valid JSON.
