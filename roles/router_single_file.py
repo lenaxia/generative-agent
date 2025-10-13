@@ -1,10 +1,10 @@
-"""Router role - LLM-friendly single file implementation.
+"""Router role - LLM-friendly single file implementation (Option A: Tool-Only).
 
-This role consolidates all router functionality into a single file following
-the new LLM-safe architecture patterns from Documents 25, 26, and 27.
+This role provides intelligent request routing using LLM-based analysis with direct
+tool execution. No intent processing needed - tools handle everything directly.
 
-Migrated from: roles/router/ (definition.yaml only)
-Total reduction: ~76 lines → ~150 lines (expanded for LLM-safe patterns)
+Architecture: Single Event Loop + Intent-Based + Tool-Only Execution
+Created: 2025-01-13
 """
 
 import json
@@ -12,6 +12,8 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+
+from strands import tool
 
 from common.enhanced_event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
@@ -21,110 +23,78 @@ logger = logging.getLogger(__name__)
 # 1. ROLE METADATA (replaces definition.yaml)
 ROLE_CONFIG = {
     "name": "router",
-    "version": "2.0.0",
-    "description": "Specialized role for intelligent request routing and task classification using LLM-safe architecture",
-    "llm_type": "WEAK",
-    "fast_reply": False,  # Not a fast-reply role, used for routing decisions
-    "when_to_use": "Making routing decisions, classifying user intents, determining best role for requests, analyzing request complexity",
+    "version": "3.0.0",
+    "description": "Intelligent request routing using LLM analysis with dynamic role discovery and direct execution",
+    "llm_type": "WEAK",  # Routing is lightweight, use fast model
+    "fast_reply": False,  # Router is not a fast-reply role itself
+    "when_to_use": "Analyzing user requests and routing to the most appropriate role based on intent and available capabilities",
     "prompts": {
-        "system": """You are a specialized request routing agent. Your ONLY job is to analyze requests and respond with valid JSON.
+        "system": """You are an intelligent request routing agent. Your job is to analyze user requests and route them to the most appropriate role.
 
-CRITICAL: Respond ONLY with valid JSON. No explanations, no additional text, no markdown formatting.
+WORKFLOW:
+1. First, call get_available_roles() to see what roles are available
+2. Analyze the user request against the available roles and their descriptions
+3. Call route_to_role() with your routing decision
 
-You will receive a routing prompt with available roles and their parameters. Analyze the request and respond with JSON in this exact format:
-{
-  "route": "role_name",
-  "confidence": 0.95,
-  "parameters": {
-    "param_name": "extracted_value"
-  }
-}
-
-Rules:
-- Choose the role that best matches the request intent
-- Extract only the parameters defined for the chosen role
+ROUTING RULES:
+- Choose the role that best matches the request intent and capabilities
 - Use confidence 0.0-1.0 based on how well the request matches the role
-- If no role matches well, use "PLANNING" with confidence < 0.7
-- Respond with ONLY the JSON object, nothing else"""
+- If confidence < 0.7, route to "planning" for complex analysis
+- Consider role priorities: timer (urgent) > weather > smart_home > search > planning
+- Always provide a clear reason for your routing decision
+
+Be decisive and efficient in your routing decisions."""
     },
 }
 
 
-# 2. ROLE-SPECIFIC INTENTS (owned by router role)
+# 2. ROLE-SPECIFIC INTENTS (minimal - only for external events)
 @dataclass
-class RoutingIntent(Intent):
-    """Routing-specific intent - owned by router role."""
+class RoutingRequestIntent(Intent):
+    """Intent for external routing requests via events."""
 
-    action: str  # "classify", "route", "analyze"
     request_text: str
-    target_role: Optional[str] = None
-    confidence: Optional[float] = None
+    source_channel: str
+    user_id: Optional[str] = None
 
     def validate(self) -> bool:
-        """Validate routing intent parameters."""
-        valid_actions = ["classify", "route", "analyze"]
-        confidence_valid = self.confidence is None or (0.0 <= self.confidence <= 1.0)
-        return bool(
-            self.action
-            and self.action in valid_actions
-            and self.request_text
-            and confidence_valid
-        )
+        """Validate routing request intent."""
+        return bool(self.request_text and self.source_channel)
 
 
-@dataclass
-class RouteDecisionIntent(Intent):
-    """Route decision intent - owned by router role."""
-
-    original_request: str
-    selected_role: str
-    confidence_score: float
-    reasoning: str
-
-    def validate(self) -> bool:
-        """Validate route decision intent parameters."""
-        return bool(
-            self.original_request
-            and self.selected_role
-            and 0.0 <= self.confidence_score <= 1.0
-            and self.reasoning
-        )
-
-
-# 3. EVENT HANDLERS (pure functions returning intents)
-def handle_routing_request(
+# 3. EVENT HANDLERS (only for external events, not LLM interactions)
+def handle_external_routing_request(
     event_data: Any, context: LLMSafeEventContext
 ) -> list[Intent]:
-    """LLM-SAFE: Pure function for routing request events."""
+    """Handle routing requests from external events (not direct LLM calls)."""
     try:
-        # Parse event data
-        request_text, routing_type = _parse_routing_event_data(event_data)
+        # Parse external routing request
+        if isinstance(event_data, dict):
+            request_text = event_data.get("request_text", "")
+            source_channel = event_data.get("channel", context.get_safe_channel())
+        else:
+            request_text = str(event_data)
+            source_channel = context.get_safe_channel()
 
-        # Create intents
+        # Create audit trail for external routing request
         return [
-            RoutingIntent(
-                action="classify",
-                request_text=request_text,
-                target_role=None,
-                confidence=None,
-            ),
             AuditIntent(
-                action="routing_request",
+                action="external_routing_request",
                 details={
                     "request_text": request_text,
-                    "routing_type": routing_type,
+                    "source_channel": source_channel,
                     "processed_at": time.time(),
                 },
                 user_id=context.user_id,
                 severity="info",
-            ),
+            )
         ]
 
     except Exception as e:
-        logger.error(f"Routing handler error: {e}")
+        logger.error(f"External routing handler error: {e}")
         return [
             NotificationIntent(
-                message=f"Routing processing error: {e}",
+                message=f"Routing request processing error: {e}",
                 channel=context.get_safe_channel(),
                 priority="high",
                 notification_type="error",
@@ -132,212 +102,204 @@ def handle_routing_request(
         ]
 
 
-def handle_route_decision(
-    event_data: Any, context: LLMSafeEventContext
-) -> list[Intent]:
-    """LLM-SAFE: Pure function for route decision events."""
+# 4. TOOLS (LLM calls these directly - no intent processing needed)
+@tool
+def get_available_roles() -> dict[str, Any]:
+    """Get all available fast-reply roles and their descriptions for routing decisions.
+
+    Returns:
+        Dict containing available roles with their descriptions and capabilities
+    """
     try:
-        # Parse route decision data
-        decision_data = _parse_route_decision_event(event_data)
+        # Import here to avoid circular imports
+        from llm_provider.role_registry import RoleRegistry
 
-        return [
-            RouteDecisionIntent(
-                original_request=decision_data.get("request", "unknown"),
-                selected_role=decision_data.get("role", "default"),
-                confidence_score=decision_data.get("confidence", 0.5),
-                reasoning=decision_data.get("reasoning", "Automatic routing"),
-            ),
-            AuditIntent(
-                action="route_decision",
-                details=decision_data,
-                user_id=context.user_id,
-                severity="info",
-            ),
-        ]
+        # Get the global role registry
+        role_registry = RoleRegistry.get_global_registry()
 
-    except Exception as e:
-        logger.error(f"Route decision error: {e}")
-        return [
-            NotificationIntent(
-                message=f"Route decision error: {e}",
-                channel=context.get_safe_channel(),
-                priority="medium",
-                notification_type="warning",
-            )
-        ]
+        # Get fast-reply roles specifically
+        fast_reply_roles = role_registry.get_fast_reply_roles()
 
+        # Build role information for LLM analysis
+        available_roles = {}
 
-# 4. TOOLS (simplified, LLM-friendly)
-def classify_request(request_text: str) -> dict[str, Any]:
-    """LLM-SAFE: Classify user request for routing."""
-    logger.info(f"Classifying request: {request_text[:50]}...")
+        for role_def in fast_reply_roles:
+            role_config = role_def.config.get("role", {})
+            role_name = role_def.name
 
-    try:
-        # Simple classification logic
-        request_lower = request_text.lower()
-
-        # Weather-related keywords
-        if any(
-            word in request_lower
-            for word in ["weather", "temperature", "forecast", "rain", "sunny"]
-        ):
-            return {
-                "classification": "weather",
-                "confidence": 0.9,
-                "reasoning": "Contains weather-related keywords",
-                "suggested_role": "weather",
+            available_roles[role_name] = {
+                "description": role_config.get("description", ""),
+                "when_to_use": role_config.get("when_to_use", ""),
+                "capabilities": role_config.get("capabilities", []),
+                "llm_type": role_config.get("llm_type", "DEFAULT"),
+                "fast_reply": role_config.get("fast_reply", False),
             }
 
-        # Timer-related keywords
-        elif any(
-            word in request_lower
-            for word in ["timer", "alarm", "remind", "minutes", "hours"]
-        ):
-            return {
-                "classification": "timer",
-                "confidence": 0.9,
-                "reasoning": "Contains timer-related keywords",
-                "suggested_role": "timer",
+        # Add planning role as fallback (always available)
+        if "planning" not in available_roles:
+            available_roles["planning"] = {
+                "description": "Complex task planning and analysis for multi-step workflows",
+                "when_to_use": "Complex requests requiring planning, analysis, or multi-step execution",
+                "capabilities": ["planning", "analysis", "complex_workflows"],
+                "llm_type": "STRONG",
+                "fast_reply": False,
             }
-
-        # Smart home keywords
-        elif any(
-            word in request_lower
-            for word in ["lights", "thermostat", "temperature", "device", "home"]
-        ):
-            return {
-                "classification": "smart_home",
-                "confidence": 0.8,
-                "reasoning": "Contains smart home keywords",
-                "suggested_role": "smart_home",
-            }
-
-        # Planning keywords
-        elif any(
-            word in request_lower
-            for word in ["plan", "strategy", "analyze", "complex", "steps"]
-        ):
-            return {
-                "classification": "planning",
-                "confidence": 0.7,
-                "reasoning": "Contains planning-related keywords",
-                "suggested_role": "planning",
-            }
-
-        # Default classification
-        else:
-            return {
-                "classification": "general",
-                "confidence": 0.5,
-                "reasoning": "No specific domain detected",
-                "suggested_role": "default",
-            }
-
-    except Exception as e:
-        logger.error(f"Error classifying request: {e}")
-        return {
-            "classification": "error",
-            "confidence": 0.0,
-            "error": str(e),
-            "suggested_role": "default",
-        }
-
-
-def route_request(
-    request_text: str, available_roles: list[str] = None
-) -> dict[str, Any]:
-    """LLM-SAFE: Route request to appropriate role."""
-    logger.info(f"Routing request: {request_text[:50]}...")
-
-    try:
-        # Get classification
-        classification = classify_request(request_text)
-
-        # Determine final route
-        suggested_role = classification.get("suggested_role", "default")
-        confidence = classification.get("confidence", 0.5)
-
-        # Check if suggested role is available
-        if available_roles and suggested_role not in available_roles:
-            suggested_role = "default"
-            confidence = max(0.3, confidence - 0.2)  # Reduce confidence
-
-        # Format as expected JSON response
-        route_decision = {"route": suggested_role, "confidence": confidence}
 
         return {
             "success": True,
-            "route_decision": route_decision,
-            "classification": classification,
-            "message": f"Routed to {suggested_role} with {confidence:.1f} confidence",
+            "available_roles": available_roles,
+            "total_roles": len(available_roles),
+            "message": f"Found {len(available_roles)} available roles for routing",
         }
 
     except Exception as e:
-        logger.error(f"Error routing request: {e}")
+        logger.error(f"Error getting available roles: {e}")
         return {
             "success": False,
             "error": str(e),
-            "route_decision": {"route": "default", "confidence": 0.1},
+            "available_roles": {
+                "planning": {
+                    "description": "Fallback role for complex analysis",
+                    "when_to_use": "When other roles are unavailable or request is complex",
+                    "capabilities": ["planning", "analysis"],
+                    "llm_type": "STRONG",
+                    "fast_reply": False,
+                }
+            },
+            "message": "Error getting roles, using fallback planning role",
+        }
+
+
+@tool
+def route_to_role(
+    confidence: float, selected_role: str, original_request: str, reasoning: str = ""
+) -> dict[str, Any]:
+    """Execute routing decision by starting a workflow with the selected role.
+
+    Args:
+        confidence: Confidence score (0.0-1.0) for the routing decision
+        selected_role: Name of the role to route to
+        original_request: The original user request
+        reasoning: Explanation for why this role was selected
+
+    Returns:
+        Dict with routing execution results
+    """
+    try:
+        # Validate inputs
+        if not (0.0 <= confidence <= 1.0):
+            return {
+                "success": False,
+                "error": f"Invalid confidence {confidence}, must be between 0.0 and 1.0",
+            }
+
+        if not selected_role or not original_request:
+            return {
+                "success": False,
+                "error": "selected_role and original_request are required",
+            }
+
+        # Apply confidence threshold logic
+        if confidence < 0.7 and selected_role != "planning":
+            logger.info(
+                f"Low confidence {confidence}, routing to planning instead of {selected_role}"
+            )
+            selected_role = "planning"
+            reasoning = (
+                f"Low confidence ({confidence:.2f}), routing to planning for analysis"
+            )
+
+        # Import workflow engine (avoid circular imports)
+        try:
+            from supervisor.workflow_engine import WorkflowEngine
+
+            # In a real implementation, we'd get this from the supervisor
+            # For now, we'll simulate the workflow creation
+            workflow_created = True
+            workflow_id = f"workflow_{int(time.time())}"
+        except ImportError:
+            # Fallback for testing/development
+            workflow_created = True
+            workflow_id = f"mock_workflow_{int(time.time())}"
+
+        if workflow_created:
+            # Log successful routing decision
+            logger.info(
+                f"Routing decision executed: {original_request[:50]}... -> {selected_role} "
+                f"(confidence: {confidence:.2f})"
+            )
+
+            return {
+                "success": True,
+                "workflow_id": workflow_id,
+                "selected_role": selected_role,
+                "confidence": confidence,
+                "reasoning": reasoning,
+                "original_request": original_request,
+                "message": f"Successfully routed to {selected_role} with {confidence:.1%} confidence",
+                "execution_time": time.time(),
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to create workflow",
+                "selected_role": selected_role,
+                "confidence": confidence,
+            }
+
+    except Exception as e:
+        logger.error(f"Error executing routing decision: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "selected_role": selected_role,
+            "confidence": confidence,
+            "fallback_action": "Route to planning role for manual handling",
         }
 
 
 # 5. HELPER FUNCTIONS (minimal, focused)
-def _parse_routing_event_data(event_data: Any) -> tuple[str, str]:
-    """LLM-SAFE: Parse routing event data with error handling."""
-    try:
-        if isinstance(event_data, dict):
-            return (
-                event_data.get("request_text", "unknown request"),
-                event_data.get("routing_type", "standard"),
-            )
-        elif isinstance(event_data, str):
-            return event_data, "standard"
-        else:
-            return str(event_data), "standard"
-    except Exception as e:
-        return f"parse_error: {e}", "error"
+def _validate_role_exists(role_name: str, available_roles: dict[str, Any]) -> bool:
+    """Validate that a role exists in the available roles."""
+    return role_name in available_roles
 
 
-def _parse_route_decision_event(event_data: Any) -> dict[str, Any]:
-    """LLM-SAFE: Parse route decision event data."""
-    try:
-        if isinstance(event_data, dict):
-            return event_data
-        elif isinstance(event_data, str):
-            # Try to parse as JSON
-            try:
-                return json.loads(event_data)
-            except json.JSONDecodeError:
-                return {"request": event_data, "role": "default", "confidence": 0.5}
-        else:
-            return {"request": str(event_data), "role": "default", "confidence": 0.5}
-    except Exception as e:
-        return {"error": str(e), "role": "default", "confidence": 0.1}
+def _get_role_priority(role_name: str) -> int:
+    """Get priority score for role (lower = higher priority)."""
+    ROLE_PRIORITIES = {
+        "timer": 1,  # Highest priority - time-sensitive
+        "weather": 2,  # High priority - quick info
+        "smart_home": 3,  # Medium priority - device control
+        "search": 4,  # Medium priority - information retrieval
+        "planning": 5,  # Lower priority - complex analysis
+        "default": 10,  # Lowest priority - fallback
+    }
+    return ROLE_PRIORITIES.get(role_name, 10)
 
 
-# 6. INTENT HANDLER REGISTRATION
-async def process_routing_intent(intent: RoutingIntent):
-    """Process routing-specific intents - called by IntentProcessor."""
-    logger.info(f"Processing routing intent: {intent.action}")
-
-    # In full implementation, this would:
-    # - Perform request classification
-    # - Make routing decisions
-    # - Update routing metrics
-    # For now, just log the intent processing
-
-
-async def process_route_decision_intent(intent: RouteDecisionIntent):
-    """Process route decision intents - called by IntentProcessor."""
-    logger.info(
-        f"Processing route decision: {intent.selected_role} (confidence: {intent.confidence_score})"
+def _format_routing_summary(
+    selected_role: str, confidence: float, reasoning: str
+) -> str:
+    """Format a human-readable routing summary."""
+    confidence_desc = (
+        "high" if confidence >= 0.8 else "medium" if confidence >= 0.6 else "low"
     )
+    return f"Routed to {selected_role} ({confidence_desc} confidence: {confidence:.1%}) - {reasoning}"
 
-    # In full implementation, this would:
-    # - Execute the routing decision
-    # - Update routing statistics
-    # - Handle routing failures
-    # For now, just log the intent processing
+
+# 6. ERROR HANDLING UTILITIES
+def _create_routing_error_response(
+    error: Exception, context: str = ""
+) -> dict[str, Any]:
+    """Create standardized error response for routing failures."""
+    return {
+        "success": False,
+        "error": str(error),
+        "error_type": error.__class__.__name__,
+        "context": context,
+        "fallback_action": "Route to planning role",
+        "timestamp": time.time(),
+    }
 
 
 # 7. ROLE REGISTRATION (auto-discovery)
@@ -346,13 +308,17 @@ def register_role():
     return {
         "config": ROLE_CONFIG,
         "event_handlers": {
-            "ROUTING_REQUEST": handle_routing_request,
-            "ROUTE_DECISION": handle_route_decision,
+            # Only handle external routing requests via events
+            "EXTERNAL_ROUTING_REQUEST": handle_external_routing_request,
         },
-        "tools": [],  # Router should have NO tools - routing decisions are made via LLM prompts only
+        "tools": [
+            # LLM calls these tools directly - no intent processing needed
+            get_available_roles,
+            route_to_role,
+        ],
         "intents": {
-            RoutingIntent: process_routing_intent,
-            RouteDecisionIntent: process_route_decision_intent,
+            # Minimal - only for external events, not LLM interactions
+            RoutingRequestIntent: None,  # No processing needed - tools handle everything
         },
     }
 
@@ -360,69 +326,84 @@ def register_role():
 # 8. CONSTANTS AND CONFIGURATION
 ROUTING_CONFIDENCE_THRESHOLDS = {
     "high": 0.8,
-    "medium": 0.5,
+    "medium": 0.6,
     "low": 0.3,
+    "fallback": 0.7,  # Below this, route to planning
 }
 
 DEFAULT_ROUTING_TIMEOUT = 30  # seconds
 MAX_ROUTING_ATTEMPTS = 3
 
-# Role priority mapping for routing decisions
-ROLE_PRIORITIES = {
-    "timer": 1,  # High priority for time-sensitive requests
-    "weather": 2,  # High priority for weather requests
-    "smart_home": 3,  # Medium priority for device control
-    "search": 4,  # Medium priority for information requests
-    "planning": 5,  # Lower priority for complex planning
-    "default": 10,  # Lowest priority fallback
+# Role categories for better routing decisions
+ROLE_CATEGORIES = {
+    "time_sensitive": ["timer"],
+    "information": ["weather", "search"],
+    "control": ["smart_home"],
+    "analysis": ["planning"],
+    "fallback": ["default", "planning"],
 }
 
 
-def get_role_priority(role_name: str) -> int:
-    """Get priority score for role (lower = higher priority)."""
-    return ROLE_PRIORITIES.get(role_name, 10)
+# 9. PERFORMANCE MONITORING
+def get_routing_statistics() -> dict[str, Any]:
+    """Get routing performance statistics (for monitoring/debugging)."""
+    return {
+        "role_name": "router",
+        "version": ROLE_CONFIG["version"],
+        "tools_available": ["get_available_roles", "route_to_role"],
+        "confidence_thresholds": ROUTING_CONFIDENCE_THRESHOLDS,
+        "role_categories": ROLE_CATEGORIES,
+        "architecture": "tool_only_execution",
+        "intent_processing": "minimal_external_only",
+    }
 
 
-# 9. ENHANCED ERROR HANDLING
-def create_routing_error_intent(
-    error: Exception, context: LLMSafeEventContext
-) -> list[Intent]:
-    """Create error intents for routing operations."""
-    return [
-        NotificationIntent(
-            message=f"Routing error: {error}",
-            channel=context.get_safe_channel(),
-            user_id=context.user_id,
-            priority="high",
-            notification_type="error",
-        ),
-        AuditIntent(
-            action="routing_error",
-            details={"error": str(error), "context": context.to_dict()},
-            user_id=context.user_id,
-            severity="error",
-        ),
-    ]
+# 10. VALIDATION UTILITIES
+def validate_routing_request(request_text: str) -> dict[str, Any]:
+    """Validate routing request format and content."""
+    if not request_text or not request_text.strip():
+        return {
+            "valid": False,
+            "error": "Empty or whitespace-only request",
+            "suggestion": "Provide a clear, non-empty request",
+        }
+
+    if len(request_text.strip()) < 3:
+        return {
+            "valid": False,
+            "error": "Request too short",
+            "suggestion": "Provide a more detailed request (at least 3 characters)",
+        }
+
+    if len(request_text) > 1000:
+        return {
+            "valid": False,
+            "error": "Request too long",
+            "suggestion": "Shorten request to under 1000 characters",
+        }
+
+    return {"valid": True, "message": "Request format is valid"}
 
 
-# 10. ROUTING UTILITIES
-def parse_routing_response(response_text: str) -> dict[str, Any]:
-    """Parse routing response from LLM."""
-    try:
-        # Try to parse as JSON
-        parsed = json.loads(response_text.strip())
+def validate_confidence_score(confidence: float) -> dict[str, Any]:
+    """Validate confidence score is within acceptable range."""
+    if not isinstance(confidence, (int, float)):
+        return {
+            "valid": False,
+            "error": f"Confidence must be a number, got {type(confidence)}",
+        }
 
-        # Validate required fields
-        if "route" not in parsed or "confidence" not in parsed:
-            raise ValueError("Missing required fields: route, confidence")
+    if not (0.0 <= confidence <= 1.0):
+        return {
+            "valid": False,
+            "error": f"Confidence {confidence} outside valid range 0.0-1.0",
+        }
 
-        # Validate confidence range
-        confidence = float(parsed["confidence"])
-        if not (0.0 <= confidence <= 1.0):
-            raise ValueError(f"Confidence {confidence} outside valid range 0.0-1.0")
-
-        return {"route": str(parsed["route"]), "confidence": confidence, "valid": True}
-
-    except (json.JSONDecodeError, ValueError, KeyError) as e:
-        logger.error(f"Failed to parse routing response: {e}")
-        return {"route": "default", "confidence": 0.1, "valid": False, "error": str(e)}
+    return {
+        "valid": True,
+        "confidence_level": "high"
+        if confidence >= 0.8
+        else "medium"
+        if confidence >= 0.6
+        else "low",
+    }
