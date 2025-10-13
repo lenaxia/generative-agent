@@ -1524,8 +1524,10 @@ Call route_to_role() with your routing decision. Be decisive and efficient."""
                 instruction=routing_instruction, role="router", llm_type=LLMType.WEAK
             )
 
-            # Extract routing information from the tool execution result
-            return self._extract_routing_from_result(result)
+            # Parse routing JSON response using router role's Pydantic parser
+            from roles.router_single_file import parse_routing_response
+
+            return parse_routing_response(result)
 
         except Exception as e:
             logger.error(f"Router role routing failed: {e}")
@@ -1560,7 +1562,7 @@ Call route_to_role() with your routing decision. Be decisive and efficient."""
 
             # If result is a string, try to extract routing info
             if isinstance(result, str):
-                # Look for the log message from route_to_role tool execution
+                # Look for mentions of successful routing
                 if "routing decision executed" in result.lower():
                     # Try to extract role name and confidence from the text
                     import re

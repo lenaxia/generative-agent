@@ -1,9 +1,9 @@
-"""Router role - LLM-friendly single file implementation (Option A: Tool-Only).
+"""Router role - LLM-friendly single file implementation (JSON Response with Pydantic).
 
 This role provides intelligent request routing using LLM-based analysis with direct
-tool execution. No intent processing needed - tools handle everything directly.
+JSON output parsed by Pydantic. No tools needed - LLM outputs structured JSON.
 
-Architecture: Single Event Loop + Intent-Based + Tool-Only Execution
+Architecture: Single Event Loop + Intent-Based + JSON Response + Pydantic Parsing
 Created: 2025-01-13
 """
 
@@ -13,41 +13,70 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from strands import tool
+from pydantic import BaseModel, Field, ValidationError
 
 from common.enhanced_event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+
+# 1. PYDANTIC MODELS FOR JSON PARSING
+class RoutingResponse(BaseModel):
+    """Pydantic model for parsing LLM routing responses."""
+
+    route: str = Field(..., description="Selected role name")
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0"
+    )
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Optional parameters for the selected role"
+    )
+
+    class Config:
+        extra = "forbid"  # Don't allow extra fields
+
+
+# 2. ROLE METADATA (replaces definition.yaml)
 ROLE_CONFIG = {
     "name": "router",
-    "version": "3.0.0",
-    "description": "Intelligent request routing using LLM analysis with dynamic role discovery and direct execution",
+    "version": "4.0.0",
+    "description": "Intelligent request routing using LLM analysis with JSON response format",
     "llm_type": "WEAK",  # Routing is lightweight, use fast model
     "fast_reply": False,  # Router is not a fast-reply role itself
     "when_to_use": "Analyzing user requests and routing to the most appropriate role based on intent and available capabilities",
     "tools": {
-        "automatic": True,  # Include custom tools automatically
+        "automatic": False,  # No tools - JSON response only
         "shared": [],  # No shared tools needed
     },
     "prompts": {
-        "system": """You are an intelligent request routing agent. Your job is to analyze user requests and route them to the most appropriate role.
+        "system": """You are an intelligent request routing agent. Your job is to analyze user requests and respond with ONLY valid JSON.
 
-WORKFLOW:
-1. Analyze the user request against the available roles (provided in the prompt)
-2. Call route_to_role() with your routing decision
-3. Done - no further processing needed
+CRITICAL: Respond with ONLY valid JSON. No explanations, no additional text, no markdown formatting.
+
+Available roles will be provided in the prompt. Analyze the user request and respond with JSON in this EXACT format:
+
+<routing_response> ::= "{" <route_field> "," <confidence_field> "," <parameters_field> "}"
+<route_field> ::= '"route":' <role_name>
+<confidence_field> ::= '"confidence":' <confidence_value>
+<parameters_field> ::= '"parameters":' <parameters_object>
+<role_name> ::= '"' <string> '"'
+<confidence_value> ::= <number_between_0_and_1>
+<parameters_object> ::= "{" "}"
+
+Example:
+{
+  "route": "weather",
+  "confidence": 0.95,
+  "parameters": {}
+}
 
 ROUTING RULES:
 - Choose the role that best matches the request intent and capabilities
 - Use confidence 0.0-1.0 based on how well the request matches the role
 - If confidence < 0.7, route to "planning" for complex analysis
 - Consider role priorities: timer (urgent) > weather > smart_home > search > planning
-- Always provide a clear reason for your routing decision
-
-Be decisive and efficient in your routing decisions."""
+- Respond with ONLY the JSON object, nothing else"""
     },
 }
 
@@ -106,197 +135,75 @@ def handle_external_routing_request(
         ]
 
 
-# 4. TOOLS (LLM calls these directly - no intent processing needed)
+# 4. NO TOOLS - JSON Response Only
+# Router role uses direct JSON output instead of tool calls
 
 
-@tool
-def route_to_role(
-    confidence: float, selected_role: str, original_request: str, reasoning: str = ""
-) -> dict[str, Any]:
-    """Execute routing decision by starting a workflow with the selected role.
-
-    Args:
-        confidence: Confidence score (0.0-1.0) for the routing decision
-        selected_role: Name of the role to route to
-        original_request: The original user request
-        reasoning: Explanation for why this role was selected
-
-    Returns:
-        Dict with routing execution results
-    """
+# 5. HELPER FUNCTIONS (minimal, focused)
+def parse_routing_response(response_text: str) -> dict[str, Any]:
+    """Parse routing response JSON from LLM using Pydantic validation."""
     try:
-        # Validate inputs
-        if not (0.0 <= confidence <= 1.0):
-            return {
-                "success": False,
-                "error": f"Invalid confidence {confidence}, must be between 0.0 and 1.0",
-            }
+        # Clean the response text
+        response_text = response_text.strip()
 
-        if not selected_role or not original_request:
-            return {
-                "success": False,
-                "error": "selected_role and original_request are required",
-            }
+        # Parse JSON and validate with Pydantic
+        routing_response = RoutingResponse.model_validate_json(response_text)
 
         # Apply confidence threshold logic
+        selected_role = routing_response.route.lower()
+        confidence = routing_response.confidence
+
         if confidence < 0.7 and selected_role != "planning":
             logger.info(
                 f"Low confidence {confidence}, routing to planning instead of {selected_role}"
             )
             selected_role = "planning"
-            reasoning = (
-                f"Low confidence ({confidence:.2f}), routing to planning for analysis"
-            )
+            confidence = 0.6  # Set reasonable confidence for planning fallback
 
-        # Import workflow engine (avoid circular imports)
-        try:
-            from supervisor.workflow_engine import WorkflowEngine
+        logger.info(
+            f"Parsed routing decision: {selected_role} with confidence {confidence:.2f}"
+        )
 
-            # In a real implementation, we'd get this from the supervisor
-            # For now, we'll simulate the workflow creation
-            workflow_created = True
-            workflow_id = f"workflow_{int(time.time())}"
-        except ImportError:
-            # Fallback for testing/development
-            workflow_created = True
-            workflow_id = f"mock_workflow_{int(time.time())}"
-
-        if workflow_created:
-            # Log successful routing decision
-            logger.info(
-                f"Routing decision executed: {original_request[:50]}... -> {selected_role} "
-                f"(confidence: {confidence:.2f})"
-            )
-
-            return {
-                "success": True,
-                "workflow_id": workflow_id,
-                "selected_role": selected_role,
-                "confidence": confidence,
-                "reasoning": reasoning,
-                "original_request": original_request,
-                "message": f"Successfully routed to {selected_role} with {confidence:.1%} confidence",
-                "execution_time": time.time(),
-            }
-        else:
-            return {
-                "success": False,
-                "error": "Failed to create workflow",
-                "selected_role": selected_role,
-                "confidence": confidence,
-            }
-
-    except Exception as e:
-        logger.error(f"Error executing routing decision: {e}")
         return {
-            "success": False,
-            "error": str(e),
-            "selected_role": selected_role,
+            "route": selected_role.upper(),  # Convert to uppercase for consistency
             "confidence": confidence,
-            "fallback_action": "Route to planning role for manual handling",
+            "parameters": routing_response.parameters,
+            "valid": True,
+        }
+
+    except ValidationError as e:
+        logger.error(
+            f"Pydantic validation failed for routing response '{response_text}': {e}"
+        )
+        return {
+            "route": "PLANNING",
+            "confidence": 0.0,
+            "parameters": {},
+            "valid": False,
+            "error": f"Validation error: {str(e)}",
+        }
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode failed for routing response '{response_text}': {e}")
+        return {
+            "route": "PLANNING",
+            "confidence": 0.0,
+            "parameters": {},
+            "valid": False,
+            "error": f"JSON decode error: {str(e)}",
+        }
+    except Exception as e:
+        logger.error(
+            f"Unexpected error parsing routing response '{response_text}': {e}"
+        )
+        return {
+            "route": "PLANNING",
+            "confidence": 0.0,
+            "parameters": {},
+            "valid": False,
+            "error": f"Unexpected error: {str(e)}",
         }
 
 
-# 5. HELPER FUNCTIONS (minimal, focused)
-def _validate_role_exists(role_name: str, available_roles: dict[str, Any]) -> bool:
-    """Validate that a role exists in the available roles."""
-    return role_name in available_roles
-
-
-def _get_role_priority(role_name: str) -> int:
-    """Get priority score for role (lower = higher priority)."""
-    ROLE_PRIORITIES = {
-        "timer": 1,  # Highest priority - time-sensitive
-        "weather": 2,  # High priority - quick info
-        "smart_home": 3,  # Medium priority - device control
-        "search": 4,  # Medium priority - information retrieval
-        "planning": 5,  # Lower priority - complex analysis
-        "default": 10,  # Lowest priority - fallback
-    }
-    return ROLE_PRIORITIES.get(role_name, 10)
-
-
-def _format_routing_summary(
-    selected_role: str, confidence: float, reasoning: str
-) -> str:
-    """Format a human-readable routing summary."""
-    confidence_desc = (
-        "high" if confidence >= 0.8 else "medium" if confidence >= 0.6 else "low"
-    )
-    return f"Routed to {selected_role} ({confidence_desc} confidence: {confidence:.1%}) - {reasoning}"
-
-
-# 6. ERROR HANDLING UTILITIES
-def _create_routing_error_response(
-    error: Exception, context: str = ""
-) -> dict[str, Any]:
-    """Create standardized error response for routing failures."""
-    return {
-        "success": False,
-        "error": str(error),
-        "error_type": error.__class__.__name__,
-        "context": context,
-        "fallback_action": "Route to planning role",
-        "timestamp": time.time(),
-    }
-
-
-# 7. ROLE REGISTRATION (auto-discovery)
-def register_role():
-    """Auto-discovered by RoleRegistry - LLM can modify this."""
-    return {
-        "config": ROLE_CONFIG,
-        "event_handlers": {
-            # Only handle external routing requests via events
-            "EXTERNAL_ROUTING_REQUEST": handle_external_routing_request,
-        },
-        "tools": [
-            # LLM calls this tool directly - no intent processing needed
-            route_to_role,
-        ],
-        "intents": {
-            # Minimal - only for external events, not LLM interactions
-            RoutingRequestIntent: None,  # No processing needed - tools handle everything
-        },
-    }
-
-
-# 8. CONSTANTS AND CONFIGURATION
-ROUTING_CONFIDENCE_THRESHOLDS = {
-    "high": 0.8,
-    "medium": 0.6,
-    "low": 0.3,
-    "fallback": 0.7,  # Below this, route to planning
-}
-
-DEFAULT_ROUTING_TIMEOUT = 30  # seconds
-MAX_ROUTING_ATTEMPTS = 3
-
-# Role categories for better routing decisions
-ROLE_CATEGORIES = {
-    "time_sensitive": ["timer"],
-    "information": ["weather", "search"],
-    "control": ["smart_home"],
-    "analysis": ["planning"],
-    "fallback": ["default", "planning"],
-}
-
-
-# 9. PERFORMANCE MONITORING
-def get_routing_statistics() -> dict[str, Any]:
-    """Get routing performance statistics (for monitoring/debugging)."""
-    return {
-        "role_name": "router",
-        "version": ROLE_CONFIG["version"],
-        "tools_available": ["get_available_roles", "route_to_role"],
-        "confidence_thresholds": ROUTING_CONFIDENCE_THRESHOLDS,
-        "role_categories": ROLE_CATEGORIES,
-        "architecture": "tool_only_execution",
-        "intent_processing": "minimal_external_only",
-    }
-
-
-# 10. VALIDATION UTILITIES
 def validate_routing_request(request_text: str) -> dict[str, Any]:
     """Validate routing request format and content."""
     if not request_text or not request_text.strip():
@@ -344,4 +251,100 @@ def validate_confidence_score(confidence: float) -> dict[str, Any]:
         else "medium"
         if confidence >= 0.6
         else "low",
+    }
+
+
+# 6. ROLE REGISTRATION (auto-discovery)
+def register_role():
+    """Auto-discovered by RoleRegistry - LLM can modify this."""
+    return {
+        "config": ROLE_CONFIG,
+        "event_handlers": {
+            # Only handle external routing requests via events
+            "EXTERNAL_ROUTING_REQUEST": handle_external_routing_request,
+        },
+        "tools": [],  # No tools - JSON response only
+        "intents": {
+            # Minimal - only for external events, not LLM interactions
+            RoutingRequestIntent: None,  # No processing needed - JSON parsing handles everything
+        },
+    }
+
+
+# 7. CONSTANTS AND CONFIGURATION
+ROUTING_CONFIDENCE_THRESHOLDS = {
+    "high": 0.8,
+    "medium": 0.6,
+    "low": 0.3,
+    "fallback": 0.7,  # Below this, route to planning
+}
+
+DEFAULT_ROUTING_TIMEOUT = 30  # seconds
+MAX_ROUTING_ATTEMPTS = 3
+
+# Role categories for better routing decisions
+ROLE_CATEGORIES = {
+    "time_sensitive": ["timer"],
+    "information": ["weather", "search"],
+    "control": ["smart_home"],
+    "analysis": ["planning"],
+    "fallback": ["default", "planning"],
+}
+
+
+# 8. PERFORMANCE MONITORING
+def get_routing_statistics() -> dict[str, Any]:
+    """Get routing performance statistics (for monitoring/debugging)."""
+    return {
+        "role_name": "router",
+        "version": ROLE_CONFIG["version"],
+        "response_format": "json_only",
+        "confidence_thresholds": ROUTING_CONFIDENCE_THRESHOLDS,
+        "role_categories": ROLE_CATEGORIES,
+        "architecture": "json_response_parsing",
+        "tools": "none_json_only",
+    }
+
+
+# 9. HELPER FUNCTIONS
+def _get_role_priority(role_name: str) -> int:
+    """Get priority score for role (lower = higher priority)."""
+    ROLE_PRIORITIES = {
+        "timer": 1,  # Highest priority - time-sensitive
+        "weather": 2,  # High priority - quick info
+        "smart_home": 3,  # Medium priority - device control
+        "search": 4,  # Medium priority - information retrieval
+        "planning": 5,  # Lower priority - complex analysis
+        "default": 10,  # Lowest priority - fallback
+    }
+    return ROLE_PRIORITIES.get(role_name, 10)
+
+
+def _format_routing_summary(
+    selected_role: str, confidence: float, reasoning: str = ""
+) -> str:
+    """Format a human-readable routing summary."""
+    confidence_desc = (
+        "high" if confidence >= 0.8 else "medium" if confidence >= 0.6 else "low"
+    )
+    return (
+        f"Routed to {selected_role} ({confidence_desc} confidence: {confidence:.1%})"
+        + (f" - {reasoning}" if reasoning else "")
+    )
+
+
+# 10. ERROR HANDLING UTILITIES
+def _create_routing_error_response(
+    error: Exception, context: str = ""
+) -> dict[str, Any]:
+    """Create standardized error response for routing failures."""
+    return {
+        "route": "PLANNING",
+        "confidence": 0.0,
+        "parameters": {},
+        "valid": False,
+        "error": str(error),
+        "error_type": error.__class__.__name__,
+        "context": context,
+        "timestamp": time.time(),
     }
