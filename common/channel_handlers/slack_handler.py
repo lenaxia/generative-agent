@@ -563,7 +563,13 @@ class SlackChannelHandler(ChannelHandler):
                 )
                 return
 
-            # Only process direct messages or messages without bot mentions
+            # Ignore messages in channels (only process DMs to avoid duplicates)
+            channel_type = event.get("channel_type", "")
+            if channel_type != "im":  # Only process instant messages (DMs)
+                logger.debug(f"🔕 Ignoring channel message (not a DM): {text}")
+                return
+
+            # Only process direct messages
             logger.info(
                 f"📨 Processing direct message from user {event['user']}: {text}"
             )
