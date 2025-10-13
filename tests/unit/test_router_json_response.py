@@ -90,7 +90,7 @@ class TestJsonRouterSingleFile:
         result = parse_routing_response(json_response)
 
         assert result["valid"] is True
-        assert result["route"] == "WEATHER"  # Uppercase conversion
+        assert result["route"] == "weather"  # Keep original case
         assert result["confidence"] == 0.95
         assert result["parameters"] == {}
 
@@ -100,7 +100,7 @@ class TestJsonRouterSingleFile:
         result = parse_routing_response(json_response)
 
         assert result["valid"] is True
-        assert result["route"] == "PLANNING"  # Should fallback to planning
+        assert result["route"] == "planning"  # Should fallback to planning
         assert result["confidence"] == 0.6  # Adjusted confidence
 
     def test_parse_routing_response_invalid_json(self):
@@ -190,7 +190,7 @@ class TestJsonRouterIntegration:
         result = parse_routing_response(json_response)
 
         assert result["valid"] is True
-        assert result["route"] == "WEATHER"
+        assert result["route"] == "weather"
         assert result["confidence"] == 0.95
         assert result["parameters"]["location"] == "seattle"
 
@@ -211,7 +211,7 @@ class TestJsonRouterIntegration:
         result = parse_routing_response(bnf_compliant_json)
 
         assert result["valid"] is True
-        assert result["route"] == "TIMER"
+        assert result["route"] == "timer"
         assert result["confidence"] == 0.88
         assert result["parameters"] == {}
 

@@ -259,7 +259,7 @@ def parse_routing_response(response_text: str) -> dict[str, Any]:
         )
 
         return {
-            "route": selected_role.upper(),  # Convert to uppercase for consistency
+            "route": selected_role,  # Keep original case for role registry compatibility
             "confidence": confidence,
             "parameters": routing_response.parameters,
             "valid": True,
