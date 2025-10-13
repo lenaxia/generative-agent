@@ -163,11 +163,15 @@ def route_request_with_available_roles(
             role_config = role_def.config.get("role", {})
             role_name = role_def.name
 
+            # Get parameter schema if available
+            parameters_schema = role_config.get("parameters", {})
+
             available_roles_info[role_name] = {
                 "description": role_config.get("description", ""),
                 "when_to_use": role_config.get("when_to_use", ""),
                 "capabilities": role_config.get("capabilities", []),
                 "fast_reply": role_config.get("fast_reply", False),
+                "parameters": parameters_schema,
             }
 
         # Always add planning as fallback
@@ -179,24 +183,44 @@ def route_request_with_available_roles(
                 "fast_reply": False,
             }
 
-        # Build routing instruction with pre-injected role information
-        roles_description = "\n".join(
-            [
-                f"- {role_name}: {info['description']} (Use when: {info['when_to_use']})"
-                for role_name, info in available_roles_info.items()
-            ]
-        )
+        # Build routing instruction with pre-injected role information and parameter schemas
+        roles_description_parts = []
+        for role_name, info in available_roles_info.items():
+            role_desc = f"- {role_name}: {info['description']} (Use when: {info['when_to_use']})"
+
+            # Add parameter schema if available
+            if info.get("parameters"):
+                param_examples = []
+                for param_name, param_info in info["parameters"].items():
+                    required_str = (
+                        "required" if param_info.get("required") else "optional"
+                    )
+                    examples = param_info.get("examples", [])
+                    example_str = (
+                        f" (e.g., {', '.join(examples[:2])})" if examples else ""
+                    )
+                    param_examples.append(f"{param_name} ({required_str}){example_str}")
+
+                if param_examples:
+                    role_desc += f"\n  Parameters: {'; '.join(param_examples)}"
+
+            roles_description_parts.append(role_desc)
+
+        roles_description = "\n".join(roles_description_parts)
 
         routing_instruction = f"""USER REQUEST: "{request_text}"
 
 AVAILABLE ROLES:
 {roles_description}
 
+Extract relevant parameters from the user request based on the role's parameter schema.
 Respond with ONLY valid JSON in this exact format:
 {{
   "route": "role_name",
   "confidence": 0.95,
-  "parameters": {{}}
+  "parameters": {{
+    "param_name": "extracted_value"
+  }}
 }}"""
 
         # Execute with router role - this will output JSON

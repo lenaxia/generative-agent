@@ -30,6 +30,30 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",
     "fast_reply": True,
     "when_to_use": "Get current weather conditions, forecasts, convert location formats, validate weather data",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "required": True,
+            "description": "City, state, country, or coordinates for weather lookup",
+            "examples": ["Seattle", "New York, NY", "90210", "47.6062,-122.3321"],
+        },
+        "timeframe": {
+            "type": "string",
+            "required": False,
+            "description": "When to get weather for",
+            "examples": ["current", "today", "tomorrow", "this week"],
+            "enum": ["current", "today", "tomorrow", "this week", "next week"],
+            "default": "current",
+        },
+        "format": {
+            "type": "string",
+            "required": False,
+            "description": "Output format preference",
+            "examples": ["brief", "detailed", "forecast"],
+            "enum": ["brief", "detailed", "forecast"],
+            "default": "brief",
+        },
+    },
     "tools": {
         "automatic": False,  # No tools - weather data pre-fetched and injected into prompt
         "shared": [],  # No shared tools needed

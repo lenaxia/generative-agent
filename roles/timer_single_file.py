@@ -39,6 +39,32 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",
     "fast_reply": True,
     "when_to_use": "Set timers, alarms, manage time-based reminders with intent-based processing",
+    "parameters": {
+        "action": {
+            "type": "string",
+            "required": True,
+            "description": "Timer action to perform",
+            "examples": ["set", "cancel", "list"],
+            "enum": ["set", "cancel", "list"],
+        },
+        "duration": {
+            "type": "string",
+            "required": False,
+            "description": "Timer duration for set operations",
+            "examples": ["5s", "2m", "1h", "30min"],
+        },
+        "label": {
+            "type": "string",
+            "required": False,
+            "description": "Optional label for the timer",
+            "examples": ["Meeting reminder", "Coffee break", "Workout"],
+        },
+        "timer_id": {
+            "type": "string",
+            "required": False,
+            "description": "Timer ID for cancel operations",
+        },
+    },
     "tools": {
         "automatic": True,  # Include custom timer tools
         "shared": ["redis_tools"],  # Include Redis tools for timer storage
@@ -222,17 +248,23 @@ def list_timers() -> dict[str, Any]:
 
 # 5. HELPER FUNCTIONS (minimal, focused)
 def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
-    """Handle timer expiry by emitting events via message bus."""
+    """Handle timer expiry by emitting events and notifications."""
     try:
         logger.info(f"Timer {timer_id} expired")
 
-        # Get global message bus instance
+        # Try multiple approaches to emit timer expiry notification
+        notification_sent = False
+
+        # Approach 1: Try to use message bus if available
         try:
             from supervisor.supervisor import get_global_supervisor
 
             supervisor = get_global_supervisor()
-            if supervisor and supervisor.message_bus:
-                # Emit timer expired event
+            if (
+                supervisor
+                and hasattr(supervisor, "message_bus")
+                and supervisor.message_bus
+            ):
                 supervisor.message_bus.emit(
                     event_type="TIMER_EXPIRED",
                     data={
@@ -244,11 +276,20 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
                     },
                     source_role="timer",
                 )
-                logger.info(f"Timer expiry event emitted for {timer_id}")
-            else:
-                logger.warning(f"No message bus available for timer {timer_id} expiry")
-        except ImportError:
-            logger.warning("Supervisor not available for timer expiry event")
+                logger.info(
+                    f"Timer expiry event emitted via message bus for {timer_id}"
+                )
+                notification_sent = True
+        except Exception as e:
+            logger.debug(f"Message bus not available for timer {timer_id}: {e}")
+
+        # Approach 2: Direct console notification as fallback
+        if not notification_sent:
+            duration = timer_data.get("duration", "unknown")
+            label = timer_data.get("label", "")
+            message = f"⏰ Timer expired: {duration}" + (f" ({label})" if label else "")
+            print(f"\n{message}")
+            logger.info(f"Timer expiry notification sent to console for {timer_id}")
 
         # Clean up expired timer from Redis
         try:
