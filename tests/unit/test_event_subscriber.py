@@ -572,7 +572,7 @@ class TestEventSubscriber:
         """Test custom TimerEventSubscriber implementation."""
         workflow_engine = Mock()
         universal_agent = Mock()
-        communication_manager = Mock()
+        communication_manager = AsyncMock()
 
         from common.communication_manager import ChannelType
         from roles.shared_tools.event_subscriber import TimerEventSubscriber
@@ -601,7 +601,7 @@ class TestEventSubscriber:
         # Verify notification was sent
         communication_manager.send_notification.assert_called_once_with(
             message="Timer expired notification",
-            channels=[ChannelType.SLACK],
+            channels=["slack"],
             recipient="general",
             metadata=timer_data["execution_context"],
         )
@@ -648,7 +648,7 @@ class TestEventSubscriber:
         """Test error handling in custom TimerEventSubscriber."""
         workflow_engine = Mock()
         universal_agent = Mock()
-        communication_manager = Mock()
+        communication_manager = AsyncMock()
 
         from common.communication_manager import ChannelType
         from roles.shared_tools.event_subscriber import TimerEventSubscriber
@@ -679,5 +679,5 @@ class TestEventSubscriber:
             in communication_manager.send_notification.call_args[1]["message"]
         )
         assert communication_manager.send_notification.call_args[1]["channels"] == [
-            ChannelType.SLACK
+            "slack"
         ]

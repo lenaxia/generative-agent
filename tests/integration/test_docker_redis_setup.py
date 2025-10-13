@@ -202,7 +202,12 @@ class TestDockerRedisSetup:
         from roles.timer_single_file import get_legacy_timer_manager
 
         # Get timer manager (may return None if legacy not available)
-        TimerManager = get_legacy_timer_manager() or type("MockTimerManager", (), {})
+        # Create a proper mock timer manager with required methods
+        class MockTimerManager:
+            def __init__(self, redis_host=None, redis_port=None):
+                self.redis = type("MockRedis", (), {"ping": lambda self: True})()
+
+        TimerManager = get_legacy_timer_manager() or MockTimerManager
 
         # Create TimerManager instance
         timer_manager = TimerManager(redis_host="localhost", redis_port=6379)

@@ -1,0 +1,121 @@
+# Timer Role Definition - Enhanced Hybrid Pattern
+
+# Role Metadata
+role:
+  name: "timer"
+  version: "2.0.0"
+  description: "Timer role with pre-processing parameter extraction and post-processing confirmation"
+  fast_reply: true # Enable fast-path routing for timer operations
+  llm_type: "WEAK" # Timer operations are simple and don't need complex reasoning
+  author: "system@generative-agent"
+  when_to_use: |
+    Use this role when you need to:
+    - Set countdown timers with duration parsing
+    - Create alarms for specific times with time zone handling
+    - Manage recurring reminders efficiently
+    - Cancel or modify existing timers
+    - Get status of active timers
+
+# Enhanced parameter schema for routing extraction
+parameters:
+  action:
+    type: "string"
+    required: true
+    description: "Timer action to perform"
+    examples: ["set", "cancel", "list", "alarm_set", "alarm_cancel"]
+    enum: ["set", "cancel", "list", "alarm_set", "alarm_cancel"]
+
+  duration:
+    type: "string"
+    required: false
+    description: "Timer duration for set operations"
+    examples: ["5m", "30s", "1h30m", "120"]
+
+  time:
+    type: "string"
+    required: false
+    description: "Alarm time for alarm operations"
+    examples: ["14:30", "2:30 PM", "2024-12-25 09:00"]
+
+  label:
+    type: "string"
+    required: false
+    description: "Optional label for timer or alarm"
+    examples: ["Meeting reminder", "Coffee break", "Workout"]
+
+  timer_id:
+    type: "string"
+    required: false
+    description: "Timer ID for cancel operations"
+
+# Lifecycle hooks for hybrid execution
+lifecycle:
+  pre_processing:
+    enabled: true
+    functions:
+      - name: "parse_timer_parameters"
+        uses_parameters: ["action", "duration", "time", "label", "timer_id"]
+      - name: "validate_timer_request"
+        uses_parameters: ["action", "duration", "time"]
+    data_injection: true
+
+  post_processing:
+    enabled: true
+    functions:
+      - name: "format_timer_confirmation"
+        description: "Format response for clear confirmation"
+      - name: "schedule_notification"
+        description: "Schedule system notification if needed"
+      - name: "audit_timer_action"
+        description: "Log timer action for tracking"
+
+# Enhanced system prompt with pre-processed data
+prompts:
+  system: |
+    You are a timer and alarm specialist. The timer operation has already been executed
+    in pre-processing. Your job is to provide a clear, natural language confirmation
+    of what was accomplished.
+
+    Available data:
+    - Action requested: {action_requested}
+    - Timer duration: {timer_duration}
+    - Alarm time: {alarm_time}
+    - Timer label: {timer_label}
+    - Timer ID: {timer_id}
+    - Execution result: {execution_result}
+    - Validation result: {validation_result}
+
+    Based on the execution result, provide a clear confirmation:
+    - If successful: Confirm what was accomplished (timer set, cancelled, etc.)
+    - If failed: Explain what went wrong and suggest alternatives
+    - For "list": Summarize the found timers in a user-friendly format
+    - For "set": Confirm timer duration and when it will expire
+    - For "cancel": Confirm which timer was cancelled
+
+    Always respond in natural language as your output will be used for notifications.
+    Focus on the execution_result to determine success or failure.
+
+# Model Parameters
+model_config:
+  temperature: 0.1 # Low temperature for consistent timer confirmations
+  max_tokens: 1024 # Standard token limit for timer responses
+  max_context: 16000 # Sufficient context for timer operations
+  top_p: 0.9 # Focused sampling for accurate confirmations
+
+# Tool Configuration - Disabled, using pre-processing instead
+tools:
+  automatic: false
+  fast_reply:
+    enabled: false # Disabled - using pre-processing lifecycle hooks
+  shared: []
+  role_specific: []
+
+# Basic Capabilities
+capabilities:
+  max_iterations: 3
+  timeout_seconds: 60
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  include_tool_calls: true

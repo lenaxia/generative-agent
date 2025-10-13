@@ -33,6 +33,12 @@ class MessageType(Enum):
 
     TASK_ASSIGNMENT = "task_assignment"
     TASK_RESPONSE = "task_response"
+    TASK_STARTED = "task_started"
+    TASK_COMPLETED = "task_completed"
+    TASK_FAILED = "task_failed"
+    WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_COMPLETED = "workflow_completed"
+    WORKFLOW_FAILED = "workflow_failed"
     AGENT_STATUS = "agent_status"
     AGENT_EVENT = "agent_event"
     AGENT_ERROR = "agent_error"
@@ -258,7 +264,7 @@ class MessageBus:
         """Publish a message to all subscribers of the specified message type.
 
         Delivers the message to all registered subscribers for the given message type.
-        Each callback is executed in a separate thread for non-blocking processing.
+        Uses the event loop for all callbacks to maintain single event loop architecture.
         Supports both MessageType enum (for backward compatibility) and string-based
         dynamic event types.
 
@@ -300,92 +306,75 @@ class MessageBus:
         # Create a copy of the subscribers to avoid modifying the dictionary while iterating
         subscribers_copy = self._subscribers[event_type].copy()
 
-        # Release the lock before executing the callbacks
+        # Get or create event loop
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop in this thread, create one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            logger.debug("Created new event loop for message processing")
+
+        # Process all callbacks using the event loop
         for _subscriber, callbacks in subscribers_copy.items():
             for callback in callbacks:
-                # Check if callback is async
+                callback_name = getattr(callback, "__name__", "unknown_callback")
+
+                # Handle async callbacks
                 if asyncio.iscoroutinefunction(callback):
-                    # Schedule async callback in the event loop
+                    # Schedule coroutine in the event loop
                     try:
-                        loop = asyncio.get_running_loop()
-                        # Use call_soon_threadsafe for better cross-thread safety
-                        future = asyncio.run_coroutine_threadsafe(
-                            callback(message), loop
-                        )
-                        callback_name = getattr(
-                            callback, "__name__", "unknown_callback"
+                        asyncio.create_task(
+                            self._run_async_callback_in_loop(
+                                callback, message, callback_name
+                            )
                         )
                         logger.debug(
                             f"Scheduled async callback {callback_name} in event loop"
                         )
-                    except RuntimeError as e:
-                        # No running event loop, start a new thread with event loop
-                        callback_name = getattr(
-                            callback, "__name__", "unknown_callback"
-                        )
-                        logger.debug(
-                            f"No running event loop for {callback_name}, creating new thread: {e}"
-                        )
-                        callback_name = getattr(
-                            callback, "__name__", "unknown_callback"
-                        )
-                        callback_thread = threading.Thread(
-                            target=self._run_async_callback_safely,
-                            args=(callback, message),
-                            name=f"async_callback_{callback_name}",
-                        )
-                        callback_thread.daemon = True
-                        callback_thread.start()
                     except Exception as e:
-                        callback_name = getattr(
-                            callback, "__name__", "unknown_callback"
-                        )
                         logger.error(
                             f"Error scheduling async callback {callback_name}: {e}"
                         )
                 else:
-                    # Start a new thread for sync callback
-                    callback_name = getattr(callback, "__name__", "unknown_callback")
-                    callback_thread = threading.Thread(
-                        target=self._run_sync_callback_safely,
-                        args=(callback, message),
-                        name=f"sync_callback_{callback_name}",
-                    )
-                    callback_thread.daemon = True
-                    callback_thread.start()
+                    # For sync callbacks, run them directly in the event loop
+                    try:
+                        # Create a wrapper function to avoid None type issues
+                        def run_callback_wrapper():
+                            self._run_sync_callback_in_loop(
+                                callback, message, callback_name
+                            )
 
-    def _run_async_callback_safely(self, callback: Callable, message: Any):
-        """Run async callback in a new event loop with error handling."""
-        callback_name = getattr(callback, "__name__", "unknown_callback")
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+                        loop.call_soon(run_callback_wrapper)
+                        logger.debug(
+                            f"Scheduled sync callback {callback_name} in event loop"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error scheduling sync callback {callback_name}: {e}"
+                        )
+
+    async def _run_async_callback_in_loop(
+        self, callback: Callable, message: Any, callback_name: str
+    ):
+        """Run async callback in the current event loop with error handling."""
         try:
-            logger.debug(f"Running async callback {callback_name} in new event loop")
-            loop.run_until_complete(callback(message))
+            logger.debug(f"Running async callback {callback_name} in event loop")
+            await callback(message)
             logger.debug(f"Async callback {callback_name} completed successfully")
         except Exception as e:
             logger.error(f"Error in async callback {callback_name}: {e}")
-        finally:
-            loop.close()
 
-    def _run_sync_callback_safely(self, callback: Callable, message: Any):
-        """Run sync callback with error handling."""
-        callback_name = getattr(callback, "__name__", "unknown_callback")
+    def _run_sync_callback_in_loop(
+        self, callback: Callable, message: Any, callback_name: str
+    ):
+        """Run sync callback in the event loop with error handling."""
         try:
             logger.debug(f"Running sync callback {callback_name}")
             callback(message)
             logger.debug(f"Sync callback {callback_name} completed successfully")
         except Exception as e:
             logger.error(f"Error in sync callback {callback_name}: {e}")
-
-    def _run_async_callback(self, callback: Callable, message: Any):
-        """Run async callback in a new event loop (deprecated - use _run_async_callback_safely)."""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(callback(message))
-        finally:
-            loop.close()
 
     def subscribe(self, subscriber, message_type, callback: Callable):
         """Subscribe to messages of a specific type.

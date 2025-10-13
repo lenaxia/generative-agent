@@ -298,7 +298,7 @@ class TimerEventSubscriber(EventSubscriber):
                 # Handle notification directly with communication manager
                 await self.communication_manager.send_notification(
                     message=parsed_action["workflow_instruction"],
-                    channels=[ChannelType.SLACK],  # or determine from context
+                    channels=["slack"],  # or determine from context
                     recipient=timer_data["execution_context"].get("channel"),
                     metadata=timer_data["execution_context"],
                 )
@@ -311,7 +311,7 @@ class TimerEventSubscriber(EventSubscriber):
             # Send basic notification as fallback
             await self.communication_manager.send_notification(
                 message=f"Timer reminder: {timer_data.get('original_request', 'Timer expired')}",
-                channels=[ChannelType.SLACK],
+                channels=["slack"],
                 recipient=timer_data["execution_context"].get("channel"),
                 metadata=timer_data["execution_context"],
             )
