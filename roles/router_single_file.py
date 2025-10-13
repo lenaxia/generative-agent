@@ -328,7 +328,7 @@ def register_role():
             "ROUTING_REQUEST": handle_routing_request,
             "ROUTE_DECISION": handle_route_decision,
         },
-        "tools": [classify_request, route_request],
+        "tools": [],  # Router should have NO tools - routing decisions are made via LLM prompts only
         "intents": {
             RoutingIntent: process_routing_intent,
             RouteDecisionIntent: process_route_decision_intent,
