@@ -43,7 +43,7 @@ class TestCompleteTimerLifecycle:
         message_bus.subscribe("test_subscriber", "FAST_HEARTBEAT_TICK", capture_event)
 
         # Start FastHeartbeat
-        fast_heartbeat.start()
+        # REMOVED: fast_heartbeat.start() - using scheduled tasks now
 
         # Wait for at least one heartbeat
         await asyncio.sleep(0.3)
