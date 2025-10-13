@@ -1522,15 +1522,13 @@ Respond with ONLY valid JSON in this exact format:
   "parameters": {{}}
 }}"""
 
-            # Execute with router role - this will call route_to_role() tool
-            result = self.universal_agent.execute_task(
-                instruction=routing_instruction, role="router", llm_type=LLMType.WEAK
-            )
+            # Delegate to router role's routing function (single-file role ownership)
+            from roles.router_single_file import route_request_with_available_roles
 
-            # Parse routing JSON response using router role's Pydantic parser
-            from roles.router_single_file import parse_routing_response
+            # Set universal agent reference for router role to use
+            self.role_registry._universal_agent = self.universal_agent
 
-            return parse_routing_response(result)
+            return route_request_with_available_roles(request_text, self.role_registry)
 
         except Exception as e:
             logger.error(f"Router role routing failed: {e}")
@@ -1541,65 +1539,7 @@ Respond with ONLY valid JSON in this exact format:
                 "error": str(e),
             }
 
-    def _extract_routing_from_result(self, result: Any) -> dict[str, Any]:
-        """Extract routing information from router role execution result.
-
-        Args:
-            result: Result from router role execution
-
-        Returns:
-            Dict with route, confidence, and parameters
-        """
-        try:
-            # The router role's route_to_role tool should have executed
-            # and the result should contain routing information
-
-            if isinstance(result, dict):
-                # Look for routing information in the result
-                if "selected_role" in result and "confidence" in result:
-                    return {
-                        "route": result["selected_role"],
-                        "confidence": result["confidence"],
-                        "parameters": result.get("parameters", {}),
-                    }
-
-            # If result is a string, try to extract routing info
-            if isinstance(result, str):
-                # Look for mentions of successful routing
-                if "routing decision executed" in result.lower():
-                    # Try to extract role name and confidence from the text
-                    import re
-
-                    # Look for role names
-                    fast_reply_roles = self.role_registry.get_fast_reply_roles()
-                    role_names = [role.name for role in fast_reply_roles] + ["planning"]
-
-                    result_lower = result.lower()
-                    for role_name in role_names:
-                        if role_name.lower() in result_lower:
-                            # Found a role name, extract confidence if possible
-                            confidence_match = re.search(
-                                r"confidence[:\s]*([0-9.]+)", result_lower
-                            )
-                            confidence = (
-                                float(confidence_match.group(1))
-                                if confidence_match
-                                else 0.8
-                            )
-
-                            return {
-                                "route": role_name,
-                                "confidence": confidence,
-                                "parameters": {},
-                            }
-
-            # Fallback to planning if we can't extract routing info
-            logger.warning(f"Could not extract routing info from result: {result}")
-            return {"route": "PLANNING", "confidence": 0.0, "parameters": {}}
-
-        except Exception as e:
-            logger.error(f"Error extracting routing from result: {e}")
-            return {"route": "PLANNING", "confidence": 0.0, "parameters": {}}
+    # _extract_routing_from_result method removed - router role now owns all routing logic
 
     # ==================== ROLE-BASED TASK DELEGATION ====================
 

@@ -139,7 +139,101 @@ def handle_external_routing_request(
 # Router role uses direct JSON output instead of tool calls
 
 
-# 5. HELPER FUNCTIONS (minimal, focused)
+# 5. ROUTING FUNCTIONS (owned by router role)
+def route_request_with_available_roles(
+    request_text: str, role_registry
+) -> dict[str, Any]:
+    """Route request using available roles - owned by router role.
+
+    Args:
+        request_text: The user request to route
+        role_registry: RoleRegistry instance for getting available roles
+
+    Returns:
+        Dict with routing decision: {route, confidence, parameters, valid}
+    """
+    try:
+        # Get available fast-reply roles
+        fast_reply_roles = role_registry.get_fast_reply_roles()
+
+        # Build role information for injection into prompt
+        available_roles_info = {}
+        for role_def in fast_reply_roles:
+            role_config = role_def.config.get("role", {})
+            role_name = role_def.name
+
+            available_roles_info[role_name] = {
+                "description": role_config.get("description", ""),
+                "when_to_use": role_config.get("when_to_use", ""),
+                "capabilities": role_config.get("capabilities", []),
+                "fast_reply": role_config.get("fast_reply", False),
+            }
+
+        # Always add planning as fallback
+        if "planning" not in available_roles_info:
+            available_roles_info["planning"] = {
+                "description": "Complex task planning and analysis for multi-step workflows",
+                "when_to_use": "Complex requests requiring planning, analysis, or multi-step execution",
+                "capabilities": ["planning", "analysis", "complex_workflows"],
+                "fast_reply": False,
+            }
+
+        # Build routing instruction with pre-injected role information
+        roles_description = "\n".join(
+            [
+                f"- {role_name}: {info['description']} (Use when: {info['when_to_use']})"
+                for role_name, info in available_roles_info.items()
+            ]
+        )
+
+        routing_instruction = f"""USER REQUEST: "{request_text}"
+
+AVAILABLE ROLES:
+{roles_description}
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  "route": "role_name",
+  "confidence": 0.95,
+  "parameters": {{}}
+}}"""
+
+        # Execute with router role - this will output JSON
+        from llm_provider.factory import LLMType
+        from llm_provider.universal_agent import UniversalAgent
+
+        # Get universal agent from role registry (avoid circular imports)
+        universal_agent = getattr(role_registry, "_universal_agent", None)
+        if not universal_agent:
+            # Fallback: create minimal universal agent
+            logger.warning("No universal agent available, using fallback routing")
+            return {
+                "route": "PLANNING",
+                "confidence": 0.0,
+                "parameters": {},
+                "valid": False,
+                "error": "No universal agent available",
+            }
+
+        result = universal_agent.execute_task(
+            instruction=routing_instruction, role="router", llm_type=LLMType.WEAK
+        )
+
+        # Parse routing JSON response using Pydantic
+        return parse_routing_response(result)
+
+    except Exception as e:
+        logger.error(f"Router role routing failed: {e}")
+        return {
+            "route": "PLANNING",
+            "confidence": 0.0,
+            "parameters": {},
+            "valid": False,
+            "error": str(e),
+        }
+
+
+# 6. HELPER FUNCTIONS (minimal, focused)
 def parse_routing_response(response_text: str) -> dict[str, Any]:
     """Parse routing response JSON from LLM using Pydantic validation."""
     try:
