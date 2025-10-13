@@ -32,6 +32,9 @@ ROLE_CONFIG = {
         "automatic": True,  # Include custom timer tools
         "shared": [],  # No shared tools needed
         "include_builtin": False,  # Exclude calculator, file_read, shell
+        "fast_reply": {
+            "enabled": True,  # Enable tools in fast-reply mode
+        },
     },
     "prompts": {
         "system": """You are a timer management specialist. You can set, cancel, and list timers using the available tools.
