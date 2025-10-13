@@ -298,31 +298,31 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
             notification_type="info",
         )
 
-        # Try to emit via message bus using intent-based architecture
+        # Try to send notification via communication manager using message bus
         try:
-            from supervisor.supervisor import get_global_supervisor
+            from common.communication_manager import CommunicationManager
 
-            supervisor = get_global_supervisor()
-            if (
-                supervisor
-                and hasattr(supervisor, "message_bus")
-                and supervisor.message_bus
-            ):
-                # Emit timer expiry event with notification intent
-                supervisor.message_bus.emit(
-                    event_type="TIMER_EXPIRED",
-                    data={
-                        "timer_id": timer_id,
-                        "notification_intent": notification_intent.to_dict(),
-                        "original_request": f"Timer {duration} expired",
-                        "label": label,
+            # Get global communication manager instance
+            comm_manager = CommunicationManager.get_instance()
+            if comm_manager and hasattr(comm_manager, "message_bus"):
+                # Use the message bus to send notification (same path as workflow results)
+                send_message_payload = {
+                    "message": message,
+                    "context": {
+                        "channel_id": channel,
                         "user_id": user_id,
-                        "channel": channel,
+                        "request_id": f"timer_expiry_{timer_id}",
                     },
-                    source_role="timer",
+                }
+
+                # Publish SEND_MESSAGE event to message bus (same as workflow engine uses)
+                comm_manager.message_bus.publish(
+                    publisher="timer",
+                    message_type="SEND_MESSAGE",
+                    message=send_message_payload,
                 )
                 logger.info(
-                    f"Timer expiry intent emitted via message bus for {timer_id}"
+                    f"Timer expiry notification sent via message bus for {timer_id}"
                 )
             else:
                 # Fallback: direct console notification
@@ -330,7 +330,9 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
                 logger.info(f"Timer expiry notification sent to console for {timer_id}")
 
         except Exception as e:
-            logger.debug(f"Message bus not available for timer {timer_id}: {e}")
+            logger.debug(
+                f"Communication manager not available for timer {timer_id}: {e}"
+            )
             # Fallback: direct console notification
             print(f"\n{message}")
             logger.info(f"Timer expiry notification sent to console for {timer_id}")
