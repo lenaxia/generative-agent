@@ -192,35 +192,9 @@ class UniversalAgent:
         Returns:
             str: Task result
         """
-        # All roles use hybrid execution (with or without lifecycle hooks)
-        import asyncio
-
-        try:
-            # Try to get existing event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # LLM-SAFE: Use current event loop instead of ThreadPoolExecutor
-                task = loop.create_task(
-                    self._execute_hybrid_task(
-                        instruction, role, context, extracted_parameters
-                    )
-                )
-                # Wait for task completion in current loop
-                return loop.run_until_complete(task)
-            else:
-                # If no loop is running, use asyncio.run
-                return asyncio.run(
-                    self._execute_hybrid_task(
-                        instruction, role, context, extracted_parameters
-                    )
-                )
-        except RuntimeError:
-            # Fallback: run in new event loop
-            return asyncio.run(
-                self._execute_hybrid_task(
-                    instruction, role, context, extracted_parameters
-                )
-            )
+        # LLM-SAFE: Single event loop architecture (Documents 25 & 26)
+        # Always use synchronous execution to eliminate threading complexity
+        return self.execute_llm_task(instruction, role, llm_type, context)
 
     # Programmatic role methods removed - everything is hybrid now
 
