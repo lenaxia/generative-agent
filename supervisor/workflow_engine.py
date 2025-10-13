@@ -28,7 +28,8 @@ from common.task_graph import (
 )
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
-from llm_provider.request_router import FastPathRoutingConfig, RequestRouter
+
+# RequestRouter removed - using router role directly
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
 from supervisor.workflow_duration_logger import (
@@ -170,9 +171,14 @@ class WorkflowEngine:
             logger.warning(f"Agent pool warming failed (non-critical): {e}")
 
         # Initialize fast-path routing with UniversalAgent
-        self.fast_path_config = FastPathRoutingConfig.from_dict(fast_path_config or {})
-        self.request_router = RequestRouter(
-            llm_factory, self.role_registry, self.universal_agent
+        # FastPath routing now handled directly by router role
+        self.fast_path_enabled = (
+            fast_path_config.get("enabled", True) if fast_path_config else True
+        )
+        self.fast_path_confidence_threshold = (
+            fast_path_config.get("confidence_threshold", 0.7)
+            if fast_path_config
+            else 0.7
         )
 
         # Workflow tracking
@@ -250,14 +256,14 @@ class WorkflowEngine:
         Returns:
             str: Request ID for tracking
         """
-        # Fast-path routing (if enabled)
-        if self.fast_path_config.enabled:
-            routing_result = self.request_router.route_request(request.prompt)
+        # Fast-path routing (if enabled) - using router role directly
+        if self.fast_path_enabled:
+            routing_result = self._route_request_with_router_role(request.prompt)
 
             if (
                 routing_result["route"] != "PLANNING"
                 and routing_result.get("confidence", 0)
-                >= self.fast_path_config.confidence_threshold
+                >= self.fast_path_confidence_threshold
             ):
                 # Fast-path execution
                 return self._handle_fast_reply(request, routing_result)
@@ -1460,6 +1466,135 @@ Current task: {base_prompt}"""
         except Exception as e:
             logger.error(f"Error executing MCP tool '{tool_name}': {e}")
             return {"error": str(e)}
+
+    def _route_request_with_router_role(self, request_text: str) -> dict[str, Any]:
+        """Route request using router role with pre-injected available roles.
+
+        Args:
+            request_text: The user request to route
+
+        Returns:
+            Dict with routing decision: {route, confidence, parameters}
+        """
+        try:
+            # Get available fast-reply roles
+            fast_reply_roles = self.role_registry.get_fast_reply_roles()
+
+            # Build role information for injection into prompt
+            available_roles_info = {}
+            for role_def in fast_reply_roles:
+                role_config = role_def.config.get("role", {})
+                role_name = role_def.name
+
+                available_roles_info[role_name] = {
+                    "description": role_config.get("description", ""),
+                    "when_to_use": role_config.get("when_to_use", ""),
+                    "capabilities": role_config.get("capabilities", []),
+                    "fast_reply": role_config.get("fast_reply", False),
+                }
+
+            # Always add planning as fallback
+            if "planning" not in available_roles_info:
+                available_roles_info["planning"] = {
+                    "description": "Complex task planning and analysis for multi-step workflows",
+                    "when_to_use": "Complex requests requiring planning, analysis, or multi-step execution",
+                    "capabilities": ["planning", "analysis", "complex_workflows"],
+                    "fast_reply": False,
+                }
+
+            # Build routing instruction with pre-injected role information
+            roles_description = "\n".join(
+                [
+                    f"- {role_name}: {info['description']} (Use when: {info['when_to_use']})"
+                    for role_name, info in available_roles_info.items()
+                ]
+            )
+
+            routing_instruction = f"""Analyze this user request and route it to the most appropriate role.
+
+USER REQUEST: "{request_text}"
+
+AVAILABLE ROLES:
+{roles_description}
+
+Call route_to_role() with your routing decision. Be decisive and efficient."""
+
+            # Execute with router role - this will call route_to_role() tool
+            result = self.universal_agent.execute_task(
+                instruction=routing_instruction, role="router", llm_type=LLMType.WEAK
+            )
+
+            # Extract routing information from the tool execution result
+            return self._extract_routing_from_result(result)
+
+        except Exception as e:
+            logger.error(f"Router role routing failed: {e}")
+            return {
+                "route": "PLANNING",
+                "confidence": 0.0,
+                "parameters": {},
+                "error": str(e),
+            }
+
+    def _extract_routing_from_result(self, result: Any) -> dict[str, Any]:
+        """Extract routing information from router role execution result.
+
+        Args:
+            result: Result from router role execution
+
+        Returns:
+            Dict with route, confidence, and parameters
+        """
+        try:
+            # The router role's route_to_role tool should have executed
+            # and the result should contain routing information
+
+            if isinstance(result, dict):
+                # Look for routing information in the result
+                if "selected_role" in result and "confidence" in result:
+                    return {
+                        "route": result["selected_role"],
+                        "confidence": result["confidence"],
+                        "parameters": result.get("parameters", {}),
+                    }
+
+            # If result is a string, try to extract routing info
+            if isinstance(result, str):
+                # Look for mentions of successful routing
+                if "successfully routed" in result.lower():
+                    # Try to extract role name and confidence from the text
+                    import re
+
+                    # Look for role names
+                    fast_reply_roles = self.role_registry.get_fast_reply_roles()
+                    role_names = [role.name for role in fast_reply_roles] + ["planning"]
+
+                    result_lower = result.lower()
+                    for role_name in role_names:
+                        if role_name.lower() in result_lower:
+                            # Found a role name, extract confidence if possible
+                            confidence_match = re.search(
+                                r"confidence[:\s]*([0-9.]+)", result_lower
+                            )
+                            confidence = (
+                                float(confidence_match.group(1))
+                                if confidence_match
+                                else 0.8
+                            )
+
+                            return {
+                                "route": role_name,
+                                "confidence": confidence,
+                                "parameters": {},
+                            }
+
+            # Fallback to planning if we can't extract routing info
+            logger.warning(f"Could not extract routing info from result: {result}")
+            return {"route": "PLANNING", "confidence": 0.0, "parameters": {}}
+
+        except Exception as e:
+            logger.error(f"Error extracting routing from result: {e}")
+            return {"route": "PLANNING", "confidence": 0.0, "parameters": {}}
 
     # ==================== ROLE-BASED TASK DELEGATION ====================
 

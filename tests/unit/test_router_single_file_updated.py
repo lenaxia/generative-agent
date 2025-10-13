@@ -1,7 +1,7 @@
-"""Tests for the rewritten router_single_file.py (Option A: Tool-Only)
+"""Tests for the updated router_single_file.py (No RequestRouter)
 
-Tests the new tool-only router implementation that uses direct LLM tool calls
-instead of intent processing for routing decisions.
+Tests the updated router implementation that works without RequestRouter,
+where available roles are pre-injected into the system prompt.
 """
 
 import os
@@ -18,7 +18,6 @@ from roles.router_single_file import (
     ROUTING_CONFIDENCE_THRESHOLDS,
     _format_routing_summary,
     _get_role_priority,
-    get_available_roles,
     register_role,
     route_to_role,
     validate_confidence_score,
@@ -26,8 +25,8 @@ from roles.router_single_file import (
 )
 
 
-class TestRouterSingleFileRewrite:
-    """Test suite for the rewritten router role."""
+class TestUpdatedRouterSingleFile:
+    """Test suite for the updated router role (no RequestRouter)."""
 
     def test_role_config_structure(self):
         """Test that role configuration follows the correct structure."""
@@ -49,9 +48,8 @@ class TestRouterSingleFileRewrite:
         assert "tools" in registration
         assert "intents" in registration
 
-        # Should have exactly 2 tools
-        assert len(registration["tools"]) == 2
-        assert get_available_roles in registration["tools"]
+        # Should have exactly 1 tool (route_to_role only)
+        assert len(registration["tools"]) == 1
         assert route_to_role in registration["tools"]
 
         # Should have minimal event handlers (only external events)
@@ -59,53 +57,6 @@ class TestRouterSingleFileRewrite:
 
         # Should have minimal intents (no processing functions)
         assert len(registration["intents"]) == 1
-
-    @patch("llm_provider.role_registry.RoleRegistry")
-    def test_get_available_roles_success(self, mock_registry_class):
-        """Test successful retrieval of available roles."""
-        # Mock role registry and roles
-        mock_registry = Mock()
-        mock_registry_class.get_global_registry.return_value = mock_registry
-
-        # Mock role definitions
-        mock_role_def = Mock()
-        mock_role_def.name = "timer"
-        mock_role_def.config = {
-            "role": {
-                "description": "Timer and alarm management",
-                "when_to_use": "Set timers, alarms, reminders",
-                "capabilities": ["timer", "alarm"],
-                "llm_type": "WEAK",
-                "fast_reply": True,
-            }
-        }
-
-        mock_registry.get_fast_reply_roles.return_value = [mock_role_def]
-
-        # Test the function
-        result = get_available_roles()
-
-        assert result["success"] is True
-        assert "available_roles" in result
-        assert "timer" in result["available_roles"]
-        assert "planning" in result["available_roles"]  # Always added as fallback
-        assert result["total_roles"] >= 2
-
-    @patch("llm_provider.role_registry.RoleRegistry")
-    def test_get_available_roles_error_handling(self, mock_registry_class):
-        """Test error handling in get_available_roles."""
-        # Mock registry to raise an exception
-        mock_registry_class.get_global_registry.side_effect = Exception(
-            "Registry error"
-        )
-
-        result = get_available_roles()
-
-        assert result["success"] is False
-        assert "error" in result
-        assert (
-            "planning" in result["available_roles"]
-        )  # Fallback should still be available
 
     def test_route_to_role_success(self):
         """Test successful routing decision execution."""
@@ -236,28 +187,9 @@ class TestRouterSingleFileRewrite:
 class TestRouterIntegration:
     """Integration tests for router role functionality."""
 
-    def test_full_routing_workflow_simulation(self):
-        """Test a complete routing workflow simulation."""
-        # Step 1: Get available roles (with mocked registry)
-        with patch("llm_provider.role_registry.RoleRegistry") as mock_registry_class:
-            mock_registry = Mock()
-            mock_registry_class.get_global_registry.return_value = mock_registry
-
-            mock_role_def = Mock()
-            mock_role_def.name = "timer"
-            mock_role_def.config = {
-                "role": {
-                    "description": "Timer management",
-                    "when_to_use": "Set timers and alarms",
-                    "fast_reply": True,
-                }
-            }
-            mock_registry.get_fast_reply_roles.return_value = [mock_role_def]
-
-            roles_result = get_available_roles()
-            assert roles_result["success"] is True
-
-        # Step 2: Route to a role
+    def test_routing_workflow_simulation(self):
+        """Test a routing workflow simulation."""
+        # Test routing with high confidence
         routing_result = route_to_role(
             confidence=0.9,
             selected_role="timer",
@@ -271,17 +203,7 @@ class TestRouterIntegration:
 
     def test_error_recovery_workflow(self):
         """Test error recovery in routing workflow."""
-        # Test with registry error
-        with patch("llm_provider.role_registry.RoleRegistry") as mock_registry_class:
-            mock_registry_class.get_global_registry.side_effect = Exception(
-                "Registry down"
-            )
-
-            roles_result = get_available_roles()
-            assert roles_result["success"] is False
-            assert "planning" in roles_result["available_roles"]  # Fallback available
-
-        # Test routing with fallback
+        # Test routing with low confidence fallback
         routing_result = route_to_role(
             confidence=0.4,  # Low confidence
             selected_role="timer",

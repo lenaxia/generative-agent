@@ -32,9 +32,9 @@ ROLE_CONFIG = {
         "system": """You are an intelligent request routing agent. Your job is to analyze user requests and route them to the most appropriate role.
 
 WORKFLOW:
-1. First, call get_available_roles() to see what roles are available
-2. Analyze the user request against the available roles and their descriptions
-3. Call route_to_role() with your routing decision
+1. Analyze the user request against the available roles (provided in the prompt)
+2. Call route_to_role() with your routing decision
+3. Done - no further processing needed
 
 ROUTING RULES:
 - Choose the role that best matches the request intent and capabilities
@@ -103,71 +103,6 @@ def handle_external_routing_request(
 
 
 # 4. TOOLS (LLM calls these directly - no intent processing needed)
-@tool
-def get_available_roles() -> dict[str, Any]:
-    """Get all available fast-reply roles and their descriptions for routing decisions.
-
-    Returns:
-        Dict containing available roles with their descriptions and capabilities
-    """
-    try:
-        # Import here to avoid circular imports
-        from llm_provider.role_registry import RoleRegistry
-
-        # Get the global role registry
-        role_registry = RoleRegistry.get_global_registry()
-
-        # Get fast-reply roles specifically
-        fast_reply_roles = role_registry.get_fast_reply_roles()
-
-        # Build role information for LLM analysis
-        available_roles = {}
-
-        for role_def in fast_reply_roles:
-            role_config = role_def.config.get("role", {})
-            role_name = role_def.name
-
-            available_roles[role_name] = {
-                "description": role_config.get("description", ""),
-                "when_to_use": role_config.get("when_to_use", ""),
-                "capabilities": role_config.get("capabilities", []),
-                "llm_type": role_config.get("llm_type", "DEFAULT"),
-                "fast_reply": role_config.get("fast_reply", False),
-            }
-
-        # Add planning role as fallback (always available)
-        if "planning" not in available_roles:
-            available_roles["planning"] = {
-                "description": "Complex task planning and analysis for multi-step workflows",
-                "when_to_use": "Complex requests requiring planning, analysis, or multi-step execution",
-                "capabilities": ["planning", "analysis", "complex_workflows"],
-                "llm_type": "STRONG",
-                "fast_reply": False,
-            }
-
-        return {
-            "success": True,
-            "available_roles": available_roles,
-            "total_roles": len(available_roles),
-            "message": f"Found {len(available_roles)} available roles for routing",
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting available roles: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "available_roles": {
-                "planning": {
-                    "description": "Fallback role for complex analysis",
-                    "when_to_use": "When other roles are unavailable or request is complex",
-                    "capabilities": ["planning", "analysis"],
-                    "llm_type": "STRONG",
-                    "fast_reply": False,
-                }
-            },
-            "message": "Error getting roles, using fallback planning role",
-        }
 
 
 @tool
@@ -312,8 +247,7 @@ def register_role():
             "EXTERNAL_ROUTING_REQUEST": handle_external_routing_request,
         },
         "tools": [
-            # LLM calls these tools directly - no intent processing needed
-            get_available_roles,
+            # LLM calls this tool directly - no intent processing needed
             route_to_role,
         ],
         "intents": {
