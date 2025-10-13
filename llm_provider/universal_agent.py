@@ -430,9 +430,16 @@ class UniversalAgent:
         """
         tools = []
 
-        # 1. Add built-in StrandsAgent tools
-        builtin_tools = [calculator, file_read, shell]
-        tools.extend(builtin_tools)
+        # 1. Add built-in StrandsAgent tools (except for router role)
+        role_name = (
+            role_def.name
+            if hasattr(role_def, "name")
+            else role_def.get("name", "unknown")
+        )
+        if role_name != "router":
+            # Router role should only have its own tools, no built-in tools
+            builtin_tools = [calculator, file_read, shell]
+            tools.extend(builtin_tools)
 
         # 2. Handle execution-specific tool configuration
         if role_def:
@@ -737,11 +744,17 @@ class UniversalAgent:
                 enhanced_instruction = self._inject_pre_data(
                     role_def, instruction, pre_data
                 )
+                # Use WORKFLOW mode for router role to ensure custom tools are available
+                execution_mode = (
+                    ExecutionMode.WORKFLOW
+                    if role == "router"
+                    else ExecutionMode.FAST_REPLY
+                )
                 llm_result = self._execute_llm_with_context(
                     enhanced_instruction,
                     role,
                     context,
-                    execution_mode=ExecutionMode.FAST_REPLY,
+                    execution_mode=execution_mode,
                 )
 
             # 3. Post-processing phase
