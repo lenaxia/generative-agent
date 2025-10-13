@@ -211,7 +211,7 @@ class MessageBus:
         """
         # Support both MessageType enum and string-based dynamic events
         self._subscribers: dict[str, dict[Any, list[Callable]]] = {}
-        self._lock = threading.Lock()
+        # REMOVED: threading.Lock() - no longer needed with single event loop
         self._running = False
         self.event_registry = MessageTypeRegistry()
 
@@ -291,7 +291,7 @@ class MessageBus:
         if not self.is_running():
             return
 
-        with self._lock:
+            # LLM-SAFE: No longer need threading lock with single event loop
             if event_type not in self._subscribers:
                 return
 
@@ -407,7 +407,7 @@ class MessageBus:
         else:
             event_type = message_type
 
-        with self._lock:
+            # LLM-SAFE: No longer need threading lock with single event loop
             if event_type not in self._subscribers:
                 self._subscribers[event_type] = {}
 
@@ -438,7 +438,7 @@ class MessageBus:
         else:
             event_type = message_type
 
-        with self._lock:
+            # LLM-SAFE: No longer need threading lock with single event loop
             if event_type not in self._subscribers:
                 return
 

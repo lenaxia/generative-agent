@@ -127,10 +127,12 @@ class ChannelHandler:
             self.communication_manager.channel_queues[
                 self.channel_type.value
             ] = self.message_queue
-            # Track the background thread for cleanup
-            self.communication_manager._background_threads[
+            # LLM-SAFE: Track the background task for cleanup
+            if not hasattr(self.communication_manager, "_background_tasks"):
+                self.communication_manager._background_tasks = {}
+            self.communication_manager._background_tasks[
                 self.channel_type.value
-            ] = self.background_thread
+            ] = self.background_task
 
     def _run_background_session(self):
         """Run background session in dedicated thread."""
@@ -1075,8 +1077,8 @@ class CommunicationManager:
                 )
                 logger.error(f"Error stopping {channel_name} channel: {e}")
 
-        # Forcefully terminate any remaining background threads
-        await self._terminate_background_threads()
+        # Cancel any remaining background tasks
+        await self._terminate_background_tasks()
 
         logger.info("Communication manager shutdown complete")
 

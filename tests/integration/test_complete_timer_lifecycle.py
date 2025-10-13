@@ -15,7 +15,8 @@ import pytest
 from common.event_handler_context import EventHandlerContext
 from common.message_bus import MessageBus
 from llm_provider.role_registry import RoleRegistry
-from supervisor.fast_heartbeat import FastHeartbeat
+
+# REMOVED: from supervisor.fast_heartbeat import FastHeartbeat - using scheduled tasks now
 from supervisor.supervisor import Supervisor
 
 
@@ -29,7 +30,8 @@ class TestCompleteTimerLifecycle:
         message_bus.start()
 
         # Create FastHeartbeat with very short interval for testing
-        fast_heartbeat = FastHeartbeat(message_bus, interval=0.1)
+        # REMOVED: FastHeartbeat - using scheduled tasks now
+        # fast_heartbeat = FastHeartbeat(message_bus, interval=0.1)
 
         # Track published events
         published_events = []

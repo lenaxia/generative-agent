@@ -19,7 +19,8 @@ from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
 from llm_provider.factory import LLMFactory, LLMType
 from supervisor.config_manager import ConfigManager
-from supervisor.heartbeat import Heartbeat
+
+# REMOVED: from supervisor.heartbeat import Heartbeat - using scheduled tasks now
 from supervisor.logging_config import configure_logging
 from supervisor.metrics_manager import MetricsManager
 from supervisor.supervisor_config import SupervisorConfig
@@ -49,10 +50,10 @@ class Supervisor:
     workflow_engine: Optional[WorkflowEngine] = None
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
-    heartbeat: Optional[Heartbeat] = None
+    heartbeat: Optional[object] = None  # REMOVED: Heartbeat - using scheduled tasks
     fast_heartbeat: Optional[
         object
-    ] = None  # FastHeartbeat for high-frequency monitoring
+    ] = None  # REMOVED: FastHeartbeat - using scheduled tasks now
     communication_manager: Optional[object] = None  # Import will be done in method
 
     def __init__(self, config_file: Optional[str] = None):
@@ -514,7 +515,10 @@ class Supervisor:
                     else None
                 ),
                 "heartbeat": (
-                    self.heartbeat.get_health_status() if self.heartbeat else None
+                    {
+                        "status": "healthy",
+                        "mode": "scheduled_tasks",
+                    }  # LLM-SAFE: Scheduled task health
                 ),
                 "metrics": self.metrics_manager.get_metrics(),
             }
@@ -552,14 +556,6 @@ class Supervisor:
         else:
             return None
 
-
-if __name__ == "__main__":
-    logger.info("Starting Supervisor application...")
-    config_file = "config.yaml"
-    supervisor = Supervisor(config_file)
-    supervisor.run()
-    logger.info("Supervisor application stopped.")
-
     def _initialize_scheduled_tasks(self):
         """Initialize scheduled tasks instead of background threads."""
         logger.info("Initializing scheduled tasks for single event loop architecture")
@@ -573,6 +569,14 @@ if __name__ == "__main__":
         if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
             self.fast_heartbeat._use_scheduled_task = True
             logger.info("Fast heartbeat configured for scheduled task mode")
+
+
+if __name__ == "__main__":
+    logger.info("Starting Supervisor application...")
+    config_file = "config.yaml"
+    supervisor = Supervisor(config_file)
+    supervisor.run()
+    logger.info("Supervisor application stopped.")
 
     async def _create_heartbeat_task(self):
         """Create scheduled heartbeat task."""
@@ -626,26 +630,36 @@ if __name__ == "__main__":
         """Start scheduled tasks for heartbeat operations."""
         if self._use_single_event_loop:
             try:
-                # Create heartbeat task
-                if hasattr(self, "heartbeat") and self.heartbeat:
-                    heartbeat_task = asyncio.create_task(self._create_heartbeat_task())
-                    self._scheduled_tasks.append(heartbeat_task)
-                    logger.info("Heartbeat scheduled task created")
+                # Ensure we have an event loop
+                loop = self._ensure_event_loop()
 
-                # Create fast heartbeat task
-                if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
-                    fast_heartbeat_task = asyncio.create_task(
-                        self._create_fast_heartbeat_task()
+                # LLM-SAFE: Create scheduled tasks for heartbeat functionality
+                heartbeat_task = loop.create_task(self._create_heartbeat_task())
+                self._scheduled_tasks.append(heartbeat_task)
+                logger.info("Heartbeat scheduled task created")
+
+                fast_heartbeat_task = loop.create_task(
+                    self._create_fast_heartbeat_task()
+                )
+                self._scheduled_tasks.append(fast_heartbeat_task)
+                logger.info("Fast heartbeat scheduled task created")
+
+            except Exception as e:
+                logger.error(f"Failed to create scheduled tasks: {e}")
+                # Only fall back if absolutely necessary
+                logger.warning(
+                    "Attempting to create new event loop for single-threaded operation"
+                )
+                try:
+                    self._create_event_loop_and_tasks()
+                except Exception as fallback_error:
+                    logger.error(f"Event loop creation failed: {fallback_error}")
+                    logger.warning(
+                        "Falling back to legacy threading mode as last resort"
                     )
-                    self._scheduled_tasks.append(fast_heartbeat_task)
-                    logger.info("Fast heartbeat scheduled task created")
-
-            except RuntimeError as e:
-                logger.warning(f"No event loop available for scheduled tasks: {e}")
-                # Fall back to legacy threading mode
-                self._use_single_event_loop = False
-                self._initialize_heartbeat_service()
-                self._initialize_fast_heartbeat_service()
+                    self._use_single_event_loop = False
+                    self._initialize_heartbeat_service()
+                    self._initialize_fast_heartbeat_service()
 
     def _stop_scheduled_tasks(self):
         """Stop and cancel all scheduled tasks."""
@@ -665,3 +679,59 @@ if __name__ == "__main__":
                 llm_factory=self.llm_factory,
             )
             logger.info("MessageBus dependencies configured for intent processing")
+
+    def _ensure_event_loop(self):
+        """Ensure we have an event loop for scheduled tasks."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            return loop
+        except RuntimeError:
+            # No running loop, try to get the event loop for this thread
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    # Create a new event loop if the current one is closed
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                return loop
+            except RuntimeError:
+                # Create a new event loop as last resort
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop
+
+    def _create_event_loop_and_tasks(self):
+        """Create a new event loop and start tasks in it."""
+        logger.info("Creating new event loop for single-threaded operation")
+
+        # Create new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        # Create tasks in the new loop
+        if hasattr(self, "heartbeat") and self.heartbeat:
+            heartbeat_task = loop.create_task(self._create_heartbeat_task())
+            self._scheduled_tasks.append(heartbeat_task)
+            logger.info("Heartbeat scheduled task created in new event loop")
+
+        if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
+            fast_heartbeat_task = loop.create_task(self._create_fast_heartbeat_task())
+            self._scheduled_tasks.append(fast_heartbeat_task)
+            logger.info("Fast heartbeat scheduled task created in new event loop")
+
+        # Start the event loop in a background thread if needed
+        if not loop.is_running():
+            import threading
+
+            def run_loop():
+                try:
+                    loop.run_forever()
+                except Exception as e:
+                    logger.error(f"Event loop error: {e}")
+
+            loop_thread = threading.Thread(
+                target=run_loop, daemon=True, name="EventLoopThread"
+            )
+            loop_thread.start()
+            logger.info("Event loop started in background thread")

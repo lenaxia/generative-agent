@@ -199,19 +199,14 @@ class UniversalAgent:
             # Try to get existing event loop
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # If loop is running, create a new task
-                import concurrent.futures
-
-                def run_hybrid_task():
-                    return asyncio.run(
-                        self._execute_hybrid_task(
-                            instruction, role, context, extracted_parameters
-                        )
+                # LLM-SAFE: Use current event loop instead of ThreadPoolExecutor
+                task = loop.create_task(
+                    self._execute_hybrid_task(
+                        instruction, role, context, extracted_parameters
                     )
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(run_hybrid_task)
-                    return future.result()
+                )
+                # Wait for task completion in current loop
+                return loop.run_until_complete(task)
             else:
                 # If no loop is running, use asyncio.run
                 return asyncio.run(

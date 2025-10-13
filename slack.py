@@ -573,7 +573,8 @@ class IntelligentSlackBot:
                     f"<@{user_id}> Sorry, I encountered an error processing your request."
                 )
 
-        threading.Thread(target=process_ai, daemon=True).start()
+        # LLM-SAFE: Use asyncio instead of threading
+        asyncio.create_task(asyncio.to_thread(process_ai))
 
     def _build_status_message_for_command(self, user_id, status):
         """Build status message for slash command."""
@@ -761,7 +762,8 @@ class IntelligentSlackBot:
                     f"<@{user_id}> Sorry, I encountered an error.",
                 )
 
-        threading.Thread(target=process_mention, daemon=True).start()
+        # LLM-SAFE: Use asyncio instead of threading
+        asyncio.create_task(asyncio.to_thread(process_mention))
 
     def _process_dm_async(
         self, text, user_id, channel, client, initial_msg, logger, say
@@ -789,7 +791,8 @@ class IntelligentSlackBot:
                     "Sorry, I encountered an error processing your message.",
                 )
 
-        threading.Thread(target=process_dm, daemon=True).start()
+        # LLM-SAFE: Use asyncio instead of threading
+        asyncio.create_task(asyncio.to_thread(process_dm))
 
     def _update_message_or_fallback(
         self, client, channel, initial_msg, update_text, say, fallback_text
