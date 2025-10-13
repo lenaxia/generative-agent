@@ -5,6 +5,12 @@
 framework:
   type: "strands"
 
+# Architecture Configuration (Phase 4: Production Deployment)
+architecture:
+  threading_model: "single_event_loop"
+  role_system: "single_file"
+  llm_development: true
+
 # LLM Provider Configuration
 llm_providers:
   # Bedrock Configuration
@@ -47,8 +53,14 @@ universal_agent:
 
 # Dynamic Role System Configuration
 role_system:
-  # Directory containing role definitions
+  # Single file role discovery
   roles_directory: "roles"
+  role_pattern: "*.py" # Look for Python files, not directories
+
+  # LLM development features
+  auto_discovery: true
+  validate_role_structure: true
+  enforce_patterns: true
 
   # Role registry settings
   registry:
@@ -82,6 +94,25 @@ task_graph:
   checkpoint_compression: true # Compress checkpoint data
   agent_timeout: 300 # 5 minutes
   enable_caching: true
+# Production Configuration (Phase 4: Threading Architecture)
+production:
+  threading:
+    heartbeat_interval: 30
+    timer_check_interval: 5
+    max_scheduled_tasks: 10
+    task_timeout: 300
+
+  monitoring:
+    track_intent_processing: true
+    log_handler_performance: true
+    validate_intent_schemas: true
+
+# Intent Processing Configuration
+intent_processing:
+  enabled: true
+  validate_intents: true
+  timeout_seconds: 30
+
   cache_ttl: 3600 # 1 hour
 
 # Task Management Configuration

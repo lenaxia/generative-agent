@@ -48,6 +48,54 @@ class MCPConfig(BaseModel):
     config_file: str = "config/mcp_config.yaml"
 
 
+class ArchitectureConfig(BaseModel):
+    """Configuration for system architecture settings.
+
+    Controls threading model, role system, and LLM development features
+    from the threading architecture improvements (Documents 25, 26, 27).
+    """
+
+    threading_model: str = "single_event_loop"
+    role_system: str = "single_file"
+    llm_development: bool = True
+
+
+class ProductionThreadingConfig(BaseModel):
+    """Configuration for production threading settings."""
+
+    heartbeat_interval: int = 30
+    timer_check_interval: int = 5
+    max_scheduled_tasks: int = 10
+    task_timeout: int = 300
+
+
+class ProductionMonitoringConfig(BaseModel):
+    """Configuration for production monitoring settings."""
+
+    track_intent_processing: bool = True
+    log_handler_performance: bool = True
+    validate_intent_schemas: bool = True
+
+
+class ProductionConfig(BaseModel):
+    """Configuration for production deployment settings."""
+
+    threading: ProductionThreadingConfig = Field(
+        default_factory=ProductionThreadingConfig
+    )
+    monitoring: ProductionMonitoringConfig = Field(
+        default_factory=ProductionMonitoringConfig
+    )
+
+
+class IntentProcessingConfig(BaseModel):
+    """Configuration for intent processing system."""
+
+    enabled: bool = True
+    validate_intents: bool = True
+    timeout_seconds: int = 30
+
+
 class FeatureFlags(BaseModel):
     """Feature flag configuration for supervisor capabilities.
 
@@ -66,7 +114,8 @@ class SupervisorConfig(BaseModel):
     """Main configuration class for the supervisor system.
 
     Aggregates all supervisor configuration settings including logging,
-    LLM providers, agents, MCP integration, and feature flags.
+    LLM providers, agents, MCP integration, feature flags, and the new
+    threading architecture settings from Documents 25, 26, 27.
     """
 
     logging: LoggingConfig = Field(..., description="Logging configuration")
@@ -81,6 +130,17 @@ class SupervisorConfig(BaseModel):
     retry_delay: float = 0.1
 
     metrics_manager: Optional[MetricsManager] = Field(None, exclude=True)
+
+    # New threading architecture configuration (Phase 4)
+    architecture: Optional[ArchitectureConfig] = Field(
+        default_factory=lambda: ArchitectureConfig()
+    )
+    production: Optional[ProductionConfig] = Field(
+        default_factory=lambda: ProductionConfig()
+    )
+    intent_processing: Optional[IntentProcessingConfig] = Field(
+        default_factory=lambda: IntentProcessingConfig()
+    )
 
     def __init__(self, **data):
         """Initialize SupervisorConfig with metrics manager.

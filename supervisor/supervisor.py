@@ -5,12 +5,13 @@ manages agent execution, coordinates between different components, and
 ensures proper system operation and monitoring.
 """
 
+import asyncio
 import logging
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from common.message_bus import MessageBus
 from config.anthropic_config import AnthropicConfig
@@ -63,12 +64,17 @@ class Supervisor:
         Args:
             config_file: The path to the configuration file.
         """
-        logger.info("Initializing Supervisor...")
+        logger.info("Initializing LLM-safe Supervisor...")
         self.config_file = config_file
+
+        # NEW: Single event loop management
+        self._scheduled_tasks: list[asyncio.Task] = []
+        self._use_single_event_loop = True
+
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
         self.initialize_components()
-        logger.info("Supervisor initialization complete.")
+        logger.info("LLM-safe Supervisor initialization complete.")
 
     def initialize_config_manager(self, config_file: Optional[str] = None):
         """Initializes the config manager and loads the configuration.
@@ -393,14 +399,18 @@ class Supervisor:
                 except Exception as e:
                     logger.error(f"Error shutting down communication manager: {e}")
 
-            # Stop heartbeat services
-            if self.fast_heartbeat:
-                self.fast_heartbeat.stop()
-                logger.info("FastHeartbeat service stopped.")
-
-            if self.heartbeat:
-                self.heartbeat.stop()
-                logger.info("Heartbeat service stopped.")
+            # Stop services based on mode
+            if self._use_single_event_loop:
+                self._stop_scheduled_tasks()
+                logger.info("Scheduled tasks stopped (single event loop mode)")
+            else:
+                # Legacy threading mode
+                if self.fast_heartbeat:
+                    self.fast_heartbeat.stop()
+                    logger.info("FastHeartbeat service stopped (legacy threading mode)")
+                if self.heartbeat:
+                    self.heartbeat.stop()
+                    logger.info("Heartbeat service stopped (legacy threading mode)")
 
             self.workflow_engine.stop_workflow_engine()
             logger.info("WorkflowEngine stopped.")
@@ -549,3 +559,109 @@ if __name__ == "__main__":
     supervisor = Supervisor(config_file)
     supervisor.run()
     logger.info("Supervisor application stopped.")
+
+    def _initialize_scheduled_tasks(self):
+        """Initialize scheduled tasks instead of background threads."""
+        logger.info("Initializing scheduled tasks for single event loop architecture")
+
+        # Configure heartbeat for scheduled task mode
+        if hasattr(self, "heartbeat") and self.heartbeat:
+            self.heartbeat._use_scheduled_task = True
+            logger.info("Heartbeat configured for scheduled task mode")
+
+        # Configure fast heartbeat for scheduled task mode
+        if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
+            self.fast_heartbeat._use_scheduled_task = True
+            logger.info("Fast heartbeat configured for scheduled task mode")
+
+    async def _create_heartbeat_task(self):
+        """Create scheduled heartbeat task."""
+        while True:
+            try:
+                if hasattr(self, "heartbeat") and self.heartbeat:
+                    # Perform heartbeat operations
+                    self.heartbeat._perform_heartbeat()
+
+                    # Check if health check is needed
+                    current_time = time.time()
+                    if (
+                        current_time - self.heartbeat.last_health_check
+                        >= self.heartbeat.health_check_interval
+                    ):
+                        self.heartbeat._perform_health_check()
+                        self.heartbeat.last_health_check = current_time
+
+                # Wait for next heartbeat
+                await asyncio.sleep(
+                    self.heartbeat.interval
+                    if hasattr(self, "heartbeat") and self.heartbeat
+                    else 30
+                )
+
+            except Exception as e:
+                logger.error(f"Heartbeat task error: {e}")
+                await asyncio.sleep(5)  # Brief pause before retry
+
+    async def _create_fast_heartbeat_task(self):
+        """Create scheduled fast heartbeat task."""
+        while True:
+            try:
+                if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
+                    # Publish fast heartbeat tick
+                    self.fast_heartbeat._publish_fast_heartbeat_tick()
+                    self.fast_heartbeat.tick_count += 1
+
+                # Wait for next tick
+                await asyncio.sleep(
+                    self.fast_heartbeat.interval
+                    if hasattr(self, "fast_heartbeat") and self.fast_heartbeat
+                    else 5
+                )
+
+            except Exception as e:
+                logger.error(f"Fast heartbeat task error: {e}")
+                await asyncio.sleep(1)  # Brief pause before retry
+
+    def _start_scheduled_tasks(self):
+        """Start scheduled tasks for heartbeat operations."""
+        if self._use_single_event_loop:
+            try:
+                # Create heartbeat task
+                if hasattr(self, "heartbeat") and self.heartbeat:
+                    heartbeat_task = asyncio.create_task(self._create_heartbeat_task())
+                    self._scheduled_tasks.append(heartbeat_task)
+                    logger.info("Heartbeat scheduled task created")
+
+                # Create fast heartbeat task
+                if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
+                    fast_heartbeat_task = asyncio.create_task(
+                        self._create_fast_heartbeat_task()
+                    )
+                    self._scheduled_tasks.append(fast_heartbeat_task)
+                    logger.info("Fast heartbeat scheduled task created")
+
+            except RuntimeError as e:
+                logger.warning(f"No event loop available for scheduled tasks: {e}")
+                # Fall back to legacy threading mode
+                self._use_single_event_loop = False
+                self._initialize_heartbeat_service()
+                self._initialize_fast_heartbeat_service()
+
+    def _stop_scheduled_tasks(self):
+        """Stop and cancel all scheduled tasks."""
+        if self._scheduled_tasks:
+            logger.info(f"Cancelling {len(self._scheduled_tasks)} scheduled tasks")
+            for task in self._scheduled_tasks:
+                if not task.done():
+                    task.cancel()
+            self._scheduled_tasks.clear()
+
+    def _setup_message_bus_dependencies(self):
+        """Set up MessageBus dependencies for intent processing."""
+        if self.message_bus and hasattr(self.message_bus, "set_dependencies"):
+            self.message_bus.set_dependencies(
+                communication_manager=self.communication_manager,
+                workflow_engine=self.workflow_engine,
+                llm_factory=self.llm_factory,
+            )
+            logger.info("MessageBus dependencies configured for intent processing")
