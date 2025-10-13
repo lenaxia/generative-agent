@@ -548,64 +548,66 @@ class SlackChannelHandler(ChannelHandler):
             logger.warning(f"Failed to get bot user ID: {e}")
             self.bot_user_id = None
 
+        # Unified message handler - routes based on message type
+        def process_slack_message(event, message_type):
+            """Unified message processing with proper routing."""
+            # Ignore bot messages
+            if event.get("bot_id"):
+                logger.debug(f"🤖 Ignoring bot message: {event.get('bot_id')}")
+                return
+
+            text = event.get("text", "")
+            user_id = event["user"]
+            channel_id = event["channel"]
+            timestamp = event.get("ts")
+
+            # Determine message type for routing
+            channel_type = event.get("channel_type", "")
+            has_bot_mention = (
+                text and self.bot_user_id and f"<@{self.bot_user_id}>" in text
+            )
+
+            # Route message based on type and context
+            if message_type == "app_mention":
+                # App mentions - always process regardless of channel
+                logger.info(f"📢 Processing app mention from user {user_id}: {text}")
+                queue_type = "app_mention"
+            elif message_type == "message" and channel_type == "im":
+                # Direct messages - process without bot mention requirement
+                logger.info(f"📨 Processing direct message from user {user_id}: {text}")
+                queue_type = "incoming_message"
+            elif message_type == "message" and has_bot_mention:
+                # Channel message with bot mention - ignore (will be handled by app_mention)
+                logger.debug(
+                    f"🔕 Ignoring channel message with bot mention (handled by app_mention): {text}"
+                )
+                return
+            else:
+                # Other channel messages without bot mention - ignore
+                logger.debug(f"🔕 Ignoring channel message without bot mention: {text}")
+                return
+
+            # Queue the message for processing
+            message_data = {
+                "type": queue_type,
+                "user_id": user_id,
+                "channel_id": channel_id,
+                "text": text,
+                "timestamp": timestamp,
+            }
+
+            logger.debug(f"Queuing {queue_type} message: {message_data}")
+            self.message_queue.put(message_data)
+
         # Handle incoming messages
         @self.slack_app.event("message")
         def handle_message(event, say):
-            # Ignore bot messages
-            if event.get("bot_id"):
-                return
-
-            # Ignore messages that mention the bot (these will be handled by app_mention)
-            text = event.get("text", "")
-            if text and self.bot_user_id and f"<@{self.bot_user_id}>" in text:
-                logger.debug(
-                    f"🔕 Ignoring message with bot mention (will be handled by app_mention): {text}"
-                )
-                return
-
-            # Ignore messages in channels (only process DMs to avoid duplicates)
-            channel_type = event.get("channel_type", "")
-            if channel_type != "im":  # Only process instant messages (DMs)
-                logger.debug(f"🔕 Ignoring channel message (not a DM): {text}")
-                return
-
-            # Only process direct messages
-            logger.info(
-                f"📨 Processing direct message from user {event['user']}: {text}"
-            )
-            self.message_queue.put(
-                {
-                    "type": "incoming_message",
-                    "user_id": event["user"],
-                    "channel_id": event["channel"],
-                    "text": text,
-                    "timestamp": event.get("ts"),
-                }
-            )
+            process_slack_message(event, "message")
 
         # Handle app mentions
         @self.slack_app.event("app_mention")
         def handle_app_mention(event, say):
-            logger.debug(f"Received app mention: {event}")
-            if not event.get("bot_id"):  # Ignore bot messages
-                logger.debug(
-                    f"Processing app mention from user {event['user']}: {event.get('text', '')}"
-                )
-                # Send to main thread via queue
-                message_data = {
-                    "type": "app_mention",
-                    "user_id": event["user"],
-                    "channel_id": event["channel"],
-                    "text": event.get("text", ""),
-                    "timestamp": event.get("ts"),
-                }
-                logger.debug(f"Adding app mention to message queue: {message_data}")
-                self.message_queue.put(message_data)
-                logger.debug(
-                    f"App mention successfully queued. Queue size: {self.message_queue.qsize()}"
-                )
-            else:
-                logger.info(f"🤖 Ignoring app mention from bot: {event.get('bot_id')}")
+            process_slack_message(event, "app_mention")
 
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions
