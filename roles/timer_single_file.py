@@ -31,6 +31,22 @@ from roles.shared_tools.redis_tools import (
 
 logger = logging.getLogger(__name__)
 
+# Global context storage for timer tools to access current request context
+_current_timer_context = None
+
+
+def _set_timer_context(context):
+    """Set the current timer context for tools to access."""
+    global _current_timer_context
+    _current_timer_context = context
+
+
+def _get_timer_context():
+    """Get the current timer context."""
+    global _current_timer_context
+    return _current_timer_context
+
+
 # 1. ROLE METADATA (replaces definition.yaml)
 ROLE_CONFIG = {
     "name": "timer",
@@ -180,7 +196,19 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
         current_time = time.time()
         expires_at = current_time + duration_seconds
 
-        # Create timer data
+        # Get current context for proper notification routing
+        current_context = _get_timer_context()
+        user_id = "system"
+        channel = "console"
+
+        if current_context:
+            user_id = getattr(current_context, "user_id", "system")
+            channel = getattr(current_context, "channel_id", "console")
+            # Handle slack: prefix in channel_id
+            if channel and channel.startswith("slack:"):
+                channel = channel  # Keep full channel identifier for proper routing
+
+        # Create timer data with proper context
         timer_data = {
             "id": timer_id,
             "duration": duration,
@@ -189,8 +217,8 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
             "created_at": current_time,
             "expires_at": expires_at,
             "status": "active",
-            "user_id": "system",  # Could be enhanced to get actual user
-            "channel": "console",  # Could be enhanced to get actual channel
+            "user_id": user_id,
+            "channel": channel,
         }
 
         # Store timer in Redis
@@ -375,6 +403,16 @@ async def process_timer_intent(intent: TimerIntent):
     # For now, just log the intent processing
 
 
+# 6. CONTEXT INJECTION FOR TOOLS
+def _timer_context_injector(instruction: str, context, parameters: dict) -> dict:
+    """Pre-processor: Inject current context for timer tools to access."""
+    # Set global context so timer tools can access user_id and channel_id
+    _set_timer_context(context)
+
+    # Return empty dict as this is just for context injection
+    return {}
+
+
 # 7. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Auto-discovered by RoleRegistry - LLM can modify this."""
@@ -386,6 +424,7 @@ def register_role():
         },
         "tools": [set_timer, cancel_timer, list_timers],
         "intents": {TimerIntent: process_timer_intent},
+        "pre_processors": [_timer_context_injector],
     }
 
 
