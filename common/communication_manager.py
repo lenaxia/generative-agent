@@ -66,7 +66,7 @@ class ChannelHandler:
         self.config = config or {}
         self.enabled = False
         self.session_active = False
-        self.background_thread = None
+        self.background_task = None
         self.message_queue = None
         self.communication_manager = None  # Set by CommunicationManager
         self.shutdown_requested = False  # Flag for graceful shutdown

@@ -74,7 +74,19 @@ def handle_weather_request(
         # Parse event data
         location, timeframe = _parse_weather_event_data(event_data)
 
-        # Create intents
+        # Check if parsing failed (indicates error condition)
+        if location == "parse_error" or (event_data is None and location == "unknown"):
+            logger.error(f"Weather handler error: Invalid event data: {event_data}")
+            return [
+                NotificationIntent(
+                    message=f"Weather processing error: Invalid event data",
+                    channel=context.get_safe_channel(),
+                    priority="high",
+                    notification_type="error",
+                )
+            ]
+
+        # Create intents for successful parsing
         return [
             WeatherIntent(
                 action="fetch",

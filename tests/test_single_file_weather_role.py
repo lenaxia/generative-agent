@@ -197,11 +197,13 @@ class TestSingleFileWeatherRole:
 
         # Configure mock to return different responses for different URLs
         def mock_get_side_effect(url, **kwargs):
-            mock_response = type("MockResponse", (), {})()
+            from unittest.mock import MagicMock
+
+            mock_response = MagicMock()
             if "points" in url:
-                mock_response.json = lambda: mock_points_response
+                mock_response.json.return_value = mock_points_response
             else:
-                mock_response.json = lambda: mock_forecast_response
+                mock_response.json.return_value = mock_forecast_response
             return mock_response
 
         mock_get.side_effect = mock_get_side_effect

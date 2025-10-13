@@ -53,7 +53,19 @@ def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[I
         # Parse event data
         timer_id, request = _parse_timer_event_data(event_data)
 
-        # Create intents
+        # Check if parsing failed (indicates error condition)
+        if timer_id == "parse_error" or "Unparseable data:" in request:
+            logger.error(f"Timer handler error: {request}")
+            return [
+                NotificationIntent(
+                    message=f"Timer processing error: {request}",
+                    channel=context.get_safe_channel(),
+                    priority="high",
+                    notification_type="error",
+                )
+            ]
+
+        # Create intents for successful parsing
         return [
             NotificationIntent(
                 message=f"⏰ Timer expired: {request}",

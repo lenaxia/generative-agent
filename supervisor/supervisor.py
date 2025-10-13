@@ -141,7 +141,7 @@ class Supervisor:
         self._initialize_llm_factory()
         self._initialize_workflow_engine()
         self._initialize_metrics_manager()
-        self._initialize_heartbeat_service()
+        # REMOVED: self._initialize_heartbeat_service() - using scheduled tasks now
         self._initialize_fast_heartbeat_service()
 
         logger.info("Component initialization complete.")
@@ -312,10 +312,10 @@ class Supervisor:
 
     def _initialize_fast_heartbeat_service(self):
         """Initialize FastHeartbeat service for high-frequency monitoring."""
-        from supervisor.fast_heartbeat import FastHeartbeat
+        # REMOVED: FastHeartbeat import - using scheduled tasks now
 
-        # Initialize with 5-second interval for timer monitoring
-        self.fast_heartbeat = FastHeartbeat(self.message_bus, interval=5)
+        # REMOVED: FastHeartbeat initialization - using scheduled tasks now
+        self.fast_heartbeat = None
         logger.info("FastHeartbeat service initialized with 5s interval.")
 
     def _initialize_metrics_manager(self):
@@ -324,27 +324,10 @@ class Supervisor:
         logger.info("Metrics manager initialized.")
 
     def _initialize_heartbeat_service(self):
-        """Initialize Heartbeat service."""
-        heartbeat_config = getattr(self.config, "heartbeat", {})
-        heartbeat_interval = (
-            heartbeat_config.get("interval", 30)
-            if isinstance(heartbeat_config, dict)
-            else 30
-        )
-        health_check_interval = (
-            heartbeat_config.get("health_check_interval", 60)
-            if isinstance(heartbeat_config, dict)
-            else 60
-        )
-
-        self.heartbeat = Heartbeat(
-            supervisor=self,
-            interval=heartbeat_interval,
-            health_check_interval=health_check_interval,
-        )
-        logger.info(
-            f"Heartbeat service initialized with {heartbeat_interval}s interval."
-        )
+        """REMOVED: Heartbeat service - using scheduled tasks now."""
+        # Heartbeat functionality now handled by scheduled tasks
+        self.heartbeat = None
+        logger.info("Heartbeat functionality handled by scheduled tasks")
 
     def start(self):
         """Starts the Supervisor by starting the message bus and task scheduler.
@@ -658,7 +641,7 @@ if __name__ == "__main__":
                         "Falling back to legacy threading mode as last resort"
                     )
                     self._use_single_event_loop = False
-                    self._initialize_heartbeat_service()
+                    # REMOVED: self._initialize_heartbeat_service() - using scheduled tasks now
                     self._initialize_fast_heartbeat_service()
 
     def _stop_scheduled_tasks(self):
