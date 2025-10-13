@@ -548,9 +548,12 @@ class SlackChannelHandler(ChannelHandler):
             logger.warning(f"Failed to get bot user ID: {e}")
             self.bot_user_id = None
 
+        # Message deduplication cache
+        self._processed_messages = set()
+
         # Unified message handler - routes based on message type
         def process_slack_message(event, message_type):
-            """Unified message processing with proper routing."""
+            """Unified message processing with proper routing and deduplication."""
             # Ignore bot messages
             if event.get("bot_id"):
                 logger.debug(f"🤖 Ignoring bot message: {event.get('bot_id')}")
@@ -561,13 +564,31 @@ class SlackChannelHandler(ChannelHandler):
             channel_id = event["channel"]
             timestamp = event.get("ts")
 
+            # Create unique message identifier for deduplication
+            message_id = f"{user_id}:{channel_id}:{timestamp}:{hash(text)}"
+
+            # Check for duplicate processing
+            if message_id in self._processed_messages:
+                logger.debug(f"🔕 Ignoring duplicate message: {text}")
+                return
+
+            # Mark message as processed
+            self._processed_messages.add(message_id)
+
+            # Clean up old processed messages (keep last 1000)
+            if len(self._processed_messages) > 1000:
+                # Remove oldest 100 entries
+                old_messages = list(self._processed_messages)[:100]
+                for old_msg in old_messages:
+                    self._processed_messages.discard(old_msg)
+
             # Determine message type for routing
             channel_type = event.get("channel_type", "")
             has_bot_mention = (
                 text and self.bot_user_id and f"<@{self.bot_user_id}>" in text
             )
 
-            # Route message based on type and context
+            # Route message based on type and context - prefer app_mention for bot mentions
             if message_type == "app_mention":
                 # App mentions - always process regardless of channel
                 logger.info(f"📢 Processing app mention from user {user_id}: {text}")

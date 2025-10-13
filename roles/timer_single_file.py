@@ -248,14 +248,29 @@ def list_timers() -> dict[str, Any]:
 
 # 5. HELPER FUNCTIONS (minimal, focused)
 def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
-    """Handle timer expiry by emitting events and notifications."""
+    """Handle timer expiry using LLM-safe intent-based architecture."""
     try:
         logger.info(f"Timer {timer_id} expired")
 
-        # Try multiple approaches to emit timer expiry notification
-        notification_sent = False
+        # LLM-SAFE: Use intent-based notification instead of direct I/O
+        duration = timer_data.get("duration", "unknown")
+        label = timer_data.get("label", "")
+        user_id = timer_data.get("user_id", "system")
+        channel = timer_data.get("channel", "console")
 
-        # Approach 1: Try to use message bus if available
+        # Create notification message
+        message = f"⏰ Timer expired: {duration}" + (f" ({label})" if label else "")
+
+        # Create notification intent for proper channel routing
+        notification_intent = NotificationIntent(
+            message=message,
+            channel=channel,
+            user_id=user_id,
+            priority="high",
+            notification_type="info",
+        )
+
+        # Try to emit via message bus using intent-based architecture
         try:
             from supervisor.supervisor import get_global_supervisor
 
@@ -265,29 +280,30 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
                 and hasattr(supervisor, "message_bus")
                 and supervisor.message_bus
             ):
+                # Emit timer expiry event with notification intent
                 supervisor.message_bus.emit(
                     event_type="TIMER_EXPIRED",
                     data={
                         "timer_id": timer_id,
-                        "original_request": f"Timer {timer_data.get('duration', 'unknown')} expired",
-                        "label": timer_data.get("label", ""),
-                        "user_id": timer_data.get("user_id", "system"),
-                        "channel": timer_data.get("channel", "console"),
+                        "notification_intent": notification_intent.to_dict(),
+                        "original_request": f"Timer {duration} expired",
+                        "label": label,
+                        "user_id": user_id,
+                        "channel": channel,
                     },
                     source_role="timer",
                 )
                 logger.info(
-                    f"Timer expiry event emitted via message bus for {timer_id}"
+                    f"Timer expiry intent emitted via message bus for {timer_id}"
                 )
-                notification_sent = True
+            else:
+                # Fallback: direct console notification
+                print(f"\n{message}")
+                logger.info(f"Timer expiry notification sent to console for {timer_id}")
+
         except Exception as e:
             logger.debug(f"Message bus not available for timer {timer_id}: {e}")
-
-        # Approach 2: Direct console notification as fallback
-        if not notification_sent:
-            duration = timer_data.get("duration", "unknown")
-            label = timer_data.get("label", "")
-            message = f"⏰ Timer expired: {duration}" + (f" ({label})" if label else "")
+            # Fallback: direct console notification
             print(f"\n{message}")
             logger.info(f"Timer expiry notification sent to console for {timer_id}")
 
