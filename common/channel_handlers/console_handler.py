@@ -27,6 +27,10 @@ class ConsoleChannelHandler(ChannelHandler):
     def __init__(self, config: Optional[dict[str, Any]] = None):
         """Initialize the console channel handler."""
         super().__init__(config)
+
+        # Channel pattern for routing (maintains separation of concerns)
+        self.channel_pattern = "console"
+
         self.log_level = self.config.get("log_level", logging.INFO)
 
     def get_capabilities(self) -> dict[str, Any]:

@@ -37,6 +37,9 @@ class SlackChannelHandler(ChannelHandler):
         """Initialize the Slack channel handler."""
         super().__init__(config)
 
+        # Channel pattern for routing (maintains separation of concerns)
+        self.channel_pattern = "slack:"
+
         # Extract configuration
         self.webhook_url = self.config.get("webhook_url")
         self.bot_token = os.environ.get("SLACK_BOT_TOKEN") or self.config.get(

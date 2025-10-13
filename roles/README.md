@@ -10,7 +10,8 @@ This guide provides complete instructions for creating new roles in the Universa
 4. [Step-by-Step Role Creation](#step-by-step-role-creation)
 5. [Pattern-Specific Implementation](#pattern-specific-implementation)
 6. [Testing and Validation](#testing-and-validation)
-7. [Common Patterns and Examples](#common-patterns-and-examples)
+7. [Communication Architecture](#communication-architecture)
+8. [Common Patterns and Examples](#common-patterns-and-examples)
 
 ## Architecture Overview
 
@@ -646,6 +647,154 @@ Your responses should:
 - Confirm successful completion of actions"""
 }
 ```
+
+## Communication Architecture
+
+### Channel Context Preservation
+
+**CRITICAL**: Roles that send notifications must preserve the original channel context to ensure messages are delivered back to the correct channel (e.g., Slack, console, etc.).
+
+#### The Problem
+
+When a role processes a request from a specific channel (e.g., Slack `#general`), any notifications or responses must be routed back to that same channel. However, the communication system uses a **separation of concerns** architecture where:
+
+- **CommunicationManager**: Routes messages to channels (no channel-specific logic)
+- **Channel Handlers**: Handle channel-specific logic and patterns
+- **Roles**: Store and preserve original channel context
+
+#### The Solution: Proper Channel Context Flow
+
+```python
+# 1. CONTEXT PRESERVATION IN ROLE DATA
+# When storing data (timers, tasks, etc.), preserve full channel context
+role_data = {
+    "id": item_id,
+    "user_id": context.user_id,           # e.g., "U12345" (Slack user)
+    "channel": context.channel_id,        # e.g., "slack:#general" (full channel ID)
+    "created_at": time.time(),
+    # ... other role-specific data
+}
+
+# 2. CONTEXT RETRIEVAL FOR NOTIFICATIONS
+# When sending notifications, use stored channel context (NOT hardcoded defaults)
+def send_role_notification(stored_data: dict):
+    user_id = stored_data.get("user_id", "system")      # Use stored user
+    channel = stored_data.get("channel", "console")     # Use stored channel (NOT hardcoded)
+
+    # Send via message bus with preserved context
+    message_payload = {
+        "message": "Your notification message",
+        "context": {
+            "channel_id": channel,        # e.g., "slack:#general"
+            "user_id": user_id,          # e.g., "U12345"
+            "request_id": f"notification_{item_id}"
+        }
+    }
+```
+
+#### Communication Manager Architecture
+
+The CommunicationManager uses **pattern-based routing** to maintain separation of concerns:
+
+```python
+# CommunicationManager routes to full channel IDs (no extraction)
+def _determine_target_channels(self, origin_channel: str, message_type: str, context: dict):
+    # Route back to origin channel (let channel handlers decide)
+    return [origin_channel] if origin_channel else ["console"]
+
+# Channel handlers own their routing patterns
+def _find_handler_for_channel(self, channel_id: str) -> Optional[ChannelHandler]:
+    """Find appropriate handler based on channel patterns."""
+    for handler in self.channels.values():
+        if hasattr(handler, 'channel_pattern'):
+            if channel_id.startswith(handler.channel_pattern):
+                return handler
+    return self.channels.get('console')  # Fallback
+```
+
+#### Channel Handler Patterns
+
+Each channel handler declares its pattern during registration:
+
+```python
+# In SlackHandler
+class SlackHandler(ChannelHandler):
+    def __init__(self):
+        self.channel_pattern = "slack:"  # Handles all "slack:*" channels
+
+# In ConsoleHandler
+class ConsoleHandler(ChannelHandler):
+    def __init__(self):
+        self.channel_pattern = "console"  # Handles "console" channel
+```
+
+#### Role Implementation Requirements
+
+**For Timer-like Roles** (storing data for later notification):
+
+```python
+# ✅ CORRECT: Store full channel context
+timer_data = {
+    "user_id": context.user_id,           # From original request context
+    "channel": context.channel_id,        # Full channel ID: "slack:#general"
+}
+
+# ✅ CORRECT: Use stored context for notifications
+def handle_timer_expiry(timer_data: dict):
+    channel = timer_data.get("channel", "console")  # Use stored channel
+    user_id = timer_data.get("user_id", "system")   # Use stored user
+
+    # Notification will route back to original Slack channel
+```
+
+**For Immediate Response Roles** (weather, routing, etc.):
+
+```python
+# ✅ CORRECT: Context automatically preserved by workflow engine
+# No special handling needed - responses automatically route back to origin
+```
+
+#### Common Mistakes to Avoid
+
+```python
+# ❌ WRONG: Hardcoded channel defaults
+channel = "console"  # This loses original Slack context
+
+# ❌ WRONG: Channel type extraction in CommunicationManager
+channel_type = origin_channel.split(":", 1)[0]  # Violates separation of concerns
+
+# ❌ WRONG: Missing context preservation
+# Not storing user_id and channel_id when creating timers/tasks
+```
+
+#### Testing Channel Context
+
+Verify your role preserves context correctly:
+
+```python
+def test_channel_context_preservation():
+    """Test that role preserves original channel context."""
+    # Simulate Slack request context
+    context = MockContext(
+        user_id="U12345",
+        channel_id="slack:#general"
+    )
+
+    # Create role item (timer, task, etc.)
+    result = your_role_function("test", context)
+
+    # Verify context is stored
+    stored_data = get_stored_data(result["id"])
+    assert stored_data["user_id"] == "U12345"
+    assert stored_data["channel"] == "slack:#general"
+
+    # Verify notification uses stored context
+    notification = simulate_notification(stored_data)
+    assert notification["context"]["channel_id"] == "slack:#general"
+    assert notification["context"]["user_id"] == "U12345"
+```
+
+This architecture ensures notifications are delivered to the correct channels while maintaining proper separation of concerns between the CommunicationManager and channel handlers.
 
 ## Testing and Validation
 
