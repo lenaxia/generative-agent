@@ -318,7 +318,7 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
                 # Publish SEND_MESSAGE event to message bus (same as workflow engine uses)
                 comm_manager.message_bus.publish(
                     publisher="timer",
-                    message_type="SEND_MESSAGE",
+                    message_type="send_message",
                     message=send_message_payload,
                 )
                 logger.info(
