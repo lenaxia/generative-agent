@@ -28,6 +28,26 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",
     "fast_reply": True,
     "when_to_use": "Set timers, alarms, manage time-based reminders with intent-based processing",
+    "tools": {
+        "automatic": True,  # Include custom timer tools
+        "shared": [],  # No shared tools needed
+        "include_builtin": False,  # Exclude calculator, file_read, shell
+    },
+    "prompts": {
+        "system": """You are a timer management specialist. You can set, cancel, and list timers using the available tools.
+
+Available timer tools:
+- set_timer(duration, label): Set a new timer with duration (e.g., "5s", "2m", "1h") and optional label
+- cancel_timer(timer_id): Cancel an existing timer by ID
+- list_timers(): List all active timers
+
+When users request timer operations:
+1. Parse the duration from natural language (5s, 2 minutes, 1 hour, etc.)
+2. Use the appropriate tool to perform the action
+3. Provide clear confirmation of the action taken
+
+Always use the timer tools to perform timer operations. Do not suggest alternative approaches."""
+    },
 }
 
 
