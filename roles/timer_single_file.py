@@ -109,17 +109,36 @@ Available timer tools:
 - cancel_timer(timer_id): Cancel an existing timer by ID
 - list_timers(): List all active timers
 
-CRITICAL: When setting timers, you MUST pass the user_id and channel_id from the current request context:
-- user_id: The ID of the user who made the request (e.g., "U52L1U8M6")
-- channel_id: The full channel ID where the request came from (e.g., "slack:C52L1UK5E")
+CRITICAL CONTEXT EXTRACTION: You MUST extract context from the request metadata and pass it to set_timer:
 
-Example: set_timer("5s", "test timer", "U52L1U8M6", "slack:C52L1UK5E")
+The request metadata contains:
+- metadata.user_id: The user who made the request
+- metadata.channel_id: The channel where the request originated
+- source_id: The communication channel (e.g., "slack")
+
+You MUST construct the full channel_id by combining source_id and metadata.channel_id:
+- If source_id is "slack" and metadata.channel_id is "C52L1UK5E", use "slack:C52L1UK5E"
+- If source_id is "console", use "console"
+
+MANDATORY PARAMETER PASSING:
+set_timer(duration, label, metadata.user_id, f"{source_id}:{metadata.channel_id}")
+
+Example with Slack:
+- Request from Slack channel C52L1UK5E by user U52L1U8M6
+- Call: set_timer("5s", "test timer", "U52L1U8M6", "slack:C52L1UK5E")
+
+Example with Console:
+- Request from console
+- Call: set_timer("5s", "test timer", "system", "console")
+
+NEVER use default values - ALWAYS extract and pass the actual context from the request metadata.
 
 When users request timer operations:
-1. Parse the duration from natural language (5s, 2 minutes, 1 hour, etc.)
-2. Extract the user_id and channel_id from the request context
-3. Use set_timer with ALL parameters including context
-4. Provide clear confirmation of the action taken
+1. Parse the duration from natural language
+2. Extract user_id from metadata.user_id
+3. Extract channel_id from metadata.channel_id and combine with source_id
+4. Call set_timer with ALL extracted parameters
+5. Provide clear confirmation
 
 Always use the timer tools to perform timer operations. Do not suggest alternative approaches."""
     },
@@ -207,6 +226,10 @@ def set_timer(
 ) -> dict[str, Any]:
     """LLM-SAFE: Set a timer with Redis storage and background scheduling."""
     try:
+        # DEBUG: Log exactly what parameters LLM passed
+        logger.warning(
+            f"set_timer called with: duration='{duration}', label='{label}', user_id='{user_id}', channel_id='{channel_id}'"
+        )
         # Parse duration to seconds
         duration_seconds = _parse_duration(duration)
         if duration_seconds <= 0:
@@ -220,20 +243,44 @@ def set_timer(
         # SIMPLE FIX: Use parameters passed to tool (LLM should provide context)
         # The LLM has access to the request context and should pass it as parameters
 
-        # Use passed parameters (LLM should provide these from request context)
-        if user_id == "system" and channel_id == "console":
-            # Fallback: Try global context if parameters not provided
-            current_context = _get_timer_context()
-            if current_context:
-                user_id = getattr(current_context, "user_id", user_id)
-                channel_id = getattr(current_context, "channel_id", channel_id)
-                logger.info(
-                    f"Timer context from pre-processor - user_id: {user_id}, channel: {channel_id}"
-                )
+        # ENHANCED FIX: Always try to get context from pre-processor first
+        # This ensures we capture the actual request context regardless of LLM parameter passing
+        current_context = _get_timer_context()
+        logger.warning(f"Current timer context from global: {current_context}")
+
+        if current_context:
+            # Use context from pre-processor (more reliable than LLM parameters)
+            context_user_id = getattr(current_context, "user_id", None)
+            context_channel_id = getattr(current_context, "channel_id", None)
+
+            logger.warning(
+                f"Context attributes: user_id={context_user_id}, channel_id={context_channel_id}"
+            )
+
+            # Prefer context values over defaults, but keep explicit parameters if provided
+            if context_user_id and user_id == "system":
+                user_id = context_user_id
+                logger.warning(f"Updated user_id from context: {user_id}")
+            if context_channel_id and channel_id == "console":
+                channel_id = context_channel_id
+                logger.warning(f"Updated channel_id from context: {channel_id}")
+
+            logger.warning(
+                f"Timer context from pre-processor - user_id: {user_id}, channel: {channel_id}"
+            )
+        else:
+            logger.warning("No timer context found in global storage!")
+
+        # Final validation: if we still have defaults, log a warning
+        if user_id == "system" or channel_id == "console":
+            logger.warning(
+                f"Timer STILL using default context - user_id: {user_id}, channel: {channel_id}. "
+                "This indicates LLM parameter passing AND context injection both failed!"
+            )
 
         # Use the final context values
-        user_id = user_id
         channel = channel_id
+        logger.warning(f"FINAL timer will use: user_id={user_id}, channel={channel}")
 
         # DEBUG: Log final context for troubleshooting
         logger.info(f"FINAL timer context - user_id: {user_id}, channel: {channel}")
@@ -440,6 +487,17 @@ async def process_timer_intent(intent: TimerIntent):
 # 6. CONTEXT INJECTION FOR TOOLS
 def _timer_context_injector(instruction: str, context, parameters: dict) -> dict:
     """Pre-processor: Inject current context for timer tools to access."""
+    # DEBUG: Log context injection
+    logger.warning(f"_timer_context_injector called with context: {context}")
+    if context:
+        user_id = getattr(context, "user_id", "NO_USER_ID")
+        channel_id = getattr(context, "channel_id", "NO_CHANNEL_ID")
+        logger.warning(
+            f"Context injection - user_id: {user_id}, channel_id: {channel_id}"
+        )
+    else:
+        logger.warning("Context injection called with None context!")
+
     # Set global context so timer tools can access user_id and channel_id
     _set_timer_context(context)
 
