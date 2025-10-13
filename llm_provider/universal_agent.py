@@ -786,9 +786,29 @@ class UniversalAgent:
         """Run all pre-processing functions for a role."""
         results = {}
 
+        # Handle both multi-file (legacy) and single-file role pre-processors
         pre_config = role_def.config.get("lifecycle", {}).get("pre_processing", {})
         functions = pre_config.get("functions", [])
 
+        # NEW: Handle single-file role pre-processors
+        single_file_processors = getattr(role_def, "_pre_processors", [])
+        if single_file_processors:
+            logger.info(
+                f"Found {len(single_file_processors)} single-file pre-processors for {role_def.name}"
+            )
+            for processor in single_file_processors:
+                try:
+                    func_name = getattr(processor, "__name__", "unknown_processor")
+                    logger.info(f"Running single-file pre-processor: {func_name}")
+                    result = processor(instruction, context, parameters)
+                    results[func_name] = result
+                    logger.info(
+                        f"Single-file pre-processor {func_name} completed successfully"
+                    )
+                except Exception as e:
+                    logger.error(f"Single-file pre-processor {func_name} failed: {e}")
+
+        # Handle legacy multi-file pre-processors
         for func_config in functions:
             if isinstance(func_config, str):
                 func_name = func_config

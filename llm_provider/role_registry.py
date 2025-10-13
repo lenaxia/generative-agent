@@ -258,13 +258,23 @@ class RoleRegistry:
                     role_name, registration["intents"]
                 )
 
-            logger.info(f"Successfully loaded single-file role: {role_name}")
-            return RoleDefinition(
+            # Store pre-processors for Universal Agent access
+            role_def = RoleDefinition(
                 name=role_name,
                 config=config,
                 custom_tools=custom_tools,
                 shared_tools=self.shared_tools,
             )
+
+            # NEW: Store single-file role pre-processors
+            if "pre_processors" in registration:
+                role_def._pre_processors = registration["pre_processors"]
+                logger.info(
+                    f"Registered {len(registration['pre_processors'])} pre-processors for {role_name}"
+                )
+
+            logger.info(f"Successfully loaded single-file role: {role_name}")
+            return role_def
 
         except Exception as e:
             logger.error(f"Failed to load single-file role {role_name}: {e}")

@@ -80,6 +80,18 @@ ROLE_CONFIG = {
             "required": False,
             "description": "Timer ID for cancel operations",
         },
+        "user_id": {
+            "type": "string",
+            "required": False,
+            "description": "User ID from request context for proper notification routing",
+            "examples": ["U52L1U8M6", "system"],
+        },
+        "channel_id": {
+            "type": "string",
+            "required": False,
+            "description": "Channel ID from request context for proper notification routing",
+            "examples": ["slack:C52L1UK5E", "console"],
+        },
     },
     "tools": {
         "automatic": True,  # Include custom timer tools
@@ -93,14 +105,21 @@ ROLE_CONFIG = {
         "system": """You are a timer management specialist. You can set, cancel, and list timers using the available tools.
 
 Available timer tools:
-- set_timer(duration, label): Set a new timer with duration (e.g., "5s", "2m", "1h") and optional label
+- set_timer(duration, label, user_id, channel_id): Set a new timer with duration (e.g., "5s", "2m", "1h"), optional label, and context
 - cancel_timer(timer_id): Cancel an existing timer by ID
 - list_timers(): List all active timers
 
+CRITICAL: When setting timers, you MUST pass the user_id and channel_id from the current request context:
+- user_id: The ID of the user who made the request (e.g., "U52L1U8M6")
+- channel_id: The full channel ID where the request came from (e.g., "slack:C52L1UK5E")
+
+Example: set_timer("5s", "test timer", "U52L1U8M6", "slack:C52L1UK5E")
+
 When users request timer operations:
 1. Parse the duration from natural language (5s, 2 minutes, 1 hour, etc.)
-2. Use the appropriate tool to perform the action
-3. Provide clear confirmation of the action taken
+2. Extract the user_id and channel_id from the request context
+3. Use set_timer with ALL parameters including context
+4. Provide clear confirmation of the action taken
 
 Always use the timer tools to perform timer operations. Do not suggest alternative approaches."""
     },
@@ -183,7 +202,9 @@ def handle_heartbeat_monitoring(
 
 # 4. TOOLS (simplified, LLM-friendly)
 @tool
-def set_timer(duration: str, label: str = "") -> dict[str, Any]:
+def set_timer(
+    duration: str, label: str = "", user_id: str = "system", channel_id: str = "console"
+) -> dict[str, Any]:
     """LLM-SAFE: Set a timer with Redis storage and background scheduling."""
     try:
         # Parse duration to seconds
@@ -196,17 +217,26 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
         current_time = time.time()
         expires_at = current_time + duration_seconds
 
-        # Get current context for proper notification routing
-        current_context = _get_timer_context()
-        user_id = "system"
-        channel = "console"
+        # SIMPLE FIX: Use parameters passed to tool (LLM should provide context)
+        # The LLM has access to the request context and should pass it as parameters
 
-        if current_context:
-            user_id = getattr(current_context, "user_id", "system")
-            channel = getattr(current_context, "channel_id", "console")
-            # Handle slack: prefix in channel_id
-            if channel and channel.startswith("slack:"):
-                channel = channel  # Keep full channel identifier for proper routing
+        # Use passed parameters (LLM should provide these from request context)
+        if user_id == "system" and channel_id == "console":
+            # Fallback: Try global context if parameters not provided
+            current_context = _get_timer_context()
+            if current_context:
+                user_id = getattr(current_context, "user_id", user_id)
+                channel_id = getattr(current_context, "channel_id", channel_id)
+                logger.info(
+                    f"Timer context from pre-processor - user_id: {user_id}, channel: {channel_id}"
+                )
+
+        # Use the final context values
+        user_id = user_id
+        channel = channel_id
+
+        # DEBUG: Log final context for troubleshooting
+        logger.info(f"FINAL timer context - user_id: {user_id}, channel: {channel}")
 
         # Create timer data with proper context
         timer_data = {
