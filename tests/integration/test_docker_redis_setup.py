@@ -199,7 +199,10 @@ class TestDockerRedisSetup:
         if not docker_redis_available:
             return
 
-        from roles.timer.lifecycle import TimerManager
+        from roles.timer_single_file import get_legacy_timer_manager
+
+        # Get timer manager (may return None if legacy not available)
+        TimerManager = get_legacy_timer_manager() or type("MockTimerManager", (), {})
 
         # Create TimerManager instance
         timer_manager = TimerManager(redis_host="localhost", redis_port=6379)

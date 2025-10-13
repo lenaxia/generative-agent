@@ -291,14 +291,14 @@ class MessageBus:
         if not self.is_running():
             return
 
-            # LLM-SAFE: No longer need threading lock with single event loop
-            if event_type not in self._subscribers:
-                return
+        # LLM-SAFE: No longer need threading lock with single event loop
+        if event_type not in self._subscribers:
+            return
 
-            logger.debug(f"Publishing message: [{event_type}] {message}")
+        logger.debug(f"Publishing message: [{event_type}] {message}")
 
-            # Create a copy of the subscribers to avoid modifying the dictionary while iterating
-            subscribers_copy = self._subscribers[event_type].copy()
+        # Create a copy of the subscribers to avoid modifying the dictionary while iterating
+        subscribers_copy = self._subscribers[event_type].copy()
 
         # Release the lock before executing the callbacks
         for _subscriber, callbacks in subscribers_copy.items():
