@@ -1560,8 +1560,8 @@ Call route_to_role() with your routing decision. Be decisive and efficient."""
 
             # If result is a string, try to extract routing info
             if isinstance(result, str):
-                # Look for mentions of successful routing
-                if "successfully routed" in result.lower():
+                # Look for the log message from route_to_role tool execution
+                if "routing decision executed" in result.lower():
                     # Try to extract role name and confidence from the text
                     import re
 
