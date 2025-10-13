@@ -41,9 +41,13 @@ class MockChannelHandler(ChannelHandler):
             "supports_audio": self.channel_type == ChannelType.SONOS,
             "supports_images": False,
             "bidirectional": self._bidirectional,
-            "requires_session": self._bidirectional,
+            "requires_session": False,  # Don't require background thread for testing
             "max_message_length": 4000,
         }
+
+    def requires_background_thread(self) -> bool:
+        """Override to prevent background thread creation in tests."""
+        return False
 
     async def _send(
         self,
@@ -84,7 +88,19 @@ def communication_manager(message_bus):
     """Create a CommunicationManager with mock handlers."""
     with patch(
         "common.communication_manager.CommunicationManager._discover_and_initialize_channels"
-    ):
+    ), patch(
+        "common.communication_manager.CommunicationManager._discover_channel_handlers"
+    ), patch(
+        "common.communication_manager.CommunicationManager._initialize_all_channels"
+    ), patch(
+        "common.communication_manager.CommunicationManager.initialize"
+    ) as mock_init:
+        # Make initialize() a no-op
+        async def mock_initialize():
+            pass
+
+        mock_init.side_effect = mock_initialize
+
         manager = CommunicationManager(message_bus)
         return manager
 

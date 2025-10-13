@@ -836,8 +836,14 @@ class RoleRegistry:
                         else {},
                     )
 
-                    # Call handler with clean context object signature
-                    return await handler_func(event_data, context)
+                    # Call handler with enhanced signature (individual components as kwargs)
+                    return await handler_func(
+                        event_data,
+                        llm=llm_utility,
+                        workflow_engine=self.message_bus.workflow_engine,
+                        communication_manager=self.message_bus.communication_manager,
+                        context=context,
+                    )
 
                 return enhanced_handler
             else:

@@ -930,16 +930,21 @@ class CommunicationManager:
         Args:
             message: The timer expired event message
         """
-        timer_id = message.get("timer_id")
+        # Handle both formats: direct timer data and nested under "data"
+        if "data" in message and isinstance(message["data"], dict):
+            timer_data = message["data"]
+        else:
+            timer_data = message
+
+        timer_id = timer_data.get("timer_id")
         logger.info(f"Processing timer expired event for timer: {timer_id}")
         logger.info(f"Available channels: {list(self.channels.keys())}")
         logger.info(
             f"Enabled channels: {[ch for ch, handler in self.channels.items() if handler.enabled]}"
         )
 
-        # Timer data is published directly, not nested under "data"
-        timer_data = message
-        timer_name = timer_data.get("timer_name", "Timer")
+        # Extract timer name - check both "name" and "timer_name" fields
+        timer_name = timer_data.get("name") or timer_data.get("timer_name", "Timer")
 
         if not timer_id:
             logger.error("Received timer expired event without timer_id")

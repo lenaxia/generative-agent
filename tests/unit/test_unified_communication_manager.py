@@ -122,9 +122,9 @@ class TestCommunicationManager:
         """Test that CommunicationManager subscribes to required message types."""
         await communication_manager.initialize()
         # Check that subscriptions were set up
-        assert MessageType.TIMER_EXPIRED in message_bus._subscribers
-        assert MessageType.SEND_MESSAGE in message_bus._subscribers
-        assert MessageType.AGENT_QUESTION in message_bus._subscribers
+        assert MessageType.TIMER_EXPIRED.value in message_bus._subscribers
+        assert MessageType.SEND_MESSAGE.value in message_bus._subscribers
+        assert MessageType.AGENT_QUESTION.value in message_bus._subscribers
 
     @pytest.mark.asyncio
     async def test_channel_registration(self, communication_manager):
@@ -201,7 +201,7 @@ class TestCommunicationManager:
 
         # Check that notification was sent
         assert len(handler.sent_messages) == 1
-        assert "Timer expired: Test Timer" in handler.sent_messages[0]["message"]
+        assert "Test Timer expired!" in handler.sent_messages[0]["message"]
 
     @pytest.mark.asyncio
     async def test_send_message_handling(self, communication_manager, message_bus):

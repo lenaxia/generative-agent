@@ -328,9 +328,11 @@ class TestHybridUniversalAgent:
         with patch.object(
             self.agent, "_execute_llm_with_context", return_value="Weather is sunny"
         ):
-            result = self.agent.execute_task(
+            # Use the async method directly to avoid event loop conflicts
+            result = await self.agent._execute_hybrid_task(
                 instruction="What's the weather?",
                 role="weather",
+                context=None,
                 extracted_parameters={"location": "Seattle"},
             )
 

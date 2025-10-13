@@ -116,7 +116,7 @@ class MessageTypeRegistry:
         self,
         event_type: str,
         publisher_role: str,
-        schema: dict[str, Any] = None,
+        schema: Optional[dict[str, Any]] = None,
         description: str = "",
     ):
         """Register a new event type from a role.
@@ -306,53 +306,88 @@ class MessageBus:
         # Create a copy of the subscribers to avoid modifying the dictionary while iterating
         subscribers_copy = self._subscribers[event_type].copy()
 
-        # Get or create event loop
+        # Check if we have a running event loop
         try:
             loop = asyncio.get_running_loop()
+            has_running_loop = True
         except RuntimeError:
-            # No running event loop in this thread, create one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            logger.debug("Created new event loop for message processing")
+            has_running_loop = False
+            loop = None
 
-        # Process all callbacks using the event loop
+        # Process all callbacks
         for _subscriber, callbacks in subscribers_copy.items():
             for callback in callbacks:
                 callback_name = getattr(callback, "__name__", "unknown_callback")
 
                 # Handle async callbacks
                 if asyncio.iscoroutinefunction(callback):
-                    # Schedule coroutine in the event loop
-                    try:
-                        asyncio.create_task(
-                            self._run_async_callback_in_loop(
-                                callback, message, callback_name
+                    if has_running_loop:
+                        # Schedule coroutine in the running event loop
+                        try:
+                            asyncio.create_task(
+                                self._run_async_callback_in_loop(
+                                    callback, message, callback_name
+                                )
                             )
-                        )
-                        logger.debug(
-                            f"Scheduled async callback {callback_name} in event loop"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Error scheduling async callback {callback_name}: {e}"
-                        )
+                            logger.debug(
+                                f"Scheduled async callback {callback_name} in event loop"
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Error scheduling async callback {callback_name}: {e}"
+                            )
+                    else:
+                        # No event loop running, run the callback synchronously
+                        # This is needed for tests and synchronous environments
+                        try:
+                            logger.debug(
+                                f"Running async callback {callback_name} synchronously"
+                            )
+                            # Create a temporary event loop to run the async callback
+                            temp_loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(temp_loop)
+                            try:
+                                temp_loop.run_until_complete(
+                                    self._run_async_callback_in_loop(
+                                        callback, message, callback_name
+                                    )
+                                )
+                            finally:
+                                temp_loop.close()
+                                asyncio.set_event_loop(None)
+                        except Exception as e:
+                            logger.error(
+                                f"Error running async callback {callback_name} synchronously: {e}"
+                            )
                 else:
-                    # For sync callbacks, run them directly in the event loop
-                    try:
-                        # Create a wrapper function to avoid None type issues
-                        def run_callback_wrapper():
+                    # For sync callbacks
+                    if has_running_loop:
+                        # Schedule in the running event loop
+                        try:
+                            # Create a wrapper function to avoid None type issues
+                            def run_callback_wrapper():
+                                self._run_sync_callback_in_loop(
+                                    callback, message, callback_name
+                                )
+
+                            loop.call_soon(run_callback_wrapper)
+                            logger.debug(
+                                f"Scheduled sync callback {callback_name} in event loop"
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Error scheduling sync callback {callback_name}: {e}"
+                            )
+                    else:
+                        # No event loop, run directly
+                        try:
                             self._run_sync_callback_in_loop(
                                 callback, message, callback_name
                             )
-
-                        loop.call_soon(run_callback_wrapper)
-                        logger.debug(
-                            f"Scheduled sync callback {callback_name} in event loop"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Error scheduling sync callback {callback_name}: {e}"
-                        )
+                        except Exception as e:
+                            logger.error(
+                                f"Error running sync callback {callback_name}: {e}"
+                            )
 
     async def _run_async_callback_in_loop(
         self, callback: Callable, message: Any, callback_name: str
@@ -360,8 +395,11 @@ class MessageBus:
         """Run async callback in the current event loop with error handling."""
         try:
             logger.debug(f"Running async callback {callback_name} in event loop")
-            await callback(message)
+            result = await callback(message)
             logger.debug(f"Async callback {callback_name} completed successfully")
+
+            # Process intents returned by the callback (LLM-safe architecture)
+            await self._process_callback_intents(result, callback_name)
         except Exception as e:
             logger.error(f"Error in async callback {callback_name}: {e}")
 
@@ -371,10 +409,60 @@ class MessageBus:
         """Run sync callback in the event loop with error handling."""
         try:
             logger.debug(f"Running sync callback {callback_name}")
-            callback(message)
+            result = callback(message)
             logger.debug(f"Sync callback {callback_name} completed successfully")
+
+            # Process intents returned by the callback (LLM-safe architecture)
+            # Schedule async processing for sync callbacks
+            if result is not None:
+                try:
+                    loop = asyncio.get_running_loop()
+                    asyncio.create_task(
+                        self._process_callback_intents(result, callback_name)
+                    )
+                except RuntimeError:
+                    # No running event loop, process synchronously
+                    asyncio.run(self._process_callback_intents(result, callback_name))
         except Exception as e:
             logger.error(f"Error in sync callback {callback_name}: {e}")
+
+    async def _process_callback_intents(self, result: Any, callback_name: str):
+        """Process intents returned by event handlers (LLM-safe architecture)."""
+        if result is None:
+            return
+
+        # Convert single intent to list
+        if hasattr(result, "validate") and callable(getattr(result, "validate")):
+            intents = [result]
+        elif isinstance(result, list):
+            intents = result
+        else:
+            # Not an intent, ignore
+            return
+
+        # Filter valid intents
+        valid_intents = []
+        for intent in intents:
+            if hasattr(intent, "validate") and callable(getattr(intent, "validate")):
+                try:
+                    if intent.validate():
+                        valid_intents.append(intent)
+                    else:
+                        logger.warning(f"Invalid intent from {callback_name}: {intent}")
+                except Exception as e:
+                    logger.error(f"Error validating intent from {callback_name}: {e}")
+            else:
+                logger.debug(f"Non-intent result from {callback_name}: {type(result)}")
+
+        # Process valid intents through intent processor
+        if valid_intents and self._intent_processor:
+            try:
+                logger.debug(
+                    f"Processing {len(valid_intents)} intents from {callback_name}"
+                )
+                await self._intent_processor.process_intents(valid_intents)
+            except Exception as e:
+                logger.error(f"Error processing intents from {callback_name}: {e}")
 
     def subscribe(self, subscriber, message_type, callback: Callable):
         """Subscribe to messages of a specific type.
@@ -396,18 +484,20 @@ class MessageBus:
         else:
             event_type = message_type
 
-            # LLM-SAFE: No longer need threading lock with single event loop
-            if event_type not in self._subscribers:
-                self._subscribers[event_type] = {}
+        # LLM-SAFE: No longer need threading lock with single event loop
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = {}
 
-            if subscriber not in self._subscribers[event_type]:
-                self._subscribers[event_type][subscriber] = []
+        if subscriber not in self._subscribers[event_type]:
+            self._subscribers[event_type][subscriber] = []
 
-            self._subscribers[event_type][subscriber].append(callback)
+        self._subscribers[event_type][subscriber].append(callback)
 
         logger.info(f"Subscribed {subscriber} to event '{event_type}'")
 
-    def unsubscribe(self, subscriber, message_type, callback: Callable = None):
+    def unsubscribe(
+        self, subscriber, message_type, callback: Optional[Callable] = None
+    ):
         """Unsubscribe from messages of a specific type.
 
         Removes a subscriber's callback(s) for the specified message type.
