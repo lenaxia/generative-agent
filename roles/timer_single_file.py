@@ -7,8 +7,10 @@ Migrated from: roles/timer/ (definition.yaml + lifecycle.py + tools.py)
 Total reduction: ~1800 lines → ~300 lines (83% reduction)
 """
 
+import json
 import logging
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -19,6 +21,13 @@ from strands import tool
 
 from common.enhanced_event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
+from common.message_bus import MessageBus
+from roles.shared_tools.redis_tools import (
+    redis_delete,
+    redis_get_keys,
+    redis_read,
+    redis_write,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +41,7 @@ ROLE_CONFIG = {
     "when_to_use": "Set timers, alarms, manage time-based reminders with intent-based processing",
     "tools": {
         "automatic": True,  # Include custom timer tools
-        "shared": [],  # No shared tools needed
+        "shared": ["redis_tools"],  # Include Redis tools for timer storage
         "include_builtin": False,  # Exclude calculator, file_read, shell
         "fast_reply": {
             "enabled": True,  # Enable tools in fast-reply mode
@@ -133,16 +142,61 @@ def handle_heartbeat_monitoring(
 # 4. TOOLS (simplified, LLM-friendly)
 @tool
 def set_timer(duration: str, label: str = "") -> dict[str, Any]:
-    """LLM-SAFE: Set a timer - returns success confirmation."""
+    """LLM-SAFE: Set a timer with Redis storage and background scheduling."""
     try:
+        # Parse duration to seconds
         duration_seconds = _parse_duration(duration)
+        if duration_seconds <= 0:
+            return {"success": False, "error": f"Invalid duration: {duration}"}
+
+        # Generate unique timer ID
+        timer_id = f"timer_{uuid.uuid4().hex[:8]}"
+        current_time = time.time()
+        expires_at = current_time + duration_seconds
+
+        # Create timer data
+        timer_data = {
+            "id": timer_id,
+            "duration": duration,
+            "duration_seconds": duration_seconds,
+            "label": label,
+            "created_at": current_time,
+            "expires_at": expires_at,
+            "status": "active",
+            "user_id": "system",  # Could be enhanced to get actual user
+            "channel": "console",  # Could be enhanced to get actual channel
+        }
+
+        # Store timer in Redis
+        redis_result = redis_write(
+            f"timer:{timer_id}", timer_data, ttl=duration_seconds + 60
+        )
+        if not redis_result.get("success"):
+            return {
+                "success": False,
+                "error": f"Failed to store timer: {redis_result.get('error')}",
+            }
+
+        # Schedule timer expiry in background thread
+        def _schedule_timer_expiry():
+            threading.Timer(
+                duration_seconds, _handle_timer_expiry, args=[timer_id, timer_data]
+            ).start()
+
+        _schedule_timer_expiry()
+
+        logger.info(f"Timer {timer_id} set for {duration} ({duration_seconds}s)")
+
         return {
             "success": True,
+            "timer_id": timer_id,
             "message": f"Timer set for {duration}" + (f" ({label})" if label else ""),
             "duration_seconds": duration_seconds,
+            "expires_at": expires_at,
             "label": label,
         }
     except Exception as e:
+        logger.error(f"Timer creation error: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -167,6 +221,46 @@ def list_timers() -> dict[str, Any]:
 
 
 # 5. HELPER FUNCTIONS (minimal, focused)
+def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
+    """Handle timer expiry by emitting events via message bus."""
+    try:
+        logger.info(f"Timer {timer_id} expired")
+
+        # Get global message bus instance
+        try:
+            from supervisor.supervisor import get_global_supervisor
+
+            supervisor = get_global_supervisor()
+            if supervisor and supervisor.message_bus:
+                # Emit timer expired event
+                supervisor.message_bus.emit(
+                    event_type="TIMER_EXPIRED",
+                    data={
+                        "timer_id": timer_id,
+                        "original_request": f"Timer {timer_data.get('duration', 'unknown')} expired",
+                        "label": timer_data.get("label", ""),
+                        "user_id": timer_data.get("user_id", "system"),
+                        "channel": timer_data.get("channel", "console"),
+                    },
+                    source_role="timer",
+                )
+                logger.info(f"Timer expiry event emitted for {timer_id}")
+            else:
+                logger.warning(f"No message bus available for timer {timer_id} expiry")
+        except ImportError:
+            logger.warning("Supervisor not available for timer expiry event")
+
+        # Clean up expired timer from Redis
+        try:
+            redis_delete(f"timer:{timer_id}")
+            logger.info(f"Cleaned up expired timer {timer_id} from Redis")
+        except Exception as e:
+            logger.error(f"Failed to clean up timer {timer_id}: {e}")
+
+    except Exception as e:
+        logger.error(f"Timer expiry handling error for {timer_id}: {e}")
+
+
 def _parse_timer_event_data(event_data: Any) -> tuple[str, str]:
     """LLM-SAFE: Parse timer event data with error handling."""
     try:
