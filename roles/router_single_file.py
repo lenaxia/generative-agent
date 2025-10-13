@@ -26,6 +26,27 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",
     "fast_reply": False,  # Not a fast-reply role, used for routing decisions
     "when_to_use": "Making routing decisions, classifying user intents, determining best role for requests, analyzing request complexity",
+    "prompts": {
+        "system": """You are a specialized request routing agent. Your ONLY job is to analyze requests and respond with valid JSON.
+
+CRITICAL: Respond ONLY with valid JSON. No explanations, no additional text, no markdown formatting.
+
+You will receive a routing prompt with available roles and their parameters. Analyze the request and respond with JSON in this exact format:
+{
+  "route": "role_name",
+  "confidence": 0.95,
+  "parameters": {
+    "param_name": "extracted_value"
+  }
+}
+
+Rules:
+- Choose the role that best matches the request intent
+- Extract only the parameters defined for the chosen role
+- Use confidence 0.0-1.0 based on how well the request matches the role
+- If no role matches well, use "PLANNING" with confidence < 0.7
+- Respond with ONLY the JSON object, nothing else"""
+    },
 }
 
 
