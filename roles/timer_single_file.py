@@ -357,15 +357,17 @@ def _handle_timer_expiry(timer_id: str, timer_data: dict[str, Any]) -> None:
             else:
                 # Fallback: direct console notification
                 print(f"\n{message}")
-                logger.info(f"Timer expiry notification sent to console for {timer_id}")
+                logger.warning(
+                    f"Timer expiry notification sent to console fallback for {timer_id} - communication manager not available"
+                )
 
         except Exception as e:
-            logger.debug(
-                f"Communication manager not available for timer {timer_id}: {e}"
-            )
+            logger.warning(f"Communication manager error for timer {timer_id}: {e}")
             # Fallback: direct console notification
             print(f"\n{message}")
-            logger.info(f"Timer expiry notification sent to console for {timer_id}")
+            logger.warning(
+                f"Timer expiry notification sent to console fallback for {timer_id} - communication error"
+            )
 
         # Clean up expired timer from Redis
         try:

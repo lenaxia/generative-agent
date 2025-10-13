@@ -252,7 +252,21 @@ class CommunicationManager:
             message_bus = MessageBus()
             message_bus.start()
             cls._instance = CommunicationManager(message_bus)
+
+            # CRITICAL FIX: Auto-initialize handlers to prevent empty instance
+            # This ensures timer expiry notifications can find registered handlers
+            cls._instance.initialize_sync()
+
         return cls._instance
+
+    @classmethod
+    def set_instance(cls, instance: "CommunicationManager") -> None:
+        """Set the singleton instance (used by supervisor during startup).
+
+        This allows the supervisor to register its properly initialized
+        CommunicationManager as the singleton instance.
+        """
+        cls._instance = instance
 
     def __init__(self, message_bus: MessageBus):
         """Initialize the communication manager with supervisor's MessageBus."""
@@ -732,7 +746,9 @@ class CommunicationManager:
         # Fallback to console handler if available
         console_handler = self.channels.get("console")
         if console_handler:
-            logger.debug(f"Using console fallback for channel {channel_id}")
+            logger.error(
+                f"Using console fallback for channel {channel_id} - original channel handler not found"
+            )
             return console_handler
 
         logger.warning(f"No handler found for channel {channel_id}")
