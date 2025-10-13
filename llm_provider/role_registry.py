@@ -36,15 +36,19 @@ class RoleRegistry:
 
     _global_registry = None
 
-    def __init__(self, roles_directory: str = "roles", message_bus=None):
+    def __init__(
+        self, roles_directory: str = "roles", message_bus=None, intent_processor=None
+    ):
         """Initialize the role registry.
 
         Args:
             roles_directory: Path to the roles directory
             message_bus: Optional MessageBus for dynamic event registration
+            intent_processor: Optional IntentProcessor for intent handler registration
         """
         self.roles_directory = Path(roles_directory)
         self.message_bus = message_bus
+        self.intent_processor = intent_processor
 
         # Enhanced role storage for hybrid architecture
         self.llm_roles: dict[str, RoleDefinition] = {}  # All roles are hybrid now
@@ -85,6 +89,47 @@ class RoleRegistry:
             cls._global_registry = cls(roles_directory)
         return cls._global_registry
 
+    def set_intent_processor(self, intent_processor):
+        """Set the intent processor for role intent handler registration.
+
+        Args:
+            intent_processor: IntentProcessor instance for registering role-specific intents
+        """
+        self.intent_processor = intent_processor
+        logger.info("IntentProcessor set on RoleRegistry")
+
+        # Re-register all single-file role intents
+        self._register_all_single_file_role_intents()
+
+    def _register_all_single_file_role_intents(self):
+        """Re-register all single-file role intents with the IntentProcessor."""
+        if not self.intent_processor:
+            logger.warning("No IntentProcessor available for intent registration")
+            return
+
+        single_file_roles = self.get_single_file_roles()
+        for role_name in single_file_roles:
+            try:
+                # Re-import and register intents for this role
+                single_file_path = self.roles_directory / f"{role_name}_single_file.py"
+                if single_file_path.exists():
+                    spec = importlib.util.spec_from_file_location(
+                        f"roles.{role_name}_single_file", single_file_path
+                    )
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
+
+                        if hasattr(module, "register_role"):
+                            registration = module.register_role()
+                            if "intents" in registration:
+                                self._register_single_file_role_intents(
+                                    role_name, registration["intents"]
+                                )
+
+            except Exception as e:
+                logger.error(f"Failed to re-register intents for {role_name}: {e}")
+
     def refresh(self):
         """Refresh role registry by discovering and loading all LLM roles from filesystem."""
         logger.info("Refreshing role registry...")
@@ -123,23 +168,107 @@ class RoleRegistry:
         logger.info("Role registry initialization completed")
 
     def _discover_roles(self) -> list[str]:
-        """Discover all available role definitions."""
+        """Discover all available role definitions (both multi-file and single-file)."""
         roles = []
 
         if not self.roles_directory.exists():
             logger.warning(f"Roles directory not found: {self.roles_directory}")
             return roles
 
+        # Discover multi-file roles (legacy pattern)
         for role_dir in self.roles_directory.iterdir():
             if role_dir.is_dir() and (role_dir / "definition.yaml").exists():
                 # Skip shared_tools directory
                 if role_dir.name != "shared_tools":
                     roles.append(role_dir.name)
 
+        # Discover single-file roles (new LLM-safe pattern)
+        for role_file in self.roles_directory.glob("*_single_file.py"):
+            role_name = role_file.stem.replace("_single_file", "")
+            if role_name not in roles:  # Avoid duplicates
+                roles.append(role_name)
+                logger.info(f"Discovered single-file role: {role_name}")
+
         return roles
 
     def _load_role(self, role_name: str) -> RoleDefinition:
-        """Enhanced role loading with lifecycle function support."""
+        """Enhanced role loading with support for both multi-file and single-file roles."""
+        # Check for single-file role first (new LLM-safe pattern)
+        single_file_path = self.roles_directory / f"{role_name}_single_file.py"
+
+        if single_file_path.exists():
+            return self._load_single_file_role(role_name, single_file_path)
+        else:
+            return self._load_multi_file_role(role_name)
+
+    def _load_single_file_role(self, role_name: str, role_file: Path) -> RoleDefinition:
+        """Load single-file role using register_role() function."""
+        logger.info(f"Loading single-file role: {role_name}")
+
+        try:
+            # Import the single-file role module
+            spec = importlib.util.spec_from_file_location(
+                f"roles.{role_name}_single_file", role_file
+            )
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load spec for {role_file}")
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            # Get role registration
+            if not hasattr(module, "register_role"):
+                raise ValueError(
+                    f"Single-file role {role_name} missing register_role() function"
+                )
+
+            registration = module.register_role()
+
+            # Validate registration structure
+            required_keys = ["config", "event_handlers", "tools", "intents"]
+            for key in required_keys:
+                if key not in registration:
+                    raise ValueError(
+                        f"Single-file role {role_name} registration missing '{key}' key"
+                    )
+
+            # Convert to RoleDefinition format
+            config = {
+                "role": registration["config"],
+                "events": {
+                    "subscribes": list(registration["event_handlers"].keys()),
+                    "publishes": [],  # Single-file roles use intents instead of direct publishing
+                },
+                "tools": {"automatic": False, "shared": []},
+            }
+
+            # Extract tools from registration
+            custom_tools = registration.get("tools", [])
+
+            # Register event handlers with MessageBus if available
+            if self.message_bus:
+                self._register_single_file_role_events(role_name, registration)
+
+            # Register intent handlers if available
+            if "intents" in registration:
+                self._register_single_file_role_intents(
+                    role_name, registration["intents"]
+                )
+
+            logger.info(f"Successfully loaded single-file role: {role_name}")
+            return RoleDefinition(
+                name=role_name,
+                config=config,
+                custom_tools=custom_tools,
+                shared_tools=self.shared_tools,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to load single-file role {role_name}: {e}")
+            raise
+
+    def _load_multi_file_role(self, role_name: str) -> RoleDefinition:
+        """Load multi-file role (legacy pattern)."""
         role_path = self.roles_directory / role_name
         definition_file = role_path / "definition.yaml"
 
@@ -740,4 +869,101 @@ class RoleRegistry:
             "publishes": role_def["events"].get("publishes", []),
             "subscribes": role_def["events"].get("subscribes", []),
             "handlers": list(self._role_event_handlers.get(role_name, {}).keys()),
+        }
+
+    def _register_single_file_role_events(
+        self, role_name: str, registration: dict[str, Any]
+    ):
+        """Register event handlers for single-file roles."""
+        try:
+            event_handlers = registration.get("event_handlers", {})
+
+            for event_type, handler_func in event_handlers.items():
+                # Register with MessageBus
+                if self.message_bus:
+                    self.message_bus.subscribe(role_name, event_type, handler_func)
+                    logger.info(
+                        f"Registered event handler {event_type} for single-file role {role_name}"
+                    )
+
+                # Store in local registry
+                if role_name not in self._role_event_handlers:
+                    self._role_event_handlers[role_name] = {}
+                self._role_event_handlers[role_name][event_type] = handler_func
+
+        except Exception as e:
+            logger.error(
+                f"Failed to register events for single-file role {role_name}: {e}"
+            )
+
+    def _register_single_file_role_intents(
+        self, role_name: str, intents: dict[type, Callable]
+    ):
+        """Register intent handlers for single-file roles."""
+        try:
+            for intent_type, handler_func in intents.items():
+                logger.info(
+                    f"Registered intent handler {intent_type.__name__} for single-file role {role_name}"
+                )
+
+                # Register with IntentProcessor if available
+                if self.intent_processor:
+                    self.intent_processor.register_role_intent_handler(
+                        intent_type, handler_func, role_name
+                    )
+                    logger.info(
+                        f"Intent handler {intent_type.__name__} registered with IntentProcessor"
+                    )
+                else:
+                    logger.debug(
+                        f"IntentProcessor not available, intent handler {intent_type.__name__} stored for later registration"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to register intents for single-file role {role_name}: {e}"
+            )
+
+    def get_single_file_roles(self) -> list[str]:
+        """Get list of single-file roles."""
+        single_file_roles = []
+
+        if not self.roles_directory.exists():
+            return single_file_roles
+
+        for role_file in self.roles_directory.glob("*_single_file.py"):
+            role_name = role_file.stem.replace("_single_file", "")
+            single_file_roles.append(role_name)
+
+        return single_file_roles
+
+    def get_multi_file_roles(self) -> list[str]:
+        """Get list of multi-file roles (legacy pattern)."""
+        multi_file_roles = []
+
+        if not self.roles_directory.exists():
+            return multi_file_roles
+
+        for role_dir in self.roles_directory.iterdir():
+            if role_dir.is_dir() and (role_dir / "definition.yaml").exists():
+                if role_dir.name != "shared_tools":
+                    multi_file_roles.append(role_dir.name)
+
+        return multi_file_roles
+
+    def get_role_migration_status(self) -> dict[str, Any]:
+        """Get status of role migration to single-file architecture."""
+        single_file_roles = self.get_single_file_roles()
+        multi_file_roles = self.get_multi_file_roles()
+
+        return {
+            "single_file_roles": single_file_roles,
+            "multi_file_roles": multi_file_roles,
+            "total_roles": len(single_file_roles) + len(multi_file_roles),
+            "migration_progress": len(single_file_roles)
+            / (len(single_file_roles) + len(multi_file_roles))
+            if (len(single_file_roles) + len(multi_file_roles)) > 0
+            else 0,
+            "migrated_count": len(single_file_roles),
+            "remaining_count": len(multi_file_roles),
         }
