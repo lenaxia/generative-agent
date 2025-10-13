@@ -318,13 +318,11 @@ Respond with JSON only:
         for role_def in fast_reply_roles:
             role_name = role_def.name
             parameters = self.role_registry.get_role_parameters(role_name)
-            if parameters:
-                role_schemas[role_name] = {
-                    "description": role_def.config.get("role", {}).get(
-                        "description", ""
-                    ),
-                    "parameters": parameters,
-                }
+            # Include all fast-reply roles, even those without parameters
+            role_schemas[role_name] = {
+                "description": role_def.config.get("role", {}).get("description", ""),
+                "parameters": parameters or {},  # Use empty dict if no parameters
+            }
 
         return f"""Route this request to the best role AND extract parameters for that role.
 
