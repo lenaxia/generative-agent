@@ -233,13 +233,16 @@ class RoleRegistry:
                     )
 
             # Convert to RoleDefinition format
+            role_tools_config = registration["config"].get(
+                "tools", {"automatic": True, "shared": []}
+            )
             config = {
                 "role": registration["config"],
                 "events": {
                     "subscribes": list(registration["event_handlers"].keys()),
                     "publishes": [],  # Single-file roles use intents instead of direct publishing
                 },
-                "tools": {"automatic": False, "shared": []},
+                "tools": role_tools_config,  # Use tools config from role, not hardcoded
             }
 
             # Extract tools from registration

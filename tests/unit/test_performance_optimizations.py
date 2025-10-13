@@ -245,9 +245,8 @@ class TestWorkflowEnginePerformance:
     """Test WorkflowEngine performance optimizations."""
 
     @patch("supervisor.workflow_engine.UniversalAgent")
-    @patch("supervisor.workflow_engine.RequestRouter")
     @patch("supervisor.workflow_engine.MCPClientManager")
-    def test_initialization_performance(self, mock_mcp, mock_router, mock_agent):
+    def test_initialization_performance(self, mock_mcp, mock_agent):
         """Test that WorkflowEngine initialization uses optimizations."""
         # Mock dependencies
         mock_factory = Mock()
@@ -285,13 +284,12 @@ class TestEndToEndPerformance:
     """Test end-to-end routing performance."""
 
     @patch("supervisor.workflow_engine.UniversalAgent")
-    @patch("supervisor.workflow_engine.RequestRouter")
     @patch("supervisor.workflow_engine.MCPClientManager")
     @patch("llm_provider.role_registry.Path.exists", return_value=True)
     @patch("llm_provider.role_registry.Path.iterdir", return_value=[])
     @patch("llm_provider.role_registry.Path.glob", return_value=[])
     def test_routing_performance_target(
-        self, mock_glob, mock_iterdir, mock_exists, mock_mcp, mock_router, mock_agent
+        self, mock_glob, mock_iterdir, mock_exists, mock_mcp, mock_agent
     ):
         """Test that routing meets the <1 second performance target."""
         # Mock dependencies for fast execution
@@ -308,7 +306,7 @@ class TestEndToEndPerformance:
             "confidence": 0.95,
             "execution_time_ms": 100,
         }
-        mock_router.return_value = mock_router_instance
+        # RequestRouter removed - using router role directly
 
         # Mock agent for fast execution
         mock_agent_instance = Mock()

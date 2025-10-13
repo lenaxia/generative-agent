@@ -28,6 +28,10 @@ ROLE_CONFIG = {
     "llm_type": "WEAK",  # Routing is lightweight, use fast model
     "fast_reply": False,  # Router is not a fast-reply role itself
     "when_to_use": "Analyzing user requests and routing to the most appropriate role based on intent and available capabilities",
+    "tools": {
+        "automatic": True,  # Include custom tools automatically
+        "shared": [],  # No shared tools needed
+    },
     "prompts": {
         "system": """You are an intelligent request routing agent. Your job is to analyze user requests and route them to the most appropriate role.
 
