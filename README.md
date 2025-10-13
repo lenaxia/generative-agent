@@ -1,74 +1,32 @@
 # Universal Agent System
 
-## Overview
+A modern, production-ready AI workflow management platform built on the **Strands Agent Framework** with **single event loop architecture** and **intent-based processing**. The system provides intelligent task delegation, external state management, and seamless integration with external tools through MCP (Model Context Protocol) servers.
 
-The Universal Agent System is a modern, production-ready workflow management platform that provides intelligent task delegation, external state management, and seamless integration with external tools through MCP (Model Context Protocol) servers.
+## 🎯 **What Is This?**
 
-**🎉 Production Ready**: Built with modern AI framework providing enhanced capabilities and simplified architecture.
+The Universal Agent System is a **single AI agent** that can assume different specialized roles to handle various tasks. Instead of managing multiple separate agents, you have one intelligent system that dynamically adapts its behavior based on the task at hand.
 
-## Key Features
+**Key Concept**: One agent, many roles, unified workflow management.
 
-- **🤖 Universal Agent**: Single agent interface with role-based specialization
-- **🔄 Hybrid Role Lifecycle**: Pre/post processing hooks with parameter extraction
+## ✨ **Key Features**
+
+- **🤖 Universal Agent**: Single agent interface with dynamic role specialization
+- **📁 Single-File Roles**: Each role consolidated into one Python file (~300 lines vs 1800+ lines)
+- **🔄 Intent-Based Processing**: Declarative event handling eliminates threading complexity
+- **⚡ Single Event Loop**: No background threads, no race conditions, no threading issues
 - **⏸️ Pause/Resume**: Complete workflow state management with checkpointing
 - **🔌 MCP Integration**: Seamless integration with external tool ecosystems
 - **📊 Health Monitoring**: Real-time system health and performance monitoring
-- **🏗️ Simplified Architecture**: Clean, modular design with minimal dependencies
-- **🔧 Production Ready**: Comprehensive documentation, deployment guides, and monitoring
-- **🔄 Task Result Sharing**: Intelligent predecessor result passing eliminates duplicate work
-- **⚡ Enhanced Performance**: Reduced LLM calls and improved caching with structured parameters
+- **🏗️ LLM-Safe Architecture**: Designed specifically for AI agent development and modification
+- **🔧 Production Ready**: Comprehensive testing, deployment guides, and monitoring
 
-## Architecture
+## 🚀 **Quick Start**
 
-### System Architecture
-
-```mermaid
-graph TD
-    subgraph "Universal Agent System"
-        UA[Universal Agent] --> PL[Prompt Library]
-        UA --> TR[Tool Registry - @tool functions]
-        UA --> MCP[MCP Servers]
-        UA --> LLM[LLM Factory]
-    end
-
-    subgraph "Enhanced State Management"
-        TC[TaskContext] --> TG[TaskGraph - Enhanced]
-        TC --> CH[Conversation History]
-        TC --> PS[Progressive Summary]
-        TC --> CP[Checkpoints]
-    end
-
-    subgraph "Unified Orchestration"
-        WE[WorkflowEngine] --> TC
-        WE --> UA
-        WE --> MB[Message Bus]
-    end
-
-    subgraph "System Management"
-        S[Supervisor] --> WE
-        HB[Heartbeat] --> S
-    end
-```
-
-**Final Architecture**: Supervisor → WorkflowEngine → Universal Agent → LLM Provider
-
-### Key Components
-
-1. **Supervisor**: Top-level system coordinator with health monitoring
-2. **WorkflowEngine**: Unified orchestration combining request management and task scheduling
-3. **Universal Agent**: Single agent interface with role-based specialization
-4. **TaskContext**: External state management with checkpointing
-5. **Heartbeat**: System health monitoring and automatic maintenance
-
-## Quick Start
-
-### Option 1: Docker Development Setup (Recommended)
-
-The fastest way to get started with a complete development environment including Redis:
+### **Option 1: Docker Development Setup (Recommended)**
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/generative-agent.git
+# Clone and setup
+git clone <repository-url>
 cd generative-agent
 
 # Create virtual environment
@@ -78,27 +36,20 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # One-command setup with Docker Redis
 make docker-setup
 
-# Start developing!
+# Start using the system!
 python cli.py
 ```
 
-This sets up:
-
-- Redis 7 container with persistent storage
-- Optimized Redis configuration for development
-- Health checks and monitoring
-- Optional Redis Commander web GUI
-
-### Option 2: Manual Installation
+### **Option 2: Manual Installation**
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/generative-agent.git
+# Clone and setup
+git clone <repository-url>
 cd generative-agent
 
 # Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -107,233 +58,284 @@ pip install -r requirements.txt
 # See DEVELOPMENT_SETUP.md for Redis installation instructions
 ```
 
-### Configuration
+## 💻 **Usage**
 
-The system works with default configuration, but you can customize:
+### **Interactive Mode (Recommended)**
 
 ```bash
-# Configuration is already included in config.yaml
-# Edit config.yaml to customize Redis settings, LLM providers, etc.
+python cli.py
 ```
 
-### Basic Usage
+Start an interactive session where you can:
 
-**Command Line Interface (Recommended):**
+- Execute workflows with natural language
+- Monitor system health and performance
+- Switch between different AI roles automatically
+
+### **Single Command Mode**
 
 ```bash
-# Interactive mode
-python cli.py
+# Execute a workflow and exit
+python cli.py --workflow "Set a timer for 10 minutes"
 
-# Show system status
+# Check system status
 python cli.py --status
 
-# Execute a single workflow
-python cli.py --workflow "Search for weather in Seattle and create a summary"
-
-# Use custom config file
-python cli.py --config custom.yaml
-
-# Verbose logging
-python cli.py --verbose
+# Use custom configuration
+python cli.py --config production.yaml
 ```
 
-**Programmatic Usage:**
+### **Programmatic Usage**
 
 ```python
 from supervisor.supervisor import Supervisor
 
 # Initialize the system
 supervisor = Supervisor("config.yaml")
-
-# Start the system
 supervisor.start()
 
 # The system is now ready to process workflows
+# It will automatically select the right role for each task
 ```
 
-## Universal Agent Roles
+## 🎭 **Available Roles**
 
-The Universal Agent uses a **unified hybrid architecture** where all roles support lifecycle hooks for maximum flexibility:
+The Universal Agent can assume different specialized roles based on the task:
 
-### Hybrid Roles with Lifecycle Hooks 🆕
+### **Single-File Roles (New Architecture)**
 
-- **Weather**: Enhanced weather role with pre-processing data fetching and post-processing formatting
-  - Pre-processing: Fetches weather data before LLM call
-  - LLM processing: Interprets pre-fetched data
-  - Post-processing: TTS formatting, PII scrubbing, audit logging
-  - Parameter extraction: Automatic location, timeframe, and format detection
-- **Timer**: Timer and alarm management with parameter extraction and validation
-- **Calendar**: Calendar event management with time parsing and confirmation
-- **Smart Home**: Device control with parameter validation and status tracking
+- **Timer**: [`roles/timer_single_file.py`](roles/timer_single_file.py) - Set timers, alarms, reminders
+- **Weather**: [`roles/weather_single_file.py`](roles/weather_single_file.py) - Weather information and forecasts
+- **Smart Home**: [`roles/smart_home_single_file.py`](roles/smart_home_single_file.py) - Device control and automation
+- **Planning**: [`roles/planning_single_file.py`](roles/planning_single_file.py) - Complex task planning and analysis
+- **Router**: [`roles/router_single_file.py`](roles/router_single_file.py) - Request routing and classification
 
-### Hybrid-LLM Roles (Traditional LLM behavior)
+### **Multi-File Roles (Legacy)**
 
-- **Planning**: Complex task planning and dependency analysis (uses STRONG models)
-- **Analysis**: Data analysis and analytical reasoning (uses STRONG models)
-- **Coding**: Code generation, debugging, and software development (uses STRONG models)
-- **Code Reviewer**: Code quality assessment and security analysis (uses DEFAULT models)
-- **Research Analyst**: Comprehensive research and evidence-based reports (uses DEFAULT models)
-- **Search**: Web search and information retrieval (uses WEAK models)
-- **Default**: General-purpose assistant capabilities (uses DEFAULT models)
-- **Router**: Request routing and task classification (uses WEAK models)
+- **Calendar**: Event management and scheduling
+- **Code Reviewer**: Code quality assessment and security analysis
+- **Coding**: Code generation, debugging, and software development
+- **Research Analyst**: Comprehensive research and evidence-based reports
+- **Search**: Web search and information retrieval
 
-### Hybrid Architecture Benefits
+### **Role Selection**
 
-- **33% fewer LLM calls**: Pre-processing eliminates tool calls during LLM execution
-- **Enhanced caching**: Structured parameters enable better cache hit rates
-- **Better security**: Built-in PII scrubbing and audit logging
-- **Consistent formatting**: Post-processing ensures uniform output
-- **Comprehensive monitoring**: Detailed timing for all lifecycle phases
-- **Unified execution**: All roles use the same execution path with optional lifecycle hooks
+The system automatically selects the appropriate role based on your request:
 
-## Configuration
+- "Set a timer for 5 minutes" → **Timer Role**
+- "What's the weather in Seattle?" → **Weather Role**
+- "Plan a machine learning project" → **Planning Role**
+- "Turn on the living room lights" → **Smart Home Role**
 
-### Main Configuration (`config.yaml`)
+## 🏗️ **Architecture**
+
+### **System Overview**
+
+```mermaid
+graph TD
+    subgraph "Universal Agent System"
+        UA[Universal Agent] --> PL[Prompt Library]
+        UA --> TR[Tool Registry]
+        UA --> MCP[MCP Servers]
+        UA --> LLM[LLM Factory]
+    end
+
+    subgraph "Single Event Loop Architecture"
+        S[Supervisor] --> WE[WorkflowEngine]
+        WE --> UA
+        WE --> MB[Message Bus]
+        MB --> IP[Intent Processor]
+    end
+
+    subgraph "State Management"
+        TC[TaskContext] --> TG[TaskGraph]
+        TC --> CH[Conversation History]
+        TC --> CP[Checkpoints]
+    end
+```
+
+### **Key Components**
+
+1. **Supervisor**: Top-level system coordinator with health monitoring
+2. **WorkflowEngine**: Unified orchestration and task scheduling
+3. **Universal Agent**: Single agent interface with role-based specialization
+4. **Intent Processor**: Handles declarative intents from pure function event handlers
+5. **Message Bus**: Event-driven communication with intent processing
+6. **TaskContext**: External state management with checkpointing
+
+### **Architecture Benefits**
+
+- **Simplified**: Single event loop eliminates threading complexity
+- **Reliable**: No race conditions, no cross-thread async issues
+- **Maintainable**: Clear separation of concerns with intent-based processing
+- **Extensible**: Easy to add new roles and capabilities
+- **LLM-Friendly**: Designed for AI agent development and modification
+
+## ⚙️ **Configuration**
+
+The system uses a single [`config.yaml`](config.yaml) file for all configuration:
 
 ```yaml
 # Framework Configuration
 framework:
   type: "strands"
 
+# Architecture Configuration
+architecture:
+  threading_model: "single_event_loop"
+  role_system: "single_file"
+  llm_development: true
+
 # LLM Provider Configuration
 llm_providers:
   bedrock:
     models:
       WEAK: "anthropic.claude-3-haiku-20240307-v1:0"
-      DEFAULT: "us.amazon.nova-pro-v1:0"
+      DEFAULT: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
       STRONG: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 
-# Universal Agent Configuration
-universal_agent:
-  role_llm_mapping:
-    planning: "STRONG" # Complex reasoning
-    search: "WEAK" # Simple search
-    weather: "WEAK" # Simple lookup
-    summarizer: "DEFAULT" # Text processing
-    slack: "DEFAULT" # Conversational
+# Role System Configuration
+role_system:
+  roles_directory: "roles"
+  role_pattern: "*.py"
+  auto_discovery: true
+  validate_role_structure: true
 
-# Heartbeat Configuration
-heartbeat:
+# Intent Processing Configuration
+intent_processing:
   enabled: true
-  interval: 30 # Heartbeat interval in seconds
-  health_check_interval: 60 # Health check interval in seconds
+  validate_intents: true
+  timeout_seconds: 30
 
 # Feature Flags
 feature_flags:
   enable_universal_agent: true
-  enable_mcp_integration: true
-  enable_task_scheduling: true
-  enable_pause_resume: true
-  enable_heartbeat: true
+  enable_intent_processing: true
+  enable_single_event_loop: true
 ```
 
-## API Usage
+## 🛠️ **Development**
 
-### Basic Workflow Execution
+### **Adding New Roles**
+
+Create a new single-file role following the established pattern:
 
 ```python
-from supervisor.workflow_engine import WorkflowEngine
-from llm_provider.factory import LLMFactory
-from common.message_bus import MessageBus
+# roles/my_new_role.py
+"""My New Role - LLM-friendly single file implementation."""
 
-# Initialize components
-message_bus = MessageBus()
-llm_factory = LLMFactory(configs, framework="strands")
-workflow_engine = WorkflowEngine(llm_factory, message_bus)
+from dataclasses import dataclass
+from typing import List, Dict, Any
+from common.intents import Intent, NotificationIntent, AuditIntent
+from strands import tool
 
-# Start a workflow
-workflow_id = workflow_engine.start_workflow(
-    "Search for current weather in Seattle and create a summary report"
-)
+# 1. ROLE METADATA
+ROLE_CONFIG = {
+    "name": "my_new_role",
+    "version": "1.0.0",
+    "description": "Description of what this role does",
+    "llm_type": "DEFAULT",
+    "fast_reply": True,
+    "when_to_use": "When to use this role"
+}
 
-# Monitor progress
-status = workflow_engine.get_workflow_status(workflow_id)
-print(f"Workflow {workflow_id} is {status['state']}")
+# 2. ROLE-SPECIFIC INTENTS
+@dataclass
+class MyRoleIntent(Intent):
+    """Role-specific intent."""
+    action: str
+    parameters: Dict[str, Any]
+
+    def validate(self) -> bool:
+        return bool(self.action and isinstance(self.parameters, dict))
+
+# 3. EVENT HANDLERS (pure functions returning intents)
+def handle_my_event(event_data: Any, context) -> List[Intent]:
+    """Pure function event handler."""
+    return [
+        NotificationIntent(
+            message=f"Event processed: {event_data}",
+            channel=context.get_safe_channel()
+        )
+    ]
+
+# 4. TOOLS
+@tool
+def my_tool(parameter: str) -> Dict[str, Any]:
+    """Tool function."""
+    return {
+        "success": True,
+        "message": f"Action completed: {parameter}"
+    }
+
+# 5. ROLE REGISTRATION
+def register_role():
+    """Auto-discovered by RoleRegistry."""
+    return {
+        "config": ROLE_CONFIG,
+        "event_handlers": {
+            "MY_EVENT": handle_my_event
+        },
+        "tools": [my_tool],
+        "intents": [MyRoleIntent]
+    }
 ```
 
-### Pause and Resume Workflows
+### **Adding New Tools**
 
-```python
-# Pause a running workflow
-checkpoint = workflow_engine.pause_workflow(workflow_id)
-
-# Save checkpoint for later use
-import json
-with open(f"checkpoint_{workflow_id}.json", "w") as f:
-    json.dump(checkpoint, f)
-
-# Resume workflow later
-with open(f"checkpoint_{workflow_id}.json", "r") as f:
-    checkpoint = json.load(f)
-
-workflow_engine.resume_workflow(workflow_id, checkpoint)
-```
-
-## Tool Development
-
-Create new tools using the `@tool` decorator pattern:
+Use the `@tool` decorator pattern:
 
 ```python
 from strands import tool
 from typing import Dict
 
 @tool
-def custom_analysis_tool(data: str, analysis_type: str) -> Dict:
-    """Custom analysis tool for specific domain tasks"""
+def my_custom_tool(data: str, analysis_type: str) -> Dict:
+    """Custom tool for specific domain tasks."""
     # Implementation here
-    return {"analysis": "results", "confidence": 0.95}
-
-# Register tool with Universal Agent
-universal_agent.tool_registry.register_tool("custom_analysis", custom_analysis_tool)
+    return {"result": "analysis complete", "confidence": 0.95}
 ```
 
-## Docker Development Environment
+## 🧪 **Testing**
 
-The project includes a complete Docker-based development environment for easy setup and consistent development experience.
+Run the comprehensive test suite:
 
-### Quick Docker Setup
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test categories
+python -m pytest tests/integration/ -v    # Integration tests
+python -m pytest tests/unit/ -v          # Unit tests
+python -m pytest tests/llm_provider/ -v  # Universal Agent tests
+
+# Run threading architecture tests
+python -m pytest tests/test_threading_fixes_validation.py -v
+```
+
+## 🐳 **Docker Development Environment**
+
+The project includes a complete Docker-based development environment:
 
 ```bash
 # Complete setup with one command
 make docker-setup
 
-# Or step by step:
+# Individual commands
 make docker-start        # Start Redis container
 make redis-cli          # Connect to Redis CLI
 make redis-commander    # Start Redis web GUI (http://localhost:8081)
+make docker-clean       # Clean up everything
 ```
 
-### Docker Services
+### **Docker Services**
 
 - **Redis 7**: Latest stable Redis with optimized development configuration
 - **Redis Commander**: Optional web-based Redis management interface
 - **Persistent Storage**: Data persists between container restarts
 - **Health Checks**: Automatic health monitoring and recovery
 
-### Docker Commands
-
-| Command                | Description                            |
-| ---------------------- | -------------------------------------- |
-| `make docker-setup`    | Complete development environment setup |
-| `make docker-start`    | Start Redis container                  |
-| `make docker-stop`     | Stop all containers                    |
-| `make docker-logs`     | View container logs                    |
-| `make docker-test`     | Run Docker integration tests           |
-| `make redis-cli`       | Connect to Redis CLI                   |
-| `make redis-commander` | Start Redis GUI (port 8081)            |
-| `make docker-clean`    | Clean Docker resources                 |
-
-### Benefits
-
-- **Zero Configuration**: Works out of the box with sensible defaults
-- **Consistent Environment**: Same Redis version and configuration for all developers
-- **Easy Cleanup**: Remove everything with `make docker-clean`
-- **Performance Optimized**: Development-tuned Redis configuration
-- **Monitoring**: Built-in health checks and web-based management
-
-See [`docker/README.md`](docker/README.md) for detailed Docker configuration information.
-
-## MCP Integration
+## 🔌 **MCP Integration**
 
 The system integrates with multiple MCP servers for enhanced capabilities:
 
@@ -344,291 +346,270 @@ The system integrates with multiple MCP servers for enhanced capabilities:
 - **GitHub**: Repository management and code search
 - **Slack**: Team communication and collaboration
 
-## Health Monitoring
+## 📊 **Monitoring & Health**
 
 The system includes comprehensive health monitoring:
 
 ```python
 # Check system health
-health = supervisor.heartbeat.get_health_status()
+from supervisor.supervisor import Supervisor
+supervisor = Supervisor("config.yaml")
+health = supervisor.status()
 print(f"System health: {health['overall_status']}")
-
-# Get detailed metrics
-metrics = supervisor.heartbeat.get_system_metrics()
-print(f"Active workflows: {metrics['workflow_engine']['active_workflows']}")
 ```
 
-## Testing
+### **Health Monitoring Features**
 
-Run the comprehensive test suite:
+- Real-time system metrics
+- Workflow performance tracking
+- Intent processing monitoring
+- Single event loop compliance validation
+- Automatic health checks and maintenance
 
-```bash
-# Run all tests
-python -m pytest tests/ -v
-
-# Run specific test categories
-python -m pytest tests/integration/ -v  # Integration tests
-python -m pytest tests/llm_provider/ -v  # Universal Agent tests
-python -m pytest tests/supervisor/ -v   # WorkflowEngine tests
-```
-
-## Command Line Interface
-
-The system includes a modern CLI with multiple usage modes:
-
-### Interactive Mode
-
-```bash
-python cli.py
-```
-
-Starts an interactive session where you can:
-
-- Execute workflows with the Universal Agent
-- Check system status and health
-- Monitor workflow progress in real-time
-
-### Single Command Mode
-
-```bash
-# Execute a workflow and exit
-python cli.py --workflow "Plan a machine learning project"
-
-# Check system status
-python cli.py --status
-
-# Use custom configuration
-python cli.py --config production.yaml
-```
-
-### CLI Features
-
-- **Real-time Status**: Live system health and workflow monitoring
-- **Multiple LLM Providers**: Supports Bedrock, Anthropic, and OpenAI
-- **Role-based Execution**: Automatic role selection (planning, search, weather, etc.)
-- **Error Handling**: Graceful error recovery and user feedback
-- **Flexible Configuration**: Custom config files and verbose logging
-
-## Documentation
-
-Comprehensive documentation is available in the `docs/` directory:
-
-- **[API Reference](docs/02_API_REFERENCE.md)**: Complete API documentation
-- **[Architecture Overview](docs/01_ARCHITECTURE_OVERVIEW.md)**: System design and patterns
-- **[Configuration Guide](docs/04_CONFIGURATION_GUIDE.md)**: Configuration options and examples
-- **[Troubleshooting Guide](docs/03_TROUBLESHOOTING_GUIDE.md)**: Common issues and solutions
-- **[Tool Development Guide](docs/05_TOOL_DEVELOPMENT_GUIDE.md)**: Creating new @tool functions
-- **[Deployment Guide](docs/07_DEPLOYMENT_GUIDE.md)**: Production deployment instructions
-- **[Hybrid Role Lifecycle Design](docs/14_HYBRID_ROLE_LIFECYCLE_DESIGN.md)**: 🆕 Complete hybrid role architecture specification
-- **[Hybrid Role Migration Guide](docs/HYBRID_ROLE_MIGRATION_GUIDE.md)**: 🆕 Step-by-step guide for creating hybrid roles
-
-### New Hybrid Role Architecture 🆕
-
-The system now supports **Hybrid Role Lifecycle Architecture** with unified execution for all roles:
-
-#### Key Features
-
-- **Parameter Extraction**: Single LLM call extracts both route and parameters
-- **Pre-processing Hooks**: Fetch data before LLM execution (eliminates tool calls)
-- **Post-processing Hooks**: Format results, scrub PII, audit logging
-- **Data Injection**: Pre-processed data injected into LLM context
-- **Enhanced Caching**: Structured parameters enable semantic caching
-
-#### Example: Enhanced Weather Role
-
-```bash
-# Request: "What's the weather in Seattle?"
-# 1. Enhanced routing extracts: {"location": "Seattle", "timeframe": "current"}
-# 2. Pre-processing fetches weather data from API
-# 3. LLM interprets pre-fetched data (no tool calls needed)
-# 4. Post-processing formats for TTS and logs interaction
-# Result: 33% fewer LLM calls, faster execution, better monitoring
-```
-
-See [`examples/hybrid_role_example.py`](examples/hybrid_role_example.py) for a working demonstration.
-
-## Architecture Benefits
-
-This system provides significant advantages through its modern architecture:
-
-### Architecture Features
-
-- Universal Agent with role-based specialization
-- Clean abstraction over LLM frameworks
-- Complete pause/resume with external state management
-- Simplified architecture with enhanced capabilities
-
-### Key Benefits
-
-- **Simplified Testing**: Fewer components to test and mock
-- **Better Performance**: Reduced overhead from multiple agent instances
-- **Enhanced Capabilities**: Pause/resume, external state, MCP integration, task result sharing
-- **Cleaner Codebase**: Minimal orchestration complexity
-- **Efficiency Improvements**: Task result sharing eliminates duplicate work between dependent tasks
-- **Unified Result Storage**: All workflows (fast-reply and complex) use consistent TaskContext storage
-
-### Unified Result Architecture 🆕
-
-The system now uses **unified result storage** for both fast-reply and complex workflows:
-
-#### Before (Dual Storage)
-
-- **Fast-reply**: Results stored in `fast_reply_results` dict
-- **Complex workflows**: Results stored in `TaskContext` objects
-- **Problem**: Different retrieval mechanisms, inconsistent interfaces
-
-#### After (Unified Storage)
-
-- **All workflows**: Results stored in `TaskContext` with completed `TaskNode`
-- **Fast-reply**: Creates minimal `TaskContext` with single completed task
-- **Complex workflows**: Uses full DAG execution with multiple tasks
-- **Benefit**: Single retrieval mechanism, consistent interfaces, simplified Slack integration
-
-```python
-# Fast-reply now creates TaskContext like complex workflows
-task_node = TaskNode(
-    task_id=request_id,
-    task_name=f"fast_reply_{role}",
-    status=TaskStatus.COMPLETED,
-    result=result,  # Actual AI response stored here
-    role=role
-)
-task_context = TaskContext(task_graph, context_id=request_id)
-self.active_workflows[request_id] = task_context  # Unified storage
-```
-
-## Project Structure
+## 📁 **Project Structure**
 
 ```
 generative-agent/
-├── supervisor/
-│   ├── supervisor.py              # Main system coordinator
-│   ├── workflow_engine.py         # Unified workflow management (was request_manager.py)
-│   ├── heartbeat.py              # System health monitoring
-│   ├── metrics_manager.py        # Performance metrics
-│   └── config_manager.py         # Configuration management
-├── llm_provider/
-│   ├── factory.py                # StrandsAgent model factory
-│   ├── universal_agent.py        # Universal Agent implementation
-│   ├── planning_tools.py         # Planning @tool functions
-│   ├── search_tools.py           # Search @tool functions
-│   ├── weather_tools.py          # Weather @tool functions
-│   ├── summarizer_tools.py       # Summarization @tool functions
-│   ├── slack_tools.py            # Slack @tool functions
-│   ├── tool_registry.py          # Tool registration and management
-│   ├── prompt_library.py         # Role-based prompts
-│   └── mcp_client.py             # MCP server integration
-├── common/
-│   ├── task_graph.py             # Enhanced DAG with checkpointing
-│   ├── task_context.py           # External state management
-│   ├── message_bus.py            # Event-driven communication
-│   └── request_model.py          # Request data models
-├── config/
-│   ├── config_manager.py         # Global configuration management
-│   ├── bedrock_config.py         # AWS Bedrock configuration
-│   ├── anthropic_config.py       # Anthropic configuration
-│   ├── openai_config.py          # OpenAI configuration
-│   └── mcp_config.yaml           # MCP server configuration
-├── agents/deprecated/             # Legacy agents (deprecated)
-├── docs/                         # Comprehensive documentation
-├── tests/                        # Comprehensive test suite
-├── config.yaml                   # Main configuration file
-├── requirements.txt              # Python dependencies (StrandsAgent-based)
-└── README.md                     # This file
+├── cli.py                    # Command-line interface
+├── config.yaml              # Main configuration
+├── supervisor/               # System coordination
+│   ├── supervisor.py         # Main supervisor
+│   ├── workflow_engine.py    # Workflow orchestration
+│   └── threading_monitor.py  # Architecture health monitoring
+├── llm_provider/             # LLM abstraction layer
+│   ├── universal_agent.py    # Single agent with role specialization
+│   ├── factory.py            # LLM provider factory
+│   └── role_registry.py      # Role discovery and management
+├── common/                   # Shared components
+│   ├── intents.py            # Intent system foundation
+│   ├── intent_processor.py   # Intent processing engine
+│   ├── message_bus.py        # Event-driven communication
+│   └── communication_manager.py # Multi-channel communication
+├── roles/                    # AI agent roles
+│   ├── timer_single_file.py  # Timer role (single file)
+│   ├── weather_single_file.py # Weather role (single file)
+│   └── shared_tools/         # Shared tool functions
+└── tests/                    # Comprehensive test suite
+    ├── test_intents.py       # Intent system tests
+    ├── test_threading_fixes_validation.py # Architecture validation
+    └── integration/          # End-to-end tests
 ```
 
-## Development
+## 🔧 **Advanced Features**
 
-### Adding New Tools
+### **Workflow Management**
 
-1. Create a new tool function with the `@tool` decorator
-2. Register the tool in the ToolRegistry
-3. Add the tool to appropriate role configurations
-4. Write comprehensive tests
-5. Update documentation
+- **Pause/Resume**: Complete workflow state preservation
+- **Checkpointing**: Automatic state snapshots
+- **Task Dependencies**: Complex workflow orchestration
+- **Result Sharing**: Intelligent predecessor result passing
 
-### Adding New Roles
+### **Performance Optimization**
 
-1. Define the role in the Universal Agent
-2. Create role-specific prompts
-3. Configure appropriate LLM type (WEAK/DEFAULT/STRONG)
-4. Assign relevant tools to the role
-5. Test role assumption and execution
+- **Agent Pooling**: Pre-warmed agent instances
+- **Fast-Path Routing**: Quick responses for simple requests
+- **Semantic Caching**: Intelligent result caching
+- **Reduced LLM Calls**: 33% fewer calls through pre-processing
 
-## Production Deployment
+### **Communication Channels**
 
-The system supports multiple deployment methods:
+- **Slack**: Team collaboration and notifications
+- **Console**: Command-line interaction
+- **Email**: Email notifications and responses
+- **Voice**: Speech recognition and text-to-speech
+- **Home Assistant**: Smart home device integration
+- **WhatsApp**: Mobile messaging support
 
-- **Docker**: Containerized deployment with health checks
-- **Kubernetes**: Scalable deployment with auto-scaling
-- **Systemd**: Traditional Linux server deployment
+## 📖 **Documentation**
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Architecture Overview](docs/01_ARCHITECTURE_OVERVIEW.md)**: System design and patterns
+- **[API Reference](docs/02_API_REFERENCE.md)**: Complete API documentation
+- **[Configuration Guide](docs/04_CONFIGURATION_GUIDE.md)**: Configuration options and examples
+- **[Tool Development Guide](docs/05_TOOL_DEVELOPMENT_GUIDE.md)**: Creating new tools and roles
+- **[Deployment Guide](docs/07_DEPLOYMENT_GUIDE.md)**: Production deployment instructions
+- **[Threading Architecture](docs/25_THREADING_ARCHITECTURE_IMPROVEMENTS.md)**: LLM-safe architecture design
+
+## 🎯 **Use Cases**
+
+### **Personal Productivity**
+
+```bash
+python cli.py --workflow "Set a timer for 25 minutes for focused work"
+python cli.py --workflow "What's the weather forecast for this weekend?"
+python cli.py --workflow "Plan my day based on my calendar"
+```
+
+### **Development Workflow**
+
+```bash
+python cli.py --workflow "Review this pull request for security issues"
+python cli.py --workflow "Generate unit tests for the new feature"
+python cli.py --workflow "Plan the architecture for a new microservice"
+```
+
+### **Smart Home Integration**
+
+```bash
+python cli.py --workflow "Turn on the living room lights and set temperature to 72°F"
+python cli.py --workflow "Create a bedtime routine that dims all lights"
+```
+
+### **Research & Analysis**
+
+```bash
+python cli.py --workflow "Research the latest trends in AI architecture"
+python cli.py --workflow "Analyze this dataset and provide insights"
+python cli.py --workflow "Summarize the key points from these documents"
+```
+
+## 🏛️ **Architecture Principles**
+
+### **Single Event Loop Architecture**
+
+- **No Background Threads**: Everything runs in the main event loop
+- **No Threading Locks**: Eliminates race conditions and deadlocks
+- **Predictable Execution**: Deterministic event processing order
+- **LLM-Safe**: AI agents can safely modify and extend the system
+
+### **Intent-Based Processing**
+
+- **Declarative Events**: Event handlers return "what should happen" not "how to do it"
+- **Pure Functions**: Event handlers have no side effects
+- **Separation of Concerns**: Business logic separated from I/O operations
+- **Testable**: Easy to test and validate event processing logic
+
+### **Single-File Role Architecture**
+
+- **Consolidated**: Each role is completely self-contained in one file
+- **LLM-Friendly**: AI agents can understand and modify entire roles
+- **Reduced Complexity**: 83% code reduction (1800+ → 300 lines per role)
+- **Clear Ownership**: Each role owns all its concerns and dependencies
+
+## 🔬 **Technical Details**
+
+### **LLM Provider Support**
+
+- **AWS Bedrock**: Claude models with optimized configurations
+- **OpenAI**: GPT models with cost optimization
+- **Anthropic**: Direct Claude API integration
+- **Model Optimization**: Automatic model selection based on task complexity
+
+### **State Management**
+
+- **External State**: TaskContext with Redis persistence
+- **Conversation History**: Full conversation tracking
+- **Progressive Summary**: Intelligent context compression
+- **Checkpointing**: Complete workflow state snapshots
+
+### **Event Processing**
+
+- **Message Bus**: Event-driven communication between components
+- **Intent System**: Declarative action processing
+- **Event Registry**: Dynamic event type registration
+- **Handler Registration**: Automatic event handler discovery
+
+## 🚀 **Performance**
+
+### **Optimizations Achieved**
+
+- **33% Fewer LLM Calls**: Through pre-processing and caching
+- **Single Thread Operation**: Eliminates threading overhead
+- **Agent Pooling**: Pre-warmed agent instances
+- **Fast-Path Routing**: Sub-3-second responses for simple requests
+- **Semantic Caching**: Intelligent result reuse
+
+### **Monitoring**
+
+- **Real-time Metrics**: System performance tracking
+- **Health Checks**: Automatic system health validation
+- **Intent Processing**: Declarative event processing monitoring
+- **Workflow Duration**: Complete workflow timing analysis
+
+## 🧪 **Testing & Quality**
+
+### **Test Coverage**
+
+- **72+ Threading Architecture Tests**: Validate single event loop compliance
+- **Integration Tests**: End-to-end workflow validation
+- **Unit Tests**: Component-level testing
+- **Performance Tests**: System performance validation
+
+### **Code Quality**
+
+- **Pre-commit Hooks**: Automatic code formatting and linting
+- **Type Checking**: Full mypy type validation
+- **Security Scanning**: Bandit security analysis
+- **Documentation**: Comprehensive inline documentation
+
+## 🚀 **Production Deployment**
+
+### **Production Features**
+
+- **Health Monitoring**: Real-time system health tracking
+- **Performance Metrics**: Detailed performance analytics
+- **Error Handling**: Comprehensive error recovery
+- **Logging**: Structured logging with rotation
+- **Configuration**: Environment-specific configurations
+
+### **Deployment Options**
+
+- **Docker**: Containerized deployment with Redis
+- **Kubernetes**: Scalable container orchestration
+- **Systemd**: Linux service deployment
 - **Cloud**: AWS, GCP, Azure deployment guides
 
-See [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for detailed instructions.
+## 🤝 **Contributing**
 
-## Monitoring and Observability
+### **Development Setup**
 
-- **Health Checks**: Real-time component health monitoring
-- **Metrics Collection**: Performance and usage metrics
-- **Structured Logging**: JSON-formatted logs for analysis
-- **Alerting**: Configurable alerts for critical issues
-- **Resource Monitoring**: CPU, memory, and disk usage tracking
+1. Follow the Quick Start guide above
+2. Install development dependencies: `pip install -r requirements-dev.txt`
+3. Set up pre-commit hooks: `pre-commit install`
+4. Run tests: `python -m pytest tests/ -v`
 
-## Contributing
+### **Code Style**
 
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for your changes
-4. Ensure all tests pass
-5. Submit a pull request
+- **Black**: Code formatting
+- **isort**: Import sorting
+- **mypy**: Type checking
+- **pytest**: Testing framework
 
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
+### **Architecture Guidelines**
 
-## License
+- **Single Event Loop**: No background threads
+- **Intent-Based**: Use declarative intents for event processing
+- **Single-File Roles**: Keep roles consolidated in single files
+- **LLM-Safe**: Design for AI agent modification
+
+## 📄 **License**
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 **Support**
 
-- **Documentation**: See `docs/` directory for comprehensive guides
-- **Issues**: Report bugs and feature requests via GitHub Issues
-- **Troubleshooting**: See [Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)
+- **Documentation**: Check the [`docs/`](docs/) directory
+- **Issues**: Create GitHub issues for bugs and feature requests
+- **Discussions**: Use GitHub Discussions for questions and ideas
+- **Development**: See [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md) for development environment setup
 
-## Migration History
+## 🎉 **Recent Achievements**
 
-This system represents a complete architectural evolution:
+### **Threading Architecture Transformation**
 
-**Phase 1-3**: Foundation and Universal Agent implementation
-**Phase 4-5**: MCP integration and comprehensive testing
-**Phase 6-7**: Architecture consolidation and framework optimization
-**Phase 8**: Post-migration cleanup and production readiness
-**Phase 9**: 🆕 **Hybrid Role Lifecycle Architecture** - Advanced role execution with lifecycle hooks
+- **17,902+ lines of legacy code removed**
+- **Single event loop architecture implemented**
+- **All threading issues eliminated**
+- **83% code reduction per role achieved**
 
-### Latest Enhancement: Hybrid Role Lifecycle Architecture
+### **LLM-Safe Architecture**
 
-The system now includes a revolutionary hybrid role execution model:
+- **Intent-based processing implemented**
+- **Pure function event handlers**
+- **Single-file role architecture**
+- **Comprehensive test coverage**
 
-#### Implementation Achievements
+---
 
-- **Enhanced RoleRegistry**: Lifecycle function support and parameter schemas
-- **Enhanced RequestRouter**: Parameter extraction in single LLM call
-- **Enhanced UniversalAgent**: Hybrid execution with pre/post processing hooks
-- **Updated WorkflowEngine**: Hybrid role support with async execution
-- **Migrated Weather Role**: Complete hybrid pattern implementation
-- **Comprehensive Testing**: 41 tests covering all hybrid functionality
-- **Full Documentation**: Migration guide and working examples
-
-#### Performance Impact
-
-- **Reduced LLM calls**: 3 → 2 calls per weather request (33% reduction)
-- **Enhanced caching**: Structured parameters improve cache hit rates
-- **Better monitoring**: Comprehensive execution time logging
-- **Improved security**: Built-in PII scrubbing and audit logging
-
-The migration maintained 100% functionality while achieving:
-
-- Modern AI framework architecture
-- Simplified architecture (5 components → 1 Universal Agent)
-- Enhanced capabilities (pause/resume, external state, MCP integration, hybrid roles)
-- Production-ready features (health monitoring, deployment guides)
-- Comprehensive documentation and testing
+**The Universal Agent System: One Agent, Many Roles, Infinite Possibilities** 🚀
