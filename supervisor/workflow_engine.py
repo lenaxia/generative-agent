@@ -1510,14 +1510,17 @@ Current task: {base_prompt}"""
                 ]
             )
 
-            routing_instruction = f"""Analyze this user request and route it to the most appropriate role.
-
-USER REQUEST: "{request_text}"
+            routing_instruction = f"""USER REQUEST: "{request_text}"
 
 AVAILABLE ROLES:
 {roles_description}
 
-Call route_to_role() with your routing decision. Be decisive and efficient."""
+Respond with ONLY valid JSON in this exact format:
+{{
+  "route": "role_name",
+  "confidence": 0.95,
+  "parameters": {{}}
+}}"""
 
             # Execute with router role - this will call route_to_role() tool
             result = self.universal_agent.execute_task(
