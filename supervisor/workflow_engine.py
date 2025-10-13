@@ -340,13 +340,29 @@ class WorkflowEngine:
                 )
 
                 # Execute hybrid role with pre-extracted parameters
-                # execute_task is now synchronous and handles async internally
-                result = self.universal_agent.execute_task(
-                    instruction=request.prompt,
-                    role=role,
-                    context=task_context,
-                    extracted_parameters=parameters,
-                )
+                # Special handling for roles that need pre-processing
+                if role.lower() == "weather":
+                    # Weather role uses pre-processing pattern
+                    from roles.weather_single_file import (
+                        process_weather_request_with_data,
+                    )
+
+                    # Set universal agent reference for weather role to use
+                    process_weather_request_with_data._universal_agent = (
+                        self.universal_agent
+                    )
+
+                    result = process_weather_request_with_data(
+                        request.prompt, parameters
+                    )
+                else:
+                    # Standard role execution
+                    result = self.universal_agent.execute_task(
+                        instruction=request.prompt,
+                        role=role,
+                        context=task_context,
+                        extracted_parameters=parameters,
+                    )
             else:
                 # Existing LLM execution path with parameter context injection
                 if parameters:

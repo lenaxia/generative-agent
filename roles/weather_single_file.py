@@ -122,6 +122,136 @@ def handle_weather_request(
         ]
 
 
+# 4. PRE-PROCESSING FUNCTIONS (owned by weather role)
+def fetch_weather_data_for_request(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Pre-fetch weather data for injection into prompt - owned by weather role.
+
+    Args:
+        parameters: Parameters from routing decision (location, type, etc.)
+
+    Returns:
+        Dict with weather data for prompt injection
+    """
+    try:
+        location = parameters.get("location", "")
+        request_type = parameters.get("type", "current")
+
+        if not location:
+            return {
+                "success": False,
+                "error": "No location provided",
+                "weather_data": None,
+            }
+
+        logger.info(f"Pre-fetching weather data for {location} (type: {request_type})")
+
+        # Convert location to coordinates
+        if _is_coordinates(location):
+            lat, lon = map(float, location.split(","))
+            coordinates = {"lat": lat, "lon": lon}
+        elif _is_zipcode(location):
+            coordinates = _zipcode_to_coordinates(location, "US")
+        else:
+            coordinates = _city_to_coordinates(location)
+
+        # Fetch weather data based on request type
+        if request_type == "forecast":
+            # Get extended forecast
+            forecast_data = _get_forecast_data(
+                coordinates["lat"], coordinates["lon"], 7
+            )
+            weather_data = {
+                "location": location,
+                "coordinates": coordinates,
+                "forecast": forecast_data,
+                "type": "forecast",
+            }
+        else:
+            # Get current weather (default)
+            current_weather = _check_weather(coordinates["lat"], coordinates["lon"])
+            weather_data = {
+                "location": location,
+                "coordinates": coordinates,
+                "current": current_weather,
+                "type": "current",
+            }
+
+        logger.info(f"Successfully pre-fetched weather data for {location}")
+        return {
+            "success": True,
+            "weather_data": weather_data,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to pre-fetch weather data: {e}")
+        return {"success": False, "error": str(e), "weather_data": None}
+
+
+def process_weather_request_with_data(
+    request_text: str, parameters: dict[str, Any]
+) -> str:
+    """Process weather request with pre-fetched data - owned by weather role.
+
+    Args:
+        request_text: Original user request
+        parameters: Parameters from routing decision
+
+    Returns:
+        Weather response string
+    """
+    try:
+        # Pre-fetch weather data
+        weather_result = fetch_weather_data_for_request(parameters)
+
+        if not weather_result["success"]:
+            return f"I apologize, but I couldn't fetch weather data: {weather_result['error']}"
+
+        weather_data = weather_result["weather_data"]
+
+        # Build enhanced instruction with weather data injected
+        if weather_data["type"] == "forecast":
+            forecast_info = weather_data["forecast"]
+            weather_context = f"""WEATHER FORECAST DATA FOR {weather_data['location'].upper()}:
+{forecast_info}"""
+        else:
+            current_info = weather_data["current"]
+            weather_context = f"""CURRENT WEATHER DATA FOR {weather_data['location'].upper()}:
+- Temperature: {current_info.get('temperature', 'N/A')}°{current_info.get('temperature_unit', 'F')}
+- Conditions: {current_info.get('short_forecast', 'N/A')}
+- Detailed: {current_info.get('detailed_forecast', 'N/A')}
+- Wind: {current_info.get('wind_speed', 'N/A')} {current_info.get('wind_direction', '')}
+- Time Period: {current_info.get('period_name', 'Current')}"""
+
+        enhanced_instruction = f"""USER REQUEST: "{request_text}"
+
+{weather_context}
+
+Based on this weather data, provide a helpful and informative response about the weather conditions."""
+
+        # Execute weather role with injected data
+        from llm_provider.factory import LLMType
+
+        # Get universal agent reference (set by workflow engine)
+        universal_agent = getattr(
+            process_weather_request_with_data, "_universal_agent", None
+        )
+        if not universal_agent:
+            return (
+                "Weather data fetched but no universal agent available for processing"
+            )
+
+        result = universal_agent.execute_task(
+            instruction=enhanced_instruction, role="weather", llm_type=LLMType.WEAK
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Weather request processing failed: {e}")
+        return f"I apologize, but I encountered an error processing the weather request: {str(e)}"
+
+
 def handle_weather_data_processing(
     event_data: Any, context: LLMSafeEventContext
 ) -> list[Intent]:
