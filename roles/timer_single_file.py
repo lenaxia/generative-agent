@@ -103,6 +103,7 @@ class TimerCreationIntent(Intent):
     label: str = ""
     user_id: Optional[str] = None
     channel_id: Optional[str] = None
+    event_context: Optional[dict[str, Any]] = None  # Store full LLMSafeEventContext
 
     def validate(self) -> bool:
         """Validate timer creation intent parameters."""
@@ -148,6 +149,7 @@ class TimerExpiryIntent(Intent):
     label: str = ""
     user_id: Optional[str] = None
     channel_id: Optional[str] = None
+    event_context: Optional[dict[str, Any]] = None  # Store full LLMSafeEventContext
 
     def validate(self) -> bool:
         """Validate timer expiry intent parameters."""
@@ -236,6 +238,9 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
             if timer_result.get("success"):
                 timer_data = timer_result.get("value", {})
                 logger.info(f"🔥 Timer data for {timer_id}: {timer_data}")
+                # Extract stored event context for full traceability
+                stored_context = timer_data.get("event_context", {})
+
                 intents.append(
                     TimerExpiryIntent(
                         timer_id=timer_id,
@@ -243,7 +248,16 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                         label=timer_data.get("label", ""),
                         user_id=timer_data.get("user_id"),
                         channel_id=timer_data.get("channel_id"),
+                        event_context=stored_context,  # Include full context for traceability
                     )
+                )
+
+                # Log the complete context for debugging
+                logger.info(
+                    f"🔥 Timer {timer_id} context: user={timer_data.get('user_id')}, "
+                    f"channel={timer_data.get('channel_id')}, "
+                    f"source={stored_context.get('source', 'unknown')}, "
+                    f"metadata_keys={list(stored_context.get('metadata', {}).keys())}"
                 )
             else:
                 logger.warning(
@@ -427,7 +441,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             f"🔥 Timer will expire at: {expiry_time} (current: {time.time()}, duration: {intent.duration_seconds}s)"
         )
 
-        # Create timer data with proper context
+        # Create timer data with complete context for full traceability
         timer_data = {
             "id": intent.timer_id,
             "duration": intent.duration,
@@ -438,6 +452,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             "status": "active",
             "user_id": intent.user_id,
             "channel_id": intent.channel_id,
+            "event_context": intent.event_context,  # Store complete context for traceability
         }
         logger.info(f"🔥 Timer data to store: {timer_data}")
 
@@ -484,7 +499,7 @@ async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
             return
 
         # Validate user can cancel this timer (if user_id provided)
-        stored_timer = timer_data.get("data", {})
+        stored_timer = timer_data.get("value", {})
         if intent.user_id and stored_timer.get("user_id") != intent.user_id:
             logger.warning(
                 f"User {intent.user_id} cannot cancel timer {intent.timer_id} (not owner)"
@@ -529,7 +544,7 @@ async def process_timer_listing_intent(intent: TimerListingIntent):
             # Read timer metadata
             timer_data = redis_read(f"timer:data:{timer_id}")
             if timer_data.get("success"):
-                timer_info = timer_data.get("data", {})
+                timer_info = timer_data.get("value", {})
 
                 # Filter by user_id if specified
                 if intent.user_id and timer_info.get("user_id") != intent.user_id:

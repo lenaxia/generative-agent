@@ -82,14 +82,23 @@ class IntentProcessingHook(HookProvider):
                 logger.info(f"🔥 Found direct intent in tool result: {intent_data}")
 
             if intent_data:
-                # Inject context into intent if available
+                # Inject complete context into intent if available
                 if self.current_context:
                     intent_data["user_id"] = self.current_context.user_id
                     intent_data["channel_id"] = self.current_context.channel_id
+                    # Store complete event context for full traceability
+                    intent_data["event_context"] = self.current_context.to_dict()
                 else:
                     # Fallback to console for direct API calls
                     intent_data["user_id"] = "api_user"
                     intent_data["channel_id"] = "console"
+                    # Create minimal context for API calls
+                    from common.enhanced_event_context import create_minimal_context
+
+                    minimal_context = create_minimal_context("api_call")
+                    minimal_context.user_id = "api_user"
+                    minimal_context.channel_id = "console"
+                    intent_data["event_context"] = minimal_context.to_dict()
 
                 # Create intent object and process it
                 intent = self._create_intent_from_data(intent_data)
