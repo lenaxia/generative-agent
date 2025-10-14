@@ -505,8 +505,14 @@ class Supervisor:
                 ),
                 "heartbeat": (
                     {
-                        "status": "healthy",
+                        "overall_status": "healthy",
+                        "components_healthy": len(self._scheduled_tasks)
+                        if hasattr(self, "_scheduled_tasks")
+                        else 0,
                         "mode": "scheduled_tasks",
+                        "scheduled_tasks_count": len(self._scheduled_tasks)
+                        if hasattr(self, "_scheduled_tasks")
+                        else 0,
                     }  # LLM-SAFE: Scheduled task health
                 ),
                 "metrics": self.metrics_manager.get_metrics(),
@@ -559,14 +565,6 @@ class Supervisor:
             self.fast_heartbeat._use_scheduled_task = True
             logger.info("Fast heartbeat configured for scheduled task mode")
 
-
-if __name__ == "__main__":
-    logger.info("Starting Supervisor application...")
-    config_file = "config.yaml"
-    supervisor = Supervisor(config_file)
-    supervisor.run()
-    logger.info("Supervisor application stopped.")
-
     async def _create_heartbeat_task(self):
         """Create scheduled heartbeat task."""
         while True:
@@ -608,7 +606,7 @@ if __name__ == "__main__":
                         message={"tick": tick_count, "timestamp": time.time()},
                     )
                     tick_count += 1
-                    logger.debug(f"Fast heartbeat tick {tick_count} published")
+                    logger.info(f"Fast heartbeat tick {tick_count} published")
 
                 # Wait for next tick (5 seconds for timer monitoring)
                 await asyncio.sleep(5)
@@ -726,3 +724,11 @@ if __name__ == "__main__":
             )
             loop_thread.start()
             logger.info("Event loop started in background thread")
+
+
+if __name__ == "__main__":
+    logger.info("Starting Supervisor application...")
+    config_file = "config.yaml"
+    supervisor = Supervisor(config_file)
+    supervisor.run()
+    logger.info("Supervisor application stopped.")
