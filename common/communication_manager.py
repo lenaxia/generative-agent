@@ -252,21 +252,7 @@ class CommunicationManager:
             message_bus = MessageBus()
             message_bus.start()
             cls._instance = CommunicationManager(message_bus)
-
-            # CRITICAL FIX: Auto-initialize handlers to prevent empty instance
-            # This ensures timer expiry notifications can find registered handlers
-            cls._instance.initialize_sync()
-
         return cls._instance
-
-    @classmethod
-    def set_instance(cls, instance: "CommunicationManager") -> None:
-        """Set the singleton instance (used by supervisor during startup).
-
-        This allows the supervisor to register its properly initialized
-        CommunicationManager as the singleton instance.
-        """
-        cls._instance = instance
 
     def __init__(self, message_bus: MessageBus):
         """Initialize the communication manager with supervisor's MessageBus."""
@@ -596,9 +582,14 @@ class CommunicationManager:
         self, origin_channel: str, message_type: str, context: dict
     ) -> list[str]:
         """Determine which channels should receive the message."""
-        # Route back to origin channel (let channel handlers decide routing patterns)
-        # This maintains separation of concerns - no channel-specific logic here
-        channels = [origin_channel] if origin_channel else ["console"]
+        # Extract channel type from channel_id (format: "channel_type:actual_id")
+        if ":" in origin_channel:
+            channel_type = origin_channel.split(":", 1)[0]
+        else:
+            channel_type = origin_channel
+
+        # Default: return to origin channel type
+        channels = [channel_type] if channel_type else ["console"]
 
         # Special routing rules
         if message_type == "timer_expired":
@@ -614,9 +605,7 @@ class CommunicationManager:
             # Smart home: origin + Home Assistant for device status
             channels = [origin_channel, "home_assistant"]
 
-        # Use pattern matching instead of exact channel matching
-        # This allows "slack:#general" to match "slack:" pattern handler
-        return [ch for ch in channels if ch and self._find_handler_for_channel(ch)]
+        return [ch for ch in channels if ch and ch in self.channels]
 
     def _should_add_audio_notification(self, context: dict) -> bool:
         """Check if audio notification should be added based on context."""
@@ -640,13 +629,8 @@ class CommunicationManager:
         # Try target channels first
         for channel_id in target_channels:
             logger.info(f"Trying to send to channel: {channel_id}")
-
-            # Find handler using pattern matching (maintains separation of concerns)
-            handler = self._find_handler_for_channel(channel_id)
-            if handler:
-                logger.info(
-                    f"Handler found for channel {channel_id}: {handler.__class__.__name__}"
-                )
+            if channel_id in self.channels:
+                logger.info(f"Channel {channel_id} found in self.channels")
                 try:
                     logger.info(
                         f"Calling send_notification on {channel_id} with message: '{message}'"
@@ -657,7 +641,7 @@ class CommunicationManager:
 
                     # Add timeout to prevent hanging
                     result = await asyncio.wait_for(
-                        handler.send_notification(
+                        self.channels[channel_id].send_notification(
                             message,
                             context.get("recipient"),
                             context.get("message_format", MessageFormat.PLAIN_TEXT),
@@ -722,37 +706,6 @@ class CommunicationManager:
                 results.append({"channel": "console", "result": result})
 
         return results
-
-    def _find_handler_for_channel(self, channel_id: str) -> Optional[ChannelHandler]:
-        """Find appropriate handler based on channel patterns.
-
-        Maintains separation of concerns by delegating channel-specific logic
-        to channel handlers through pattern matching.
-        """
-        # First try exact match (for backward compatibility)
-        if channel_id in self.channels:
-            return self.channels[channel_id]
-
-        # Then try pattern matching for channel handlers that declare patterns
-        for handler_name, handler in self.channels.items():
-            if hasattr(handler, "channel_pattern"):
-                pattern = handler.channel_pattern
-                if channel_id.startswith(pattern):
-                    logger.debug(
-                        f"Channel {channel_id} matched pattern {pattern} for handler {handler_name}"
-                    )
-                    return handler
-
-        # Fallback to console handler if available
-        console_handler = self.channels.get("console")
-        if console_handler:
-            logger.error(
-                f"Using console fallback for channel {channel_id} - original channel handler not found"
-            )
-            return console_handler
-
-        logger.warning(f"No handler found for channel {channel_id}")
-        return None
 
     async def _discover_and_initialize_channels(self):
         """Discover and initialize all available channel handlers."""

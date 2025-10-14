@@ -166,15 +166,9 @@ class Supervisor:
         # Initialize channels synchronously during startup
         self.communication_manager.initialize_sync()
 
-        # CRITICAL FIX: Register this instance as the singleton
-        # This ensures timer expiry and other components use the properly initialized instance
-        CommunicationManager.set_instance(self.communication_manager)
-
         # Start the async queue processor after supervisor starts
         # This will be handled in the start() method
-        logger.info(
-            "Communication manager initialized with channel handlers and registered as singleton"
-        )
+        logger.info("Communication manager initialized with channel handlers")
 
     def _initialize_llm_factory(self):
         """Initialize LLM factory with provider configurations."""

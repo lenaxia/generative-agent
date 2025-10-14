@@ -11,6 +11,8 @@ from enum import Enum
 from typing import Any, Optional
 
 from strands import Agent
+from strands.hooks import HookProvider, HookRegistry
+from strands.hooks.events import AfterToolCallEvent
 
 
 class ExecutionMode(str, Enum):
@@ -23,6 +25,7 @@ class ExecutionMode(str, Enum):
 from strands.models.bedrock import BedrockModel
 from strands_tools import calculator, file_read, shell
 
+from common.enhanced_event_context import LLMSafeEventContext
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
@@ -30,6 +33,96 @@ from llm_provider.role_registry import RoleDefinition, RoleRegistry
 from llm_provider.tool_registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+
+class IntentProcessingHook(HookProvider):
+    """Hook provider to process intents from tool results."""
+
+    def __init__(self, universal_agent):
+        self.universal_agent = universal_agent
+        self.current_context = None
+
+    def register_hooks(self, registry: HookRegistry, **kwargs):
+        registry.add_callback(AfterToolCallEvent, self._process_tool_result_intents)
+
+    def _process_tool_result_intents(self, event):
+        """Process intents from tool results."""
+        try:
+            tool_result = event.result
+
+            # Check if tool result contains an intent
+            if isinstance(tool_result, dict) and "intent" in tool_result:
+                intent_data = tool_result["intent"]
+
+                # Inject context into intent if available
+                if self.current_context:
+                    intent_data["user_id"] = self.current_context.user_id
+                    intent_data["channel_id"] = self.current_context.channel_id
+
+                # Create intent object and process it
+                intent = self._create_intent_from_data(intent_data)
+                if intent:
+                    # Process intent asynchronously
+                    import asyncio
+
+                    asyncio.create_task(self._process_intent_async(intent))
+
+        except Exception as e:
+            logger.error(f"Error processing tool result intent: {e}")
+
+    def _create_intent_from_data(self, intent_data: dict):
+        """Create intent object from tool result data."""
+        intent_type = intent_data.get("type")
+
+        if intent_type == "TimerCreationIntent":
+            from roles.timer_single_file import TimerCreationIntent
+
+            return TimerCreationIntent(
+                **{k: v for k, v in intent_data.items() if k != "type"}
+            )
+        elif intent_type == "TimerCancellationIntent":
+            from roles.timer_single_file import TimerCancellationIntent
+
+            return TimerCancellationIntent(
+                **{k: v for k, v in intent_data.items() if k != "type"}
+            )
+        elif intent_type == "TimerListingIntent":
+            from roles.timer_single_file import TimerListingIntent
+
+            return TimerListingIntent(
+                **{k: v for k, v in intent_data.items() if k != "type"}
+            )
+
+        return None
+
+    async def _process_intent_async(self, intent):
+        """Process intent using the registered intent handlers."""
+        try:
+            # Get intent processor from role registry
+            if (
+                hasattr(self.universal_agent, "role_registry")
+                and self.universal_agent.role_registry
+            ):
+                role_registry = self.universal_agent.role_registry
+
+                # Find the intent handler for this intent type
+                for role_name, role_def in role_registry.roles.items():
+                    if hasattr(role_def, "_intent_handlers"):
+                        intent_handlers = role_def._intent_handlers
+                        if type(intent) in intent_handlers:
+                            handler = intent_handlers[type(intent)]
+                            await handler(intent)
+                            logger.info(
+                                f"Processed {type(intent).__name__} via {role_name} role"
+                            )
+                            return
+
+                logger.warning(
+                    f"No handler found for intent type: {type(intent).__name__}"
+                )
+
+        except Exception as e:
+            logger.error(f"Error processing intent: {e}")
 
 
 class UniversalAgent:
@@ -57,6 +150,9 @@ class UniversalAgent:
         self.current_agent = None
         self.current_role = None
         self.current_llm_type = None
+
+        # Initialize intent processing hook
+        self.intent_hook = IntentProcessingHook(self)
 
     def assume_role(
         self,
@@ -178,6 +274,7 @@ class UniversalAgent:
         role: str = "default",
         llm_type: LLMType = LLMType.DEFAULT,
         context: Optional[TaskContext] = None,
+        event_context: Optional[LLMSafeEventContext] = None,
         extracted_parameters: Optional[dict] = None,
     ) -> str:
         r"""\1
@@ -194,7 +291,14 @@ class UniversalAgent:
         """
         # LLM-SAFE: Single event loop architecture (Documents 25 & 26)
         # Always use synchronous execution to eliminate threading complexity
-        return self.execute_llm_task(instruction, role, llm_type, context)
+
+        # Store event context for intent processing
+        if event_context:
+            self.intent_hook.current_context = event_context
+
+        return self.execute_llm_task(
+            instruction, role, llm_type, context, event_context=event_context
+        )
 
     # Programmatic role methods removed - everything is hybrid now
 
@@ -205,6 +309,7 @@ class UniversalAgent:
         llm_type: LLMType,
         context: Optional[TaskContext] = None,
         execution_mode: ExecutionMode = ExecutionMode.WORKFLOW,
+        event_context: Optional[LLMSafeEventContext] = None,
     ) -> str:
         r"""\1
 
@@ -578,7 +683,12 @@ class UniversalAgent:
             additional_tools = self.tool_registry.get_tools(tools)
             basic_tools.extend(additional_tools)
 
-        agent = Agent(model=model, system_prompt=system_prompt, tools=basic_tools)
+        agent = Agent(
+            model=model,
+            system_prompt=system_prompt,
+            tools=basic_tools,
+            hooks=[self.intent_hook],
+        )
 
         # Store current configuration
         self.current_agent = agent
@@ -619,7 +729,12 @@ class UniversalAgent:
             if tools_changed:
                 # Tools changed - need to recreate agent but reuse cached model
                 model = agent.model
-                new_agent = Agent(model=model, system_prompt=system_prompt, tools=tools)
+                new_agent = Agent(
+                    model=model,
+                    system_prompt=system_prompt,
+                    tools=tools,
+                    hooks=[self.intent_hook],
+                )
                 logger.debug(
                     f"✅ Recreated agent with cached model due to tool changes: {len(tools)} tools"
                 )
@@ -654,7 +769,12 @@ class UniversalAgent:
             )
             # Fallback: recreate Agent with cached model
             model = agent.model if hasattr(agent, "model") else None
-            return Agent(model=model, system_prompt=system_prompt, tools=tools)
+            return Agent(
+                model=model,
+                system_prompt=system_prompt,
+                tools=tools,
+                hooks=[self.intent_hook],
+            )
 
     def _determine_llm_type_for_role(self, role: str) -> LLMType:
         r"""\1

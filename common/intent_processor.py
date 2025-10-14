@@ -8,7 +8,9 @@ Created: 2025-10-12
 Part of: Threading Architecture Improvements (Documents 25, 26, 27)
 """
 
+import asyncio
 import logging
+import time
 from typing import Any, Callable, Dict, List, Optional
 
 from common.intents import (
@@ -30,16 +32,20 @@ class IntentProcessor:
     allowing event handlers to be pure functions that return declarative intents.
     """
 
-    def __init__(self, communication_manager=None, workflow_engine=None):
+    def __init__(
+        self, communication_manager=None, workflow_engine=None, message_bus=None
+    ):
         """
         Initialize the intent processor.
 
         Args:
             communication_manager: Optional communication manager for notifications
             workflow_engine: Optional workflow engine for starting workflows
+            message_bus: Optional message bus for event publishing
         """
         self.communication_manager = communication_manager
         self.workflow_engine = workflow_engine
+        self.message_bus = message_bus
 
         # Core intent handlers (built-in)
         self._core_handlers = {
