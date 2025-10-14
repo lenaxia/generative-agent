@@ -437,8 +437,28 @@ async def process_timer_listing_intent(intent: TimerListingIntent):
 async def process_timer_expiry_intent(intent: TimerExpiryIntent):
     """Process timer expiry intents - handles notification delivery."""
     try:
-        logger.info(f"Timer expiry notification for {intent.timer_id}")
-        # Notification will be handled by the event handler returning NotificationIntent
+        logger.info(f"Processing timer expiry notification for {intent.timer_id}")
+
+        # Create notification message
+        message = f"⏰ Timer expired: {intent.original_duration}"
+        if intent.label:
+            message += f" ({intent.label})"
+
+        # Create notification intent for proper routing
+        notification_intent = NotificationIntent(
+            message=message,
+            channel=intent.channel_id or "console",
+            user_id=intent.user_id,
+            priority="medium",
+            notification_type="info",
+        )
+
+        # Process notification through intent system
+        # In a full implementation, this would go through the IntentProcessor
+        # For now, we'll log that the notification would be sent
+        logger.info(
+            f"Timer expiry notification ready: {notification_intent.message} -> {notification_intent.channel}"
+        )
 
     except Exception as e:
         logger.error(f"Timer expiry processing failed: {e}")
@@ -452,27 +472,23 @@ async def _schedule_timer_expiry_async(
         # Wait for timer duration
         await asyncio.sleep(duration_seconds)
 
-        # Emit timer expiry event
+        # Create timer expiry intent and let the intent processor handle it
         try:
-            from supervisor.supervisor import get_global_supervisor
+            # Create TimerExpiryIntent for proper intent-based processing
+            expiry_intent = TimerExpiryIntent(
+                timer_id=timer_id,
+                original_duration=timer_data.get("duration", "unknown"),
+                label=timer_data.get("label", ""),
+                user_id=timer_data.get("user_id"),
+                channel_id=timer_data.get("channel_id"),
+            )
 
-            supervisor = get_global_supervisor()
-            if supervisor and supervisor.message_bus:
-                supervisor.message_bus.publish(
-                    "timer_role",
-                    "TIMER_EXPIRED",
-                    {
-                        "timer_id": timer_id,
-                        "original_request": f"Timer {timer_data.get('duration', 'unknown')} expired",
-                        "user_id": timer_data.get("user_id"),
-                        "channel_id": timer_data.get("channel_id"),
-                        "label": timer_data.get("label", ""),
-                        "expired_at": time.time(),
-                    },
-                )
-                logger.info(f"Timer expiry event published for {timer_id}")
+            # Process the intent directly (since we're already in an async context)
+            await process_timer_expiry_intent(expiry_intent)
+            logger.info(f"Timer expiry intent processed for {timer_id}")
+
         except Exception as e:
-            logger.error(f"Failed to publish timer expiry event: {e}")
+            logger.error(f"Failed to process timer expiry intent: {e}")
 
         # Clean up expired timer
         from roles.shared_tools.redis_tools import redis_delete

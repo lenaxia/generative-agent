@@ -328,6 +328,7 @@ class WorkflowEngine:
                             channel_id = workflow_metrics.channel_id
 
                 # Create TaskContext with user_id and channel_id for lifecycle functions
+                from common.enhanced_event_context import LLMSafeEventContext
                 from common.task_context import TaskContext
                 from common.task_graph import TaskGraph
 
@@ -337,6 +338,14 @@ class WorkflowEngine:
                     context_id=request_id,
                     user_id=user_id,
                     channel_id=channel_id,
+                )
+
+                # Create LLMSafeEventContext for intent processing
+                event_context = LLMSafeEventContext(
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    source=request.source_id,
+                    metadata=request.metadata or {},
                 )
 
                 # Execute hybrid role with pre-extracted parameters
@@ -356,11 +365,12 @@ class WorkflowEngine:
                         request.prompt, parameters
                     )
                 else:
-                    # Standard role execution
+                    # Standard role execution with event context
                     result = self.universal_agent.execute_task(
                         instruction=request.prompt,
                         role=role,
                         context=task_context,
+                        event_context=event_context,  # ✅ Pass LLMSafeEventContext
                         extracted_parameters=parameters,
                     )
             else:
