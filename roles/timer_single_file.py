@@ -1,45 +1,39 @@
-"""Timer role - LLM-friendly single file implementation with intent-based architecture.
+"""Timer role - LLM-friendly single file implementation following Documents 25 & 26.
 
 This role consolidates all timer functionality into a single file following
-the LLM-safe intent-based architecture patterns from Documents 25, 26, and 27.
+the LLM-safe architecture patterns from Documents 25 and 26.
 
 Key architectural principles:
-- Tools are declarative (return intents, no side effects)
-- Event handlers are pure functions returning intents
-- IntentProcessor handles all I/O operations
-- Single event loop compliance (no threading.Timer)
-- Context flows through LLMSafeEventContext
+- Single event loop compliance (no asyncio.sleep())
+- Intent-based processing (pure functions returning intents)
+- Heartbeat-driven timer monitoring (Redis polling every 5 seconds)
+- LLM-safe patterns (predictable, simple, self-contained)
+- Redis sorted sets for efficient timer queuing
 
-Migrated from: roles/timer/ (definition.yaml + lifecycle.py + tools.py)
-Total reduction: ~1800 lines → ~300 lines (83% reduction)
+Architecture: Single Event Loop + Intent-Based + Heartbeat Polling
+Created: 2025-10-14
 """
 
-import asyncio
-import json
 import logging
-import re
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from strands import tool
 
-from common.enhanced_event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
-from common.message_bus import MessageBus
 
 logger = logging.getLogger(__name__)
 
 # 1. ROLE METADATA (replaces definition.yaml)
 ROLE_CONFIG = {
     "name": "timer",
-    "version": "5.0.0",
-    "description": "Timer and alarm management with intent-based LLM-safe architecture",
+    "version": "6.0.0",
+    "description": "Timer and alarm management with LLM-safe heartbeat-driven architecture",
     "llm_type": "WEAK",
     "fast_reply": True,
-    "when_to_use": "Set timers, alarms, manage time-based reminders with intent-based processing",
+    "when_to_use": "Set timers, alarms, manage time-based reminders using heartbeat polling",
     "parameters": {
         "action": {
             "type": "string",
@@ -68,19 +62,25 @@ ROLE_CONFIG = {
     },
     "tools": {
         "automatic": True,  # Include custom timer tools
-        "shared": [],  # No shared tools needed for intent-based architecture
+        "shared": ["redis_tools"],  # Need Redis for timer queue
         "include_builtin": False,  # Exclude calculator, file_read, shell
         "fast_reply": {
             "enabled": True,  # Enable tools in fast-reply mode
         },
     },
     "prompts": {
-        "system": """You are a timer management specialist. You can set, cancel, and list timers using the available tools.
+        "system": """You are a timer management specialist using heartbeat-driven architecture. You can set, cancel, and list timers using the available tools.
 
 Available timer tools:
 - set_timer(duration, label): Set a new timer with duration (e.g., "5s", "2m", "1h") and optional label
 - cancel_timer(timer_id): Cancel an existing timer by ID
 - list_timers(): List all active timers
+
+Timer Architecture:
+- Timers are stored in Redis sorted sets for efficient expiry queries
+- Heartbeat system checks for expired timers every 5 seconds
+- No persistent async tasks or threading complexity
+- All operations are intent-based and LLM-safe
 
 When users request timer operations:
 1. Parse the duration from natural language (5s, 2 minutes, 1 hour, etc.)
@@ -95,7 +95,7 @@ Always use the timer tools to perform timer operations. Do not suggest alternati
 # 2. ROLE-SPECIFIC INTENTS (owned by timer role)
 @dataclass
 class TimerCreationIntent(Intent):
-    """Timer-specific intent: Create a timer with proper context routing."""
+    """Timer-specific intent: Create a timer with heartbeat-driven expiry."""
 
     timer_id: str
     duration: str
@@ -159,7 +159,7 @@ class TimerExpiryIntent(Intent):
 
 
 # 3. EVENT HANDLERS (pure functions returning intents)
-def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[Intent]:
+def handle_timer_expiry(event_data: Any, context) -> list[Intent]:
     """LLM-SAFE: Pure function for timer expiry events."""
     try:
         # Parse event data
@@ -171,7 +171,7 @@ def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[I
             return [
                 NotificationIntent(
                     message=f"Timer processing error: {request}",
-                    channel=context.get_safe_channel(),
+                    channel=_get_safe_channel(context),
                     priority="high",
                     notification_type="error",
                 )
@@ -181,8 +181,8 @@ def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[I
         return [
             NotificationIntent(
                 message=f"⏰ Timer expired: {request}",
-                channel=context.get_safe_channel(),
-                user_id=context.user_id,
+                channel=_get_safe_channel(context),
+                user_id=getattr(context, "user_id", None),
                 priority="medium",
             ),
             AuditIntent(
@@ -192,7 +192,7 @@ def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[I
                     "original_request": request,
                     "processed_at": time.time(),
                 },
-                user_id=context.user_id,
+                user_id=getattr(context, "user_id", None),
             ),
         ]
 
@@ -201,20 +201,47 @@ def handle_timer_expiry(event_data: Any, context: LLMSafeEventContext) -> list[I
         return [
             NotificationIntent(
                 message=f"Timer processing error: {e}",
-                channel=context.get_safe_channel(),
+                channel=_get_safe_channel(context),
                 priority="high",
                 notification_type="error",
             )
         ]
 
 
-def handle_heartbeat_monitoring(
-    event_data: Any, context: LLMSafeEventContext
-) -> list[Intent]:
-    """LLM-SAFE: Pure function for heartbeat monitoring."""
-    # For heartbeat monitoring, we typically don't need to create intents
-    # unless there are expired timers to process
-    return []
+def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
+    """LLM-SAFE: Pure function for heartbeat monitoring - checks Redis for expired timers."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read
+
+        # Get current time for expiry check
+        current_time = int(time.time())
+
+        # Check Redis sorted set for expired timers
+        # This is called every 5 seconds by the fast heartbeat
+        expired_timer_ids = _get_expired_timers_from_redis(current_time)
+
+        # Create expiry intents for each expired timer
+        intents = []
+        for timer_id in expired_timer_ids:
+            # Get timer data to create proper expiry intent
+            timer_result = redis_read(f"timer:data:{timer_id}")
+            if timer_result.get("success"):
+                timer_data = timer_result.get("data", {})
+                intents.append(
+                    TimerExpiryIntent(
+                        timer_id=timer_id,
+                        original_duration=timer_data.get("duration", "unknown"),
+                        label=timer_data.get("label", ""),
+                        user_id=timer_data.get("user_id"),
+                        channel_id=timer_data.get("channel_id"),
+                    )
+                )
+
+        return intents
+
+    except Exception as e:
+        logger.error(f"Heartbeat monitoring error: {e}")
+        return []
 
 
 # 4. TOOLS (declarative, LLM-friendly, intent-based)
@@ -230,7 +257,7 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
         # Generate unique timer ID
         timer_id = f"timer_{uuid.uuid4().hex[:8]}"
 
-        # CORRECT: Return intent data, no I/O operations
+        # Return intent data for processing by infrastructure
         return {
             "success": True,
             "timer_id": timer_id,
@@ -324,14 +351,53 @@ def _parse_duration(duration_str: str) -> int:
         raise ValueError(f"Invalid duration format: {duration_str}")
 
 
+def _get_safe_channel(context) -> str:
+    """LLM-SAFE: Get safe channel from context."""
+    if hasattr(context, "get_safe_channel") and callable(context.get_safe_channel):
+        try:
+            return context.get_safe_channel()
+        except TypeError:
+            # Handle case where get_safe_channel doesn't accept arguments
+            pass
+    if hasattr(context, "channel_id") and context.channel_id:
+        return context.channel_id
+    else:
+        return "console"
+
+
+def _get_expired_timers_from_redis(current_time: int) -> list[str]:
+    """LLM-SAFE: Get expired timer IDs from Redis sorted set."""
+    try:
+        from roles.shared_tools.redis_tools import _get_redis_client
+
+        client = _get_redis_client()
+
+        # Get expired timers from sorted set (score <= current_time)
+        expired_timer_ids = client.zrangebyscore("timer:active_queue", 0, current_time)
+
+        # Remove expired timers from the active queue
+        if expired_timer_ids:
+            client.zremrangebyscore("timer:active_queue", 0, current_time)
+
+        return [
+            timer_id.decode() if isinstance(timer_id, bytes) else timer_id
+            for timer_id in expired_timer_ids
+        ]
+
+    except Exception as e:
+        logger.error(f"Redis expired timer query failed: {e}")
+        return []
+
+
 # 6. INTENT HANDLER REGISTRATION
 async def process_timer_creation_intent(intent: TimerCreationIntent):
-    """Process timer creation intents - handles actual I/O operations."""
-    import asyncio
-
-    from roles.shared_tools.redis_tools import redis_write
+    """Process timer creation intents - handles actual Redis operations."""
+    from roles.shared_tools.redis_tools import _get_redis_client, redis_write
 
     try:
+        # Calculate expiry time
+        expiry_time = time.time() + intent.duration_seconds
+
         # Create timer data with proper context
         timer_data = {
             "id": intent.timer_id,
@@ -339,25 +405,27 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             "duration_seconds": intent.duration_seconds,
             "label": intent.label,
             "created_at": time.time(),
-            "expires_at": time.time() + intent.duration_seconds,
+            "expires_at": expiry_time,
             "status": "active",
-            "user_id": intent.user_id,  # ✅ From intent context
-            "channel_id": intent.channel_id,  # ✅ From intent context
+            "user_id": intent.user_id,
+            "channel_id": intent.channel_id,
         }
 
-        # Store in Redis
+        # Store timer metadata in Redis hash
         redis_result = redis_write(
-            f"timer:{intent.timer_id}", timer_data, ttl=intent.duration_seconds + 60
+            f"timer:data:{intent.timer_id}",
+            timer_data,
+            ttl=intent.duration_seconds + 60,
         )
 
         if redis_result.get("success"):
-            # Schedule expiry using single event loop (not threading.Timer)
-            asyncio.create_task(
-                _schedule_timer_expiry_async(
-                    intent.timer_id, intent.duration_seconds, timer_data
-                )
+            # Add timer to sorted set for efficient expiry queries
+            client = _get_redis_client()
+            client.zadd("timer:active_queue", {intent.timer_id: expiry_time})
+
+            logger.info(
+                f"Timer {intent.timer_id} created in Redis queue (expires at {expiry_time})"
             )
-            logger.info(f"Timer {intent.timer_id} created and scheduled")
         else:
             logger.error(f"Failed to store timer: {redis_result.get('error')}")
 
@@ -366,12 +434,16 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
 
 
 async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
-    """Process timer cancellation intents - handles actual I/O operations."""
-    from roles.shared_tools.redis_tools import redis_delete, redis_read
+    """Process timer cancellation intents - handles actual Redis operations."""
+    from roles.shared_tools.redis_tools import (
+        _get_redis_client,
+        redis_delete,
+        redis_read,
+    )
 
     try:
         # Read timer data for validation
-        timer_data = redis_read(f"timer:{intent.timer_id}")
+        timer_data = redis_read(f"timer:data:{intent.timer_id}")
 
         if not timer_data.get("success"):
             logger.warning(f"Timer {intent.timer_id} not found for cancellation")
@@ -385,8 +457,12 @@ async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
             )
             return
 
-        # Delete timer from Redis
-        redis_result = redis_delete(f"timer:{intent.timer_id}")
+        # Remove timer from active queue
+        client = _get_redis_client()
+        client.zrem("timer:active_queue", intent.timer_id)
+
+        # Delete timer metadata
+        redis_result = redis_delete(f"timer:data:{intent.timer_id}")
 
         if redis_result.get("success"):
             logger.info(f"Timer {intent.timer_id} cancelled successfully")
@@ -398,23 +474,26 @@ async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
 
 
 async def process_timer_listing_intent(intent: TimerListingIntent):
-    """Process timer listing intents - handles actual I/O operations."""
-    from roles.shared_tools.redis_tools import redis_get_keys, redis_read
+    """Process timer listing intents - handles actual Redis operations."""
+    from roles.shared_tools.redis_tools import _get_redis_client, redis_read
 
     try:
-        # Get all timer keys
-        keys_result = redis_get_keys("timer:*")
+        # Get all active timers from sorted set
+        client = _get_redis_client()
+        current_time = time.time()
 
-        if not keys_result.get("success"):
-            logger.error("Failed to retrieve timer keys")
-            return
+        # Get all active timers (score > current_time)
+        active_timer_ids = client.zrangebyscore(
+            "timer:active_queue", current_time, "+inf"
+        )
 
-        timer_keys = keys_result.get("keys", [])
         active_timers = []
+        for timer_id in active_timer_ids:
+            if isinstance(timer_id, bytes):
+                timer_id = timer_id.decode()
 
-        # Read each timer and filter by user if specified
-        for key in timer_keys:
-            timer_data = redis_read(key)
+            # Read timer metadata
+            timer_data = redis_read(f"timer:data:{timer_id}")
             if timer_data.get("success"):
                 timer_info = timer_data.get("data", {})
 
@@ -422,9 +501,7 @@ async def process_timer_listing_intent(intent: TimerListingIntent):
                 if intent.user_id and timer_info.get("user_id") != intent.user_id:
                     continue
 
-                # Check if timer is still active
-                if timer_info.get("expires_at", 0) > time.time():
-                    active_timers.append(timer_info)
+                active_timers.append(timer_info)
 
         logger.info(
             f"Found {len(active_timers)} active timers for user {intent.user_id}"
@@ -453,8 +530,7 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
             notification_type="info",
         )
 
-        # Process notification through intent system
-        # In a full implementation, this would go through the IntentProcessor
+        # In full implementation, this would go through the IntentProcessor
         # For now, we'll log that the notification would be sent
         logger.info(
             f"Timer expiry notification ready: {notification_intent.message} -> {notification_intent.channel}"
@@ -462,42 +538,6 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
 
     except Exception as e:
         logger.error(f"Timer expiry processing failed: {e}")
-
-
-async def _schedule_timer_expiry_async(
-    timer_id: str, duration_seconds: int, timer_data: dict
-):
-    """Schedule timer expiry using asyncio (single event loop)."""
-    try:
-        # Wait for timer duration
-        await asyncio.sleep(duration_seconds)
-
-        # Create timer expiry intent and let the intent processor handle it
-        try:
-            # Create TimerExpiryIntent for proper intent-based processing
-            expiry_intent = TimerExpiryIntent(
-                timer_id=timer_id,
-                original_duration=timer_data.get("duration", "unknown"),
-                label=timer_data.get("label", ""),
-                user_id=timer_data.get("user_id"),
-                channel_id=timer_data.get("channel_id"),
-            )
-
-            # Process the intent directly (since we're already in an async context)
-            await process_timer_expiry_intent(expiry_intent)
-            logger.info(f"Timer expiry intent processed for {timer_id}")
-
-        except Exception as e:
-            logger.error(f"Failed to process timer expiry intent: {e}")
-
-        # Clean up expired timer
-        from roles.shared_tools.redis_tools import redis_delete
-
-        redis_delete(f"timer:{timer_id}")
-        logger.info(f"Timer {timer_id} expired and cleaned up")
-
-    except Exception as e:
-        logger.error(f"Timer expiry scheduling failed for {timer_id}: {e}")
 
 
 # 7. ROLE REGISTRATION (auto-discovery)
@@ -519,69 +559,7 @@ def register_role():
     }
 
 
-# 8. UTILITY FUNCTIONS FOR TIMER OPERATIONS
-def format_duration(seconds: int) -> str:
-    """Format duration in human-readable format."""
-    if seconds < 60:
-        return f"{seconds}s"
-    elif seconds < 3600:
-        minutes = seconds // 60
-        remaining_seconds = seconds % 60
-        if remaining_seconds == 0:
-            return f"{minutes}m"
-        else:
-            return f"{minutes}m {remaining_seconds}s"
-    else:
-        hours = seconds // 3600
-        remaining_minutes = (seconds % 3600) // 60
-        if remaining_minutes == 0:
-            return f"{hours}h"
-        else:
-            return f"{hours}h {remaining_minutes}m"
-
-
-def parse_time_expression(time_expr: str) -> Optional[datetime]:
-    """Parse various time expressions into datetime objects."""
-    try:
-        # Simple time patterns (HH:MM, H:MM AM/PM)
-        time_patterns = [
-            r"^(\d{1,2}):(\d{2})$",  # 14:30
-            r"^(\d{1,2}):(\d{2})\s*(AM|PM)$",  # 2:30 PM
-        ]
-
-        for pattern in time_patterns:
-            match = re.match(pattern, time_expr.strip(), re.IGNORECASE)
-            if match:
-                hour = int(match.group(1))
-                minute = int(match.group(2))
-
-                # Handle AM/PM
-                if len(match.groups()) > 2:
-                    am_pm = match.group(3).upper()
-                    if am_pm == "PM" and hour != 12:
-                        hour += 12
-                    elif am_pm == "AM" and hour == 12:
-                        hour = 0
-
-                # Create datetime for today at specified time
-                now = datetime.now()
-                target_time = now.replace(
-                    hour=hour, minute=minute, second=0, microsecond=0
-                )
-
-                # If time has passed today, schedule for tomorrow
-                if target_time <= now:
-                    target_time += timedelta(days=1)
-
-                return target_time
-
-        return None
-    except Exception as e:
-        logger.error(f"Error parsing time expression '{time_expr}': {e}")
-        return None
-
-
-# 9. CONSTANTS AND CONFIGURATION
+# 8. CONSTANTS AND CONFIGURATION
 MAX_TIMER_DURATION = 365 * 24 * 3600  # 1 year maximum
 DEFAULT_TIMER_LABEL = "Timer"
 TIMER_ID_PREFIX = "timer_"
@@ -600,23 +578,21 @@ TIMER_ACTIONS = {
 }
 
 
-# 10. ENHANCED ERROR HANDLING
-def create_timer_error_intent(
-    error: Exception, context: LLMSafeEventContext
-) -> list[Intent]:
+# 9. ERROR HANDLING UTILITIES
+def create_timer_error_intent(error: Exception, context) -> list[Intent]:
     """Create error intents for timer operations."""
     return [
         NotificationIntent(
             message=f"Timer error: {error}",
-            channel=context.get_safe_channel(),
-            user_id=context.user_id,
+            channel=_get_safe_channel(context),
+            user_id=getattr(context, "user_id", None),
             priority="high",
             notification_type="error",
         ),
         AuditIntent(
             action="timer_error",
-            details={"error": str(error), "context": context.to_dict()},
-            user_id=context.user_id,
+            details={"error": str(error), "context": str(context)},
+            user_id=getattr(context, "user_id", None),
             severity="error",
         ),
     ]
