@@ -441,7 +441,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             f"🔥 Timer will expire at: {expiry_time} (current: {time.time()}, duration: {intent.duration_seconds}s)"
         )
 
-        # Create timer data with complete context for full traceability
+        # Create timer data with complete context (eliminate redundancy)
         timer_data = {
             "id": intent.timer_id,
             "duration": intent.duration,
@@ -450,9 +450,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             "created_at": time.time(),
             "expires_at": expiry_time,
             "status": "active",
-            "user_id": intent.user_id,
-            "channel_id": intent.channel_id,
-            "event_context": intent.event_context,  # Store complete context for traceability
+            "event_context": intent.event_context,  # Complete context includes user_id and channel_id
         }
         logger.info(f"🔥 Timer data to store: {timer_data}")
 
@@ -500,7 +498,9 @@ async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
 
         # Validate user can cancel this timer (if user_id provided)
         stored_timer = timer_data.get("value", {})
-        if intent.user_id and stored_timer.get("user_id") != intent.user_id:
+        stored_context = stored_timer.get("event_context", {})
+        stored_user_id = stored_context.get("user_id")
+        if intent.user_id and stored_user_id != intent.user_id:
             logger.warning(
                 f"User {intent.user_id} cannot cancel timer {intent.timer_id} (not owner)"
             )
