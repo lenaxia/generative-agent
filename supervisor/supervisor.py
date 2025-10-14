@@ -342,15 +342,21 @@ class Supervisor:
             self.workflow_engine.start_workflow_engine()
             logger.info("WorkflowEngine started.")
 
-            # Start heartbeat service
-            if self.heartbeat:
-                self.heartbeat.start()
-                logger.info("Heartbeat service started.")
+            # Start scheduled tasks for single event loop architecture
+            if self._use_single_event_loop:
+                self._start_scheduled_tasks()
+                logger.info(
+                    "Scheduled heartbeat tasks started (single event loop mode)"
+                )
+            else:
+                # Legacy heartbeat services (if they exist)
+                if self.heartbeat:
+                    self.heartbeat.start()
+                    logger.info("Heartbeat service started.")
 
-            # Start fast heartbeat service
-            if self.fast_heartbeat:
-                self.fast_heartbeat.start()
-                logger.info("FastHeartbeat service started.")
+                if self.fast_heartbeat:
+                    self.fast_heartbeat.start()
+                    logger.info("FastHeartbeat service started.")
 
             logger.info("Supervisor started successfully.")
         except Exception as e:
@@ -591,19 +597,21 @@ if __name__ == "__main__":
 
     async def _create_fast_heartbeat_task(self):
         """Create scheduled fast heartbeat task."""
+        tick_count = 0
         while True:
             try:
-                if hasattr(self, "fast_heartbeat") and self.fast_heartbeat:
-                    # Publish fast heartbeat tick
-                    self.fast_heartbeat._publish_fast_heartbeat_tick()
-                    self.fast_heartbeat.tick_count += 1
+                # Publish fast heartbeat tick directly through message bus
+                if self.message_bus and self.message_bus.is_running():
+                    await self.message_bus.publish(
+                        publisher=self,
+                        event_type="FAST_HEARTBEAT_TICK",
+                        message={"tick": tick_count, "timestamp": time.time()},
+                    )
+                    tick_count += 1
+                    logger.debug(f"Fast heartbeat tick {tick_count} published")
 
-                # Wait for next tick
-                await asyncio.sleep(
-                    self.fast_heartbeat.interval
-                    if hasattr(self, "fast_heartbeat") and self.fast_heartbeat
-                    else 5
-                )
+                # Wait for next tick (5 seconds for timer monitoring)
+                await asyncio.sleep(5)
 
             except Exception as e:
                 logger.error(f"Fast heartbeat task error: {e}")
