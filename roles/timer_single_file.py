@@ -212,32 +212,33 @@ def handle_timer_expiry(event_data: Any, context) -> list[Intent]:
 
 def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
     """LLM-SAFE: Pure function for heartbeat monitoring - checks Redis for expired timers."""
-    logger.info(
-        f"🔥 TIMER HEARTBEAT HANDLER CALLED! event_data: {event_data}, context: {context}"
+    logger.debug(
+        f"Timer heartbeat check: {len(expired_timer_ids) if 'expired_timer_ids' in locals() else 0} expired timers"
     )
     try:
         from roles.shared_tools.redis_tools import redis_read
 
         # Get current time for expiry check
         current_time = int(time.time())
-        logger.info(f"🔥 Checking for expired timers at time: {current_time}")
+        logger.debug(f"Checking for expired timers at time: {current_time}")
 
         # Check Redis sorted set for expired timers
         # This is called every 5 seconds by the fast heartbeat
         expired_timer_ids = _get_expired_timers_from_redis(current_time)
-        logger.info(
-            f"🔥 Found {len(expired_timer_ids)} expired timers: {expired_timer_ids}"
-        )
+        if expired_timer_ids:
+            logger.info(
+                f"Found {len(expired_timer_ids)} expired timers: {expired_timer_ids}"
+            )
 
         # Create expiry intents for each expired timer
         intents = []
         for timer_id in expired_timer_ids:
-            logger.info(f"🔥 Processing expired timer: {timer_id}")
+            logger.debug(f"Processing expired timer: {timer_id}")
             # Get timer data to create proper expiry intent
             timer_result = redis_read(f"timer:data:{timer_id}")
             if timer_result.get("success"):
                 timer_data = timer_result.get("value", {})
-                logger.info(f"🔥 Timer data for {timer_id}: {timer_data}")
+                logger.debug(f"Retrieved timer data for {timer_id}")
                 # Extract stored event context for full traceability
                 stored_context = timer_data.get("event_context", {})
 
@@ -254,19 +255,17 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                     )
                 )
 
-                # Log the complete context for debugging
+                # Log essential context for production monitoring
                 logger.info(
-                    f"🔥 Timer {timer_id} context: user={stored_context.get('user_id')}, "
-                    f"channel={stored_context.get('channel_id')}, "
-                    f"source={stored_context.get('source', 'unknown')}, "
-                    f"metadata_keys={list(stored_context.get('metadata', {}).keys())}"
+                    f"Timer {timer_id} expiring for user {stored_context.get('user_id')} in channel {stored_context.get('channel_id')}"
                 )
             else:
                 logger.warning(
-                    f"🔥 Failed to get timer data for {timer_id}: {timer_result}"
+                    f"Failed to get timer data for {timer_id}: {timer_result}"
                 )
 
-        logger.info(f"🔥 Returning {len(intents)} timer expiry intents")
+        if intents:
+            logger.info(f"Processing {len(intents)} timer expiry notifications")
         return intents
 
     except Exception as e:
@@ -433,7 +432,7 @@ def _get_expired_timers_from_redis(current_time: int) -> list[str]:
 # 6. INTENT HANDLER REGISTRATION
 async def process_timer_creation_intent(intent: TimerCreationIntent):
     """Process timer creation intents - handles actual Redis operations."""
-    logger.info(f"🔥 PROCESSING TIMER CREATION INTENT: {intent}")
+    logger.info(f"Creating timer {intent.timer_id} for {intent.duration}")
     from roles.shared_tools.redis_tools import _get_redis_client, redis_write
 
     try:
@@ -454,7 +453,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             "status": "active",
             "event_context": intent.event_context,  # Complete context includes user_id and channel_id
         }
-        logger.info(f"🔥 Timer data to store: {timer_data}")
+        logger.debug(f"Storing timer data for {intent.timer_id}")
 
         # Store timer metadata in Redis hash
         redis_result = redis_write(
@@ -462,7 +461,7 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             timer_data,
             ttl=intent.duration_seconds + 60,
         )
-        logger.info(f"🔥 Redis write result: {redis_result}")
+        logger.debug(f"Redis write result: {redis_result.get('success', False)}")
 
         if redis_result.get("success"):
             # Add timer to sorted set for efficient expiry queries
@@ -470,11 +469,8 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             zadd_result = client.zadd(
                 "timer:active_queue", {intent.timer_id: expiry_time}
             )
-            logger.info(f"🔥 Added timer to sorted set, zadd result: {zadd_result}")
-
-            logger.info(
-                f"🔥 Timer {intent.timer_id} created in Redis queue (expires at {expiry_time})"
-            )
+            logger.debug(f"Added timer to sorted set: {zadd_result}")
+            logger.info(f"Timer {intent.timer_id} created successfully")
         else:
             logger.error(f"Failed to store timer: {redis_result.get('error')}")
 

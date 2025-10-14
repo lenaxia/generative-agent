@@ -47,10 +47,10 @@ class IntentProcessingHook(HookProvider):
 
     def _process_tool_result_intents(self, event):
         """Process intents from tool results."""
-        logger.info(f"🔥 INTENT HOOK CALLED! Event: {event}, Result: {event.result}")
+        logger.debug(f"Intent hook processing tool result")
         try:
             tool_result = event.result
-            logger.info(f"🔥 Tool result: {tool_result}")
+            logger.debug(f"Processing tool result for intent extraction")
 
             # Check if tool result contains an intent
             intent_data = None
@@ -79,7 +79,9 @@ class IntentProcessingHook(HookProvider):
             # Fallback: direct intent in tool result (legacy format)
             elif isinstance(tool_result, dict) and "intent" in tool_result:
                 intent_data = tool_result["intent"]
-                logger.info(f"🔥 Found direct intent in tool result: {intent_data}")
+                logger.debug(
+                    f"Found direct intent in tool result: {intent_data.get('type', 'unknown')}"
+                )
 
             if intent_data:
                 # Inject complete context into intent if available
@@ -138,7 +140,7 @@ class IntentProcessingHook(HookProvider):
 
     async def _process_intent_async(self, intent):
         """Process intent using the registered intent handlers."""
-        logger.info(f"🔥 _process_intent_async called with intent: {intent}")
+        logger.debug(f"Processing intent: {type(intent).__name__}")
         try:
             # Use IntentProcessor from role registry if available
             if (

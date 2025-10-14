@@ -342,9 +342,7 @@ def redis_read(key: str) -> dict[str, Any]:
         ttl = client.ttl(prefixed_key)
         ttl = ttl if ttl > 0 else None
 
-        logger.info(
-            f"🔥 REDIS READ: {prefixed_key} = {str(parsed_value)[:100]}... (TTL: {ttl})"
-        )
+        logger.debug(f"Redis read: {prefixed_key} (TTL: {ttl})")
 
         return {
             "success": True,
