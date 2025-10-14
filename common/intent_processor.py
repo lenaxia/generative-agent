@@ -164,10 +164,19 @@ class IntentProcessor:
                 "notification_type": getattr(intent, "notification_type", "info"),
             }
 
-            await self.communication_manager.send_notification(
-                message=intent.message, recipient=intent.user_id, metadata=metadata
+            # Use route_message which is the proper interface for channel routing
+            context = {
+                "channel_id": intent.channel,
+                "user_id": intent.user_id,
+                "message_type": "notification",
+                "priority": getattr(intent, "priority", "medium"),
+                "notification_type": getattr(intent, "notification_type", "info"),
+            }
+
+            result = await self.communication_manager.route_message(
+                message=intent.message, context=context
             )
-            logger.debug(f"Notification sent: {intent.message[:50]}...")
+            logger.info(f"Notification routed successfully: {result}")
         except Exception as e:
             logger.error(f"Failed to send notification: {e}")
             raise
