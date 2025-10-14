@@ -20,7 +20,7 @@ from common.request_model import RequestMetadata
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
-from roles.timer_single_file import _handle_timer_expiry, set_timer
+from roles.timer_single_file import handle_timer_expiry, set_timer
 from supervisor.workflow_engine import WorkflowEngine
 
 
@@ -184,8 +184,17 @@ class TestTimerNotificationRouting:
 
         # Mock the communication manager to capture the notification
         with patch.object(comm_manager, "message_bus") as mock_bus:
-            # Call timer expiry handler
-            _handle_timer_expiry("timer_test123", timer_data)
+            # Call timer expiry handler with proper context
+            from common.enhanced_event_context import LLMSafeEventContext
+
+            context = LLMSafeEventContext(
+                user_id="U52L1U8M6",
+                channel_id="slack:C52L1UK5E",
+                source="test",
+                metadata={},
+            )
+
+            handle_timer_expiry(["timer_test123", "Test timer expired"], context)
 
             # Verify message bus was called with correct context
             mock_bus.publish.assert_called_once()
