@@ -156,8 +156,16 @@ class IntentProcessor:
             return
 
         try:
+            # CommunicationManager expects different parameter names
+            metadata = {
+                "channel_id": intent.channel,
+                "user_id": intent.user_id,
+                "priority": getattr(intent, "priority", "medium"),
+                "notification_type": getattr(intent, "notification_type", "info"),
+            }
+
             await self.communication_manager.send_notification(
-                message=intent.message, channel=intent.channel, user_id=intent.user_id
+                message=intent.message, recipient=intent.user_id, metadata=metadata
             )
             logger.debug(f"Notification sent: {intent.message[:50]}...")
         except Exception as e:

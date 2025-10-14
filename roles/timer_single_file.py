@@ -564,11 +564,22 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
             notification_type="info",
         )
 
-        # In full implementation, this would go through the IntentProcessor
-        # For now, we'll log that the notification would be sent
+        # Send notification directly through the IntentProcessor's notification handler
         logger.info(
             f"Timer expiry notification ready: {notification_intent.message} -> {notification_intent.channel}"
         )
+
+        # Get the IntentProcessor from the global registry and process the notification
+        from llm_provider.role_registry import RoleRegistry
+
+        role_registry = RoleRegistry.get_global_registry()
+        if role_registry and role_registry.intent_processor:
+            await role_registry.intent_processor._process_notification(
+                notification_intent
+            )
+            logger.info(f"Timer expiry notification sent via IntentProcessor")
+        else:
+            logger.error("No IntentProcessor available for timer expiry notification")
 
     except Exception as e:
         logger.error(f"Timer expiry processing failed: {e}")
