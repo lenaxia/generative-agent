@@ -279,7 +279,9 @@ def redis_write(
         else:
             result = client.set(prefixed_key, serialized_value)
 
-        logger.debug(f"Redis write: {prefixed_key} = {serialized_value[:100]}...")
+        logger.info(
+            f"🔥 REDIS WRITE: {prefixed_key} = {serialized_value[:100]}... (TTL: {ttl})"
+        )
 
         return {
             "success": bool(result),
@@ -340,7 +342,9 @@ def redis_read(key: str) -> dict[str, Any]:
         ttl = client.ttl(prefixed_key)
         ttl = ttl if ttl > 0 else None
 
-        logger.debug(f"Redis read: {prefixed_key} = {str(parsed_value)[:100]}...")
+        logger.info(
+            f"🔥 REDIS READ: {prefixed_key} = {str(parsed_value)[:100]}... (TTL: {ttl})"
+        )
 
         return {
             "success": True,

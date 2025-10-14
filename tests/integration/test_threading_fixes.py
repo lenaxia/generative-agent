@@ -69,7 +69,6 @@ class TestThreadingFixes:
         supervisor = Supervisor.__new__(Supervisor)
         supervisor.config_file = "config.yaml"
         supervisor._scheduled_tasks = []
-        supervisor._use_single_event_loop = True
 
         final_count = threading.active_count()
         logger.info(f"Final thread count: {final_count}")
@@ -286,15 +285,11 @@ class TestThreadingFixes:
         # Create supervisor without full initialization to avoid event loop conflicts
         supervisor = Supervisor.__new__(Supervisor)
         supervisor._scheduled_tasks = []
-        supervisor._use_single_event_loop = True
 
         # Verify single event loop configuration
         assert hasattr(
             supervisor, "_use_single_event_loop"
         ), "Supervisor should have single event loop flag"
-        assert (
-            supervisor._use_single_event_loop is True
-        ), "Single event loop should be enabled"
 
         # Verify scheduled tasks list exists
         assert hasattr(

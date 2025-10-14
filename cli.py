@@ -6,6 +6,7 @@ Provides workflow execution, system monitoring, and management capabilities.
 """
 
 import argparse
+import asyncio
 import logging
 import os
 import readline
@@ -140,7 +141,9 @@ Examples:
 
     # Handle single workflow execution
     if args.workflow:
-        execute_single_workflow(supervisor, args.workflow)
+        import asyncio
+
+        asyncio.run(execute_single_workflow(supervisor, args.workflow))
         return
 
     # Handle status request
@@ -149,16 +152,21 @@ Examples:
         return
 
     # Interactive mode
-    run_interactive_mode(supervisor)
+    import asyncio
+
+    asyncio.run(run_interactive_mode(supervisor))
 
 
-def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
+async def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
     """Execute a single workflow and exit."""
     workflow_id = None
 
     try:
         logger.info("Starting system...")
         supervisor.start()
+
+        # Start async tasks now that we're in an async context
+        await supervisor.start_async_tasks()
 
         logger.info(f"Executing workflow: {workflow_instruction}")
         workflow_id = supervisor.workflow_engine.start_workflow(workflow_instruction)
@@ -189,7 +197,7 @@ def execute_single_workflow(supervisor: Supervisor, workflow_instruction: str):
                     workflow_completed = True
                     logger.info("✅ Workflow completed successfully")
                 else:
-                    time.sleep(2)  # Check every 2 seconds
+                    await asyncio.sleep(2)  # Check every 2 seconds
 
     except KeyboardInterrupt:
         logger.info("⚠️ Workflow interrupted by user")
@@ -362,7 +370,7 @@ def _monitor_workflow_progress(workflow_id: str, supervisor: Supervisor):
         logger.info("⚠️ Workflow interrupted by user")
 
 
-def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
+async def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
     """Process user input and execute appropriate action.
 
     Args:
@@ -388,11 +396,15 @@ def _process_user_input(user_input: str, supervisor: Supervisor) -> bool:
     return False
 
 
-def run_interactive_mode(supervisor: Supervisor):
+async def run_interactive_mode(supervisor: Supervisor):
     """Run interactive CLI mode."""
     try:
         logger.info("Starting StrandsAgent Universal Agent System...")
         supervisor.start()
+
+        # Start async tasks now that we're in an async context
+        await supervisor.start_async_tasks()
+
         logger.info("✅ System started successfully")
 
         # Setup readline for command history and cursor navigation
@@ -401,8 +413,10 @@ def run_interactive_mode(supervisor: Supervisor):
 
         while True:
             try:
-                user_input = input("\n➤ ").strip()
-                should_exit = _process_user_input(user_input, supervisor)
+                # Use asyncio-compatible input to allow event loop to run
+                user_input = await asyncio.to_thread(input, "\n➤ ")
+                user_input = user_input.strip()
+                should_exit = await _process_user_input(user_input, supervisor)
                 if should_exit:
                     break
 

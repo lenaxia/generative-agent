@@ -115,17 +115,34 @@ class IntentProcessor:
             intent: Intent object to process
         """
         intent_type = type(intent)
+        intent_type_name = f"{intent_type.__module__}.{intent_type.__qualname__}"
 
         # Check core handlers first
         if intent_type in self._core_handlers:
             await self._core_handlers[intent_type](intent)
-        # Check role-specific handlers
+        # Check role-specific handlers by class identity first, then by name
         elif intent_type in self._role_handlers:
             handler_info = self._role_handlers[intent_type]
             await handler_info["handler"](intent)
         else:
-            # Log warning but don't fail - allows for unknown intent types
-            logger.warning(f"No handler registered for intent type: {intent_type}")
+            # Fallback: search by class name for class identity issues
+            found_handler = None
+            for registered_type, handler_info in self._role_handlers.items():
+                registered_name = (
+                    f"{registered_type.__module__}.{registered_type.__qualname__}"
+                )
+                if registered_name == intent_type_name:
+                    found_handler = handler_info
+                    logger.info(f"Found handler by name match: {intent_type_name}")
+                    break
+
+            if found_handler:
+                await found_handler["handler"](intent)
+            else:
+                # Log warning but don't fail - allows for unknown intent types
+                logger.warning(
+                    f"No handler registered for intent type: {intent_type} (name: {intent_type_name})"
+                )
 
     async def _process_notification(self, intent: NotificationIntent):
         """

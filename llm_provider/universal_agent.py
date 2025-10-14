@@ -47,17 +47,49 @@ class IntentProcessingHook(HookProvider):
 
     def _process_tool_result_intents(self, event):
         """Process intents from tool results."""
+        logger.info(f"🔥 INTENT HOOK CALLED! Event: {event}, Result: {event.result}")
         try:
             tool_result = event.result
+            logger.info(f"🔥 Tool result: {tool_result}")
 
             # Check if tool result contains an intent
-            if isinstance(tool_result, dict) and "intent" in tool_result:
-                intent_data = tool_result["intent"]
+            intent_data = None
 
+            # Handle Strands tool result format: {'content': [{'text': '{"intent": {...}}'}]}
+            if isinstance(tool_result, dict) and "content" in tool_result:
+                content = tool_result["content"]
+                if isinstance(content, list) and len(content) > 0:
+                    text_content = content[0].get("text", "")
+                    if text_content:
+                        try:
+                            import ast
+
+                            parsed_result = ast.literal_eval(text_content)
+                            if (
+                                isinstance(parsed_result, dict)
+                                and "intent" in parsed_result
+                            ):
+                                intent_data = parsed_result["intent"]
+                                logger.info(
+                                    f"🔥 Extracted intent from Strands result: {intent_data}"
+                                )
+                        except Exception as e:
+                            logger.warning(f"🔥 Failed to parse tool result text: {e}")
+
+            # Fallback: direct intent in tool result (legacy format)
+            elif isinstance(tool_result, dict) and "intent" in tool_result:
+                intent_data = tool_result["intent"]
+                logger.info(f"🔥 Found direct intent in tool result: {intent_data}")
+
+            if intent_data:
                 # Inject context into intent if available
                 if self.current_context:
                     intent_data["user_id"] = self.current_context.user_id
                     intent_data["channel_id"] = self.current_context.channel_id
+                else:
+                    # Fallback to console for direct API calls
+                    intent_data["user_id"] = "api_user"
+                    intent_data["channel_id"] = "console"
 
                 # Create intent object and process it
                 intent = self._create_intent_from_data(intent_data)
@@ -97,29 +129,26 @@ class IntentProcessingHook(HookProvider):
 
     async def _process_intent_async(self, intent):
         """Process intent using the registered intent handlers."""
+        logger.info(f"🔥 _process_intent_async called with intent: {intent}")
         try:
-            # Get intent processor from role registry
+            # Use IntentProcessor from role registry if available
             if (
                 hasattr(self.universal_agent, "role_registry")
                 and self.universal_agent.role_registry
+                and hasattr(self.universal_agent.role_registry, "intent_processor")
+                and self.universal_agent.role_registry.intent_processor
             ):
-                role_registry = self.universal_agent.role_registry
-
-                # Find the intent handler for this intent type
-                for role_name, role_def in role_registry.roles.items():
-                    if hasattr(role_def, "_intent_handlers"):
-                        intent_handlers = role_def._intent_handlers
-                        if type(intent) in intent_handlers:
-                            handler = intent_handlers[type(intent)]
-                            await handler(intent)
-                            logger.info(
-                                f"Processed {type(intent).__name__} via {role_name} role"
-                            )
-                            return
-
-                logger.warning(
-                    f"No handler found for intent type: {type(intent).__name__}"
+                intent_processor = self.universal_agent.role_registry.intent_processor
+                logger.info(
+                    f"🔥 Using IntentProcessor to process {type(intent).__name__}"
                 )
+                await intent_processor.process_intents([intent])
+                logger.info(f"🔥 Intent processed via IntentProcessor")
+                return
+
+            logger.warning(
+                f"🔥 No IntentProcessor available for intent type: {type(intent).__name__}"
+            )
 
         except Exception as e:
             logger.error(f"Error processing intent: {e}")

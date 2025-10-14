@@ -367,7 +367,7 @@ class MessageBus:
                             # Create a wrapper function to avoid None type issues
                             def run_callback_wrapper():
                                 self._run_sync_callback_in_loop(
-                                    callback, message, callback_name
+                                    callback, message, callback_name, publisher
                                 )
 
                             loop.call_soon(run_callback_wrapper)
@@ -382,7 +382,7 @@ class MessageBus:
                         # No event loop, run directly
                         try:
                             self._run_sync_callback_in_loop(
-                                callback, message, callback_name
+                                callback, message, callback_name, publisher
                             )
                         except Exception as e:
                             logger.error(
@@ -404,12 +404,22 @@ class MessageBus:
             logger.error(f"Error in async callback {callback_name}: {e}")
 
     def _run_sync_callback_in_loop(
-        self, callback: Callable, message: Any, callback_name: str
+        self, callback: Callable, message: Any, callback_name: str, publisher=None
     ):
         """Run sync callback in the event loop with error handling."""
         try:
             logger.debug(f"Running sync callback {callback_name}")
-            result = callback(message)
+
+            # Create context for handlers that expect it
+            context = self._create_event_context(publisher, message)
+
+            # Try calling with context first, fallback to message only
+            try:
+                result = callback(message, context)
+            except TypeError:
+                # Handler doesn't expect context, call with message only
+                result = callback(message)
+
             logger.debug(f"Sync callback {callback_name} completed successfully")
 
             # Process intents returned by the callback (LLM-safe architecture)
@@ -539,6 +549,17 @@ class MessageBus:
                 workflow_engine=self.workflow_engine,
             )
             logger.info("Intent processor initialized")
+
+            # Connect IntentProcessor to RoleRegistry for intent handler registration
+            if hasattr(self, "workflow_engine") and self.workflow_engine:
+                if (
+                    hasattr(self.workflow_engine, "role_registry")
+                    and self.workflow_engine.role_registry
+                ):
+                    self.workflow_engine.role_registry.set_intent_processor(
+                        self._intent_processor
+                    )
+                    logger.info("IntentProcessor connected to RoleRegistry")
 
     def set_dependencies(
         self, communication_manager=None, workflow_engine=None, llm_factory=None
