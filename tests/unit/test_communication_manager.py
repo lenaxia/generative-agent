@@ -190,33 +190,15 @@ class TestCommunicationManager(unittest.TestCase):
         self.assertEqual(len(self.email_handler.sent_messages), 1)
         self.assertEqual(len(self.console_handler.sent_messages), 1)
 
-    @pytest.mark.asyncio
-    @pytest.mark.asyncio
-    async def test_handle_timer_expired(self):
-        """Test handling timer expired events."""
-        # Set up the manager with the console handler
-        manager = self.manager
-        manager.channels = {ChannelType.CONSOLE: self.console_handler}
+    def test_legacy_timer_handler_removed(self):
+        """Verify legacy timer handler has been removed in favor of intent-based notifications."""
+        # Verify the legacy _handle_timer_expired method no longer exists
+        assert not hasattr(
+            self.manager, "_handle_timer_expired"
+        ), "Legacy _handle_timer_expired method should be removed"
 
-        # Create a timer expired event
-        timer_event = {
-            "data": {
-                "timer_id": "test-timer-123",
-                "name": "Test Timer",
-                "notification_channel": "console",
-                "notification_recipient": "user123",
-            }
-        }
-
-        # Call the handler
-        await manager._handle_timer_expired(timer_event)
-
-        # Verify a notification was sent
-        self.assertEqual(len(self.console_handler.sent_messages), 1)
-        sent = self.console_handler.sent_messages[0]
-        self.assertIn("Timer expired: Test Timer", sent["message"])
-        self.assertEqual(sent["recipient"], "user123")
-        self.assertEqual(sent["metadata"]["timer_id"], "test-timer-123")
+        # Timer notifications now handled via intent-based system
+        # See tests/test_single_file_timer_role.py for current timer tests
 
     @pytest.mark.asyncio
     async def test_exactly_once_delivery_guarantee(self):

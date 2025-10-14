@@ -397,7 +397,13 @@ class TestTimerRoleIntentProcessing:
                     mock_get_client.return_value = mock_client
                     mock_read.return_value = {
                         "success": True,
-                        "data": {"user_id": "user123"},
+                        "value": {
+                            "user_id": "user123",
+                            "event_context": {
+                                "user_id": "user123",
+                                "channel_id": "test",
+                            },
+                        },
                     }
                     mock_delete.return_value = {"success": True}
 

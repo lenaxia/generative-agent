@@ -246,16 +246,18 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                         timer_id=timer_id,
                         original_duration=timer_data.get("duration", "unknown"),
                         label=timer_data.get("label", ""),
-                        user_id=timer_data.get("user_id"),
-                        channel_id=timer_data.get("channel_id"),
+                        user_id=stored_context.get("user_id"),  # Extract from context
+                        channel_id=stored_context.get(
+                            "channel_id"
+                        ),  # Extract from context
                         event_context=stored_context,  # Include full context for traceability
                     )
                 )
 
                 # Log the complete context for debugging
                 logger.info(
-                    f"🔥 Timer {timer_id} context: user={timer_data.get('user_id')}, "
-                    f"channel={timer_data.get('channel_id')}, "
+                    f"🔥 Timer {timer_id} context: user={stored_context.get('user_id')}, "
+                    f"channel={stored_context.get('channel_id')}, "
                     f"source={stored_context.get('source', 'unknown')}, "
                     f"metadata_keys={list(stored_context.get('metadata', {}).keys())}"
                 )

@@ -343,7 +343,6 @@ class CommunicationManager:
     def _setup_message_subscriptions(self):
         """Subscribe to all communication-related MessageBus events."""
         subscriptions = [
-            (MessageType.TIMER_EXPIRED, self._handle_timer_expired),
             (MessageType.SEND_MESSAGE, self._handle_send_message),
             (MessageType.AGENT_QUESTION, self._handle_agent_question),
             (MessageType.TASK_RESPONSE, self._handle_task_response),
@@ -922,75 +921,6 @@ class CommunicationManager:
             f"Failed to send notification through any channel: {message[:50]}..."
         )
         return {"success": False, "error": "All notification channels failed"}
-
-    async def _handle_timer_expired(self, message: dict[str, Any]) -> None:
-        """
-        Handle timer expired events from the message bus.
-
-        Args:
-            message: The timer expired event message
-        """
-        # Handle both formats: direct timer data and nested under "data"
-        if "data" in message and isinstance(message["data"], dict):
-            timer_data = message["data"]
-        else:
-            timer_data = message
-
-        timer_id = timer_data.get("timer_id")
-        logger.info(f"Processing timer expired event for timer: {timer_id}")
-        logger.info(f"Available channels: {list(self.channels.keys())}")
-        logger.info(
-            f"Enabled channels: {[ch for ch, handler in self.channels.items() if handler.enabled]}"
-        )
-
-        # Extract timer name - check both "name" and "timer_name" fields
-        timer_name = timer_data.get("name") or timer_data.get("timer_name", "Timer")
-
-        if not timer_id:
-            logger.error("Received timer expired event without timer_id")
-            return
-
-        # Extract notification preferences if available
-        notification_channel = timer_data.get("notification_channel")
-        recipient = timer_data.get("notification_recipient")
-
-        channel_type = None
-        if notification_channel:
-            try:
-                channel_type = ChannelType(notification_channel)
-            except ValueError:
-                logger.warning(f"Unknown notification channel: {notification_channel}")
-
-        # Send the notification
-        custom_message = timer_data.get("custom_message", f"{timer_name} expired!")
-        notification_message = f"⏰ {custom_message}"
-
-        # Determine target channel - use original channel_id from timer
-        original_channel_id = timer_data.get("channel_id", "default")
-        user_id = timer_data.get("user_id", "system")
-
-        # Use the proven SEND_MESSAGE path directly (avoid recursive message bus call)
-        send_message_payload = {
-            "message": notification_message,
-            "context": {
-                "channel_id": original_channel_id,
-                "user_id": user_id,
-                "request_id": f"timer_expiry_{timer_id}",  # Add request_id like working messages
-                "source": "timer_expiry",  # Track source
-                "metadata": {"timer_id": timer_id, "timer_data": timer_data},
-            },
-        }
-
-        logger.info(
-            f"Using SEND_MESSAGE path directly for timer expiry: {send_message_payload}"
-        )
-
-        # Call _handle_send_message directly to use the proven working path
-        await self._handle_send_message(send_message_payload)
-
-        logger.info(
-            f"Timer expiry notification processed via SEND_MESSAGE path for {timer_id}"
-        )
 
     async def send_notification(
         self,
