@@ -42,6 +42,7 @@ class TestCLIComplexityRefactor:
         """Test that /exit command works correctly."""
         mock_input.return_value = "/exit"
         mock_process_input.return_value = True
+        mock_os_exit.return_value = None  # Ensure mock doesn't actually exit
 
         with patch("sys.stdout", new_callable=io.StringIO):
             await run_interactive_mode(mock_supervisor)
