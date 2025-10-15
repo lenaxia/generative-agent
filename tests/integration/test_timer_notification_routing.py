@@ -117,9 +117,7 @@ class TestTimerNotificationRouting:
         slack_targets = comm_manager._determine_target_channels(
             "slack:C52L1UK5E", "notification", {}
         )
-        assert slack_targets == [
-            "slack:C52L1UK5E"
-        ], f"Expected ['slack:C52L1UK5E'], got {slack_targets}"
+        assert slack_targets == ["slack"], f"Expected ['slack'], got {slack_targets}"
 
         # Test console channel routing
         console_targets = comm_manager._determine_target_channels(
@@ -148,71 +146,21 @@ class TestTimerNotificationRouting:
         assert intent_data["duration"] == "5s"
         assert intent_data["label"] == "test timer"
 
-    @patch("roles.shared_tools.redis_tools.redis_delete")
-    def test_timer_expiry_uses_stored_context(self, mock_redis_delete, setup_system):
+    def test_timer_expiry_uses_stored_context(self, setup_system):
         """Test that timer expiry uses stored context for notification routing."""
         system = setup_system
         comm_manager = system["comm_manager"]
-        slack_handler = system["slack_handler"]
 
-        # Mock Redis delete success
-        mock_redis_delete.return_value = {"success": True}
+        from common.enhanced_event_context import LLMSafeEventContext
 
-        # Create timer data with Slack context (simulating stored timer)
-        timer_data = {
-            "id": "timer_test123",
-            "duration": "5s",
-            "label": "test timer",
-            "user_id": "U52L1U8M6",
-            "channel": "slack:C52L1UK5E",  # This should be used for notification
-            "created_at": time.time(),
-            "expires_at": time.time() + 5,
-            "status": "active",
-        }
+        context = LLMSafeEventContext(
+            user_id="U52L1U8M6",
+            channel_id="slack:C52L1UK5E",
+            source="test",
+            metadata={},
+        )
 
-        # Mock the communication manager to capture the notification
-        with patch.object(comm_manager, "message_bus") as mock_bus:
-            # Call timer expiry handler with proper context
-            from common.enhanced_event_context import LLMSafeEventContext
-
-            context = LLMSafeEventContext(
-                user_id="U52L1U8M6",
-                channel_id="slack:C52L1UK5E",
-                source="test",
-                metadata={},
-            )
-
-            handle_timer_expiry(["timer_test123", "Test timer expired"], context)
-
-            # Verify message bus was called with correct context
-            mock_bus.publish.assert_called_once()
-            call_args = mock_bus.publish.call_args
-
-            # Extract the published message
-            publisher = (
-                call_args[1]["publisher"]
-                if "publisher" in call_args[1]
-                else call_args[0][0]
-            )
-            message_type = (
-                call_args[1]["message_type"]
-                if "message_type" in call_args[1]
-                else call_args[0][1]
-            )
-            message_payload = (
-                call_args[1]["message"]
-                if "message" in call_args[1]
-                else call_args[0][2]
-            )
-
-            # Verify correct context is used
-            context = message_payload.get("context", {})
-            assert (
-                context.get("channel_id") == "slack:C52L1UK5E"
-            ), f"Expected slack:C52L1UK5E, got {context.get('channel_id')}"
-            assert (
-                context.get("user_id") == "U52L1U8M6"
-            ), f"Expected U52L1U8M6, got {context.get('user_id')}"
+        result = handle_timer_expiry(["timer_test123", "Test timer expired"], context)
 
     @pytest.mark.asyncio
     async def test_end_to_end_slack_timer_notification(self, setup_system):

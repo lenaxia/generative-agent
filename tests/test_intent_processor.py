@@ -196,7 +196,7 @@ class TestIntentProcessor:
         self, intent_processor, mock_communication_manager
     ):
         """Test processing intent when communication manager raises exception."""
-        mock_communication_manager.send_notification.side_effect = Exception(
+        mock_communication_manager.route_message.side_effect = Exception(
             "Network error"
         )
 
