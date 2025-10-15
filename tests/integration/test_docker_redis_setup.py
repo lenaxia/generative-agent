@@ -194,26 +194,27 @@ class TestDockerRedisSetup:
         assert connection_config["db"] == 0
 
     @pytest.mark.integration
-    def test_timer_manager_with_docker_redis(self, docker_redis_available):
-        """Test TimerManager integration with Docker Redis."""
+    def test_timer_integration_with_docker_redis(self, docker_redis_available):
+        """Test timer role integration with Docker Redis."""
         if not docker_redis_available:
             return
 
-        from roles.timer_single_file import get_legacy_timer_manager
+        # Test timer role tools directly (new intent-based architecture)
+        from roles.timer_single_file import cancel_timer, list_timers, set_timer
 
-        # Get timer manager (may return None if legacy not available)
-        # Create a proper mock timer manager with required methods
-        class MockTimerManager:
-            def __init__(self, redis_host=None, redis_port=None):
-                self.redis = type("MockRedis", (), {"ping": lambda self: True})()
+        # Test timer creation
+        result = set_timer("5s", "test timer")
+        assert result["success"] is True
+        assert "timer_id" in result
 
-        TimerManager = get_legacy_timer_manager() or MockTimerManager
+        # Test timer listing
+        list_result = list_timers()
+        assert list_result["success"] is True
 
-        # Create TimerManager instance
-        timer_manager = TimerManager(redis_host="localhost", redis_port=6379)
-
-        # Test Redis connection
-        assert timer_manager.redis.ping() is True
+        # Test timer cancellation
+        if result.get("timer_id"):
+            cancel_result = cancel_timer(result["timer_id"])
+            assert cancel_result["success"] is True
 
     @pytest.mark.integration
     def test_redis_performance_with_docker(self, docker_redis_available):
