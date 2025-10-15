@@ -156,13 +156,16 @@ class IntentProcessor:
             return
 
         try:
-            # Call send_notification method as expected by tests and API
-            await self.communication_manager.send_notification(
+            # Call route_message method as expected by tests and API
+            await self.communication_manager.route_message(
                 message=intent.message,
-                channel=intent.channel,
-                user_id=intent.user_id,
-                priority=getattr(intent, "priority", "medium"),
-                notification_type=getattr(intent, "notification_type", "info"),
+                context={
+                    "channel_id": intent.channel,
+                    "user_id": intent.user_id,
+                    "message_type": "notification",
+                    "priority": getattr(intent, "priority", "medium"),
+                    "notification_type": getattr(intent, "notification_type", "info"),
+                },
             )
             logger.info(
                 f"Notification sent successfully: {intent.message} to {intent.channel}"
