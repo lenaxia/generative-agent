@@ -869,8 +869,11 @@ class CommunicationManager:
             ]
 
         # Try primary channel first
-        if channel_type in self.channels:
-            result = await self.channels[channel_type].send_notification(
+        channel_key = (
+            channel_type.value if hasattr(channel_type, "value") else str(channel_type)
+        )
+        if channel_key in self.channels:
+            result = await self.channels[channel_key].send_notification(
                 message, recipient, message_format, metadata
             )
 
@@ -885,8 +888,11 @@ class CommunicationManager:
 
         # Try fallback channels in order
         for fallback in fallback_channels:
-            if fallback in self.channels and fallback != channel_type:
-                result = await self.channels[fallback].send_notification(
+            fallback_key = (
+                fallback.value if hasattr(fallback, "value") else str(fallback)
+            )
+            if fallback_key in self.channels and fallback != channel_type:
+                result = await self.channels[fallback_key].send_notification(
                     message, recipient, message_format, metadata
                 )
 

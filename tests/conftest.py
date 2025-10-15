@@ -171,7 +171,12 @@ def mock_slack_api():
     This prevents any test from making real network calls to Slack API,
     avoiding network errors and improving test performance.
     """
-    with patch("slack_sdk.WebClient") as mock_client_class:
+    with (
+        patch("slack_sdk.WebClient") as mock_client_class,
+        patch("slack_bolt.App") as mock_bolt_app_class,
+        patch("slack_sdk.socket_mode.SocketModeClient") as mock_socket_client_class,
+    ):
+        # Mock WebClient
         mock_client = Mock()
         mock_client.chat_postMessage.return_value = {
             "ok": True,
@@ -184,7 +189,24 @@ def mock_slack_api():
             "channels": [{"id": "C1234567890", "name": "general"}],
         }
         mock_client_class.return_value = mock_client
-        yield mock_client
+
+        # Mock Bolt App to prevent "⚡️ Bolt app is running!" messages
+        mock_bolt_app = Mock()
+        mock_bolt_app.start.return_value = None
+        mock_bolt_app.stop.return_value = None
+        mock_bolt_app_class.return_value = mock_bolt_app
+
+        # Mock SocketModeClient to prevent connection attempts
+        mock_socket_client = Mock()
+        mock_socket_client.connect.return_value = None
+        mock_socket_client.disconnect.return_value = None
+        mock_socket_client_class.return_value = mock_socket_client
+
+        yield {
+            "client": mock_client,
+            "bolt_app": mock_bolt_app,
+            "socket_client": mock_socket_client,
+        }
 
 
 @pytest.fixture

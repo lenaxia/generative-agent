@@ -82,7 +82,7 @@ class TestRoleFallbackBehavior:
         self, universal_agent, mock_task_context
     ):
         """Test that role="None" falls back to default role."""
-        with patch("strands.Agent") as mock_agent_class:
+        with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 
@@ -100,7 +100,7 @@ class TestRoleFallbackBehavior:
         self, universal_agent, mock_task_context
     ):
         """Test that missing role falls back to default role."""
-        with patch("strands.Agent") as mock_agent_class:
+        with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 
@@ -126,7 +126,7 @@ class TestRoleFallbackBehavior:
             llm_factory=mock_llm_factory, role_registry=empty_registry
         )
 
-        with patch("strands.Agent") as mock_agent_class:
+        with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 
@@ -141,10 +141,10 @@ class TestRoleFallbackBehavior:
     def test_basic_agent_creation_with_tools(self, universal_agent):
         """Test that basic agent creation works with additional tools."""
         with (
-            patch("strands.Agent") as mock_agent_class,
-            patch("strands_tools.calculator") as mock_calc,
-            patch("strands_tools.file_read") as mock_file_read,
-            patch("strands_tools.shell") as mock_shell,
+            patch("llm_provider.universal_agent.Agent") as mock_agent_class,
+            patch("llm_provider.universal_agent.calculator") as mock_calc,
+            patch("llm_provider.universal_agent.file_read") as mock_file_read,
+            patch("llm_provider.universal_agent.shell") as mock_shell,
         ):
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
@@ -165,7 +165,7 @@ class TestRoleFallbackBehavior:
 
     def test_no_invoke_method_called(self, universal_agent, mock_task_context):
         """Test that no invoke method is called on models (the original bug)."""
-        with patch("strands.Agent") as mock_agent_class:
+        with patch("llm_provider.universal_agent.Agent") as mock_agent_class:
             mock_agent = Mock()
             mock_agent_class.return_value = mock_agent
 
