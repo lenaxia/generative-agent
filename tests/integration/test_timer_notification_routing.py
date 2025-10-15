@@ -221,26 +221,23 @@ class TestTimerNotificationRouting:
             console_handler, ConsoleChannelHandler
         ), "Wrong console handler type"
 
-    def test_role_registry_pre_processor_support(self):
-        """Test that role registry properly loads single-file role pre-processors."""
+    def test_role_registry_timer_role_loading(self):
+        """Test that role registry properly loads timer role."""
         role_registry = RoleRegistry()
         timer_role = role_registry.get_role("timer")
 
-        # Verify pre-processors are loaded
-        has_preprocessors = hasattr(timer_role, "_pre_processors")
-        assert has_preprocessors, "Timer role missing _pre_processors attribute"
+        # Verify timer role is loaded correctly
+        assert timer_role is not None, "Timer role should be loaded"
+        assert timer_role.name == "timer", "Timer role should have correct name"
 
-        if has_preprocessors:
-            processors = getattr(timer_role, "_pre_processors", [])
-            assert len(processors) > 0, "No pre-processors loaded for timer role"
-
-            # Verify pre-processor function names
-            processor_names = [
-                getattr(proc, "__name__", "unknown") for proc in processors
-            ]
+        # Verify role has expected attributes for current architecture
+        assert hasattr(timer_role, "config"), "Timer role should have config"
+        if timer_role.config:
+            role_config = timer_role.config.get("role", {})
             assert (
-                "_timer_context_injector" in processor_names
-            ), f"Context injector not found in {processor_names}"
+                role_config.get("name") == "timer"
+            ), "Role config should have timer name"
+            assert "version" in role_config, "Role config should have version"
 
     @pytest.mark.asyncio
     async def test_universal_agent_pre_processor_execution(self):

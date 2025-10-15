@@ -446,10 +446,9 @@ class TestWorkflowEngine:
         # Test different roles and their dynamic LLM type mappings
         role_test_cases = [
             ("planning_agent", "planning"),
-            ("search_agent", "search"),
             ("weather_agent", "weather"),
-            ("coding_agent", "coding"),
-            ("analysis_agent", "analysis"),
+            ("timer_agent", "timer"),
+            ("smart_home_agent", "smart_home"),
         ]
 
         for agent_id, expected_role in role_test_cases:
@@ -462,12 +461,12 @@ class TestWorkflowEngine:
             # Verify it returns a valid LLM type (should be one of WEAK, DEFAULT, STRONG)
             assert llm_type in [LLMType.WEAK, LLMType.DEFAULT, LLMType.STRONG]
 
-            # Verify specific mappings based on role definitions
-            if role in ["planning", "coding", "analysis"]:
+            # Verify specific mappings based on current role definitions
+            if role in ["planning"]:
                 assert (
                     llm_type == LLMType.STRONG
                 ), f"Expected STRONG for {role}, got {llm_type}"
-            elif role in ["search", "weather"]:
+            elif role in ["weather", "timer", "smart_home"]:
                 assert (
                     llm_type == LLMType.WEAK
                 ), f"Expected WEAK for {role}, got {llm_type}"
