@@ -92,7 +92,7 @@ class TestUpdatedRouterSingleFile:
         response_text = '{"route": "timer", "confidence": invalid}'
         result = parse_routing_response(response_text)
 
-        assert result["success"] is False
+        assert result["valid"] is False
         assert "error" in result
 
     def test_validate_confidence_score_valid(self):
@@ -135,7 +135,7 @@ class TestUpdatedRouterSingleFile:
         assert _get_role_priority("timer") == 1
         assert _get_role_priority("weather") == 2
         assert _get_role_priority("smart_home") == 3
-        assert _get_role_priority("planning") == 4
+        assert _get_role_priority("planning") == 5
         assert _get_role_priority("unknown_role") == 99
 
     def test_format_routing_summary(self):

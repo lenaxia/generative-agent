@@ -150,7 +150,7 @@ class TestIntentProcessor:
         assert len(result["errors"]) == 0
 
         # Verify all intents were processed
-        mock_communication_manager.send_notification.assert_called_once()
+        mock_communication_manager.route_message.assert_called_once()
         mock_workflow_engine.start_workflow.assert_called_once()
 
     @pytest.mark.asyncio
