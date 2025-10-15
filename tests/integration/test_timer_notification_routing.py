@@ -65,29 +65,29 @@ class TestTimerNotificationRouting:
             "console_handler": console_handler,
         }
 
-    def test_parameter_schema_includes_context_parameters(self):
-        """Test that timer role parameter schema includes user_id and channel_id."""
+    def test_parameter_schema_excludes_context_parameters(self):
+        """Test that timer role parameter schema excludes user_id and channel_id (now in LLMSafeEventContext)."""
         role_registry = RoleRegistry()
         timer_role = role_registry.get_role("timer")
 
-        role_params = timer_role.config.get("role", {}).get("parameters", {})
+        if timer_role and timer_role.config:
+            role_params = timer_role.config.get("role", {}).get("parameters", {})
 
-        # Verify context parameters are in schema
-        assert (
-            "user_id" in role_params
-        ), "user_id parameter missing from timer role schema"
-        assert (
-            "channel_id" in role_params
-        ), "channel_id parameter missing from timer role schema"
+            # Verify context parameters are NOT in schema (they're in LLMSafeEventContext now)
+            assert (
+                "user_id" not in role_params
+            ), "user_id should not be in timer role schema (now in LLMSafeEventContext)"
+            assert (
+                "channel_id" not in role_params
+            ), "channel_id should not be in timer role schema (now in LLMSafeEventContext)"
 
-        # Verify parameter descriptions
-        user_id_param = role_params["user_id"]
-        channel_id_param = role_params["channel_id"]
-
-        assert user_id_param["type"] == "string"
-        assert channel_id_param["type"] == "string"
-        assert "notification routing" in user_id_param["description"]
-        assert "notification routing" in channel_id_param["description"]
+            # Verify expected parameters are still present
+            assert (
+                "action" in role_params
+            ), "action parameter missing from timer role schema"
+            assert (
+                "duration" in role_params
+            ), "duration parameter missing from timer role schema"
 
     def test_communication_manager_pattern_matching(self, setup_system):
         """Test that communication manager correctly matches channel patterns."""

@@ -45,7 +45,7 @@ class TestThreadingFixes:
     def mock_communication_manager(self):
         """Create a mock communication manager."""
         mock_comm = AsyncMock()
-        mock_comm.send_notification = AsyncMock()
+        mock_comm.route_message = AsyncMock()
         return mock_comm
 
     @pytest.fixture
@@ -140,7 +140,7 @@ class TestThreadingFixes:
         ), f"Expected no errors, got {results['errors']}"
 
         # Verify communication manager was called
-        mock_communication_manager.send_notification.assert_called_once()
+        mock_communication_manager.route_message.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_message_bus_intent_processing(self):
