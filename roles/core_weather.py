@@ -158,7 +158,15 @@ def fetch_weather_data_for_request(parameters: dict[str, Any]) -> dict[str, Any]
     """
     try:
         location = parameters.get("location", "")
-        request_type = parameters.get("type", "current")
+        timeframe = parameters.get("timeframe", "current")
+
+        # Convert timeframe to request type for weather API
+        if timeframe in ["week", "this week", "next week", "forecast"]:
+            request_type = "forecast"
+        elif timeframe in ["today", "current", "now"]:
+            request_type = "current"
+        else:
+            request_type = "current"  # Default fallback
 
         if not location:
             return {
