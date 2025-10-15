@@ -121,10 +121,10 @@ class TestCommunicationManager:
     async def test_message_subscriptions(self, communication_manager, message_bus):
         """Test that CommunicationManager subscribes to required message types."""
         await communication_manager.initialize()
-        # Check that subscriptions were set up
-        assert MessageType.TIMER_EXPIRED.value in message_bus._subscribers
+        # Check that subscriptions were set up (current architecture)
         assert MessageType.SEND_MESSAGE.value in message_bus._subscribers
         assert MessageType.AGENT_QUESTION.value in message_bus._subscribers
+        assert MessageType.TASK_RESPONSE.value in message_bus._subscribers
 
     @pytest.mark.asyncio
     async def test_channel_registration(self, communication_manager):
