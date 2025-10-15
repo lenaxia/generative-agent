@@ -14,7 +14,7 @@ import pytest
 
 from common.channel_handlers.console_handler import ConsoleChannelHandler
 from common.channel_handlers.slack_handler import SlackChannelHandler
-from common.communication_manager import CommunicationManager
+from common.communication_manager import ChannelType, CommunicationManager
 from common.message_bus import MessageBus
 from common.request_model import RequestMetadata
 from llm_provider.factory import LLMFactory, LLMType
@@ -94,19 +94,19 @@ class TestTimerNotificationRouting:
         system = setup_system
         comm_manager = system["comm_manager"]
 
-        # Test Slack channel pattern matching
-        slack_handler = comm_manager._find_handler_for_channel("slack:C52L1UK5E")
-        assert slack_handler is not None, "No handler found for Slack channel"
+        # Test channel handler registration (current architecture)
+        assert "slack" in comm_manager.channels, "Slack handler not registered"
+        assert "console" in comm_manager.channels, "Console handler not registered"
+
+        slack_handler = comm_manager.channels["slack"]
+        console_handler = comm_manager.channels["console"]
+
         assert isinstance(
             slack_handler, SlackChannelHandler
-        ), "Wrong handler type for Slack channel"
-
-        # Test console channel pattern matching
-        console_handler = comm_manager._find_handler_for_channel("console")
-        assert console_handler is not None, "No handler found for console channel"
+        ), "Wrong handler type for Slack"
         assert isinstance(
             console_handler, ConsoleChannelHandler
-        ), "Wrong handler type for console channel"
+        ), "Wrong handler type for console"
 
     def test_target_channel_determination(self, setup_system):
         """Test that target channels are determined correctly."""
@@ -266,9 +266,9 @@ class TestTimerNotificationRouting:
             "console"
         ], f"Console routing failed: {console_targets}"
 
-        # Test console handler matching
-        console_handler = comm_manager._find_handler_for_channel("console")
-        assert console_handler is not None, "Console handler not found"
+        # Test console handler registration
+        assert "console" in comm_manager.channels, "Console handler not registered"
+        console_handler = comm_manager.channels["console"]
         assert isinstance(
             console_handler, ConsoleChannelHandler
         ), "Wrong console handler type"
