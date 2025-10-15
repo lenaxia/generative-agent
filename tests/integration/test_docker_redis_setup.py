@@ -200,7 +200,7 @@ class TestDockerRedisSetup:
             return
 
         # Test timer role tools directly (new intent-based architecture)
-        from roles.timer_single_file import cancel_timer, list_timers, set_timer
+        from roles.core_timer import cancel_timer, list_timers, set_timer
 
         # Test timer creation
         result = set_timer("5s", "test timer")

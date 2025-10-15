@@ -28,7 +28,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_role_config_structure(self):
         """Test that timer role has proper LLM-safe config structure."""
-        from roles.timer_single_file import ROLE_CONFIG
+        from roles.core_timer import ROLE_CONFIG
 
         # Verify LLM-safe config structure
         assert "name" in ROLE_CONFIG
@@ -51,7 +51,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_intent_definitions(self):
         """Test timer-specific intent definitions follow Document 25 patterns."""
-        from roles.timer_single_file import (
+        from roles.core_timer import (
             TimerCancellationIntent,
             TimerCreationIntent,
             TimerExpiryIntent,
@@ -89,7 +89,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_intent_validation(self):
         """Test timer intent validation follows Document 25 patterns."""
-        from roles.timer_single_file import TimerCreationIntent
+        from roles.core_timer import TimerCreationIntent
 
         # Valid intent
         valid_intent = TimerCreationIntent(
@@ -111,15 +111,13 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_heartbeat_monitoring_handler(self):
         """Test heartbeat monitoring handler follows Document 25 pure function pattern."""
-        from roles.timer_single_file import handle_heartbeat_monitoring
+        from roles.core_timer import handle_heartbeat_monitoring
 
         # Create mock context
         mock_context = type("MockContext", (), {"user_id": "user123"})()
 
         # Mock Redis operations to return expired timers
-        with patch(
-            "roles.timer_single_file._get_expired_timers_from_redis"
-        ) as mock_redis:
+        with patch("roles.core_timer._get_expired_timers_from_redis") as mock_redis:
             with patch("roles.shared_tools.redis_tools.redis_read") as mock_read:
                 # Setup mock to return expired timer
                 mock_redis.return_value = ["timer_123"]
@@ -139,7 +137,7 @@ class TestSingleFileTimerRoleLLMSafe:
                 # Should return list of TimerExpiryIntents
                 assert isinstance(intents, list)
                 if intents:  # Only check if timers were found
-                    from roles.timer_single_file import TimerExpiryIntent
+                    from roles.core_timer import TimerExpiryIntent
 
                     assert all(
                         isinstance(intent, TimerExpiryIntent) for intent in intents
@@ -148,7 +146,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_expiry_handler_pure_function(self):
         """Test timer expiry handler is pure function returning intents."""
-        from roles.timer_single_file import handle_timer_expiry
+        from roles.core_timer import handle_timer_expiry
 
         # Create mock context
         mock_context = type(
@@ -194,7 +192,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_tools_declarative_pattern(self):
         """Test timer tools follow Document 25 declarative pattern."""
-        from roles.timer_single_file import cancel_timer, list_timers, set_timer
+        from roles.core_timer import cancel_timer, list_timers, set_timer
 
         # Test set_timer tool - should return intent data, no side effects
         result = set_timer("5m", "Test timer")
@@ -223,7 +221,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_timer_helper_functions_llm_safe(self):
         """Test timer helper functions are LLM-safe and predictable."""
-        from roles.timer_single_file import _parse_duration, _parse_timer_event_data
+        from roles.core_timer import _parse_duration, _parse_timer_event_data
 
         # Test event data parsing - should handle various formats
         timer_id, request = _parse_timer_event_data(["timer_123", "Test request"])
@@ -253,7 +251,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_role_registration_llm_safe_structure(self):
         """Test role registration follows Document 25/26 patterns."""
-        from roles.timer_single_file import ROLE_CONFIG, register_role
+        from roles.core_timer import ROLE_CONFIG, register_role
 
         role_info = register_role()
 
@@ -280,7 +278,7 @@ class TestSingleFileTimerRoleLLMSafe:
         """Test that the role doesn't use asyncio.sleep() (Document 25 compliance)."""
         import inspect
 
-        import roles.timer_single_file as timer_role
+        import roles.core_timer as timer_role
 
         # Get all functions and methods in the module
         functions = [
@@ -302,7 +300,7 @@ class TestSingleFileTimerRoleLLMSafe:
 
     def test_redis_sorted_set_integration(self):
         """Test Redis sorted set integration for efficient timer queuing."""
-        from roles.timer_single_file import _get_expired_timers_from_redis
+        from roles.core_timer import _get_expired_timers_from_redis
 
         # Mock Redis client
         with patch(
@@ -338,10 +336,7 @@ class TestTimerRoleIntentProcessing:
     @pytest.mark.asyncio
     async def test_timer_creation_intent_processing(self):
         """Test timer creation intent processing with Redis operations."""
-        from roles.timer_single_file import (
-            TimerCreationIntent,
-            process_timer_creation_intent,
-        )
+        from roles.core_timer import TimerCreationIntent, process_timer_creation_intent
 
         # Create test intent
         intent = TimerCreationIntent(
@@ -379,7 +374,7 @@ class TestTimerRoleIntentProcessing:
     @pytest.mark.asyncio
     async def test_timer_cancellation_intent_processing(self):
         """Test timer cancellation intent processing with Redis operations."""
-        from roles.timer_single_file import (
+        from roles.core_timer import (
             TimerCancellationIntent,
             process_timer_cancellation_intent,
         )
@@ -420,15 +415,13 @@ class TestTimerRoleIntentProcessing:
 
     def test_timer_role_llm_safety_patterns(self):
         """Test that timer role follows LLM-safe patterns from Documents 25/26."""
-        from roles.timer_single_file import handle_heartbeat_monitoring
+        from roles.core_timer import handle_heartbeat_monitoring
 
         # Create mock context
         mock_context = type("MockContext", (), {"user_id": "user123"})()
 
         # Handler should be pure function (no side effects)
-        with patch(
-            "roles.timer_single_file._get_expired_timers_from_redis"
-        ) as mock_redis:
+        with patch("roles.core_timer._get_expired_timers_from_redis") as mock_redis:
             mock_redis.return_value = []
 
             # Multiple calls should return consistent results
@@ -444,7 +437,7 @@ class TestTimerRoleIntentProcessing:
 
     def test_single_file_architecture_compliance(self):
         """Test that timer role follows single-file architecture from Document 26."""
-        import roles.timer_single_file as timer_role
+        import roles.core_timer as timer_role
 
         # Should have all required components in single file
         assert hasattr(timer_role, "ROLE_CONFIG")

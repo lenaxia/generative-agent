@@ -7,29 +7,29 @@ mcp_servers:
     command: "uvx"
     args: ["awslabs.aws-documentation-mcp-server@latest"]
     description: "AWS documentation and service information"
-    enabled: false  # Disabled due to npm authentication issues
-    
+    enabled: false # Disabled due to npm authentication issues
+
   # Web Search Server
   web_search:
     command: "npx"
     args: ["@modelcontextprotocol/server-web-search"]
     description: "Web search capabilities"
-    enabled: false  # Disabled due to npm package availability issues
-    
+    enabled: false # Disabled due to npm package availability issues
+
   # Weather Information Server
   weather:
     command: "npx"
     args: ["@modelcontextprotocol/server-weather"]
     description: "Weather information and forecasts"
-    enabled: false  # Disabled by default
-    
+    enabled: false # Disabled by default
+
   # File System Operations Server
   filesystem:
     command: "npx"
     args: ["@modelcontextprotocol/server-filesystem"]
     description: "File system operations"
-    enabled: false  # Disabled by default for security
-    
+    enabled: false # Disabled by default for security
+
   # GitHub Integration Server
   github:
     command: "npx"
@@ -37,8 +37,8 @@ mcp_servers:
     description: "GitHub repository integration"
     enabled: false
     environment:
-      GITHUB_TOKEN: "${GITHUB_TOKEN}"  # Environment variable
-    
+      GITHUB_TOKEN: "${GITHUB_TOKEN}" # Environment variable
+
   # Slack Integration Server
   slack:
     command: "npx"
@@ -49,23 +49,34 @@ mcp_servers:
       SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
       SLACK_USER_TOKEN: "${SLACK_USER_TOKEN}"
 
+  # Home Assistant Integration Server
+  home_assistant:
+    command: "mcp-proxy"
+    args: []
+    description: "Home Assistant smart home control via MCP"
+    enabled: true
+    environment:
+      SSE_URL: "${HOME_ASSISTANT_SSE_URL:-http://localhost:8123/mcp_server/sse}"
+      API_ACCESS_TOKEN: "${HOME_ASSISTANT_API_TOKEN}"
+    transport: "sse" # Server-Sent Events transport via mcp-proxy
+
 # MCP Client Configuration
 mcp_client:
   # Maximum number of concurrent MCP connections
   max_connections: 10
-  
+
   # Connection timeout in seconds
   connection_timeout: 30
-  
+
   # Tool execution timeout in seconds
   execution_timeout: 60
-  
+
   # Retry configuration
   retry:
     max_attempts: 3
     delay: 1.0
     backoff_factor: 2.0
-  
+
   # Logging configuration
   logging:
     level: "INFO"
@@ -83,7 +94,7 @@ role_tool_mapping:
       - "docs*"
       - "documentation*"
       - "research*"
-      
+
   search:
     # Search agents get web search capabilities
     preferred_servers: ["web_search"]
@@ -91,7 +102,7 @@ role_tool_mapping:
       - "search*"
       - "query*"
       - "find*"
-      
+
   weather:
     # Weather agents get weather-specific tools
     preferred_servers: ["weather"]
@@ -99,7 +110,7 @@ role_tool_mapping:
       - "weather*"
       - "forecast*"
       - "climate*"
-      
+
   summarizer:
     # Summarizer agents get content processing tools
     preferred_servers: ["web_search", "filesystem"]
@@ -108,7 +119,7 @@ role_tool_mapping:
       - "content*"
       - "document*"
       - "text*"
-      
+
   slack:
     # Slack agents get communication tools
     preferred_servers: ["slack"]
@@ -117,7 +128,7 @@ role_tool_mapping:
       - "message*"
       - "send*"
       - "post*"
-      
+
   coding:
     # Coding agents get development tools
     preferred_servers: ["github", "filesystem"]
@@ -126,6 +137,20 @@ role_tool_mapping:
       - "code*"
       - "file*"
       - "repository*"
+
+  smart_home:
+    # Smart home agents get Home Assistant control tools
+    preferred_servers: ["home_assistant"]
+    tool_filters:
+      - "call_service"
+      - "get_state"
+      - "set_state"
+      - "list_entities"
+      - "home_assistant*"
+      - "light*"
+      - "switch*"
+      - "climate*"
+      - "sensor*"
 
 # Security configuration
 security:
@@ -136,13 +161,14 @@ security:
     - "python"
     - "python3"
     - "node"
-  
+    - "mcp-proxy"
+
   # Blocked server arguments (blacklist)
   blocked_args:
     - "--unsafe"
     - "--allow-all"
     - "--disable-security"
-  
+
   # Environment variable whitelist
   allowed_env_vars:
     - "GITHUB_TOKEN"
@@ -150,3 +176,5 @@ security:
     - "SLACK_USER_TOKEN"
     - "OPENAI_API_KEY"
     - "ANTHROPIC_API_KEY"
+    - "HOME_ASSISTANT_SSE_URL"
+    - "HOME_ASSISTANT_API_TOKEN"

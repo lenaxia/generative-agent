@@ -20,7 +20,7 @@ from common.request_model import RequestMetadata
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
-from roles.timer_single_file import handle_timer_expiry, set_timer
+from roles.core_timer import handle_timer_expiry, set_timer
 from supervisor.workflow_engine import WorkflowEngine
 
 

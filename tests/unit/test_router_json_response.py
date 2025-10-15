@@ -14,7 +14,7 @@ import pytest
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from roles.router_single_file import (
+from roles.core_router import (
     ROLE_CONFIG,
     ROUTING_CONFIDENCE_THRESHOLDS,
     RoutingResponse,

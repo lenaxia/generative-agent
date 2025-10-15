@@ -14,7 +14,7 @@ import pytest
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from roles.weather_single_file import (
+from roles.core_weather import (
     ROLE_CONFIG,
     _check_weather,
     _city_to_coordinates,
@@ -35,8 +35,8 @@ class TestWeatherPreProcessing:
         assert ROLE_CONFIG["tools"]["automatic"] is False  # No tools
         assert ROLE_CONFIG["tools"]["include_builtin"] is False  # No built-in tools
 
-    @patch("roles.weather_single_file._city_to_coordinates")
-    @patch("roles.weather_single_file._check_weather")
+    @patch("roles.core_weather._city_to_coordinates")
+    @patch("roles.core_weather._check_weather")
     def test_fetch_weather_data_success(self, mock_check_weather, mock_city_coords):
         """Test successful weather data fetching."""
         # Mock coordinate conversion
@@ -73,7 +73,7 @@ class TestWeatherPreProcessing:
         assert "No location provided" in result["error"]
         assert result["weather_data"] is None
 
-    @patch("roles.weather_single_file._city_to_coordinates")
+    @patch("roles.core_weather._city_to_coordinates")
     def test_fetch_weather_data_api_error(self, mock_city_coords):
         """Test weather data fetching with API error."""
         # Mock API error
@@ -86,7 +86,7 @@ class TestWeatherPreProcessing:
         assert "API unavailable" in result["error"]
         assert result["weather_data"] is None
 
-    @patch("roles.weather_single_file.fetch_weather_data_for_request")
+    @patch("roles.core_weather.fetch_weather_data_for_request")
     def test_process_weather_request_success(self, mock_fetch_data):
         """Test weather request processing with successful data fetching."""
         # Mock successful weather data fetch
@@ -132,7 +132,7 @@ class TestWeatherPreProcessing:
         assert "Conditions: Partly Cloudy" in call_args[1]["instruction"]
         assert call_args[1]["role"] == "weather"
 
-    @patch("roles.weather_single_file.fetch_weather_data_for_request")
+    @patch("roles.core_weather.fetch_weather_data_for_request")
     def test_process_weather_request_fetch_error(self, mock_fetch_data):
         """Test weather request processing with data fetch error."""
         # Mock failed weather data fetch

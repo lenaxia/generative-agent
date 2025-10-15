@@ -88,7 +88,7 @@ class TestThreadingPerformance:
     async def test_event_handling_latency(self):
         """Test event handling latency - should be <100ms average."""
         from common.enhanced_event_context import LLMSafeEventContext
-        from roles.timer_single_file import handle_timer_expiry
+        from roles.core_timer import handle_timer_expiry
 
         # Create test context
         context = LLMSafeEventContext(
@@ -445,7 +445,7 @@ class TestThreadingPerformance:
         start_time = time.time()
 
         # Import timer role
-        timer_module = importlib.import_module("roles.timer_single_file")
+        timer_module = importlib.import_module("roles.core_timer")
 
         # Get role registration
         registration = timer_module.register_role()

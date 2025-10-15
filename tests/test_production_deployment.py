@@ -159,7 +159,7 @@ class TestProductionReliability:
     def test_error_handling_production_ready(self):
         """Test error handling is production-ready."""
         from common.enhanced_event_context import create_context_from_event_data
-        from roles.timer_single_file import handle_timer_expiry
+        from roles.core_timer import handle_timer_expiry
 
         # Test with various error conditions
         error_cases = [
@@ -250,7 +250,7 @@ class TestProductionDeployment:
         assert context.is_valid()
 
         # Single-file timer role
-        from roles.timer_single_file import register_role
+        from roles.core_timer import register_role
 
         role_info = register_role()
         assert "config" in role_info
@@ -315,7 +315,7 @@ logging:
     def test_performance_production_ready(self):
         """Test performance characteristics are production-ready."""
         from common.enhanced_event_context import create_context_from_event_data
-        from roles.timer_single_file import handle_timer_expiry
+        from roles.core_timer import handle_timer_expiry
 
         # Should handle reasonable load
         context = create_context_from_event_data(

@@ -21,7 +21,7 @@ from common.enhanced_event_context import LLMSafeEventContext
 from common.intent_processor import IntentProcessor
 from common.intents import AuditIntent, NotificationIntent
 from common.message_bus import MessageBus
-from roles.timer_single_file import handle_timer_expiry
+from roles.core_timer import handle_timer_expiry
 from supervisor.supervisor import Supervisor
 
 logger = logging.getLogger(__name__)
@@ -300,7 +300,7 @@ class TestThreadingFixes:
 
     def test_timer_role_single_file_structure(self):
         """Test that timer role follows single-file architecture."""
-        from roles.timer_single_file import ROLE_CONFIG, register_role
+        from roles.core_timer import ROLE_CONFIG, register_role
 
         # Verify role configuration
         assert isinstance(ROLE_CONFIG, dict), "ROLE_CONFIG should be a dictionary"
