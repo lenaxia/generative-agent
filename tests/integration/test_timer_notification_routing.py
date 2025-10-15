@@ -129,36 +129,24 @@ class TestTimerNotificationRouting:
             "console"
         ], f"Expected ['console'], got {console_targets}"
 
-    @patch("roles.shared_tools.redis_tools.redis_write")
-    def test_timer_creation_with_context_parameters(self, mock_redis_write):
-        """Test that timer creation stores proper context when parameters are provided."""
-        # Mock Redis success
-        mock_redis_write.return_value = {"success": True}
-
-        # Test timer creation with Slack context
+    def test_timer_creation_with_context_parameters(self):
+        """Test that timer creation returns proper intent with context parameters."""
+        # Test timer creation (context parameters now come from LLMSafeEventContext)
         result = set_timer(
             duration="5s",
             label="test timer",
-            user_id="U52L1U8M6",
-            channel_id="slack:C52L1UK5E",
         )
 
-        # Verify timer creation succeeded
+        # Verify timer tool returns intent data (new architecture)
         assert result["success"] is True
         assert "timer_id" in result
+        assert "intent" in result
 
-        # Verify Redis was called with correct context
-        mock_redis_write.assert_called_once()
-        call_args = mock_redis_write.call_args
-        timer_data = call_args[0][1]  # Second argument is the timer data
-
-        # Verify context is stored correctly
-        assert (
-            timer_data["user_id"] == "U52L1U8M6"
-        ), f"Expected U52L1U8M6, got {timer_data['user_id']}"
-        assert (
-            timer_data["channel"] == "slack:C52L1UK5E"
-        ), f"Expected slack:C52L1UK5E, got {timer_data['channel']}"
+        # Verify the intent contains the correct type and parameters
+        intent_data = result["intent"]
+        assert intent_data["type"] == "TimerCreationIntent"
+        assert intent_data["duration"] == "5s"
+        assert intent_data["label"] == "test timer"
 
     @patch("roles.shared_tools.redis_tools.redis_delete")
     def test_timer_expiry_uses_stored_context(self, mock_redis_delete, setup_system):
