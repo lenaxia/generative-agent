@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from roles.router_single_file import (
     ROLE_CONFIG,
     _format_routing_summary,
-    _get_role_priority,
     parse_routing_response,
     register_role,
     route_request_with_available_roles,
@@ -60,20 +59,19 @@ class TestUpdatedRouterSingleFile:
     def test_route_request_with_available_roles_success(self):
         """Test successful routing using the current architecture."""
         request = "Set a timer for 10 minutes"
-        available_roles = ["timer", "weather", "smart_home", "planning"]
 
-        # Mock the LLM execution since it requires actual LLM calls
-        with patch(
-            "llm_provider.universal_agent.UniversalAgent.execute_task"
-        ) as mock_execute:
-            mock_execute.return_value = (
-                '{"route": "timer", "confidence": 0.95, "parameters": {}}'
-            )
+        # Create a mock role registry with proper structure
+        mock_role_registry = Mock()
+        mock_role_registry.get_fast_reply_roles.return_value = []
+        mock_role_registry._universal_agent = Mock()
+        mock_role_registry._universal_agent.execute_task.return_value = (
+            '{"route": "timer", "confidence": 0.95, "parameters": {}}'
+        )
 
-            result = route_request_with_available_roles(request, available_roles)
-            assert result["success"] is True
-            assert result["route"] == "timer"
-            assert result["confidence"] >= 0.7
+        result = route_request_with_available_roles(request, mock_role_registry)
+        assert result["valid"] is True
+        assert result["route"] == "timer"
+        assert result["confidence"] >= 0.7
 
     def test_parse_routing_response_valid_json(self):
         """Test parsing valid JSON routing response."""
@@ -82,7 +80,7 @@ class TestUpdatedRouterSingleFile:
         )
         result = parse_routing_response(response_text)
 
-        assert result["success"] is True
+        assert result["valid"] is True
         assert result["route"] == "timer"
         assert result["confidence"] == 0.9
         assert result["parameters"]["duration"] == "10m"
@@ -129,14 +127,6 @@ class TestUpdatedRouterSingleFile:
         result = validate_routing_request("hi")
         assert result["valid"] is False
         assert "error" in result
-
-    def test_get_role_priority(self):
-        """Test role priority assignment."""
-        assert _get_role_priority("timer") == 1
-        assert _get_role_priority("weather") == 2
-        assert _get_role_priority("smart_home") == 3
-        assert _get_role_priority("planning") == 5
-        assert _get_role_priority("unknown_role") == 99
 
     def test_format_routing_summary(self):
         """Test routing summary formatting."""
