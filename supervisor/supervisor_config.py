@@ -24,6 +24,7 @@ class LoggingConfig(BaseModel):
     log_file_max_size: int = 1024  # 1 kB
     llm_providers: dict[str, dict] = {}
     disable_console_logging: Optional[bool] = None
+    loggers: Optional[dict[str, str]] = None
 
 
 class LLMProviderConfig(BaseModel):

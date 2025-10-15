@@ -116,9 +116,15 @@ def configure_logging(logging_config: LoggingConfig):
 
     logging.basicConfig(
         level=log_level,
-        format="%(asctime)s [%(levelname)s] [%(module_name)s] %(message)s",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers,
     )
+
+    # Configure component-specific log levels
+    if hasattr(logging_config, "loggers") and logging_config.loggers:
+        for logger_name, logger_level in logging_config.loggers.items():
+            component_logger = logging.getLogger(logger_name)
+            component_logger.setLevel(logging.getLevelName(logger_level.upper()))
 
     # Create a logger for the Supervisor class
     supervisor_logger = logging.getLogger("supervisor")

@@ -155,10 +155,16 @@ logging:
 
   # Component-specific log levels
   loggers:
-    llm_provider: "DEBUG"
+    llm_provider: "INFO"
     supervisor: "INFO"
     universal_agent: "INFO"
     workflow_duration_logger: "INFO"
+    role_registry: "WARNING"
+    communication_manager: "WARNING"
+    timer_single_file: "WARNING"
+    common.communication_manager: "WARNING"
+    llm_provider.role_registry: "WARNING"
+    roles.timer_single_file: "WARNING"
 
 # Workflow Duration Logging Configuration
 workflow_duration_logging:

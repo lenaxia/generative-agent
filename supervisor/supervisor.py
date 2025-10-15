@@ -347,20 +347,20 @@ class Supervisor:
             f"🔥 start_async_tasks called! Has _async_tasks_started: {hasattr(self, '_async_tasks_started')}"
         )
         if hasattr(self, "_async_tasks_started"):
-            logger.info(f"🔥 _async_tasks_started = {self._async_tasks_started}")
+            logger.debug(f"_async_tasks_started = {self._async_tasks_started}")
 
         if not hasattr(self, "_async_tasks_started") or not self._async_tasks_started:
-            logger.info("🔥 First time calling start_async_tasks - proceeding")
+            logger.debug("First time calling start_async_tasks - proceeding")
             try:
                 self._start_scheduled_tasks()
                 logger.info("Async heartbeat tasks started successfully")
                 self._async_tasks_started = True
-                logger.info(f"🔥 Set _async_tasks_started = {self._async_tasks_started}")
+                logger.debug(f"Set _async_tasks_started = {self._async_tasks_started}")
             except Exception as e:
                 logger.error(f"Failed to start async tasks: {e}")
                 raise
         else:
-            logger.info("🔥 start_async_tasks already called - skipping")
+            logger.debug("start_async_tasks already called - skipping")
 
     def stop(self):
         """Stops the Supervisor by stopping the task scheduler and message bus.
@@ -605,21 +605,21 @@ class Supervisor:
         try:
             # Get the current running event loop
             loop = asyncio.get_running_loop()
-            logger.info(f"🔥 Got event loop: {loop}")
+            logger.debug(f"Got event loop: {loop}")
 
             # Create system heartbeat for health monitoring (30-second intervals)
-            logger.info("🔥 Creating heartbeat task...")
+            logger.debug("Creating heartbeat task...")
             heartbeat_task = loop.create_task(self._create_heartbeat_task())
             self._scheduled_tasks.append(heartbeat_task)
-            logger.info(f"🔥 System heartbeat task created: {heartbeat_task}")
+            logger.debug(f"System heartbeat task created: {heartbeat_task}")
 
             # Create fast heartbeat for timer monitoring (5-second intervals)
-            logger.info("🔥 Creating fast heartbeat task...")
+            logger.debug("Creating fast heartbeat task...")
             fast_heartbeat_task = loop.create_task(self._create_fast_heartbeat_task())
             self._scheduled_tasks.append(fast_heartbeat_task)
-            logger.info(f"🔥 Fast heartbeat task created: {fast_heartbeat_task}")
+            logger.debug(f"Fast heartbeat task created: {fast_heartbeat_task}")
 
-            logger.info(f"🔥 Total scheduled tasks: {len(self._scheduled_tasks)}")
+            logger.debug(f"Total scheduled tasks: {len(self._scheduled_tasks)}")
 
         except RuntimeError as e:
             logger.error(f"No running event loop found: {e}")

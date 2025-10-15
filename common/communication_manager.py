@@ -446,14 +446,14 @@ class CommunicationManager:
 
     async def _handle_send_message(self, message: dict[str, Any]) -> None:
         """Handle send message events from the message bus."""
-        logger.info(f"_handle_send_message called with: {message}")
+        logger.debug(f"_handle_send_message called with: {message}")
         message_text = message.get("message", "")
         context = message.get("context", {})
-        logger.info(f"Routing message: '{message_text}' with context: {context}")
+        logger.debug(f"Routing message: '{message_text}' with context: {context}")
 
         try:
             result = await self.route_message(message_text, context)
-            logger.info(f"_handle_send_message completed successfully: {result}")
+            logger.debug(f"_handle_send_message completed successfully: {result}")
         except Exception as e:
             logger.error(f"Error in _handle_send_message: {e}")
             import traceback
@@ -619,7 +619,7 @@ class CommunicationManager:
         delivery_guarantee: DeliveryGuarantee,
     ) -> list[dict]:
         """Send message with specified delivery guarantee."""
-        logger.info(
+        logger.debug(
             f"_send_with_delivery_guarantee called with target_channels: {target_channels}"
         )
         results = []
@@ -627,14 +627,14 @@ class CommunicationManager:
 
         # Try target channels first
         for channel_id in target_channels:
-            logger.info(f"Trying to send to channel: {channel_id}")
+            logger.debug(f"Trying to send to channel: {channel_id}")
             if channel_id in self.channels:
-                logger.info(f"Channel {channel_id} found in self.channels")
+                logger.debug(f"Channel {channel_id} found in self.channels")
                 try:
-                    logger.info(
+                    logger.debug(
                         f"Calling send_notification on {channel_id} with message: '{message}'"
                     )
-                    logger.info(
+                    logger.debug(
                         f"send_notification context: recipient={context.get('recipient')}, format={context.get('message_format', MessageFormat.PLAIN_TEXT)}"
                     )
 
@@ -648,13 +648,13 @@ class CommunicationManager:
                         ),
                         timeout=10.0,  # 10 second timeout
                     )
-                    logger.info(
+                    logger.debug(
                         f"Channel {channel_id} send_notification result: {result}"
                     )
                     results.append({"channel": channel_id, "result": result})
                     if result.get("success"):
                         successful_delivery = True
-                        logger.info(f"Successful delivery via {channel_id}")
+                        logger.debug(f"Successful delivery via {channel_id}")
                 except Exception as e:
                     logger.error(f"Error sending to channel {channel_id}: {e}")
                     import traceback
@@ -1013,7 +1013,7 @@ class CommunicationManager:
                 logger.error(f"Error stopping {channel_name} channel: {e}")
 
         # Cancel any remaining background tasks
-        await self._terminate_background_tasks()
+        await self._terminate_background_threads()
 
         logger.info("Communication manager shutdown complete")
 

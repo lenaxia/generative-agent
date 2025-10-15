@@ -212,9 +212,6 @@ def handle_timer_expiry(event_data: Any, context) -> list[Intent]:
 
 def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
     """LLM-SAFE: Pure function for heartbeat monitoring - checks Redis for expired timers."""
-    logger.debug(
-        f"Timer heartbeat check: {len(expired_timer_ids) if 'expired_timer_ids' in locals() else 0} expired timers"
-    )
     try:
         from roles.shared_tools.redis_tools import redis_read
 
@@ -400,28 +397,24 @@ def _get_expired_timers_from_redis(current_time: int) -> list[str]:
         from roles.shared_tools.redis_tools import _get_redis_client
 
         client = _get_redis_client()
-        logger.info(f"🔥 Redis client: {client}")
-
-        # First, check all active timers for debugging
-        all_active_timers = client.zrange("timer:active_queue", 0, -1, withscores=True)
-        logger.info(f"🔥 All active timers in Redis: {all_active_timers}")
+        logger.debug(f"Redis client: {client}")
 
         # Get expired timers from sorted set (score <= current_time)
         expired_timer_ids = client.zrangebyscore("timer:active_queue", 0, current_time)
-        logger.info(f"🔥 Expired timer IDs from Redis: {expired_timer_ids}")
+        logger.debug(f"Expired timer IDs from Redis: {expired_timer_ids}")
 
         # Remove expired timers from the active queue
         if expired_timer_ids:
             removed_count = client.zremrangebyscore(
                 "timer:active_queue", 0, current_time
             )
-            logger.info(f"🔥 Removed {removed_count} expired timers from Redis queue")
+            logger.debug(f"Removed {removed_count} expired timers from Redis queue")
 
         decoded_ids = [
             timer_id.decode() if isinstance(timer_id, bytes) else timer_id
             for timer_id in expired_timer_ids
         ]
-        logger.info(f"🔥 Returning decoded timer IDs: {decoded_ids}")
+        logger.debug(f"Returning decoded timer IDs: {decoded_ids}")
         return decoded_ids
 
     except Exception as e:
@@ -438,8 +431,8 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
     try:
         # Calculate expiry time
         expiry_time = time.time() + intent.duration_seconds
-        logger.info(
-            f"🔥 Timer will expire at: {expiry_time} (current: {time.time()}, duration: {intent.duration_seconds}s)"
+        logger.debug(
+            f"Timer will expire at: {expiry_time} (current: {time.time()}, duration: {intent.duration_seconds}s)"
         )
 
         # Create timer data with complete context (eliminate redundancy)

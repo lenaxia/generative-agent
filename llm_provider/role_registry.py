@@ -132,17 +132,19 @@ class RoleRegistry:
 
     def refresh(self):
         """Refresh role registry by discovering and loading all LLM roles from filesystem."""
-        logger.info("Refreshing role registry...")
+        logger.debug("Refreshing role registry...")
 
         discovered_roles = self._discover_roles()
-        logger.info(f"Discovered {len(discovered_roles)} LLM roles: {discovered_roles}")
+        logger.debug(
+            f"Discovered {len(discovered_roles)} LLM roles: {discovered_roles}"
+        )
 
         for role_name in discovered_roles:
             try:
                 role_def = self._load_role(role_name)
                 self.llm_roles[role_name] = role_def
                 self.role_types[role_name] = "llm"
-                logger.info(
+                logger.debug(
                     f"Loaded LLM role '{role_name}' with {len(role_def.custom_tools)} custom tools"
                 )
             except Exception as e:
@@ -152,7 +154,7 @@ class RoleRegistry:
         self._is_initialized = True
         self._fast_reply_roles_cache = None
 
-        logger.info(f"Role registry refreshed with {len(self.llm_roles)} hybrid roles")
+        logger.debug(f"Role registry refreshed with {len(self.llm_roles)} hybrid roles")
 
     def initialize_once(self):
         """Initialize the role registry if not already initialized.
@@ -187,7 +189,7 @@ class RoleRegistry:
             role_name = role_file.stem.replace("_single_file", "")
             if role_name not in roles:  # Avoid duplicates
                 roles.append(role_name)
-                logger.info(f"Discovered single-file role: {role_name}")
+                logger.debug(f"Discovered single-file role: {role_name}")
 
         return roles
 
@@ -203,7 +205,7 @@ class RoleRegistry:
 
     def _load_single_file_role(self, role_name: str, role_file: Path) -> RoleDefinition:
         """Load single-file role using register_role() function."""
-        logger.info(f"Loading single-file role: {role_name}")
+        logger.debug(f"Loading single-file role: {role_name}")
 
         try:
             # Import the single-file role module
@@ -273,7 +275,7 @@ class RoleRegistry:
                     f"Registered {len(registration['pre_processors'])} pre-processors for {role_name}"
                 )
 
-            logger.info(f"Successfully loaded single-file role: {role_name}")
+            logger.debug(f"Successfully loaded single-file role: {role_name}")
             return role_def
 
         except Exception as e:
@@ -901,7 +903,7 @@ class RoleRegistry:
                 # Register with MessageBus
                 if self.message_bus:
                     self.message_bus.subscribe(role_name, event_type, handler_func)
-                    logger.info(
+                    logger.debug(
                         f"Registered event handler {event_type} for single-file role {role_name}"
                     )
 
@@ -921,7 +923,7 @@ class RoleRegistry:
         """Register intent handlers for single-file roles."""
         try:
             for intent_type, handler_func in intents.items():
-                logger.info(
+                logger.debug(
                     f"Registered intent handler {intent_type.__name__} for single-file role {role_name}"
                 )
 
