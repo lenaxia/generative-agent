@@ -118,19 +118,19 @@ class IntentProcessingHook(HookProvider):
         intent_type = intent_data.get("type")
 
         if intent_type == "TimerCreationIntent":
-            from roles.timer_single_file import TimerCreationIntent
+            from roles.core_timer import TimerCreationIntent
 
             return TimerCreationIntent(
                 **{k: v for k, v in intent_data.items() if k != "type"}
             )
         elif intent_type == "TimerCancellationIntent":
-            from roles.timer_single_file import TimerCancellationIntent
+            from roles.core_timer import TimerCancellationIntent
 
             return TimerCancellationIntent(
                 **{k: v for k, v in intent_data.items() if k != "type"}
             )
         elif intent_type == "TimerListingIntent":
-            from roles.timer_single_file import TimerListingIntent
+            from roles.core_timer import TimerListingIntent
 
             return TimerListingIntent(
                 **{k: v for k, v in intent_data.items() if k != "type"}

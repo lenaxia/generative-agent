@@ -352,9 +352,7 @@ class WorkflowEngine:
                 # Special handling for roles that need pre-processing
                 if role.lower() == "weather":
                     # Weather role uses pre-processing pattern
-                    from roles.weather_single_file import (
-                        process_weather_request_with_data,
-                    )
+                    from roles.core_weather import process_weather_request_with_data
 
                     # Set universal agent reference for weather role to use
                     process_weather_request_with_data._universal_agent = (
@@ -1549,7 +1547,7 @@ Respond with ONLY valid JSON in this exact format:
 }}"""
 
             # Delegate to router role's routing function (single-file role ownership)
-            from roles.router_single_file import route_request_with_available_roles
+            from roles.core_router import route_request_with_available_roles
 
             # Set universal agent reference for router role to use
             self.role_registry._universal_agent = self.universal_agent

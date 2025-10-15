@@ -111,10 +111,10 @@ class RoleRegistry:
         for role_name in single_file_roles:
             try:
                 # Re-import and register intents for this role
-                single_file_path = self.roles_directory / f"{role_name}_single_file.py"
+                single_file_path = self.roles_directory / f"core_{role_name}.py"
                 if single_file_path.exists():
                     spec = importlib.util.spec_from_file_location(
-                        f"roles.{role_name}_single_file", single_file_path
+                        f"roles.core_{role_name}", single_file_path
                     )
                     if spec and spec.loader:
                         module = importlib.util.module_from_spec(spec)
@@ -185,8 +185,8 @@ class RoleRegistry:
                     roles.append(role_dir.name)
 
         # Discover single-file roles (new LLM-safe pattern)
-        for role_file in self.roles_directory.glob("*_single_file.py"):
-            role_name = role_file.stem.replace("_single_file", "")
+        for role_file in self.roles_directory.glob("core_*.py"):
+            role_name = role_file.stem.replace("core_", "")
             if role_name not in roles:  # Avoid duplicates
                 roles.append(role_name)
                 logger.debug(f"Discovered single-file role: {role_name}")
@@ -196,7 +196,7 @@ class RoleRegistry:
     def _load_role(self, role_name: str) -> RoleDefinition:
         """Enhanced role loading with support for both multi-file and single-file roles."""
         # Check for single-file role first (new LLM-safe pattern)
-        single_file_path = self.roles_directory / f"{role_name}_single_file.py"
+        single_file_path = self.roles_directory / f"core_{role_name}.py"
 
         if single_file_path.exists():
             return self._load_single_file_role(role_name, single_file_path)
@@ -210,7 +210,7 @@ class RoleRegistry:
         try:
             # Import the single-file role module
             spec = importlib.util.spec_from_file_location(
-                f"roles.{role_name}_single_file", role_file
+                f"roles.core_{role_name}", role_file
             )
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not load spec for {role_file}")
@@ -952,8 +952,8 @@ class RoleRegistry:
         if not self.roles_directory.exists():
             return single_file_roles
 
-        for role_file in self.roles_directory.glob("*_single_file.py"):
-            role_name = role_file.stem.replace("_single_file", "")
+        for role_file in self.roles_directory.glob("core_*.py"):
+            role_name = role_file.stem.replace("core_", "")
             single_file_roles.append(role_name)
 
         return single_file_roles
