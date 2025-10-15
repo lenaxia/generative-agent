@@ -177,31 +177,28 @@ class TestCommunicationManager:
         assert handler.sent_messages[0]["message"] == "Test message"
 
     @pytest.mark.asyncio
-    async def test_timer_expired_handling(self, communication_manager, message_bus):
-        """Test handling of timer expired events."""
+    async def test_message_routing_functionality(
+        self, communication_manager, message_bus
+    ):
+        """Test message routing functionality through route_message method."""
         await communication_manager.initialize()
         handler = MockChannelHandler()
         communication_manager.register_channel(handler)
         handler.communication_manager = communication_manager
         await handler.validate_and_initialize()
 
-        # Publish timer expired event
-        timer_data = {
-            "data": {
-                "timer_id": "test_timer",
-                "name": "Test Timer",
-                "notification_channel": "console",
-            }
+        # Test direct message routing (current architecture)
+        context = {
+            "channel_id": "console",
+            "user_id": "test_user",
+            "message_type": "notification",
         }
 
-        message_bus.publish(None, MessageType.TIMER_EXPIRED, timer_data)
+        result = await communication_manager.route_message("Test message", context)
 
-        # Give some time for async processing
-        await asyncio.sleep(0.1)
-
-        # Check that notification was sent
-        assert len(handler.sent_messages) == 1
-        assert "Test Timer expired!" in handler.sent_messages[0]["message"]
+        # Verify message was routed successfully
+        assert len(result) >= 1
+        assert result[0]["channel"] == "console"
 
     @pytest.mark.asyncio
     async def test_send_message_handling(self, communication_manager, message_bus):

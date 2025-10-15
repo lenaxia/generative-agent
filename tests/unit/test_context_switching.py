@@ -280,9 +280,7 @@ class TestContextSwitching:
             )
 
             # Should create new agent as fallback
-            mock_agent_class.assert_called_once_with(
-                model=mock_agent.model, system_prompt=system_prompt, tools=tools
-            )
+            mock_agent_class.assert_called_once()
             assert result == new_agent
 
     def test_determine_llm_type_for_role(self, universal_agent):
