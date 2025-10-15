@@ -66,8 +66,15 @@ class TestIntentProcessor:
         assert result["failed"] == 0
         assert len(result["errors"]) == 0
 
-        mock_communication_manager.send_notification.assert_called_once_with(
-            message="Test notification", channel="test-channel", user_id="user123"
+        mock_communication_manager.route_message.assert_called_once_with(
+            message="Test notification",
+            context={
+                "channel_id": "test-channel",
+                "user_id": "user123",
+                "message_type": "notification",
+                "priority": "high",
+                "notification_type": "info",
+            },
         )
 
     @pytest.mark.asyncio
