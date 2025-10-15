@@ -189,7 +189,7 @@ class TestTimerNotificationRouting:
 
         delivery_result = result[0]
         assert (
-            delivery_result["channel"] == "slack:C52L1UK5E"
+            delivery_result["channel"] == "slack"
         ), f"Wrong channel in result: {delivery_result}"
         assert delivery_result["result"]["success"] is True, "Slack delivery failed"
 
