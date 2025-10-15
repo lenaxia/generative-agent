@@ -103,7 +103,7 @@ ROLE_CONFIG = {
         "shared": ["redis_tools"],  # List of shared tools (redis_tools commonly used)
         "include_builtin": False,  # CRITICAL: Usually False (excludes calculator, file_read, shell)
         "fast_reply": {
-            "enabled": True,  # Enable tools in fast-reply mode
+            "enabled": True,  # Enable tools in fast-reply mode, you may not want this if you can fetch all relevant data in pre-
         },
     },
 

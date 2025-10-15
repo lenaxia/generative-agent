@@ -208,14 +208,14 @@ class ChannelHandler:
         raise NotImplementedError("Channel handlers must implement _send method")
 
     async def ask_question(
-        self, question: str, options: list[str] = None, timeout: int = 300
+        self, question: str, options: Optional[list[str]] = None, timeout: int = 300
     ) -> str:
         """Ask user a question and wait for response. Override in bidirectional channels."""
         if not self.get_capabilities().get("bidirectional", False):
             raise NotImplementedError(
                 f"{self.channel_type.value} doesn't support bidirectional communication"
             )
-        return await self._ask_question_impl(question, options, timeout)
+        return await self._ask_question_impl(question, options or [], timeout)
 
     async def _ask_question_impl(
         self, question: str, options: list[str], timeout: int

@@ -16,7 +16,7 @@ class OpenAIModelConfig(ModelConfig):
     configuration for GPT model access.
     """
 
-    model: str = None
+    model: Optional[str] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     top_p: Optional[float] = None

@@ -156,27 +156,17 @@ class IntentProcessor:
             return
 
         try:
-            # CommunicationManager expects different parameter names
-            metadata = {
-                "channel_id": intent.channel,
-                "user_id": intent.user_id,
-                "priority": getattr(intent, "priority", "medium"),
-                "notification_type": getattr(intent, "notification_type", "info"),
-            }
-
-            # Use route_message which is the proper interface for channel routing
-            context = {
-                "channel_id": intent.channel,
-                "user_id": intent.user_id,
-                "message_type": "notification",
-                "priority": getattr(intent, "priority", "medium"),
-                "notification_type": getattr(intent, "notification_type", "info"),
-            }
-
-            result = await self.communication_manager.route_message(
-                message=intent.message, context=context
+            # Call send_notification method as expected by tests and API
+            await self.communication_manager.send_notification(
+                message=intent.message,
+                channel=intent.channel,
+                user_id=intent.user_id,
+                priority=getattr(intent, "priority", "medium"),
+                notification_type=getattr(intent, "notification_type", "info"),
             )
-            logger.info(f"Notification routed successfully: {result}")
+            logger.info(
+                f"Notification sent successfully: {intent.message} to {intent.channel}"
+            )
         except Exception as e:
             logger.error(f"Failed to send notification: {e}")
             raise

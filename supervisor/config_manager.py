@@ -22,7 +22,7 @@ class ConfigManager(BaseModel):
     configuration files and settings.
     """
 
-    config_file: Optional[str] = None
+    config_file: str
     raw_config_data: Optional[dict] = None
 
     def __init__(self, config_file: str):

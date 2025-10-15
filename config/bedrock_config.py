@@ -5,7 +5,7 @@ including credentials, model settings, and request parameters.
 """
 
 from collections.abc import Mapping
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from config.base_config import BaseConfig, ModelConfig
 
@@ -17,7 +17,7 @@ class BedrockModelConfig(ModelConfig):
     configuration parameters for foundation model access.
     """
 
-    model: str = None
+    model: Optional[str] = None
     temperature: Optional[float] = None
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
@@ -32,8 +32,8 @@ class BedrockModelConfig(ModelConfig):
     custom_get_token_ids: Optional[Callable[[str], list[int]]] = None
     default_headers: Optional[Mapping[str, str]] = None
     default_request_timeout: Optional[float] = None
-    guardrails: Optional[Mapping[str, any]] = None
-    metadata: Optional[dict[str, any]] = None
+    guardrails: Optional[Mapping[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     provider_stop_reason_key_map: Optional[Mapping[str, str]] = None
     provider_stop_sequence_key_name_map: Optional[Mapping[str, str]] = None
     region_name: Optional[str] = None

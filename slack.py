@@ -382,7 +382,9 @@ class IntelligentSlackBot:
             logger.debug(f"📨 Received Slack event: {body.get('type', 'unknown')}")
             return next()
 
-    def _handle_slash_command(self, message_text: str, user_id: str = None) -> str:
+    def _handle_slash_command(
+        self, message_text: str, user_id: Optional[str] = None
+    ) -> str:
         """Handle slash commands in messages (similar to CLI implementation).
 
         Args:
