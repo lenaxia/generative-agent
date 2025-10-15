@@ -928,59 +928,6 @@ class CommunicationManager:
         )
         return {"success": False, "error": "All notification channels failed"}
 
-    async def send_notification(
-        self,
-        message: str,
-        channel_type: Optional[ChannelType] = None,
-        recipient: Optional[str] = None,
-        message_format: MessageFormat = MessageFormat.PLAIN_TEXT,
-        delivery_guarantee: DeliveryGuarantee = DeliveryGuarantee.BEST_EFFORT,
-        metadata: Optional[dict[str, Any]] = None,
-        fallback_channels: Optional[list[ChannelType]] = None,
-    ) -> dict[str, Any]:
-        """
-        Send a notification through the specified channel with fallback support.
-
-        This method provides backward compatibility with the old API.
-        New code should use route_message() instead.
-
-        Args:
-            message: The message content
-            channel_type: Primary channel to use (defaults to default_channel)
-            recipient: Channel-specific recipient identifier
-            message_format: Format of the message content
-            delivery_guarantee: Delivery guarantee level
-            metadata: Additional channel-specific metadata
-            fallback_channels: List of fallback channels to try if primary fails
-
-        Returns:
-            Dict with status information about the delivery
-        """
-        # Convert to new route_message format
-        context = {
-            "channel_id": (
-                channel_type.value if channel_type else self.default_channel.value
-            ),
-            "recipient": recipient,
-            "message_format": message_format,
-            "delivery_guarantee": delivery_guarantee,
-            "metadata": metadata or {},
-            "message_type": "notification",
-        }
-
-        results = await self.route_message(message, context)
-
-        # Convert results back to old format for compatibility
-        if results and len(results) > 0:
-            # Return the first successful result
-            for result in results:
-                if result["result"]["success"]:
-                    return result["result"]
-            # If no success, return the first result
-            return results[0]["result"]
-        else:
-            return {"success": False, "error": "No channels available"}
-
     async def shutdown(self):
         """Shutdown all channel handlers and cleanup resources."""
         if self._shutdown_called:

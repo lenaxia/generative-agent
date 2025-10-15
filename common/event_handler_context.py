@@ -82,16 +82,19 @@ class EventHandlerContext:
         from common.communication_manager import ChannelType, MessageFormat
 
         # Default values from execution context
-        default_channels = channels or [ChannelType.SLACK]
+        default_channel = channels[0] if channels else "slack"
         default_recipient = recipient or self.get_channel()
 
-        await self.communication_manager.send_notification(
-            message=message,
-            channels=default_channels,
-            recipient=default_recipient,
-            message_format=MessageFormat.PLAIN_TEXT,
-            metadata=self.execution_context,
-        )
+        # Use current route_message API instead of legacy send_notification
+        context = {
+            "channel_id": default_channel,
+            "recipient": default_recipient,
+            "message_format": "plain_text",
+            "message_type": "notification",
+            "metadata": self.execution_context,
+        }
+
+        await self.communication_manager.route_message(message, context)
 
     def publish_event(self, event_type: str, event_data: dict[str, Any]):
         """Publish an event to the MessageBus.

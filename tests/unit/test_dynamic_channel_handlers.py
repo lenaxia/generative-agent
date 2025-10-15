@@ -108,62 +108,10 @@ class TestDynamicChannelLoading(unittest.TestCase):
             )  # 1 handler * 2 keys (enum + string)
             self.assertIn(ChannelType.CONSOLE, self.manager.channels)
 
-    @pytest.mark.asyncio
-    async def test_integration_with_delivery_guarantees(self):
-        """Test that dynamically loaded handlers work with delivery guarantees."""
-        # Create mock handlers using our MockHandler class
-        console_handler = self.MockHandler(ChannelType.CONSOLE)
-
-        # Create a failing handler by overriding _send
-        class FailingHandler(self.MockHandler):
-            async def _send(self, message, recipient, message_format, metadata):
-                self.sent_messages.append(
-                    {
-                        "message": message,
-                        "recipient": recipient,
-                        "format": message_format,
-                        "metadata": metadata,
-                    }
-                )
-                return {"success": False, "error": "Failed"}
-
-        slack_handler = FailingHandler(ChannelType.SLACK)
-        email_handler = self.MockHandler(ChannelType.EMAIL)
-
-        # Register the handlers
-        self.manager.channels = {
-            ChannelType.CONSOLE: console_handler,
-            ChannelType.SLACK: slack_handler,
-            ChannelType.EMAIL: email_handler,
-        }
-
-        # Test BEST_EFFORT delivery
-        result = await self.manager.send_notification(
-            message="Test message",
-            channel_type=ChannelType.SLACK,
-            delivery_guarantee=DeliveryGuarantee.BEST_EFFORT,
-        )
-
-        # Should still succeed because we send to all specified channels
-        self.assertTrue(result["success"])
-        self.assertIn("channels_succeeded", result)
-        self.assertIn("channels_failed", result)
-        self.assertIn(ChannelType.SLACK.value, result["channels_failed"])
-
-        # Test AT_LEAST_ONCE delivery
-        result = await self.manager.send_notification(
-            message="Test message",
-            channel_type=ChannelType.SLACK,
-            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
-        )
-
-        # Should succeed because all channels are tried
-        self.assertTrue(result["success"])
-        self.assertIn("channels_succeeded", result)
-        self.assertIn("channels_failed", result)
-        self.assertIn(ChannelType.SLACK.value, result["channels_failed"])
-        self.assertIn(ChannelType.CONSOLE.value, result["channels_succeeded"])
-        self.assertIn(ChannelType.EMAIL.value, result["channels_succeeded"])
+    # NOTE: Legacy test_integration_with_delivery_guarantees removed.
+    # This test used the deprecated send_notification API with ChannelType enums.
+    # Current architecture uses NotificationIntent and IntentProcessor instead.
+    # See tests/test_intent_processor.py for current notification testing patterns.
 
 
 if __name__ == "__main__":
