@@ -145,33 +145,35 @@ class TestRouterIntegration:
     def test_routing_workflow_simulation(self):
         """Test complete routing workflow simulation."""
         request = "Set a timer for 5 minutes"
-        available_roles = ["timer", "weather", "planning"]
 
-        # Mock the LLM execution
-        with patch(
-            "llm_provider.universal_agent.UniversalAgent.execute_task"
-        ) as mock_execute:
-            mock_execute.return_value = '{"route": "timer", "confidence": 0.9, "parameters": {"duration": "5m"}}'
+        # Create a mock role registry
+        mock_role_registry = Mock()
+        mock_role_registry.get_fast_reply_roles.return_value = []
+        mock_role_registry._universal_agent = Mock()
+        mock_role_registry._universal_agent.execute_task.return_value = (
+            '{"route": "timer", "confidence": 0.9, "parameters": {"duration": "5m"}}'
+        )
 
-            result = route_request_with_available_roles(request, available_roles)
+        result = route_request_with_available_roles(request, mock_role_registry)
 
-            assert result["success"] is True
-            assert result["route"] == "timer"
-            assert result["confidence"] == 0.9
-            assert result["parameters"]["duration"] == "5m"
+        assert result["valid"] is True
+        assert result["route"] == "timer"
+        assert result["confidence"] == 0.9
+        assert result["parameters"]["duration"] == "5m"
 
     def test_error_recovery_workflow(self):
         """Test error recovery in routing workflow."""
         request = "Set a timer for 5 minutes"
-        available_roles = ["timer", "weather", "planning"]
 
-        # Mock LLM execution to return invalid JSON
-        with patch(
-            "llm_provider.universal_agent.UniversalAgent.execute_task"
-        ) as mock_execute:
-            mock_execute.return_value = "invalid json response"
+        # Create a mock role registry
+        mock_role_registry = Mock()
+        mock_role_registry.get_fast_reply_roles.return_value = []
+        mock_role_registry._universal_agent = Mock()
+        mock_role_registry._universal_agent.execute_task.return_value = (
+            "invalid json response"
+        )
 
-            result = route_request_with_available_roles(request, available_roles)
+        result = route_request_with_available_roles(request, mock_role_registry)
 
-            assert result["success"] is False
-            assert "error" in result
+        assert result["valid"] is False
+        assert "error" in result
