@@ -835,9 +835,9 @@ class RoleRegistry:
 
                     llm_utility = EventHandlerLLM(
                         llm_factory=self.message_bus.llm_factory,
-                        event_context=event_data
-                        if isinstance(event_data, dict)
-                        else {},
+                        event_context=(
+                            event_data if isinstance(event_data, dict) else {}
+                        ),
                     )
 
                     # Create context object with all dependencies
@@ -846,9 +846,11 @@ class RoleRegistry:
                         workflow_engine=self.message_bus.workflow_engine,
                         communication_manager=self.message_bus.communication_manager,
                         message_bus=self.message_bus,
-                        execution_context=event_data.get("execution_context", {})
-                        if isinstance(event_data, dict)
-                        else {},
+                        execution_context=(
+                            event_data.get("execution_context", {})
+                            if isinstance(event_data, dict)
+                            else {}
+                        ),
                     )
 
                     # Call handler with enhanced signature (individual components as kwargs)
@@ -981,10 +983,12 @@ class RoleRegistry:
             "single_file_roles": single_file_roles,
             "multi_file_roles": multi_file_roles,
             "total_roles": len(single_file_roles) + len(multi_file_roles),
-            "migration_progress": len(single_file_roles)
-            / (len(single_file_roles) + len(multi_file_roles))
-            if (len(single_file_roles) + len(multi_file_roles)) > 0
-            else 0,
+            "migration_progress": (
+                len(single_file_roles)
+                / (len(single_file_roles) + len(multi_file_roles))
+                if (len(single_file_roles) + len(multi_file_roles)) > 0
+                else 0
+            ),
             "migrated_count": len(single_file_roles),
             "remaining_count": len(multi_file_roles),
         }

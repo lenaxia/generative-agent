@@ -498,13 +498,17 @@ class Supervisor:
                 "heartbeat": (
                     {
                         "overall_status": "healthy",
-                        "components_healthy": len(self._scheduled_tasks)
-                        if hasattr(self, "_scheduled_tasks")
-                        else 0,
+                        "components_healthy": (
+                            len(self._scheduled_tasks)
+                            if hasattr(self, "_scheduled_tasks")
+                            else 0
+                        ),
                         "mode": "scheduled_tasks",
-                        "scheduled_tasks_count": len(self._scheduled_tasks)
-                        if hasattr(self, "_scheduled_tasks")
-                        else 0,
+                        "scheduled_tasks_count": (
+                            len(self._scheduled_tasks)
+                            if hasattr(self, "_scheduled_tasks")
+                            else 0
+                        ),
                     }  # LLM-SAFE: Scheduled task health
                 ),
                 "metrics": self.metrics_manager.get_metrics(),

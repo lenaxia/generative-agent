@@ -359,9 +359,11 @@ def _parse_smart_home_event_data(event_data: Any) -> tuple[str, str, dict[str, A
             return (
                 str(event_data[0]),
                 str(event_data[1]),
-                event_data[2]
-                if len(event_data) > 2 and isinstance(event_data[2], dict)
-                else {},
+                (
+                    event_data[2]
+                    if len(event_data) > 2 and isinstance(event_data[2], dict)
+                    else {}
+                ),
             )
         else:
             return "control_device", "", {}

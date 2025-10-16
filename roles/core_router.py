@@ -365,11 +365,9 @@ def validate_confidence_score(confidence: float) -> dict[str, Any]:
 
     return {
         "valid": True,
-        "confidence_level": "high"
-        if confidence >= 0.8
-        else "medium"
-        if confidence >= 0.6
-        else "low",
+        "confidence_level": (
+            "high" if confidence >= 0.8 else "medium" if confidence >= 0.6 else "low"
+        ),
     }
 
 

@@ -86,15 +86,20 @@ def message_bus():
 @pytest.fixture
 def communication_manager(message_bus):
     """Create a CommunicationManager with mock handlers."""
-    with patch(
-        "common.communication_manager.CommunicationManager._discover_and_initialize_channels"
-    ), patch(
-        "common.communication_manager.CommunicationManager._discover_channel_handlers"
-    ), patch(
-        "common.communication_manager.CommunicationManager._initialize_all_channels"
-    ), patch(
-        "common.communication_manager.CommunicationManager.initialize"
-    ) as mock_init:
+    with (
+        patch(
+            "common.communication_manager.CommunicationManager._discover_and_initialize_channels"
+        ),
+        patch(
+            "common.communication_manager.CommunicationManager._discover_channel_handlers"
+        ),
+        patch(
+            "common.communication_manager.CommunicationManager._initialize_all_channels"
+        ),
+        patch(
+            "common.communication_manager.CommunicationManager.initialize"
+        ) as mock_init,
+    ):
         # Make initialize() a no-op
         async def mock_initialize():
             pass
