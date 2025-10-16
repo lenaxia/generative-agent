@@ -16,7 +16,11 @@ from typing import Any, Optional
 
 import yaml
 
+# Context integration imports
+from common.context_types import ContextCollector
 from common.message_bus import MessageBus, MessageType
+from common.providers.mqtt_location_provider import MQTTLocationProvider
+from common.providers.redis_memory_provider import RedisMemoryProvider
 from common.request_model import RequestMetadata
 from common.task_context import TaskContext
 from common.task_graph import (
@@ -153,6 +157,10 @@ class WorkflowEngine:
         self.universal_agent = UniversalAgent(
             llm_factory, role_registry=self.role_registry, mcp_manager=self.mcp_manager
         )
+
+        # Context integration components (initialized later)
+        self.context_collector = None
+        self.memory_assessor = None
 
         # Performance optimization: Warm up models and agents for faster routing
         logger.info("Warming up LLM models for optimal performance...")
@@ -1643,3 +1651,120 @@ Respond with ONLY valid JSON in this exact format:
                 f"Role registry not available, using DEFAULT LLM type for role '{role}'"
             )
             return LLMType.DEFAULT
+
+    # ==================== CONTEXT INTEGRATION METHODS ====================
+
+    async def initialize_context_systems(self):
+        """Initialize context collection and memory assessment systems."""
+        try:
+            # Create providers
+            memory_provider = RedisMemoryProvider()
+            location_provider = MQTTLocationProvider(
+                broker_host="homeassistant.local",  # From config
+                broker_port=1883,
+                username=os.environ.get("MQTT_USERNAME"),
+                password=os.environ.get("MQTT_PASSWORD"),
+            )
+
+            # Create context collector
+            self.context_collector = ContextCollector(
+                memory_provider=memory_provider, location_provider=location_provider
+            )
+
+            # Initialize all systems
+            await self.context_collector.initialize()
+
+            logger.info("Context systems initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Context systems initialization failed: {e}")
+            # Don't raise - system should work without context
+            self.context_collector = None
+            self.memory_assessor = None
+
+    def _add_context_to_prompt(self, base_prompt: str, context: dict) -> str:
+        """Add context to prompt in structured format.
+
+        Args:
+            base_prompt: Original user prompt
+            context: Context data gathered from providers
+
+        Returns:
+            str: Enhanced prompt with context information
+        """
+        if not context:
+            return base_prompt
+
+        context_parts = []
+
+        if context.get("location"):
+            context_parts.append(f"Location: {context['location']}")
+
+        if context.get("recent_memory"):
+            recent = context["recent_memory"][-1] if context["recent_memory"] else ""
+            if recent:
+                context_parts.append(f"Recent: {recent[:50]}...")
+
+        if context.get("presence"):
+            others = context["presence"]
+            if others:
+                context_parts.append(f"Also home: {', '.join(others)}")
+
+        if context_parts:
+            return f"{base_prompt}\n\nContext: {' | '.join(context_parts)}"
+
+        return base_prompt
+
+    async def handle_request_with_context(self, request: RequestMetadata) -> str:
+        """Enhanced request handling with context awareness.
+
+        Args:
+            request: Request metadata with user information
+
+        Returns:
+            str: Request ID for tracking
+        """
+        # Step 1: Router determines role AND context requirements
+        routing_result = self._route_request_with_router_role(request.prompt)
+
+        # Step 2: Gather context if collector is available and context is required
+        context = {}
+        if (
+            self.context_collector
+            and routing_result.get("context_requirements")
+            and request.metadata
+            and request.metadata.get("user_id")
+        ):
+            try:
+                context = await self.context_collector.gather_context(
+                    user_id=request.metadata["user_id"],
+                    context_types=routing_result["context_requirements"],
+                )
+            except Exception as e:
+                logger.warning(f"Context gathering failed: {e}")
+                context = {}  # Continue without context
+
+        # Step 3: Enhance prompt if context exists
+        enhanced_prompt = request.prompt
+        if context:
+            enhanced_prompt = self._add_context_to_prompt(request.prompt, context)
+
+        # Step 4: Create enhanced request with context-aware prompt
+        enhanced_request = RequestMetadata(
+            prompt=enhanced_prompt,
+            source_id=request.source_id,
+            target_id=request.target_id,
+            metadata=request.metadata,
+            response_requested=request.response_requested,
+        )
+
+        # Step 5: Execute using existing request handling logic
+        if self.fast_path_enabled:
+            if (
+                routing_result["route"] != "PLANNING"
+                and routing_result.get("confidence", 0)
+                >= self.fast_path_confidence_threshold
+            ):
+                return self._handle_fast_reply(enhanced_request, routing_result)
+
+        return self._handle_complex_workflow(enhanced_request)
