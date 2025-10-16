@@ -14,8 +14,10 @@ The Universal Agent System is a **single AI agent** that can assume different sp
 - **📁 Single-File Roles**: Each role consolidated into one Python file (~300 lines vs 1800+ lines)
 - **🔄 Intent-Based Processing**: Declarative event handling eliminates threading complexity
 - **⚡ Single Event Loop**: No background threads, no race conditions, no threading issues
+- **🧠 Context-Aware Intelligence**: Memory, location, and environmental awareness
 - **⏸️ Pause/Resume**: Complete workflow state management with checkpointing
 - **🔌 MCP Integration**: Seamless integration with external tool ecosystems
+- **🏠 Smart Home Integration**: Home Assistant MQTT integration for household automation
 - **📊 Health Monitoring**: Real-time system health and performance monitoring
 - **🏗️ LLM-Safe Architecture**: Designed specifically for AI agent development and modification
 - **🔧 Production Ready**: Comprehensive testing, deployment guides, and monitoring
@@ -71,6 +73,7 @@ Start an interactive session where you can:
 - Execute workflows with natural language
 - Monitor system health and performance
 - Switch between different AI roles automatically
+- Access memory and context-aware responses
 
 ### **Single Command Mode**
 
@@ -102,30 +105,22 @@ supervisor.start()
 
 The Universal Agent can assume different specialized roles based on the task:
 
-### **Single-File Roles (New Architecture)**
+### **Single-File Roles (Current Architecture)**
 
-- **Timer**: [`roles/timer_single_file.py`](roles/timer_single_file.py) - Set timers, alarms, reminders
-- **Weather**: [`roles/weather_single_file.py`](roles/weather_single_file.py) - Weather information and forecasts
-- **Smart Home**: [`roles/smart_home_single_file.py`](roles/smart_home_single_file.py) - Device control and automation
-- **Planning**: [`roles/planning_single_file.py`](roles/planning_single_file.py) - Complex task planning and analysis
-- **Router**: [`roles/router_single_file.py`](roles/router_single_file.py) - Request routing and classification
+- **Timer**: [`roles/core_timer.py`](roles/core_timer.py) - Set timers, alarms, reminders with heartbeat-driven architecture
+- **Weather**: [`roles/core_weather.py`](roles/core_weather.py) - Weather information and forecasts
+- **Smart Home**: [`roles/core_smart_home.py`](roles/core_smart_home.py) - Device control and automation via Home Assistant MCP
+- **Planning**: [`roles/core_planning.py`](roles/core_planning.py) - Complex task planning and analysis
+- **Router**: [`roles/core_router.py`](roles/core_router.py) - Request routing and intelligent context selection
 
-### **Multi-File Roles (Legacy)**
+### **Role Selection & Context Awareness**
 
-- **Calendar**: Event management and scheduling
-- **Code Reviewer**: Code quality assessment and security analysis
-- **Coding**: Code generation, debugging, and software development
-- **Research Analyst**: Comprehensive research and evidence-based reports
-- **Search**: Web search and information retrieval
+The system automatically selects the appropriate role and gathers relevant context:
 
-### **Role Selection**
-
-The system automatically selects the appropriate role based on your request:
-
-- "Set a timer for 5 minutes" → **Timer Role**
-- "What's the weather in Seattle?" → **Weather Role**
-- "Plan a machine learning project" → **Planning Role**
-- "Turn on the living room lights" → **Smart Home Role**
+- "Set a timer for 5 minutes" → **Timer Role** (no context needed)
+- "Turn on the living room lights" → **Smart Home Role** + **Location Context**
+- "What's my usual morning routine?" → **Planning Role** + **Memory Context**
+- "What's the weather like?" → **Weather Role** + **Environment Context**
 
 ## 🏗️ **Architecture**
 
@@ -147,6 +142,12 @@ graph TD
         MB --> IP[Intent Processor]
     end
 
+    subgraph "Context & Memory"
+        CC[Context Collector] --> MQTT[MQTT/Home Assistant]
+        CC --> REDIS[Redis Memory Store]
+        MA[Memory Assessor] --> REDIS
+    end
+
     subgraph "State Management"
         TC[TaskContext] --> TG[TaskGraph]
         TC --> CH[Conversation History]
@@ -156,17 +157,20 @@ graph TD
 
 ### **Key Components**
 
-1. **Supervisor**: Top-level system coordinator with health monitoring
-2. **WorkflowEngine**: Unified orchestration and task scheduling
-3. **Universal Agent**: Single agent interface with role-based specialization
+1. **Supervisor**: Top-level system coordinator with health monitoring and single event loop management
+2. **WorkflowEngine**: Unified orchestration with context-aware request processing
+3. **Universal Agent**: Single agent interface with role-based specialization and intent processing hooks
 4. **Intent Processor**: Handles declarative intents from pure function event handlers
-5. **Message Bus**: Event-driven communication with intent processing
-6. **TaskContext**: External state management with checkpointing
+5. **Context Collector**: Intelligent context gathering (location, memory, environment, presence, schedule)
+6. **Memory Assessor**: Post-workflow memory importance assessment and storage
+7. **Message Bus**: Event-driven communication with intent processing
+8. **TaskContext**: External state management with checkpointing
 
 ### **Architecture Benefits**
 
 - **Simplified**: Single event loop eliminates threading complexity
 - **Reliable**: No race conditions, no cross-thread async issues
+- **Context-Aware**: Intelligent memory and environmental awareness
 - **Maintainable**: Clear separation of concerns with intent-based processing
 - **Extensible**: Easy to add new roles and capabilities
 - **LLM-Friendly**: Designed for AI agent development and modification
@@ -197,7 +201,7 @@ llm_providers:
 # Role System Configuration
 role_system:
   roles_directory: "roles"
-  role_pattern: "*.py"
+  role_pattern: "core_*.py"
   auto_discovery: true
   validate_role_structure: true
 
@@ -207,11 +211,19 @@ intent_processing:
   validate_intents: true
   timeout_seconds: 30
 
+# Context & Memory Configuration
+context_system:
+  enabled: true
+  memory_assessment: true
+  location_tracking: true
+  mqtt_integration: true
+
 # Feature Flags
 feature_flags:
   enable_universal_agent: true
   enable_intent_processing: true
   enable_single_event_loop: true
+  enable_context_awareness: true
 ```
 
 ## 🛠️ **Development**
@@ -221,7 +233,7 @@ feature_flags:
 Create a new single-file role following the established pattern:
 
 ```python
-# roles/my_new_role.py
+# roles/core_my_new_role.py
 """My New Role - LLM-friendly single file implementation."""
 
 from dataclasses import dataclass
@@ -309,8 +321,8 @@ python -m pytest tests/integration/ -v    # Integration tests
 python -m pytest tests/unit/ -v          # Unit tests
 python -m pytest tests/llm_provider/ -v  # Universal Agent tests
 
-# Run threading architecture tests
-python -m pytest tests/test_threading_fixes_validation.py -v
+# Run architecture validation tests
+python -m pytest tests/performance/test_threading_performance.py -v
 ```
 
 ## 🐳 **Docker Development Environment**
@@ -345,6 +357,27 @@ The system integrates with multiple MCP servers for enhanced capabilities:
 - **Filesystem**: File system operations
 - **GitHub**: Repository management and code search
 - **Slack**: Team communication and collaboration
+- **Home Assistant**: Smart home device control and automation
+
+## 🏠 **Smart Home Integration**
+
+### **Home Assistant MQTT Integration**
+
+The system provides seamless integration with Home Assistant via MQTT:
+
+- **Location Tracking**: Real-time person location updates
+- **Device Control**: Smart home device automation
+- **Presence Detection**: Multi-person household awareness
+- **Environmental Context**: Temperature, lighting, and sensor data
+
+### **Context-Aware Responses**
+
+The system intelligently gathers context for enhanced responses:
+
+- **Location Context**: "Turn on the lights" → Uses current room location
+- **Memory Context**: "Play my usual music" → Recalls previous preferences
+- **Environment Context**: "Should I go for a walk?" → Considers weather
+- **Presence Context**: "Turn off all lights" → Considers who else is home
 
 ## 📊 **Monitoring & Health**
 
@@ -364,6 +397,8 @@ print(f"System health: {health['overall_status']}")
 - Workflow performance tracking
 - Intent processing monitoring
 - Single event loop compliance validation
+- Context system health checks
+- Memory usage and assessment tracking
 - Automatic health checks and maintenance
 
 ## 📁 **Project Structure**
@@ -373,29 +408,41 @@ generative-agent/
 ├── cli.py                    # Command-line interface
 ├── config.yaml              # Main configuration
 ├── supervisor/               # System coordination
-│   ├── supervisor.py         # Main supervisor
-│   ├── workflow_engine.py    # Workflow orchestration
-│   └── threading_monitor.py  # Architecture health monitoring
+│   ├── supervisor.py         # Main supervisor with single event loop
+│   ├── workflow_engine.py    # Context-aware workflow orchestration
+│   └── memory_assessor.py    # Post-workflow memory assessment
 ├── llm_provider/             # LLM abstraction layer
 │   ├── universal_agent.py    # Single agent with role specialization
 │   ├── factory.py            # LLM provider factory
-│   └── role_registry.py      # Role discovery and management
+│   └── role_registry.py      # Single-file role discovery and management
 ├── common/                   # Shared components
 │   ├── intents.py            # Intent system foundation
 │   ├── intent_processor.py   # Intent processing engine
 │   ├── message_bus.py        # Event-driven communication
+│   ├── context_collector.py  # Intelligent context gathering
 │   └── communication_manager.py # Multi-channel communication
-├── roles/                    # AI agent roles
-│   ├── timer_single_file.py  # Timer role (single file)
-│   ├── weather_single_file.py # Weather role (single file)
+├── roles/                    # AI agent roles (single-file architecture)
+│   ├── core_timer.py         # Timer role with heartbeat architecture
+│   ├── core_weather.py       # Weather role
+│   ├── core_smart_home.py    # Smart home automation
+│   ├── core_planning.py      # Complex task planning
+│   ├── core_router.py        # Request routing with context selection
 │   └── shared_tools/         # Shared tool functions
 └── tests/                    # Comprehensive test suite
     ├── test_intents.py       # Intent system tests
-    ├── test_threading_fixes_validation.py # Architecture validation
+    ├── test_threading_performance.py # Architecture validation
     └── integration/          # End-to-end tests
 ```
 
 ## 🔧 **Advanced Features**
+
+### **Context-Aware Intelligence**
+
+- **Memory System**: Automatic importance assessment and storage
+- **Location Awareness**: MQTT-based real-time location tracking
+- **Environmental Context**: Weather, time-of-day, and sensor integration
+- **Presence Detection**: Multi-person household awareness
+- **Schedule Integration**: Calendar and event awareness
 
 ### **Workflow Management**
 
@@ -409,6 +456,7 @@ generative-agent/
 - **Agent Pooling**: Pre-warmed agent instances
 - **Fast-Path Routing**: Quick responses for simple requests
 - **Semantic Caching**: Intelligent result caching
+- **Context Optimization**: Surgical context gathering to minimize latency
 - **Reduced LLM Calls**: 33% fewer calls through pre-processing
 
 ### **Communication Channels**
@@ -430,6 +478,9 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 - **[Tool Development Guide](docs/05_TOOL_DEVELOPMENT_GUIDE.md)**: Creating new tools and roles
 - **[Deployment Guide](docs/07_DEPLOYMENT_GUIDE.md)**: Production deployment instructions
 - **[Threading Architecture](docs/25_THREADING_ARCHITECTURE_IMPROVEMENTS.md)**: LLM-safe architecture design
+- **[High-Level Patterns](docs/26_HIGH_LEVEL_ARCHITECTURE_PATTERNS.md)**: Architecture patterns for LLM development
+- **[Legacy Code Removal](docs/31_LEGACY_CODE_REMOVAL_CHECKLIST.md)**: Architecture migration cleanup
+- **[Context Selection](docs/33_ROUTER_DRIVEN_CONTEXT_SELECTION_DESIGN.md)**: Intelligent context gathering design
 
 ## 🎯 **Use Cases**
 
@@ -438,30 +489,30 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 ```bash
 python cli.py --workflow "Set a timer for 25 minutes for focused work"
 python cli.py --workflow "What's the weather forecast for this weekend?"
-python cli.py --workflow "Plan my day based on my calendar"
+python cli.py --workflow "Remind me about my usual morning routine"
+```
+
+### **Smart Home Automation**
+
+```bash
+python cli.py --workflow "Turn on the living room lights and set temperature to 72°F"
+python cli.py --workflow "Create a bedtime routine that dims all lights"
+python cli.py --workflow "What's the status of all devices in the house?"
+```
+
+### **Context-Aware Assistance**
+
+```bash
+python cli.py --workflow "Play my usual music"  # Uses location + memory context
+python cli.py --workflow "Should I go for a walk?"  # Uses weather + schedule context
+python cli.py --workflow "Turn off everything"  # Uses presence + location context
 ```
 
 ### **Development Workflow**
 
 ```bash
-python cli.py --workflow "Review this pull request for security issues"
-python cli.py --workflow "Generate unit tests for the new feature"
 python cli.py --workflow "Plan the architecture for a new microservice"
-```
-
-### **Smart Home Integration**
-
-```bash
-python cli.py --workflow "Turn on the living room lights and set temperature to 72°F"
-python cli.py --workflow "Create a bedtime routine that dims all lights"
-```
-
-### **Research & Analysis**
-
-```bash
-python cli.py --workflow "Research the latest trends in AI architecture"
-python cli.py --workflow "Analyze this dataset and provide insights"
-python cli.py --workflow "Summarize the key points from these documents"
+python cli.py --workflow "Analyze this system's performance bottlenecks"
 ```
 
 ## 🏛️ **Architecture Principles**
@@ -487,6 +538,13 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Reduced Complexity**: 83% code reduction (1800+ → 300 lines per role)
 - **Clear Ownership**: Each role owns all its concerns and dependencies
 
+### **Context-Aware Intelligence**
+
+- **Router-Driven**: Router role determines what context is needed
+- **Enum-Based Types**: Predefined context types for surgical gathering
+- **Zero Overhead**: Simple commands require no context gathering
+- **Memory Assessment**: Automatic importance-based memory storage
+
 ## 🔬 **Technical Details**
 
 ### **LLM Provider Support**
@@ -499,16 +557,18 @@ python cli.py --workflow "Summarize the key points from these documents"
 ### **State Management**
 
 - **External State**: TaskContext with Redis persistence
-- **Conversation History**: Full conversation tracking
+- **Conversation History**: Full conversation tracking with context
 - **Progressive Summary**: Intelligent context compression
 - **Checkpointing**: Complete workflow state snapshots
+- **Memory System**: Importance-based automatic memory storage
 
 ### **Event Processing**
 
 - **Message Bus**: Event-driven communication between components
-- **Intent System**: Declarative action processing
+- **Intent System**: Declarative action processing with validation
 - **Event Registry**: Dynamic event type registration
 - **Handler Registration**: Automatic event handler discovery
+- **Context Integration**: Intelligent context injection into workflows
 
 ## 🚀 **Performance**
 
@@ -519,6 +579,7 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Agent Pooling**: Pre-warmed agent instances
 - **Fast-Path Routing**: Sub-3-second responses for simple requests
 - **Semantic Caching**: Intelligent result reuse
+- **Context Optimization**: Surgical context gathering minimizes latency
 
 ### **Monitoring**
 
@@ -526,15 +587,18 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Health Checks**: Automatic system health validation
 - **Intent Processing**: Declarative event processing monitoring
 - **Workflow Duration**: Complete workflow timing analysis
+- **Context Performance**: Context gathering latency tracking
+- **Memory Assessment**: Memory importance and storage metrics
 
 ## 🧪 **Testing & Quality**
 
 ### **Test Coverage**
 
-- **72+ Threading Architecture Tests**: Validate single event loop compliance
+- **Architecture Validation**: Single event loop compliance testing
 - **Integration Tests**: End-to-end workflow validation
-- **Unit Tests**: Component-level testing
+- **Unit Tests**: Component-level testing with minimal mocking
 - **Performance Tests**: System performance validation
+- **Context Tests**: Context gathering and memory assessment validation
 
 ### **Code Quality**
 
@@ -542,6 +606,7 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Type Checking**: Full mypy type validation
 - **Security Scanning**: Bandit security analysis
 - **Documentation**: Comprehensive inline documentation
+- **LLM-Safe Patterns**: Architecture designed for AI modification
 
 ## 🚀 **Production Deployment**
 
@@ -552,10 +617,11 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Error Handling**: Comprehensive error recovery
 - **Logging**: Structured logging with rotation
 - **Configuration**: Environment-specific configurations
+- **Context Persistence**: Redis-based context and memory storage
 
 ### **Deployment Options**
 
-- **Docker**: Containerized deployment with Redis
+- **Docker**: Containerized deployment with Redis and MQTT
 - **Kubernetes**: Scalable container orchestration
 - **Systemd**: Linux service deployment
 - **Cloud**: AWS, GCP, Azure deployment guides
@@ -574,7 +640,7 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Black**: Code formatting
 - **isort**: Import sorting
 - **mypy**: Type checking
-- **pytest**: Testing framework
+- **pytest**: Testing framework with minimal mocking
 
 ### **Architecture Guidelines**
 
@@ -582,6 +648,7 @@ python cli.py --workflow "Summarize the key points from these documents"
 - **Intent-Based**: Use declarative intents for event processing
 - **Single-File Roles**: Keep roles consolidated in single files
 - **LLM-Safe**: Design for AI agent modification
+- **Context-Aware**: Consider memory and environmental context
 
 ## 📄 **License**
 
@@ -598,18 +665,25 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### **Threading Architecture Transformation**
 
-- **17,902+ lines of legacy code removed**
 - **Single event loop architecture implemented**
 - **All threading issues eliminated**
 - **83% code reduction per role achieved**
+- **Legacy code removal completed**
 
 ### **LLM-Safe Architecture**
 
 - **Intent-based processing implemented**
 - **Pure function event handlers**
 - **Single-file role architecture**
-- **Comprehensive test coverage**
+- **Context-aware intelligence system**
+
+### **Smart Home Integration**
+
+- **Home Assistant MQTT integration**
+- **Real-time location tracking**
+- **Context-aware device control**
+- **Memory and preference learning**
 
 ---
 
-**The Universal Agent System: One Agent, Many Roles, Infinite Possibilities** 🚀
+**The Universal Agent System: One Agent, Many Roles, Infinite Context-Aware Possibilities** 🚀
