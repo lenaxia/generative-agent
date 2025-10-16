@@ -492,7 +492,7 @@ def _handle_fast_reply(self, request: RequestMetadata, routing_result: dict) -> 
         role = routing_result["route"]
 
         # Create LLMSafeEventContext from RequestMetadata
-        from common.enhanced_event_context import LLMSafeEventContext
+        from common.event_context import LLMSafeEventContext
 
         event_context = LLMSafeEventContext(
             user_id=request.metadata.get("user_id") if request.metadata else None,

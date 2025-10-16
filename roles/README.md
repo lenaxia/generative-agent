@@ -68,7 +68,7 @@ from strands import tool  # For tool-based roles
 from pydantic import BaseModel, Field  # For JSON response roles
 import requests  # For pre-processing roles
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ ROLE_CONFIG = {
         "shared": ["redis_tools"],  # List of shared tools (redis_tools commonly used)
         "include_builtin": False,  # CRITICAL: Usually False (excludes calculator, file_read, shell)
         "fast_reply": {
-            "enabled": True,  # Enable tools in fast-reply mode, you may not want this if you can fetch all relevant data in pre-
+            "enabled": True,  # Enable tools in fast-reply mode, you may not want this if you can fetch all relevant data in pre-processing
         },
     },
 
@@ -913,7 +913,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from strands import tool
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
@@ -1140,7 +1140,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
@@ -1278,7 +1278,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
@@ -1494,7 +1494,7 @@ class TestYourRole:
 
     def test_event_handler_returns_intents(self):
         """Test event handlers return proper intents."""
-        from common.enhanced_event_context import LLMSafeEventContext
+        from common.event_context import LLMSafeEventContext
 
         context = LLMSafeEventContext(
             user_id="test_user",

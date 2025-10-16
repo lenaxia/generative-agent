@@ -30,7 +30,7 @@ class TestIntentProcessor:
     def mock_communication_manager(self):
         """Create mock communication manager."""
         mock = AsyncMock()
-        mock.send_notification = AsyncMock()
+        mock.route_message = AsyncMock()
         return mock
 
     @pytest.fixture

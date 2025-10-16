@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intent_processor import IntentProcessor
 from common.intents import AuditIntent, NotificationIntent
 from common.message_bus import MessageBus

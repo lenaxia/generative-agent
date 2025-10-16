@@ -151,7 +151,7 @@ class TestTimerNotificationRouting:
         system = setup_system
         comm_manager = system["comm_manager"]
 
-        from common.enhanced_event_context import LLMSafeEventContext
+        from common.event_context import LLMSafeEventContext
 
         context = LLMSafeEventContext(
             user_id="U52L1U8M6",

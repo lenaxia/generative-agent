@@ -11,10 +11,7 @@ import time
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set
 
-from common.enhanced_event_context import (
-    LLMSafeEventContext,
-    create_context_from_event_data,
-)
+from common.event_context import LLMSafeEventContext, create_context_from_event_data
 from common.intent_processor import IntentProcessor
 from common.intents import Intent
 

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import AuditIntent, NotificationIntent
 from roles.core_smart_home import (
     HOME_ASSISTANT_DOMAINS,

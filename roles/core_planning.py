@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from strands import tool
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)

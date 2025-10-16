@@ -158,7 +158,7 @@ class TestProductionReliability:
 
     def test_error_handling_production_ready(self):
         """Test error handling is production-ready."""
-        from common.enhanced_event_context import create_context_from_event_data
+        from common.event_context import create_context_from_event_data
         from roles.core_timer import handle_timer_expiry
 
         # Test with various error conditions
@@ -244,7 +244,7 @@ class TestProductionDeployment:
         assert hasattr(processor, "get_processed_count")
 
         # Enhanced context
-        from common.enhanced_event_context import LLMSafeEventContext
+        from common.event_context import LLMSafeEventContext
 
         context = LLMSafeEventContext(source="production")
         assert context.is_valid()
@@ -314,7 +314,7 @@ logging:
 
     def test_performance_production_ready(self):
         """Test performance characteristics are production-ready."""
-        from common.enhanced_event_context import create_context_from_event_data
+        from common.event_context import create_context_from_event_data
         from roles.core_timer import handle_timer_expiry
 
         # Should handle reasonable load

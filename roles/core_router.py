@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)

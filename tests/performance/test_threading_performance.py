@@ -87,7 +87,7 @@ class TestThreadingPerformance:
     @pytest.mark.asyncio
     async def test_event_handling_latency(self):
         """Test event handling latency - should be <100ms average."""
-        from common.enhanced_event_context import LLMSafeEventContext
+        from common.event_context import LLMSafeEventContext
         from roles.core_timer import handle_timer_expiry
 
         # Create test context

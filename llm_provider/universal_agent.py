@@ -25,7 +25,7 @@ class ExecutionMode(str, Enum):
 from strands.models.bedrock import BedrockModel
 from strands_tools import calculator, file_read, shell
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
@@ -95,7 +95,7 @@ class IntentProcessingHook(HookProvider):
                     intent_data["user_id"] = "api_user"
                     intent_data["channel_id"] = "console"
                     # Create minimal context for API calls
-                    from common.enhanced_event_context import create_minimal_context
+                    from common.event_context import create_minimal_context
 
                     minimal_context = create_minimal_context("api_call")
                     minimal_context.user_id = "api_user"

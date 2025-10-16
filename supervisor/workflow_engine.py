@@ -328,7 +328,7 @@ class WorkflowEngine:
                             channel_id = workflow_metrics.channel_id
 
                 # Create TaskContext with user_id and channel_id for lifecycle functions
-                from common.enhanced_event_context import LLMSafeEventContext
+                from common.event_context import LLMSafeEventContext
                 from common.task_context import TaskContext
                 from common.task_graph import TaskGraph
 

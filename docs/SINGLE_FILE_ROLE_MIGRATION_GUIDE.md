@@ -46,7 +46,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from common.enhanced_event_context import LLMSafeEventContext
+from common.event_context import LLMSafeEventContext
 from common.intents import Intent, NotificationIntent, AuditIntent
 
 logger = logging.getLogger(__name__)
