@@ -377,6 +377,7 @@ class UniversalAgent:
                 pre_start_time = time.time()
                 logger.info(f"Running pre-processing for {role}")
 
+                # LLM-SAFE: Use asyncio.run() only for individual async lifecycle functions
                 pre_data = self._run_pre_processors_sync(
                     role_def,
                     lifecycle_functions,
@@ -436,6 +437,7 @@ class UniversalAgent:
                 post_start_time = time.time()
                 logger.info(f"Running post-processing for {role}")
 
+                # LLM-SAFE: Use asyncio.run() only for individual async lifecycle functions
                 final_result = self._run_post_processors_sync(
                     role_def, lifecycle_functions, final_result, context, pre_data
                 )
@@ -472,8 +474,9 @@ class UniversalAgent:
 
         results = {}
 
-        # Get pre-processing configuration
-        pre_config = role_def.config.get("lifecycle", {}).get("pre_processing", {})
+        # Get pre-processing configuration (handle nested structure for single-file roles)
+        role_config = role_def.config.get("role", role_def.config)
+        pre_config = role_config.get("lifecycle", {}).get("pre_processing", {})
         functions = pre_config.get("functions", [])
 
         for func_config in functions:
@@ -488,18 +491,17 @@ class UniversalAgent:
             if processor:
                 func_start_time = time.time()
                 try:
-                    # Extract relevant parameters for this function
-                    func_parameters = {
-                        k: v for k, v in parameters.items() if k in func_params
-                    }
-
-                    # LLM-SAFE: Use asyncio.run() for async functions, direct call for sync
-                    if inspect.iscoroutinefunction(processor):
-                        result = asyncio.run(
-                            processor(instruction, context, func_parameters)
-                        )
+                    # LLM-SAFE: Pass all parameters to lifecycle functions by default
+                    # If func_params is specified, filter; otherwise pass all
+                    if func_params:
+                        func_parameters = {
+                            k: v for k, v in parameters.items() if k in func_params
+                        }
                     else:
-                        result = processor(instruction, context, func_parameters)
+                        func_parameters = parameters
+
+                    # LLM-SAFE: Simple synchronous execution - no threading complexity
+                    result = processor(instruction, context, func_parameters)
 
                     results[func_name] = result
 
@@ -534,7 +536,9 @@ class UniversalAgent:
         current_result = llm_result
 
         # Get post-processing configuration
-        post_config = role_def.config.get("lifecycle", {}).get("post_processing", {})
+        # Get post-processing configuration (handle nested structure for single-file roles)
+        role_config = role_def.config.get("role", role_def.config)
+        post_config = role_config.get("lifecycle", {}).get("post_processing", {})
         functions = post_config.get("functions", [])
 
         for func_config in functions:
@@ -996,16 +1000,20 @@ class UniversalAgent:
 
     def _has_pre_processing(self, role_def: RoleDefinition) -> bool:
         """Check if pre-processing is enabled for a role."""
+        # For single-file roles, lifecycle config is nested under "role"
+        role_config = role_def.config.get("role", role_def.config)
         return (
-            role_def.config.get("lifecycle", {})
+            role_config.get("lifecycle", {})
             .get("pre_processing", {})
             .get("enabled", False)
         )
 
     def _has_post_processing(self, role_def: RoleDefinition) -> bool:
         """Check if post-processing is enabled for a role."""
+        # For single-file roles, lifecycle config is nested under "role"
+        role_config = role_def.config.get("role", role_def.config)
         return (
-            role_def.config.get("lifecycle", {})
+            role_config.get("lifecycle", {})
             .get("post_processing", {})
             .get("enabled", False)
         )
@@ -1019,7 +1027,9 @@ class UniversalAgent:
         self, role_def: RoleDefinition, instruction: str, pre_data: dict
     ) -> str:
         """Inject pre-processing data into instruction context."""
-        system_prompt = role_def.config.get("prompts", {}).get("system", "")
+        # Handle nested structure for single-file roles
+        role_config = role_def.config.get("role", role_def.config)
+        system_prompt = role_config.get("prompts", {}).get("system", "")
 
         # Format system prompt with pre-processed data
         try:

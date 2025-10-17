@@ -69,11 +69,16 @@ ROLE_CONFIG = {
     "prompts": {
         "system": """You are a weather specialist providing accurate weather information.
 
-You have access to current weather data that has been pre-fetched for the user's location.
-Use this data to provide helpful, accurate weather information.
+WEATHER DATA (pre-fetched):
+{weather_current}
 
-When weather data is provided in the context, use it to answer the user's question.
-Format your response to be clear and informative."""
+Location: {location_resolved}
+Coordinates: {coordinates}
+Data timestamp: {data_timestamp}
+Timeframe requested: {timeframe_requested}
+
+Use the weather data above to provide helpful, accurate weather information.
+Format your response to be clear and informative based on the pre-fetched data."""
     },
 }
 
@@ -593,9 +598,7 @@ def register_role():
 
 
 # 8. LIFECYCLE FUNCTIONS (for backward compatibility during transition)
-async def fetch_weather_data(
-    instruction: str, context, parameters: dict
-) -> dict[str, Any]:
+def fetch_weather_data(instruction: str, context, parameters: dict) -> dict[str, Any]:
     """Pre-processor: Fetch weather data before LLM call."""
     location = parameters.get("location")
     timeframe = parameters.get("timeframe", "current")
@@ -629,7 +632,7 @@ async def fetch_weather_data(
         raise
 
 
-async def format_for_tts(llm_result: str, context, pre_data: dict) -> str:
+def format_for_tts(llm_result: str, context, pre_data: dict) -> str:
     """Post-processor: Format LLM result for text-to-speech."""
     try:
         # Remove markdown formatting
@@ -666,7 +669,7 @@ async def format_for_tts(llm_result: str, context, pre_data: dict) -> str:
         return llm_result  # Return original on failure
 
 
-async def pii_scrubber(llm_result: str, context, pre_data: dict) -> str:
+def pii_scrubber(llm_result: str, context, pre_data: dict) -> str:
     """Post-processor: Remove sensitive data from weather responses."""
     try:
         scrubbed_result = llm_result
