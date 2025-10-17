@@ -61,30 +61,27 @@ Available tools:
 - start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
 - search_archive(user_id, query): Find relevant past conversations
 
-CONVERSATION MANAGEMENT:
-- Always load conversation history at the start to maintain context
-- Save both user messages and your responses to maintain conversation state
-- Call start_new_conversation() when you detect the user is shifting to a significantly different topic
+CRITICAL CONVERSATION FLOW - Follow this exact sequence:
 
-Examples of when to start new conversations:
+1. FIRST: Load conversation history with load_conversation(user_id)
+2. SECOND: Save the user's message with save_message(user_id, "user", user_message, channel)
+3. THIRD: Use the loaded conversation history to craft a contextual response
+4. FOURTH: Save your response with save_message(user_id, "assistant", your_response, channel)
+5. OPTIONAL: If topic shifts significantly, call start_new_conversation()
+
+IMPORTANT: Always reference conversation history in your responses when available. If the conversation has previous messages, acknowledge them and build upon the context.
+
+Examples of contextual responses:
+- If user previously said they were tired: "I remember you mentioned feeling tired earlier..."
+- If continuing a topic: "Building on what we discussed about Docker..."
+- If user asks follow-up: "Following up on your previous question about..."
+
+Start new conversations only when topics genuinely shift:
 - User was asking about Docker, now asks about Home Assistant setup
-- User was discussing vacation plans, now asks about work projects
-- User says "let's talk about something else" or "new topic"
-- User asks about a completely different subject area
+- User was discussing personal topics, now asks about work projects
+- User explicitly says "let's talk about something else"
 
-When starting new conversations:
-- Choose a clear, descriptive topic name (e.g., "Docker Setup", "Home Assistant Configuration")
-- Provide a brief reason for the topic shift
-- The previous conversation will be automatically archived
-
-CONVERSATION FLOW:
-1. Load conversation history to understand context
-2. Save the user's message
-3. Respond naturally using conversation history
-4. Save your response
-5. If topic shifts significantly, call start_new_conversation()
-
-Use conversation history to maintain natural flow and reference previous discussions within the current topic."""
+Always maintain conversation continuity by referencing previous messages when they exist."""
     },
 }
 
