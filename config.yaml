@@ -231,6 +231,34 @@ feature_flags:
   enable_heartbeat: true
   enable_intent_processing: true # Enable new intent-based architecture
   enable_single_event_loop: true # Enable single event loop threading model
+  enable_context_awareness: true # Enable context-aware request processing
+  enable_memory_assessment: true # Enable LLM-based memory importance assessment
+  enable_location_tracking: true # Enable MQTT location tracking
+
+# Household Assistant Configuration
+household_assistant:
+  enabled: true
+
+  context_awareness:
+    enabled: true
+
+  memory:
+    provider: "redis"
+    retention_days: 30
+    importance_threshold: 0.3
+
+  location:
+    provider: "mqtt"
+    mqtt_broker: "homeassistant.local"
+    mqtt_port: 1883
+    mqtt_username: "${MQTT_USERNAME}"
+    mqtt_password: "${MQTT_PASSWORD}"
+
+  context_types:
+    location: true
+    recent_memory: true
+    presence: true
+    schedule: true
 
 # Fast-Path Routing Configuration
 fast_path:

@@ -115,12 +115,23 @@ The Universal Agent can assume different specialized roles based on the task:
 
 ### **Role Selection & Context Awareness**
 
-The system automatically selects the appropriate role and gathers relevant context:
+The system automatically selects the appropriate role and gathers relevant context using **Router-Driven Context Selection**:
 
-- "Set a timer for 5 minutes" → **Timer Role** (no context needed)
-- "Turn on the living room lights" → **Smart Home Role** + **Location Context**
-- "What's my usual morning routine?" → **Planning Role** + **Memory Context**
+- "Set a timer for 5 minutes" → **Timer Role** (no context needed - zero overhead)
+- "Turn on the lights" → **Smart Home Role** + **Location Context** (uses current room)
+- "Play my usual music" → **Planning Role** + **Memory Context** (recalls preferences)
+- "Turn off all lights" → **Smart Home Role** + **Location + Presence Context** (considers who's home)
+- "What's my schedule today?" → **Calendar Role** + **Schedule Context** (calendar integration)
 - "What's the weather like?" → **Weather Role** + **Environment Context**
+
+### **Context Types**
+
+The system intelligently gathers four types of context:
+
+- **Location Context**: Current room/location for device control and spatial awareness
+- **Memory Context**: Previous interactions and preferences for personalized responses
+- **Presence Context**: Who else is home for privacy and household coordination
+- **Schedule Context**: Calendar events and time-sensitive information
 
 ## 🏗️ **Architecture**
 
