@@ -107,8 +107,10 @@ class ContextCollector:
                         context["presence"] = others_home
 
                 elif context_type == ContextType.SCHEDULE.value:
-                    # Placeholder for calendar integration
-                    context["schedule"] = []
+                    # Get schedule context from calendar role
+                    schedule_events = await self._get_user_schedule(user_id)
+                    if schedule_events:
+                        context["schedule"] = schedule_events
 
             except Exception as e:
                 logger.warning(
@@ -117,6 +119,34 @@ class ContextCollector:
                 # Error handling: continue without this context type
                 continue
 
+        return context
+
+    async def _get_user_schedule(self, user_id: str) -> list[dict[str, Any]]:
+        """Get user's schedule events from calendar role.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            List of schedule events for the user
+        """
+        try:
+            # Use Redis to get cached schedule data to avoid circular imports
+            schedule_key = f"schedule:{user_id}"
+            schedule_result = redis_read(schedule_key)
+
+            if schedule_result.get("success") and schedule_result.get("value"):
+                schedule_data = schedule_result["value"]
+                if isinstance(schedule_data, list):
+                    return schedule_data
+                elif isinstance(schedule_data, dict) and "events" in schedule_data:
+                    return schedule_data["events"]
+
+            return []
+
+        except Exception as e:
+            logger.warning(f"Failed to get schedule for {user_id}: {e}")
+            return []
         return context
 
     async def _get_others_home(self, user_id: str) -> list[str]:

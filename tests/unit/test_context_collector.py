@@ -269,13 +269,34 @@ class TestContextCollector:
 
     @pytest.mark.asyncio
     async def test_gather_schedule_context(self, context_collector):
-        """Test gathering schedule context (placeholder implementation)."""
-        result = await context_collector.gather_context(
-            "test_user", [ContextType.SCHEDULE.value]
-        )
+        """Test gathering schedule context from Redis."""
+        with patch("common.context_types.redis_read") as mock_read:
+            # Test with no schedule data
+            mock_read.return_value = {"success": False}
 
-        assert "schedule" in result
-        assert result["schedule"] == []  # Placeholder returns empty list
+            result = await context_collector.gather_context(
+                "test_user", [ContextType.SCHEDULE.value]
+            )
+
+            # Should return empty dict when no schedule data
+            assert result == {}
+
+            # Test with schedule data
+            mock_read.return_value = {
+                "success": True,
+                "value": [
+                    {"title": "Meeting", "time": "10:00"},
+                    {"title": "Lunch", "time": "12:00"},
+                ],
+            }
+
+            result = await context_collector.gather_context(
+                "test_user", [ContextType.SCHEDULE.value]
+            )
+
+            assert "schedule" in result
+            assert len(result["schedule"]) == 2
+            assert result["schedule"][0]["title"] == "Meeting"
 
     @pytest.mark.asyncio
     async def test_gather_multiple_contexts(self, context_collector):
