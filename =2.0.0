@@ -1,0 +1,9 @@
+Collecting aiomqtt
+  Downloading aiomqtt-2.4.0-py3-none-any.whl.metadata (4.6 kB)
+Collecting paho-mqtt<3.0.0,>=2.1.0 (from aiomqtt)
+  Downloading paho_mqtt-2.1.0-py3-none-any.whl.metadata (23 kB)
+Downloading aiomqtt-2.4.0-py3-none-any.whl (15 kB)
+Downloading paho_mqtt-2.1.0-py3-none-any.whl (67 kB)
+Installing collected packages: paho-mqtt, aiomqtt
+
+Successfully installed aiomqtt-2.4.0 paho-mqtt-2.1.0

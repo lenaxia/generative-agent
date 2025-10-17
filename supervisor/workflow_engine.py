@@ -255,7 +255,7 @@ class WorkflowEngine:
 
         return workflow_id
 
-    async def handle_request(self, request: RequestMetadata) -> str:
+    def handle_request(self, request: RequestMetadata) -> str:
         """Enhanced request handling with context awareness and fast-path routing.
 
         Args:
@@ -264,11 +264,9 @@ class WorkflowEngine:
         Returns:
             str: Request ID for tracking
         """
-        # Use context-aware request handling if context systems are available
-        if self.context_collector is not None:
-            return await self.handle_request_with_context(request)
+        # Note: Context-aware handling will be implemented in future phases
+        # For now, maintain synchronous interface for backwards compatibility
 
-        # Fallback to original logic if context systems not available
         # Fast-path routing (if enabled) - using router role directly
         if self.fast_path_enabled:
             routing_result = self._route_request_with_router_role(request.prompt)
