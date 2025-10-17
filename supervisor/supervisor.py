@@ -601,11 +601,18 @@ class Supervisor:
     def _start_scheduled_tasks(self):
         """Start scheduled tasks for heartbeat operations."""
 
-        # Check if tasks already exist
+        # Check if tasks already exist and clean them up
         if self._scheduled_tasks:
+            logger.info(
+                f"Found {len(self._scheduled_tasks)} existing scheduled tasks, cleaning up..."
+            )
             for i, task in enumerate(self._scheduled_tasks):
-                logger.warning(f"Existing task {i}: {task}")
-            return
+                logger.debug(f"Cleaning up existing task {i}: {task}")
+                if not task.done():
+                    task.cancel()
+                    logger.debug(f"Cancelled task {i}")
+            self._scheduled_tasks.clear()
+            logger.info("Existing tasks cleaned up successfully")
 
         try:
             # Get the current running event loop

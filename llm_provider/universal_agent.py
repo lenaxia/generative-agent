@@ -1026,7 +1026,11 @@ class UniversalAgent:
     def _inject_pre_data(
         self, role_def: RoleDefinition, instruction: str, pre_data: dict
     ) -> str:
-        """Inject pre-processing data into instruction context."""
+        """Inject pre-processing data into instruction context using {{}} placeholders.
+
+        This method uses {{variable}} syntax for formatting placeholders to avoid
+        conflicts with BNF grammar that uses <non_terminal> syntax.
+        """
         # Handle nested structure for single-file roles
         role_config = role_def.config.get("role", role_def.config)
         system_prompt = role_config.get("prompts", {}).get("system", "")
@@ -1042,37 +1046,49 @@ class UniversalAgent:
         logger.debug(f"🔍 Flattened pre_data keys: {list(flattened_data.keys())}")
         logger.debug(f"🔍 Flattened pre_data content: {flattened_data}")
 
-        # Check if system prompt contains format placeholders
-        if "{" in system_prompt and "}" in system_prompt:
-            logger.debug(f"🔍 System prompt contains format placeholders")
-            # Extract placeholders from system prompt for debugging
-            import re
+        # Check if system prompt contains {{}} format placeholders (not BNF <> syntax)
+        import re
 
-            placeholders = re.findall(r"\{([^}]+)\}", system_prompt)
-            logger.debug(f"🔍 Found placeholders in system prompt: {placeholders}")
+        double_brace_pattern = r"\{\{([^}]+)\}\}"
+        placeholders = re.findall(double_brace_pattern, system_prompt)
+
+        if placeholders:
+            logger.debug(
+                f"🔍 System prompt contains {{}} format placeholders: {placeholders}"
+            )
             logger.debug(f"🔍 Available data keys: {list(flattened_data.keys())}")
             missing_keys = [p for p in placeholders if p not in flattened_data]
             if missing_keys:
-                logger.warning(f"🔍 Missing keys for formatting: {missing_keys}")
+                logger.warning(f"🔍 Missing keys for {{}} formatting: {missing_keys}")
         else:
-            logger.debug(f"🔍 System prompt has no format placeholders")
+            logger.debug(f"🔍 System prompt has no {{}} format placeholders")
 
-        # Format system prompt with pre-processed data
+        # Format system prompt with pre-processed data using {{}} syntax
         try:
-            if flattened_data and system_prompt:
-                formatted_prompt = system_prompt.format(**flattened_data)
+            if flattened_data and placeholders:
+                # Replace {{variable}} with actual values
+                formatted_prompt = system_prompt
+                for key, value in flattened_data.items():
+                    placeholder = f"{{{{{key}}}}}"  # {{key}}
+                    if placeholder in formatted_prompt:
+                        formatted_prompt = formatted_prompt.replace(
+                            placeholder, str(value)
+                        )
+                        logger.debug(
+                            f"🔍 Replaced {placeholder} with {str(value)[:50]}..."
+                        )
+
                 logger.debug(f"🔍 Successfully formatted system prompt with pre-data")
                 return f"{formatted_prompt}\n\nUser Request: {instruction}"
             else:
                 logger.debug(
-                    f"🔍 No pre-data or system prompt, returning original instruction"
+                    f"🔍 No pre-data placeholders to format, returning original instruction"
                 )
                 return instruction
-        except KeyError as e:
+        except Exception as e:
             logger.warning(f"🔍 Failed to format system prompt with pre-data: {e}")
             logger.warning(f"🔍 System prompt preview: {system_prompt[:200]}...")
             logger.warning(f"🔍 Available pre-data keys: {list(flattened_data.keys())}")
-            logger.warning(f"🔍 Missing key: {str(e)}")
             return instruction
 
     def _flatten_pre_data(self, pre_data: dict) -> dict[str, Any]:
