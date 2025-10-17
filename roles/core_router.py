@@ -32,6 +32,9 @@ class RoutingResponse(BaseModel):
     parameters: dict[str, Any] = Field(
         default_factory=dict, description="Optional parameters for the selected role"
     )
+    context_requirements: list[str] = Field(
+        default_factory=list, description="Required context types for this request"
+    )
 
     class Config:
         extra = "forbid"  # Don't allow extra fields
@@ -287,6 +290,7 @@ def parse_routing_response(response_text: str) -> dict[str, Any]:
             "route": selected_role,  # Keep original case for role registry compatibility
             "confidence": confidence,
             "parameters": routing_response.parameters,
+            "context_requirements": routing_response.context_requirements,
             "valid": True,
         }
 
