@@ -53,35 +53,29 @@ ROLE_CONFIG = {
         },
     },
     "prompts": {
-        "system": """You are a conversational AI with persistent memory and intelligent topic management.
+        "system": """You are a conversational AI assistant focused on natural dialogue with conversation memory.
 
 Available tools:
 - load_conversation(user_id): Load current conversation history
-- save_message(user_id, role, content, channel): Save messages to conversation
+- respond_to_user(user_id, user_message, response_text, channel): Respond to user and save conversation
 - start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
 - search_archive(user_id, query): Find relevant past conversations
 
-CRITICAL CONVERSATION FLOW - Follow this exact sequence:
+IMPORTANT: You must provide a natural conversational response to the user while also managing conversation state with tools.
 
-1. FIRST: Load conversation history with load_conversation(user_id)
-2. SECOND: Save the user's message with save_message(user_id, "user", user_message, channel)
-3. THIRD: Use the loaded conversation history to craft a contextual response
-4. FOURTH: Save your response with save_message(user_id, "assistant", your_response, channel)
-5. OPTIONAL: If topic shifts significantly, call start_new_conversation()
+CONVERSATION FLOW:
+1. Load conversation history to understand context
+2. Use respond_to_user() to provide your response - this handles saving messages automatically
+3. If topic shifts significantly, call start_new_conversation()
 
-IMPORTANT: Always reference conversation history in your responses when available. If the conversation has previous messages, acknowledge them and build upon the context.
+Use tools to manage conversation state, but always provide a meaningful response to the user. Reference previous messages when available to maintain conversation flow.
 
-Examples of contextual responses:
-- If user previously said they were tired: "I remember you mentioned feeling tired earlier..."
-- If continuing a topic: "Building on what we discussed about Docker..."
-- If user asks follow-up: "Following up on your previous question about..."
+Examples:
+- If user previously mentioned being tired: "I remember you mentioned feeling tired earlier. How are you feeling now?"
+- If continuing a topic: "Building on our discussion about Docker..."
+- If new conversation: "Hello! How can I help you today?"
 
-Start new conversations only when topics genuinely shift:
-- User was asking about Docker, now asks about Home Assistant setup
-- User was discussing personal topics, now asks about work projects
-- User explicitly says "let's talk about something else"
-
-Always maintain conversation continuity by referencing previous messages when they exist."""
+Call start_new_conversation() only when the user shifts to a completely different topic."""
     },
 }
 
@@ -132,6 +126,53 @@ def load_conversation(user_id: str) -> dict[str, Any]:
             "last_active": None,
             "message_count": 0,
         }
+
+
+@tool
+def respond_to_user(
+    user_id: str, user_message: str, response_text: str, channel: str
+) -> str:
+    """Respond to user and save conversation state. Returns the response text for delivery."""
+    try:
+        from roles.shared_tools.redis_tools import redis_write
+
+        conversation = load_conversation(user_id)
+
+        # Save user message
+        user_msg = {
+            "timestamp": time.time(),
+            "channel": channel,
+            "role": "user",
+            "content": user_message,
+        }
+        conversation["messages"].append(user_msg)
+
+        # Save assistant response
+        assistant_msg = {
+            "timestamp": time.time(),
+            "channel": channel,
+            "role": "assistant",
+            "content": response_text,
+        }
+        conversation["messages"].append(assistant_msg)
+
+        conversation["last_active"] = time.time()
+        conversation["message_count"] = len(conversation["messages"])
+
+        if not conversation["started_at"]:
+            conversation["started_at"] = time.time()
+
+        redis_write(f"conversation:{user_id}", json.dumps(conversation))
+
+        logger.info(
+            f"Saved conversation exchange for {user_id}: {len(conversation['messages'])} total messages"
+        )
+
+        # Return the response text for the system to deliver
+        return response_text
+    except Exception as e:
+        logger.error(f"Error in respond_to_user for {user_id}: {e}")
+        return f"I apologize, but I encountered an error managing our conversation: {e}"
 
 
 @tool
@@ -345,7 +386,7 @@ def register_role():
         "event_handlers": {},
         "tools": [
             load_conversation,
-            save_message,
+            respond_to_user,
             start_new_conversation,
             search_archive,
             archive_conversation,

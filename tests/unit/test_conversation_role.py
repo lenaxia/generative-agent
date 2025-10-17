@@ -19,6 +19,7 @@ from roles.core_conversation import (
     get_conversation_statistics,
     load_conversation,
     register_role,
+    respond_to_user,
     save_message,
     search_archive,
     start_new_conversation,
@@ -225,6 +226,18 @@ class TestConversationTools:
 
             assert result["success"] is False
             assert result["success"] is False
+
+    def test_respond_to_user(self):
+        """Test responding to user with conversation management."""
+        with patch(
+            "roles.shared_tools.redis_tools.redis_read", return_value={"success": False}
+        ), patch("roles.shared_tools.redis_tools.redis_write") as mock_write:
+            result = respond_to_user(
+                "test_user", "Hello", "Hi there! How can I help?", "console"
+            )
+
+            assert result == "Hi there! How can I help?"
+            mock_write.assert_called_once()
 
 
 if __name__ == "__main__":
