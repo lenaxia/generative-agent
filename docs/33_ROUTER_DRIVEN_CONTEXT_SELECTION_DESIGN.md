@@ -1452,3 +1452,23 @@ This complete design provides all necessary implementation details for transform
 - **Files Modified**: 4 existing files (router, workflow engine, documentation)
 - **Architecture Compliance**: LLM-safe single event loop maintained
 - **Backwards Compatibility**: All existing functionality preserved
+
+### CRITICAL Technical Debt (NOT addressed by future phases)
+
+- [ ] **INTEGRATION DEBT**: Context systems built but not connected to running system
+  - MemoryAssessor import missing from workflow_engine.py (will cause runtime errors)
+  - initialize_context_systems() method exists but never called by supervisor
+  - handle_request_with_context() method exists but not used in request flow
+  - Context-aware functionality is essentially dormant/dead code
+- [ ] **ARCHITECTURAL DEBT**: Component-first vs integration-first approach created isolation
+  - Beautiful, well-tested components exist in isolation from running system
+  - High test coverage masks missing integration points
+  - Risk of "iceberg architecture" - components below water line not connected
+- [ ] **RUNTIME DEBT**: System will fail when context features are enabled
+  - Missing imports will cause ImportError at runtime
+  - Null reference exceptions when context systems try to initialize
+  - Untested integration paths between components
+- [ ] **MAINTENANCE DEBT**: Maintaining unused code in production
+  - Context code not exercised in normal system operation
+  - Risk of code rot due to lack of real-world usage
+  - Potential confusion for future developers about what's actually active

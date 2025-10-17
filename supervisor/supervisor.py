@@ -354,6 +354,16 @@ class Supervisor:
             try:
                 self._start_scheduled_tasks()
                 logger.info("Async heartbeat tasks started successfully")
+
+                # Initialize context systems if workflow engine supports it
+                if hasattr(self.workflow_engine, "initialize_context_systems"):
+                    try:
+                        await self.workflow_engine.initialize_context_systems()
+                        logger.info("Context systems initialized successfully")
+                    except Exception as e:
+                        logger.warning(f"Context systems initialization failed: {e}")
+                        # System continues without context awareness
+
                 self._async_tasks_started = True
                 logger.debug(f"Set _async_tasks_started = {self._async_tasks_started}")
             except Exception as e:

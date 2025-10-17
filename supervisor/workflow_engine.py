@@ -255,8 +255,8 @@ class WorkflowEngine:
 
         return workflow_id
 
-    def handle_request(self, request: RequestMetadata) -> str:
-        """Enhanced request handling with fast-path routing.
+    async def handle_request(self, request: RequestMetadata) -> str:
+        """Enhanced request handling with context awareness and fast-path routing.
 
         Args:
             request: The incoming request metadata
@@ -264,6 +264,11 @@ class WorkflowEngine:
         Returns:
             str: Request ID for tracking
         """
+        # Use context-aware request handling if context systems are available
+        if self.context_collector is not None:
+            return await self.handle_request_with_context(request)
+
+        # Fallback to original logic if context systems not available
         # Fast-path routing (if enabled) - using router role directly
         if self.fast_path_enabled:
             routing_result = self._route_request_with_router_role(request.prompt)
@@ -1671,11 +1676,16 @@ Respond with ONLY valid JSON in this exact format:
                 memory_provider=memory_provider, location_provider=location_provider
             )
 
+            # Create memory assessor
+            self.memory_assessor = MemoryAssessor(
+                memory_provider=memory_provider, llm_factory=self.llm_factory
+            )
+
             # Initialize all systems
             await self.context_collector.initialize()
+            await self.memory_assessor.initialize()
 
             logger.info("Context systems initialized successfully")
-
         except Exception as e:
             logger.error(f"Context systems initialization failed: {e}")
             # Don't raise - system should work without context
