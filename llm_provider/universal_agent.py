@@ -13,15 +13,6 @@ from typing import Any, Optional
 from strands import Agent
 from strands.hooks import HookProvider, HookRegistry
 from strands.hooks.events import AfterToolCallEvent
-
-
-class ExecutionMode(str, Enum):
-    """Execution modes for role-based tool selection."""
-
-    FAST_REPLY = "fast_reply"
-    WORKFLOW = "workflow"
-
-
 from strands.models.bedrock import BedrockModel
 from strands_tools import calculator, file_read, shell
 
@@ -195,7 +186,6 @@ class UniversalAgent:
         llm_type: Optional[LLMType] = None,
         context: Optional[TaskContext] = None,
         tools: Optional[list[str]] = None,
-        execution_mode: Optional[ExecutionMode] = None,
     ):
         r"""\1
 
@@ -244,7 +234,7 @@ class UniversalAgent:
 
         # Update Agent context (business logic)
         system_prompt = self._get_system_prompt_from_role(role_def)
-        role_tools = self._assemble_role_tools(role_def, tools or [], execution_mode)
+        role_tools = self._assemble_role_tools(role_def, tools or [])
 
         # Context switching instead of Agent creation (< 0.01s)
         updated_agent = self._update_agent_context(agent, system_prompt, role_tools)
@@ -312,13 +302,14 @@ class UniversalAgent:
         event_context: Optional[LLMSafeEventContext] = None,
         extracted_parameters: Optional[dict] = None,
     ) -> str:
-        r"""\1
+        """Execute task with unified lifecycle execution.
 
         Args:
             instruction: Task instruction
             role: Agent role to assume
             llm_type: Model type for optimization
             context: Optional task context
+            event_context: Optional event context for intent processing
             extracted_parameters: Parameters extracted during routing
 
         Returns:
@@ -331,11 +322,253 @@ class UniversalAgent:
         if event_context:
             self.intent_hook.current_context = event_context
 
-        return self.execute_llm_task(
-            instruction, role, llm_type, context, event_context=event_context
+        # Use unified lifecycle execution for all roles
+        return self._execute_task_with_lifecycle(
+            instruction=instruction,
+            role=role,
+            llm_type=llm_type,
+            context=context,
+            event_context=event_context,
+            extracted_parameters=extracted_parameters,
         )
 
-    # Programmatic role methods removed - everything is hybrid now
+    def _execute_task_with_lifecycle(
+        self,
+        instruction: str,
+        role: str,
+        llm_type: LLMType,
+        context: Optional[TaskContext] = None,
+        event_context: Optional[LLMSafeEventContext] = None,
+        extracted_parameters: Optional[dict] = None,
+    ) -> str:
+        """Execute task with lifecycle hooks following LLM-Safe patterns.
+
+        This method implements the unified execution path for all roles,
+        following the LLM-Safe architecture principles from Documents 25 & 26.
+
+        Args:
+            instruction: Task instruction
+            role: Agent role to assume
+            llm_type: Model type for optimization
+            context: Optional task context
+            event_context: Optional event context
+            extracted_parameters: Parameters extracted during routing
+
+        Returns:
+            str: Task result
+        """
+        import asyncio
+        import time
+
+        start_time = time.time()
+
+        try:
+            # 1. Load role definition
+            role_def = self.role_registry.get_role(role)
+            if not role_def:
+                return f"Error: Role '{role}' not found"
+
+            # 2. Get lifecycle functions for this role
+            lifecycle_functions = self.role_registry.get_lifecycle_functions(role)
+
+            # 3. Pre-processing phase (if enabled)
+            pre_data = {}
+            if self._has_pre_processing(role_def):
+                pre_start_time = time.time()
+                logger.info(f"Running pre-processing for {role}")
+
+                pre_data = self._run_pre_processors_sync(
+                    role_def,
+                    lifecycle_functions,
+                    instruction,
+                    context,
+                    extracted_parameters or {},
+                )
+
+                pre_execution_time = (time.time() - pre_start_time) * 1000
+                logger.info(
+                    f"Pre-processing for {role} completed in {pre_execution_time:.1f}ms"
+                )
+
+            # 4. LLM execution phase (if needed)
+            llm_result = None
+            if self._needs_llm_processing(role_def):
+                logger.info(f"Running LLM processing for {role}")
+                enhanced_instruction = self._inject_pre_data(
+                    role_def, instruction, pre_data
+                )
+
+                # Execute LLM with enhanced instruction
+                agent = self.assume_role(role, llm_type, context)
+                try:
+                    response = agent(enhanced_instruction)
+                    if response is None:
+                        llm_result = "No response generated"
+                    elif hasattr(response, "message") and hasattr(
+                        response.message, "content"
+                    ):
+                        # Handle Strands AgentResult object
+                        content = response.message.content
+                        if isinstance(content, list) and len(content) > 0:
+                            first_content = content[0]
+                            if (
+                                isinstance(first_content, dict)
+                                and "text" in first_content
+                            ):
+                                llm_result = first_content["text"]
+                            elif hasattr(first_content, "text"):
+                                llm_result = first_content.text
+                            else:
+                                llm_result = str(content)
+                        elif isinstance(content, str):
+                            llm_result = content
+                        else:
+                            llm_result = str(response)
+                    else:
+                        llm_result = str(response)
+                except Exception as e:
+                    logger.error(f"Error executing LLM task: {e}")
+                    llm_result = f"Error executing LLM task: {str(e)}"
+
+            # 5. Post-processing phase (if enabled)
+            final_result = llm_result or self._format_pre_data_result(pre_data)
+            if self._has_post_processing(role_def):
+                post_start_time = time.time()
+                logger.info(f"Running post-processing for {role}")
+
+                final_result = self._run_post_processors_sync(
+                    role_def, lifecycle_functions, final_result, context, pre_data
+                )
+
+                post_execution_time = (time.time() - post_start_time) * 1000
+                logger.info(
+                    f"Post-processing for {role} completed in {post_execution_time:.1f}ms"
+                )
+
+            execution_time = time.time() - start_time
+            logger.info(
+                f"Lifecycle execution for {role} completed in {execution_time:.3f}s"
+            )
+            return final_result
+
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logger.error(
+                f"Lifecycle execution for {role} failed after {execution_time:.3f}s: {e}"
+            )
+            return f"Error in {role}: {str(e)}"
+
+    def _run_pre_processors_sync(
+        self,
+        role_def,
+        lifecycle_functions: dict,
+        instruction: str,
+        context,
+        parameters: dict,
+    ) -> dict:
+        """Run pre-processors synchronously using asyncio.run for async functions."""
+        import asyncio
+        import inspect
+
+        results = {}
+
+        # Get pre-processing configuration
+        pre_config = role_def.config.get("lifecycle", {}).get("pre_processing", {})
+        functions = pre_config.get("functions", [])
+
+        for func_config in functions:
+            if isinstance(func_config, str):
+                func_name = func_config
+                func_params = []
+            else:
+                func_name = func_config.get("name")
+                func_params = func_config.get("uses_parameters", [])
+
+            processor = lifecycle_functions.get(func_name)
+            if processor:
+                func_start_time = time.time()
+                try:
+                    # Extract relevant parameters for this function
+                    func_parameters = {
+                        k: v for k, v in parameters.items() if k in func_params
+                    }
+
+                    # LLM-SAFE: Use asyncio.run() for async functions, direct call for sync
+                    if inspect.iscoroutinefunction(processor):
+                        result = asyncio.run(
+                            processor(instruction, context, func_parameters)
+                        )
+                    else:
+                        result = processor(instruction, context, func_parameters)
+
+                    results[func_name] = result
+
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.debug(
+                        f"Pre-processor '{func_name}' completed in {func_execution_time:.1f}ms"
+                    )
+
+                except Exception as e:
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.error(
+                        f"Pre-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}"
+                    )
+                    results[func_name] = {"error": str(e)}
+            else:
+                logger.warning(f"Pre-processor function '{func_name}' not found")
+
+        return results
+
+    def _run_post_processors_sync(
+        self,
+        role_def,
+        lifecycle_functions: dict,
+        llm_result: str,
+        context,
+        pre_data: dict,
+    ) -> str:
+        """Run post-processors synchronously using asyncio.run for async functions."""
+        import asyncio
+        import inspect
+
+        current_result = llm_result
+
+        # Get post-processing configuration
+        post_config = role_def.config.get("lifecycle", {}).get("post_processing", {})
+        functions = post_config.get("functions", [])
+
+        for func_config in functions:
+            func_name = (
+                func_config if isinstance(func_config, str) else func_config.get("name")
+            )
+
+            processor = lifecycle_functions.get(func_name)
+            if processor:
+                func_start_time = time.time()
+                try:
+                    # LLM-SAFE: Use asyncio.run() for async functions, direct call for sync
+                    if inspect.iscoroutinefunction(processor):
+                        current_result = asyncio.run(
+                            processor(current_result, context, pre_data)
+                        )
+                    else:
+                        current_result = processor(current_result, context, pre_data)
+
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.debug(
+                        f"Post-processor '{func_name}' completed in {func_execution_time:.1f}ms"
+                    )
+
+                except Exception as e:
+                    func_execution_time = (time.time() - func_start_time) * 1000
+                    logger.error(
+                        f"Post-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}"
+                    )
+                    # Continue with current result on post-processor failure
+            else:
+                logger.warning(f"Post-processor function '{func_name}' not found")
+
+        return current_result
 
     def execute_llm_task(
         self,
@@ -343,49 +576,16 @@ class UniversalAgent:
         role: str,
         llm_type: LLMType,
         context: Optional[TaskContext] = None,
-        execution_mode: ExecutionMode = ExecutionMode.WORKFLOW,
         event_context: Optional[LLMSafeEventContext] = None,
     ) -> str:
-        r"""\1
-
-        Args:
-            instruction: Task instruction
-            role: LLM role name
-            llm_type: Model type for optimization
-            context: Optional task context
-            execution_mode: Execution mode for tool selection
-
-        Returns:
-            str: Task result
-        """
-        # Assume the specified role with execution mode
-        agent = self.assume_role(role, llm_type, context, execution_mode=execution_mode)
-
-        # Execute the task
-        try:
-            response = agent(instruction)
-            if response is None:
-                return "No response generated"
-
-            # Handle Strands AgentResult object
-            if hasattr(response, "message") and hasattr(response.message, "content"):
-                # Extract text content from AgentResult
-                content = response.message.content
-                if isinstance(content, list) and len(content) > 0:
-                    # Get the first text block
-                    first_content = content[0]
-                    if isinstance(first_content, dict) and "text" in first_content:
-                        return first_content["text"]
-                    elif hasattr(first_content, "text"):
-                        return first_content.text
-                elif isinstance(content, str):
-                    return content
-
-            # Fallback to string conversion
-            return str(response)
-        except Exception as e:
-            logger.error(f"Error executing task with agent: {e}")
-            return f"Error executing task: {str(e)}"
+        """Execute LLM task (legacy method - now uses lifecycle execution)."""
+        return self._execute_task_with_lifecycle(
+            instruction=instruction,
+            role=role,
+            llm_type=llm_type,
+            context=context,
+            event_context=event_context,
+        )
 
     def get_status(self) -> dict[str, Any]:
         r"""\1
@@ -530,7 +730,6 @@ class UniversalAgent:
         self,
         role_def,
         additional_tools: list[str],
-        execution_mode: Optional[ExecutionMode] = None,
     ) -> list:
         r"""\1
 
@@ -590,20 +789,18 @@ class UniversalAgent:
                 role_name = role_def.name
                 config = role_def.config
 
-            # Execution-specific tool handling
+            # Simplified tool handling - include custom tools if automatic is enabled
             tools_config = config.get("tools", {})
-            should_include_custom_tools = self._should_include_custom_tools(
-                tools_config, execution_mode, role_name
-            )
+            should_include_custom_tools = tools_config.get("automatic", True)
 
             if should_include_custom_tools:
                 tools.extend(custom_tools)
                 logger.debug(
-                    f"Added {len(custom_tools)} custom tools for role '{role_name}' in {execution_mode} mode"
+                    f"Added {len(custom_tools)} custom tools for role '{role_name}'"
                 )
             else:
                 logger.debug(
-                    f"Skipped {len(custom_tools)} custom tools for role '{role_name}' in {execution_mode} mode"
+                    f"Skipped {len(custom_tools)} custom tools for role '{role_name}'"
                 )
 
             # 3. Add specified shared tools
@@ -634,59 +831,6 @@ class UniversalAgent:
         tools.extend(additional_role_tools)
 
         return tools
-
-    def _should_include_custom_tools(
-        self,
-        tools_config: dict,
-        execution_mode: Optional[ExecutionMode],
-        role_name: str,
-    ) -> bool:
-        """Determine if custom tools should be included based on execution mode and configuration.
-
-        Args:
-            tools_config: Tools configuration from role definition
-            execution_mode: Current execution mode
-            role_name: Name of the role for logging
-
-        Returns:
-            bool: Whether to include custom tools
-        """
-        if not execution_mode:
-            # No execution mode specified, use automatic setting
-            return tools_config.get("automatic", True)
-
-        # Check for execution-specific configuration
-        if "execution_modes" in tools_config:
-            execution_modes = tools_config["execution_modes"]
-            mode_key = execution_mode.value
-            if mode_key in execution_modes:
-                mode_config = execution_modes[mode_key]
-                # If mode_config is a list, it's the available tools
-                if isinstance(mode_config, list):
-                    return len(mode_config) > 0
-                # If mode_config is a dict, check enabled flag
-                elif isinstance(mode_config, dict):
-                    return mode_config.get("enabled", False)
-
-            # If execution mode not found in config, use default behavior
-            logger.debug(
-                f"Execution mode '{execution_mode.value}' not configured for role '{role_name}', using default"
-            )
-
-        # Default behavior based on execution mode
-        if execution_mode == ExecutionMode.FAST_REPLY:
-            # Fast-reply modes: no tools by default unless explicitly configured
-            fast_reply_tools = tools_config.get("fast_reply", [])
-            if isinstance(fast_reply_tools, list):
-                return len(fast_reply_tools) > 0
-            elif isinstance(fast_reply_tools, dict):
-                return fast_reply_tools.get("enabled", False)
-            else:
-                # No fast_reply configuration, default to no tools for fast-reply
-                return False
-        else:
-            # Workflow mode: use automatic setting (default True for backward compatibility)
-            return tools_config.get("automatic", True)
 
     def _create_basic_agent(
         self,
@@ -850,197 +994,6 @@ class UniversalAgent:
         else:
             return str(result)
 
-    async def _execute_hybrid_task(
-        self,
-        instruction: str,
-        role: str,
-        context: Optional[TaskContext],
-        extracted_parameters: Optional[dict],
-    ) -> str:
-        """Execute hybrid role with lifecycle hooks."""
-        import time
-
-        start_time = time.time()
-
-        try:
-            role_def = self.role_registry.get_role(role)
-            if not role_def:
-                raise ValueError(f"Role '{role}' not found")
-
-            lifecycle_functions = self.role_registry.get_lifecycle_functions(role)
-
-            # 1. Pre-processing phase
-            pre_data = {}
-            if self._has_pre_processing(role_def):
-                pre_start_time = time.time()
-                logger.info(f"Running pre-processing for {role}")
-                pre_data = await self._run_pre_processors(
-                    role_def,
-                    lifecycle_functions,
-                    instruction,
-                    context,
-                    extracted_parameters or {},
-                )
-                pre_execution_time = (time.time() - pre_start_time) * 1000
-                logger.info(
-                    f"Pre-processing for {role} completed in {pre_execution_time:.1f}ms"
-                )
-
-            # 2. LLM execution phase (if needed)
-            llm_result = None
-            if self._needs_llm_processing(role_def):
-                logger.info(f"Running LLM processing for {role}")
-                enhanced_instruction = self._inject_pre_data(
-                    role_def, instruction, pre_data
-                )
-                # Use WORKFLOW mode for router role to ensure custom tools are available
-                execution_mode = (
-                    ExecutionMode.WORKFLOW
-                    if role == "router"
-                    else ExecutionMode.FAST_REPLY
-                )
-                llm_result = self._execute_llm_with_context(
-                    enhanced_instruction,
-                    role,
-                    context,
-                    execution_mode=execution_mode,
-                )
-
-            # 3. Post-processing phase
-            final_result = llm_result or self._format_pre_data_result(pre_data)
-            if self._has_post_processing(role_def):
-                post_start_time = time.time()
-                logger.info(f"Running post-processing for {role}")
-                final_result = await self._run_post_processors(
-                    role_def, lifecycle_functions, final_result, context, pre_data
-                )
-                post_execution_time = (time.time() - post_start_time) * 1000
-                logger.info(
-                    f"Post-processing for {role} completed in {post_execution_time:.1f}ms"
-                )
-
-            execution_time = time.time() - start_time
-            logger.info(
-                f"Hybrid role {role} completed in {execution_time:.3f}s ({execution_time*1000:.1f}ms)"
-            )
-            return final_result
-
-        except Exception as e:
-            execution_time = time.time() - start_time
-            logger.error(f"Hybrid role {role} failed after {execution_time:.3f}s: {e}")
-            return f"Error in {role}: {str(e)}"
-
-    async def _run_pre_processors(
-        self,
-        role_def: RoleDefinition,
-        lifecycle_functions: dict,
-        instruction: str,
-        context: TaskContext,
-        parameters: dict,
-    ) -> dict[str, Any]:
-        """Run all pre-processing functions for a role."""
-        results = {}
-
-        # Handle both multi-file (legacy) and single-file role pre-processors
-        pre_config = role_def.config.get("lifecycle", {}).get("pre_processing", {})
-        functions = pre_config.get("functions", [])
-
-        # NEW: Handle single-file role pre-processors
-        single_file_processors = getattr(role_def, "_pre_processors", [])
-        if single_file_processors:
-            logger.info(
-                f"Found {len(single_file_processors)} single-file pre-processors for {role_def.name}"
-            )
-            for processor in single_file_processors:
-                try:
-                    func_name = getattr(processor, "__name__", "unknown_processor")
-                    logger.info(f"Running single-file pre-processor: {func_name}")
-                    result = processor(instruction, context, parameters)
-                    results[func_name] = result
-                    logger.info(
-                        f"Single-file pre-processor {func_name} completed successfully"
-                    )
-                except Exception as e:
-                    logger.error(f"Single-file pre-processor {func_name} failed: {e}")
-
-        # Handle legacy multi-file pre-processors
-        for func_config in functions:
-            if isinstance(func_config, str):
-                func_name = func_config
-                func_params = []
-            else:
-                func_name = func_config.get("name")
-                func_params = func_config.get("uses_parameters", [])
-
-            processor = lifecycle_functions.get(func_name)
-            if processor:
-                func_start_time = time.time()
-                try:
-                    # Extract relevant parameters for this function
-                    func_parameters = {
-                        k: v for k, v in parameters.items() if k in func_params
-                    }
-
-                    result = await processor(instruction, context, func_parameters)
-                    results[func_name] = result
-
-                    func_execution_time = (time.time() - func_start_time) * 1000
-                    logger.debug(
-                        f"Pre-processor '{func_name}' completed in {func_execution_time:.1f}ms"
-                    )
-
-                except Exception as e:
-                    func_execution_time = (time.time() - func_start_time) * 1000
-                    logger.error(
-                        f"Pre-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}"
-                    )
-                    results[func_name] = {"error": str(e)}
-            else:
-                logger.warning(f"Pre-processor function '{func_name}' not found")
-
-        return results
-
-    async def _run_post_processors(
-        self,
-        role_def: RoleDefinition,
-        lifecycle_functions: dict,
-        llm_result: str,
-        context: TaskContext,
-        pre_data: dict,
-    ) -> str:
-        """Run all post-processing functions for a role."""
-        current_result = llm_result
-
-        post_config = role_def.config.get("lifecycle", {}).get("post_processing", {})
-        functions = post_config.get("functions", [])
-
-        for func_config in functions:
-            func_name = (
-                func_config if isinstance(func_config, str) else func_config.get("name")
-            )
-
-            processor = lifecycle_functions.get(func_name)
-            if processor:
-                func_start_time = time.time()
-                try:
-                    current_result = await processor(current_result, context, pre_data)
-
-                    func_execution_time = (time.time() - func_start_time) * 1000
-                    logger.debug(
-                        f"Post-processor '{func_name}' completed in {func_execution_time:.1f}ms"
-                    )
-
-                except Exception as e:
-                    func_execution_time = (time.time() - func_start_time) * 1000
-                    logger.error(
-                        f"Post-processor '{func_name}' failed after {func_execution_time:.1f}ms: {e}"
-                    )
-                    # Continue with current result on post-processor failure
-            else:
-                logger.warning(f"Post-processor function '{func_name}' not found")
-
-        return current_result
-
     def _has_pre_processing(self, role_def: RoleDefinition) -> bool:
         """Check if pre-processing is enabled for a role."""
         return (
@@ -1089,15 +1042,3 @@ class UniversalAgent:
     def _format_pre_data_result(self, pre_data: dict) -> str:
         """Format pre-processing data as final result (for programmatic-only execution)."""
         return str(pre_data)
-
-    def _execute_llm_with_context(
-        self,
-        instruction: str,
-        role: str,
-        context: Optional[TaskContext],
-        execution_mode: ExecutionMode = ExecutionMode.FAST_REPLY,
-    ) -> str:
-        """Execute LLM with enhanced context and execution mode."""
-        return self.execute_llm_task(
-            instruction, role, LLMType.DEFAULT, context, execution_mode
-        )

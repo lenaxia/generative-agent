@@ -360,29 +360,14 @@ class WorkflowEngine:
                     metadata=request.metadata or {},
                 )
 
-                # Execute hybrid role with pre-extracted parameters
-                # Special handling for roles that need pre-processing
-                if role.lower() == "weather":
-                    # Weather role uses pre-processing pattern
-                    from roles.core_weather import process_weather_request_with_data
-
-                    # Set universal agent reference for weather role to use
-                    process_weather_request_with_data._universal_agent = (
-                        self.universal_agent
-                    )
-
-                    result = process_weather_request_with_data(
-                        request.prompt, parameters
-                    )
-                else:
-                    # Standard role execution with event context
-                    result = self.universal_agent.execute_task(
-                        instruction=request.prompt,
-                        role=role,
-                        context=task_context,
-                        event_context=event_context,  # ✅ Pass LLMSafeEventContext
-                        extracted_parameters=parameters,
-                    )
+                # Unified execution for all roles - no special cases
+                result = self.universal_agent.execute_task(
+                    instruction=request.prompt,
+                    role=role,
+                    context=task_context,
+                    event_context=event_context,
+                    extracted_parameters=parameters,
+                )
             else:
                 # Existing LLM execution path with parameter context injection
                 if parameters:

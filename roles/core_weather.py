@@ -59,6 +59,22 @@ ROLE_CONFIG = {
         "shared": [],  # No shared tools needed
         "include_builtin": False,  # No built-in tools (calculator, file_read, shell)
     },
+    "lifecycle": {
+        "pre_processing": {"enabled": True, "functions": ["fetch_weather_data"]},
+        "post_processing": {
+            "enabled": True,
+            "functions": ["format_for_tts", "pii_scrubber"],
+        },
+    },
+    "prompts": {
+        "system": """You are a weather specialist providing accurate weather information.
+
+You have access to current weather data that has been pre-fetched for the user's location.
+Use this data to provide helpful, accurate weather information.
+
+When weather data is provided in the context, use it to answer the user's question.
+Format your response to be clear and informative."""
+    },
 }
 
 
@@ -218,70 +234,6 @@ def fetch_weather_data_for_request(parameters: dict[str, Any]) -> dict[str, Any]
     except Exception as e:
         logger.error(f"Failed to pre-fetch weather data: {e}")
         return {"success": False, "error": str(e), "weather_data": None}
-
-
-def process_weather_request_with_data(
-    request_text: str, parameters: dict[str, Any]
-) -> str:
-    """Process weather request with pre-fetched data - owned by weather role.
-
-    Args:
-        request_text: Original user request
-        parameters: Parameters from routing decision
-
-    Returns:
-        Weather response string
-    """
-    try:
-        # Pre-fetch weather data
-        weather_result = fetch_weather_data_for_request(parameters)
-
-        if not weather_result["success"]:
-            return f"I apologize, but I couldn't fetch weather data: {weather_result['error']}"
-
-        weather_data = weather_result["weather_data"]
-
-        # Build enhanced instruction with weather data injected
-        if weather_data["type"] == "forecast":
-            forecast_info = weather_data["forecast"]
-            weather_context = f"""WEATHER FORECAST DATA FOR {weather_data['location'].upper()}:
-{forecast_info}"""
-        else:
-            current_info = weather_data["current"]
-            weather_context = f"""CURRENT WEATHER DATA FOR {weather_data['location'].upper()}:
-- Temperature: {current_info.get('temperature', 'N/A')}°{current_info.get('temperature_unit', 'F')}
-- Conditions: {current_info.get('short_forecast', 'N/A')}
-- Detailed: {current_info.get('detailed_forecast', 'N/A')}
-- Wind: {current_info.get('wind_speed', 'N/A')} {current_info.get('wind_direction', '')}
-- Time Period: {current_info.get('period_name', 'Current')}"""
-
-        enhanced_instruction = f"""USER REQUEST: "{request_text}"
-
-{weather_context}
-
-Based on this weather data, provide a helpful and informative response about the weather conditions."""
-
-        # Execute weather role with injected data
-        from llm_provider.factory import LLMType
-
-        # Get universal agent reference (set by workflow engine)
-        universal_agent = getattr(
-            process_weather_request_with_data, "_universal_agent", None
-        )
-        if not universal_agent:
-            return (
-                "Weather data fetched but no universal agent available for processing"
-            )
-
-        result = universal_agent.execute_task(
-            instruction=enhanced_instruction, role="weather", llm_type=LLMType.WEAK
-        )
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Weather request processing failed: {e}")
-        return f"I apologize, but I encountered an error processing the weather request: {str(e)}"
 
 
 def handle_weather_data_processing(

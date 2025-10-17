@@ -50,10 +50,11 @@ ROLE_CONFIG = {
         },
     },
     "lifecycle": {
+        "pre_processing": {"enabled": True, "functions": ["load_conversation_context"]},
         "post_processing": {
             "enabled": True,
             "functions": ["save_conversation_exchange"],
-        }
+        },
     },
     "prompts": {
         "system": """You are a conversational AI assistant focused on natural dialogue.
@@ -61,11 +62,17 @@ ROLE_CONFIG = {
 Available tools:
 - start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
 
-Provide natural, helpful conversational responses. When memory context is provided by the router, use it to maintain conversation continuity and reference previous discussions naturally.
+CONVERSATION CONTEXT:
+{conversation_history}
+
+Previous conversation messages: {message_count}
+Current topic: {topic}
+
+Provide natural, helpful conversational responses. Use the conversation history above to maintain continuity and reference previous discussions naturally. If the user asks about something mentioned in previous messages, refer to that information.
 
 Call start_new_conversation() only when the user shifts to a completely different topic.
 
-Conversation history is automatically managed by the system's MemoryAssessor in post-processing."""
+Conversation history is automatically managed by the system's lifecycle functions."""
     },
 }
 
@@ -116,7 +123,51 @@ def start_new_conversation(
 # 4. LIFECYCLE FUNCTIONS (post-processing)
 
 
-def save_conversation_exchange(llm_result: str, context, pre_data: dict) -> str:
+async def load_conversation_context(
+    instruction: str, context, parameters: dict
+) -> dict:
+    """Pre-processor: Load conversation history using Redis tools."""
+    try:
+        user_id = getattr(context, "user_id", "unknown")
+
+        # Load existing conversation context
+        from roles.shared_tools.redis_tools import redis_read
+
+        conversation_data = redis_read(f"conversation:{user_id}")
+        if conversation_data.get("success") and conversation_data.get("data"):
+            import json
+
+            conversation = json.loads(conversation_data["data"])
+
+            # Get recent messages for context
+            recent_messages = conversation.get("messages", [])[-10:]  # Last 10 messages
+
+            return {
+                "conversation_history": recent_messages,
+                "message_count": conversation.get("message_count", 0),
+                "topic": conversation.get("topic"),
+                "user_id": user_id,
+            }
+        else:
+            # No existing conversation
+            return {
+                "conversation_history": [],
+                "message_count": 0,
+                "topic": None,
+                "user_id": user_id,
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to load conversation context for {user_id}: {e}")
+        return {
+            "conversation_history": [],
+            "message_count": 0,
+            "topic": None,
+            "user_id": getattr(context, "user_id", "unknown"),
+        }
+
+
+async def save_conversation_exchange(llm_result: str, context, pre_data: dict) -> str:
     """Post-processing function to save conversation exchange to Redis."""
     try:
         # Extract user info from context

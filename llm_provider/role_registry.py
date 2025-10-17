@@ -275,6 +275,13 @@ class RoleRegistry:
                     f"Registered {len(registration['pre_processors'])} pre-processors for {role_name}"
                 )
 
+            # NEW: Load lifecycle functions from single-file role module
+            lifecycle_functions = self._load_single_file_lifecycle_functions(
+                role_name, module, registration["config"]
+            )
+            if lifecycle_functions:
+                self.register_lifecycle_functions(role_name, lifecycle_functions)
+
             logger.debug(f"Successfully loaded single-file role: {role_name}")
             return role_def
 
@@ -669,6 +676,53 @@ class RoleRegistry:
         if lifecycle_file.exists():
             return self._load_functions_from_file(lifecycle_file)
         return {}
+
+    def _load_single_file_lifecycle_functions(
+        self, role_name: str, module, role_config: dict
+    ) -> dict[str, Callable]:
+        """Load lifecycle functions from single-file role module based on lifecycle configuration."""
+        lifecycle_functions = {}
+
+        # Get lifecycle configuration
+        lifecycle_config = role_config.get("lifecycle", {})
+
+        # Collect function names from pre-processing and post-processing configurations
+        function_names = set()
+
+        # Pre-processing functions
+        pre_config = lifecycle_config.get("pre_processing", {})
+        if pre_config.get("enabled", False):
+            function_names.update(pre_config.get("functions", []))
+
+        # Post-processing functions
+        post_config = lifecycle_config.get("post_processing", {})
+        if post_config.get("enabled", False):
+            function_names.update(post_config.get("functions", []))
+
+        # Load the specified functions from the module
+        for func_name in function_names:
+            if hasattr(module, func_name):
+                func = getattr(module, func_name)
+                if callable(func):
+                    lifecycle_functions[func_name] = func
+                    logger.debug(
+                        f"Loaded lifecycle function '{func_name}' for role '{role_name}'"
+                    )
+                else:
+                    logger.warning(
+                        f"Lifecycle function '{func_name}' is not callable in role '{role_name}'"
+                    )
+            else:
+                logger.warning(
+                    f"Lifecycle function '{func_name}' not found in role '{role_name}' module"
+                )
+
+        if lifecycle_functions:
+            logger.info(
+                f"Loaded {len(lifecycle_functions)} lifecycle functions for single-file role '{role_name}': {list(lifecycle_functions.keys())}"
+            )
+
+        return lifecycle_functions
 
     def _load_functions_from_file(self, lifecycle_file: Path) -> dict[str, Callable]:
         """Load all functions from a Python file."""
