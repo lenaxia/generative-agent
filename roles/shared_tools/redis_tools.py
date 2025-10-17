@@ -279,10 +279,6 @@ def redis_write(
         else:
             result = client.set(prefixed_key, serialized_value)
 
-        logger.info(
-            f"🔥 REDIS WRITE: {prefixed_key} = {serialized_value[:100]}... (TTL: {ttl})"
-        )
-
         return {
             "success": bool(result),
             "key": key,

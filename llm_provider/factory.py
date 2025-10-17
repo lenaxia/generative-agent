@@ -540,8 +540,6 @@ class LLMFactory:
 
     def warm_agent_pool(self):
         """Pre-warm Agent pool for common provider/model combinations."""
-        logger.info("🔥 Warming Agent pool...")
-
         common_combinations = [
             (LLMType.WEAK, "bedrock"),  # Fast routing and simple tasks
             (LLMType.DEFAULT, "bedrock"),  # Standard tasks
@@ -556,8 +554,6 @@ class LLMFactory:
                 logger.warning(
                     f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}"
                 )
-
-        logger.info(f"🔥 Agent pool warmed: {len(self._agent_pool)} agents ready")
 
     def get_pool_stats(self) -> dict[str, Any]:
         """Get Agent pool performance statistics."""

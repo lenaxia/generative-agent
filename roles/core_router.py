@@ -200,7 +200,9 @@ def route_request_with_available_roles(
                     )
                     examples = param_info.get("examples", [])
                     example_str = (
-                        f" (e.g., {', '.join(examples[:2])})" if examples else ""
+                        f" (e.g., {', '.join(str(ex) for ex in examples[:2])})"
+                        if examples
+                        else ""
                     )
                     param_examples.append(f"{param_name} ({required_str}){example_str}")
 

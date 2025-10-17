@@ -34,16 +34,26 @@ class TestContextAwareIntegration:
         ), patch(
             "supervisor.supervisor.MetricsManager"
         ), patch(
-            "supervisor.supervisor.CommunicationManager"
+            "common.communication_manager.CommunicationManager"
         ):
             # Mock config file existence
             mock_path_instance = Mock()
             mock_path_instance.exists.return_value = True
             mock_path.return_value = mock_path_instance
 
-            # Mock config manager
+            # Mock config manager with proper structure
             mock_config = Mock()
-            mock_config.get_config.return_value = Mock()
+            mock_config.raw_config_data = {"environment": {}}
+
+            # Mock the loaded config with proper logging structure
+            mock_loaded_config = Mock()
+            mock_loaded_config.logging.log_level = "INFO"
+            mock_loaded_config.logging.log_file = "test.log"
+            mock_loaded_config.logging.disable_console_logging = False
+            mock_loaded_config.logging.log_file_max_size = 10
+            mock_loaded_config.llm_providers = {}
+
+            mock_config.load_config.return_value = mock_loaded_config
             mock_config_class.return_value = mock_config
 
             supervisor = Supervisor("config.yaml")

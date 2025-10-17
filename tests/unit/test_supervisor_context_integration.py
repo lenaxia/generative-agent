@@ -20,7 +20,25 @@ class TestSupervisorContextIntegration:
     def mock_config_manager(self):
         """Create mock config manager."""
         mock_config = Mock()
-        mock_config.get_config.return_value = Mock()
+
+        # Fix the TypeError by providing proper mock data
+        mock_config.raw_config_data = {"environment": {}}
+
+        # Mock the loaded config with proper logging structure
+        mock_loaded_config = Mock()
+        mock_loaded_config.logging.log_level = "INFO"
+        mock_loaded_config.logging.log_file = "test.log"
+        mock_loaded_config.logging.disable_console_logging = False
+        mock_loaded_config.logging.log_file_max_size = 10
+        mock_loaded_config.logging.loggers = {}  # Fix the loggers iteration issue
+        mock_loaded_config.llm_providers = {}
+
+        # Mock MCP config to avoid path issues
+        mock_loaded_config.mcp = None
+        mock_loaded_config.feature_flags = None
+        mock_loaded_config.fast_path = None
+
+        mock_config.load_config.return_value = mock_loaded_config
         return mock_config
 
     @pytest.fixture

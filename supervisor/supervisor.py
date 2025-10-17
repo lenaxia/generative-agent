@@ -343,9 +343,6 @@ class Supervisor:
 
     async def start_async_tasks(self):
         """Start async tasks that require an event loop context."""
-        logger.info(
-            f"🔥 start_async_tasks called! Has _async_tasks_started: {hasattr(self, '_async_tasks_started')}"
-        )
         if hasattr(self, "_async_tasks_started"):
             logger.debug(f"_async_tasks_started = {self._async_tasks_started}")
 
@@ -603,17 +600,11 @@ class Supervisor:
 
     def _start_scheduled_tasks(self):
         """Start scheduled tasks for heartbeat operations."""
-        logger.info(
-            f"🔥 _start_scheduled_tasks called! Current tasks: {len(self._scheduled_tasks)}"
-        )
 
         # Check if tasks already exist
         if self._scheduled_tasks:
-            logger.warning(
-                f"🔥 Tasks already exist! Count: {len(self._scheduled_tasks)}"
-            )
             for i, task in enumerate(self._scheduled_tasks):
-                logger.warning(f"🔥 Existing task {i}: {task}")
+                logger.warning(f"Existing task {i}: {task}")
             return
 
         try:

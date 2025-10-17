@@ -36,6 +36,7 @@ from llm_provider.mcp_client import MCPClientManager
 # RequestRouter removed - using router role directly
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
+from supervisor.memory_assessor import MemoryAssessor
 from supervisor.workflow_duration_logger import (
     WorkflowSource,
     WorkflowType,

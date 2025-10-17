@@ -70,9 +70,6 @@ class IntentProcessingHook(HookProvider):
                                 and "intent" in parsed_result
                             ):
                                 intent_data = parsed_result["intent"]
-                                logger.info(
-                                    f"🔥 Extracted intent from Strands result: {intent_data}"
-                                )
                         except Exception as e:
                             logger.warning(f"🔥 Failed to parse tool result text: {e}")
 
@@ -150,15 +147,13 @@ class IntentProcessingHook(HookProvider):
                 and self.universal_agent.role_registry.intent_processor
             ):
                 intent_processor = self.universal_agent.role_registry.intent_processor
-                logger.info(
-                    f"🔥 Using IntentProcessor to process {type(intent).__name__}"
-                )
+
                 await intent_processor.process_intents([intent])
-                logger.info(f"🔥 Intent processed via IntentProcessor")
+
                 return
 
             logger.warning(
-                f"🔥 No IntentProcessor available for intent type: {type(intent).__name__}"
+                f"No IntentProcessor available for intent type: {type(intent).__name__}"
             )
 
         except Exception as e:
