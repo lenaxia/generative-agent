@@ -102,75 +102,7 @@ class ConversationIntent(Intent):
         return bool(self.interaction_type)
 
 
-# 3. EVENT HANDLERS (pure functions returning intents)
-def handle_conversation_start(
-    event_data: Any, context: LLMSafeEventContext
-) -> list[Intent]:
-    """Handle conversation start events."""
-    try:
-        conversation_data = (
-            event_data if isinstance(event_data, dict) else {"message": str(event_data)}
-        )
-
-        return [
-            AuditIntent(
-                action="conversation_started",
-                details={
-                    "message": conversation_data.get("message", str(event_data)),
-                    "channel": context.get_safe_channel(),
-                    "timestamp": time.time(),
-                },
-                user_id=context.user_id,
-                severity="info",
-            )
-        ]
-
-    except Exception as e:
-        logger.error(f"Conversation start handler error: {e}")
-        return [
-            NotificationIntent(
-                message=f"Error starting conversation: {e}",
-                channel=context.get_safe_channel(),
-                priority="medium",
-                notification_type="error",
-            )
-        ]
-
-
-def handle_conversation_end(
-    event_data: Any, context: LLMSafeEventContext
-) -> list[Intent]:
-    """Handle conversation end events."""
-    try:
-        conversation_data = (
-            event_data if isinstance(event_data, dict) else {"message": str(event_data)}
-        )
-
-        return [
-            AuditIntent(
-                action="conversation_ended",
-                details={
-                    "channel": context.get_safe_channel(),
-                    "timestamp": time.time(),
-                },
-                user_id=context.user_id,
-                severity="info",
-            )
-        ]
-
-    except Exception as e:
-        logger.error(f"Conversation end handler error: {e}")
-        return [
-            NotificationIntent(
-                message=f"Error ending conversation: {e}",
-                channel=context.get_safe_channel(),
-                priority="low",
-                notification_type="error",
-            )
-        ]
-
-
-# 4. CONVERSATION MANAGEMENT TOOLS
+# 3. CONVERSATION MANAGEMENT TOOLS
 
 
 @tool
@@ -413,10 +345,7 @@ def register_role():
     """Auto-discovered by RoleRegistry - LLM can modify this."""
     return {
         "config": ROLE_CONFIG,
-        "event_handlers": {
-            "CONVERSATION_START": handle_conversation_start,
-            "CONVERSATION_END": handle_conversation_end,
-        },
+        "event_handlers": {},
         "tools": [
             load_conversation,
             save_message,

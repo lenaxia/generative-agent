@@ -17,8 +17,6 @@ from roles.core_conversation import (
     ConversationIntent,
     archive_conversation,
     get_conversation_statistics,
-    handle_conversation_end,
-    handle_conversation_start,
     load_conversation,
     register_role,
     save_message,
@@ -94,70 +92,6 @@ class TestConversationIntent:
         assert intent.validate() is True
 
 
-class TestEventHandlers:
-    """Test conversation event handlers."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.mock_context = Mock(spec=LLMSafeEventContext)
-        self.mock_context.get_safe_channel.return_value = "test_channel"
-        self.mock_context.user_id = "test_user"
-
-    def test_handle_conversation_start_with_dict(self):
-        """Test conversation start handler with dictionary event data."""
-        event_data = {
-            "type": "question",
-            "topic": "technology",
-            "message": "How does AI work?",
-        }
-
-        intents = handle_conversation_start(event_data, self.mock_context)
-
-        assert len(intents) == 1
-        assert isinstance(intents[0], AuditIntent)
-        assert intents[0].action == "conversation_started"
-        assert (
-            intents[0].details["message"] == "How does AI work?"
-        )  # Gets message from dict
-        assert intents[0].user_id == "test_user"
-
-    def test_handle_conversation_start_with_string(self):
-        """Test conversation start handler with string event data."""
-        event_data = "Hello, how are you?"
-
-        intents = handle_conversation_start(event_data, self.mock_context)
-
-        assert len(intents) == 1
-        assert isinstance(intents[0], AuditIntent)
-        assert intents[0].action == "conversation_started"
-        assert intents[0].details["message"] == event_data
-
-    def test_handle_conversation_start_success(self):
-        """Test successful conversation start handler."""
-        # Test that the handler works correctly under normal conditions
-        normal_context = Mock(spec=LLMSafeEventContext)
-        normal_context.get_safe_channel.return_value = "test_channel"
-        normal_context.user_id = "test_user"
-
-        intents = handle_conversation_start({}, normal_context)
-
-        assert len(intents) == 1
-        assert isinstance(intents[0], AuditIntent)
-        assert intents[0].action == "conversation_started"
-
-    def test_handle_conversation_end(self):
-        """Test conversation end handler."""
-        event_data = {"duration": 300, "message_count": 5}
-
-        intents = handle_conversation_end(event_data, self.mock_context)
-
-        assert len(intents) == 1
-        assert isinstance(intents[0], AuditIntent)
-        assert intents[0].action == "conversation_ended"
-        assert "channel" in intents[0].details
-        assert "timestamp" in intents[0].details
-
-
 class TestRoleRegistration:
     """Test role registration functionality."""
 
@@ -174,15 +108,12 @@ class TestRoleRegistration:
         assert len(registration["tools"]) == 5  # Conversation management tools
         assert ConversationIntent in registration["intents"]
 
-    def test_register_role_event_handlers(self):
-        """Test registered event handlers."""
+    def test_register_role_no_event_handlers(self):
+        """Test that no event handlers are registered."""
         registration = register_role()
         handlers = registration["event_handlers"]
 
-        assert "CONVERSATION_START" in handlers
-        assert "CONVERSATION_END" in handlers
-        assert handlers["CONVERSATION_START"] == handle_conversation_start
-        assert handlers["CONVERSATION_END"] == handle_conversation_end
+        assert handlers == {}  # No event handlers needed
 
 
 class TestConversationUtilities:
