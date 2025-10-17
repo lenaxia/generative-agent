@@ -15,7 +15,7 @@ from roles.core_conversation import (
     ConversationIntent,
     get_conversation_statistics,
     register_role,
-    respond_to_user,
+    save_conversation,
     start_new_conversation,
 )
 
@@ -52,8 +52,8 @@ class TestConversationRoleConfig:
         """Test system prompt configuration."""
         system_prompt = ROLE_CONFIG["prompts"]["system"]
         assert "conversational AI" in system_prompt
-        assert "respond_to_user" in system_prompt
-        assert "natural dialogue" in system_prompt
+        assert "save_conversation" in system_prompt
+        assert "conversational responses" in system_prompt
 
 
 class TestConversationIntent:
@@ -163,14 +163,17 @@ class TestConversationRoleIntegration:
 class TestConversationTools:
     """Test conversation tools."""
 
-    def test_respond_to_user(self):
-        """Test respond_to_user tool creates NotificationIntent and saves conversation."""
+    def test_save_conversation(self):
+        """Test save_conversation tool returns success data like timer tools."""
         with patch("roles.core_conversation._save_conversation_exchange"):
-            result = respond_to_user(
+            result = save_conversation(
                 "test_user", "Hello", "Hi there! How can I help?", "console"
             )
 
-            assert result == "Hi there! How can I help?"
+            assert result["success"] is True
+            assert result["message"] == "Conversation saved successfully"
+            assert result["user_id"] == "test_user"
+            assert result["channel"] == "console"
 
     def test_start_new_conversation(self):
         """Test starting a new conversation."""

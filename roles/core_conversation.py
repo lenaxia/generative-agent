@@ -50,19 +50,20 @@ ROLE_CONFIG = {
         },
     },
     "prompts": {
-        "system": """You are a conversational AI assistant focused on natural dialogue.
+        "system": """You are a conversational AI assistant with conversation memory management.
 
-Available tools:
-- respond_to_user(user_id, user_message, response_text, channel): Send your response and save conversation
+Available conversation tools:
+- save_conversation(user_id, user_message, response_text, channel): Save conversation exchange
 - start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
 
-IMPORTANT: Always use respond_to_user() to send your responses. This saves conversation history and delivers the message.
+When users engage in conversation:
+1. Use save_conversation() to record the conversation exchange
+2. Provide natural, helpful conversational responses
+3. Reference memory context when provided by the router
 
-When memory context is provided by the router, use it to maintain conversation continuity and reference previous discussions naturally.
+Always use the conversation tools to manage conversation state. When memory context is provided, use it to maintain conversation continuity and reference previous discussions naturally.
 
-Call start_new_conversation() only when the user shifts to a completely different topic.
-
-Provide helpful, engaging responses and use respond_to_user() to deliver them."""
+Call start_new_conversation() only when the user shifts to a completely different topic."""
     },
 }
 
@@ -84,19 +85,28 @@ class ConversationIntent(Intent):
 
 
 @tool
-def respond_to_user(
+def save_conversation(
     user_id: str, user_message: str, response_text: str, channel: str
-) -> str:
-    """Send response to user and save conversation history. Returns response text for delivery."""
+) -> dict[str, Any]:
+    """Save conversation exchange to history. Returns success status like timer tools."""
     try:
         # Save conversation exchange to Redis
         _save_conversation_exchange(user_id, user_message, response_text, channel)
 
-        # Return the response text for the system to deliver (like timer tools return data)
-        return response_text
+        # Return success data like timer tools
+        return {
+            "success": True,
+            "message": "Conversation saved successfully",
+            "user_id": user_id,
+            "channel": channel,
+        }
     except Exception as e:
-        logger.error(f"Error in respond_to_user for {user_id}: {e}")
-        return f"I apologize, but I encountered an error: {e}"
+        logger.error(f"Error in save_conversation for {user_id}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to save conversation",
+        }
 
 
 @tool
@@ -259,7 +269,7 @@ def register_role():
     return {
         "config": ROLE_CONFIG,
         "event_handlers": {},  # No event handlers
-        "tools": [respond_to_user, start_new_conversation],  # Simple tools
+        "tools": [save_conversation, start_new_conversation],  # Simple tools like timer
         "intents": [ConversationIntent],
     }
 
