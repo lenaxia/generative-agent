@@ -86,27 +86,17 @@ class ConversationIntent(Intent):
 @tool
 def respond_to_user(
     user_id: str, user_message: str, response_text: str, channel: str
-) -> NotificationIntent:
-    """Send response to user and save conversation history."""
+) -> str:
+    """Send response to user and save conversation history. Returns response text for delivery."""
     try:
         # Save conversation exchange to Redis
         _save_conversation_exchange(user_id, user_message, response_text, channel)
 
-        # Return NotificationIntent like timer role for proper delivery
-        return NotificationIntent(
-            message=response_text,
-            channel=channel,
-            priority="medium",
-            notification_type="info",
-        )
+        # Return the response text for the system to deliver (like timer tools return data)
+        return response_text
     except Exception as e:
         logger.error(f"Error in respond_to_user for {user_id}: {e}")
-        return NotificationIntent(
-            message=f"I apologize, but I encountered an error: {e}",
-            channel=channel,
-            priority="medium",
-            notification_type="error",
-        )
+        return f"I apologize, but I encountered an error: {e}"
 
 
 @tool

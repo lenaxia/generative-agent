@@ -170,11 +170,7 @@ class TestConversationTools:
                 "test_user", "Hello", "Hi there! How can I help?", "console"
             )
 
-            assert isinstance(result, NotificationIntent)
-            assert result.message == "Hi there! How can I help?"
-            assert result.channel == "console"
-            assert result.priority == "medium"
-            assert result.notification_type == "info"
+            assert result == "Hi there! How can I help?"
 
     def test_start_new_conversation(self):
         """Test starting a new conversation."""
