@@ -42,28 +42,30 @@ ROLE_CONFIG = {
         # No specific parameters needed - LLM handles conversation naturally
     },
     "tools": {
-        "automatic": True,  # Include conversation tools
+        "automatic": True,  # Include start_new_conversation tool only
         "shared": [],  # No shared tools needed
         "include_builtin": False,
         "fast_reply": {
             "enabled": True,
         },
     },
+    "lifecycle": {
+        "post_processing": {
+            "enabled": True,
+            "functions": ["save_conversation_exchange"],
+        }
+    },
     "prompts": {
-        "system": """You are a conversational AI assistant with conversation memory management.
+        "system": """You are a conversational AI assistant focused on natural dialogue.
 
-Available conversation tools:
-- save_conversation(user_id, user_message, response_text, channel): Save conversation exchange
+Available tools:
 - start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
 
-When users engage in conversation:
-1. Use save_conversation() to record the conversation exchange
-2. Provide natural, helpful conversational responses
-3. Reference memory context when provided by the router
+Provide natural, helpful conversational responses. When memory context is provided by the router, use it to maintain conversation continuity and reference previous discussions naturally.
 
-Always use the conversation tools to manage conversation state. When memory context is provided, use it to maintain conversation continuity and reference previous discussions naturally.
+Call start_new_conversation() only when the user shifts to a completely different topic.
 
-Call start_new_conversation() only when the user shifts to a completely different topic."""
+Conversation history is automatically managed by the system's MemoryAssessor in post-processing."""
     },
 }
 
@@ -82,31 +84,6 @@ class ConversationIntent(Intent):
 
 
 # 3. CONVERSATION TOOLS (simplified)
-
-
-@tool
-def save_conversation(
-    user_id: str, user_message: str, response_text: str, channel: str
-) -> dict[str, Any]:
-    """Save conversation exchange to history. Returns success status like timer tools."""
-    try:
-        # Save conversation exchange to Redis
-        _save_conversation_exchange(user_id, user_message, response_text, channel)
-
-        # Return success data like timer tools
-        return {
-            "success": True,
-            "message": "Conversation saved successfully",
-            "user_id": user_id,
-            "channel": channel,
-        }
-    except Exception as e:
-        logger.error(f"Error in save_conversation for {user_id}: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "Failed to save conversation",
-        }
 
 
 @tool
@@ -136,7 +113,34 @@ def start_new_conversation(
         return {"success": False, "error": str(e)}
 
 
-# 4. INTERNAL HELPERS (not exposed as tools)
+# 4. LIFECYCLE FUNCTIONS (post-processing)
+
+
+def save_conversation_exchange(llm_result: str, context, pre_data: dict) -> str:
+    """Post-processing function to save conversation exchange to Redis."""
+    try:
+        # Extract user info from context
+        user_id = getattr(context, "user_id", "unknown")
+        channel = getattr(context, "channel_id", "unknown")
+
+        # Get the original user message from the request
+        user_message = getattr(context, "original_prompt", "unknown")
+
+        # Save the conversation exchange
+        _save_conversation_exchange(user_id, user_message, llm_result, channel)
+
+        logger.info(f"Post-processing: Saved conversation exchange for {user_id}")
+
+        # Return the LLM result unchanged
+        return llm_result
+
+    except Exception as e:
+        logger.error(f"Post-processing conversation save failed: {e}")
+        # Return LLM result unchanged even if saving fails
+        return llm_result
+
+
+# 5. INTERNAL HELPERS (not exposed as tools)
 
 
 def _save_conversation_exchange(
@@ -269,8 +273,11 @@ def register_role():
     return {
         "config": ROLE_CONFIG,
         "event_handlers": {},  # No event handlers
-        "tools": [save_conversation, start_new_conversation],  # Simple tools like timer
+        "tools": [start_new_conversation],  # Only topic management tool
         "intents": [ConversationIntent],
+        "post_processors": [
+            save_conversation_exchange
+        ],  # Post-processing for conversation logging
     }
 
 

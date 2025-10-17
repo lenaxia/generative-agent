@@ -15,7 +15,6 @@ from roles.core_conversation import (
     ConversationIntent,
     get_conversation_statistics,
     register_role,
-    save_conversation,
     start_new_conversation,
 )
 
@@ -52,7 +51,7 @@ class TestConversationRoleConfig:
         """Test system prompt configuration."""
         system_prompt = ROLE_CONFIG["prompts"]["system"]
         assert "conversational AI" in system_prompt
-        assert "save_conversation" in system_prompt
+        assert "start_new_conversation" in system_prompt
         assert "conversational responses" in system_prompt
 
 
@@ -100,9 +99,7 @@ class TestRoleRegistration:
         assert "intents" in registration
 
         assert registration["config"] == ROLE_CONFIG
-        assert (
-            len(registration["tools"]) == 2
-        )  # respond_to_user + start_new_conversation
+        assert len(registration["tools"]) == 1  # Only start_new_conversation
         assert ConversationIntent in registration["intents"]
 
     def test_register_role_no_event_handlers(self):
@@ -163,17 +160,14 @@ class TestConversationRoleIntegration:
 class TestConversationTools:
     """Test conversation tools."""
 
-    def test_save_conversation(self):
-        """Test save_conversation tool returns success data like timer tools."""
-        with patch("roles.core_conversation._save_conversation_exchange"):
-            result = save_conversation(
-                "test_user", "Hello", "Hi there! How can I help?", "console"
-            )
+    def test_conversation_memory_handled_by_system(self):
+        """Test that conversation memory is handled by MemoryAssessor post-processing."""
+        # No save_conversation tool needed - MemoryAssessor handles conversation history
+        registration = register_role()
+        tool_names = [tool.__name__ for tool in registration["tools"]]
 
-            assert result["success"] is True
-            assert result["message"] == "Conversation saved successfully"
-            assert result["user_id"] == "test_user"
-            assert result["channel"] == "console"
+        assert "start_new_conversation" in tool_names
+        assert "save_conversation" not in tool_names  # Handled by MemoryAssessor
 
     def test_start_new_conversation(self):
         """Test starting a new conversation."""
