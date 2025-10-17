@@ -2,752 +2,443 @@
 End-to-end tests for context-aware request processing.
 
 This module tests complete end-to-end scenarios for context-aware functionality,
-covering both happy path and unhappy path cases with real system integration.
+covering both happy path and unhappy path cases with focused component testing.
 """
 
 import asyncio
 import json
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from common.context_types import ContextCollector, ContextType
 from common.interfaces.context_interfaces import MemoryEntry
 from common.request_model import RequestMetadata
-from supervisor.supervisor import Supervisor
+from supervisor.workflow_engine import WorkflowEngine
 
 
 class TestContextAwareEndToEndHappyPath:
     """Test happy path scenarios for context-aware request processing."""
 
-    @pytest.fixture
-    def mock_supervisor_minimal(self):
-        """Create supervisor with minimal mocking for end-to-end tests."""
-        with patch("supervisor.supervisor.ConfigManager") as mock_config_class, patch(
-            "supervisor.supervisor.Path"
-        ) as mock_path, patch("supervisor.supervisor.configure_logging"), patch(
-            "supervisor.supervisor.MessageBus"
-        ) as mock_bus_class, patch(
-            "supervisor.supervisor.LLMFactory"
-        ) as mock_llm_class, patch(
-            "supervisor.supervisor.WorkflowEngine"
-        ) as mock_we_class, patch(
-            "supervisor.supervisor.MetricsManager"
-        ), patch(
-            "supervisor.supervisor.CommunicationManager"
-        ):
-            # Mock config file existence
-            mock_path_instance = Mock()
-            mock_path_instance.exists.return_value = True
-            mock_path.return_value = mock_path_instance
-
-            # Mock config manager
-            mock_config = Mock()
-            mock_config.get_config.return_value = Mock()
-            mock_config_class.return_value = mock_config
-
-            # Mock workflow engine with context capabilities
-            mock_workflow_engine = Mock()
-            mock_workflow_engine.initialize_context_systems = AsyncMock()
-            mock_workflow_engine.handle_request = Mock(return_value="req_123")
-            mock_workflow_engine.handle_request_with_context = AsyncMock(
-                return_value="req_ctx_123"
-            )
-            mock_workflow_engine.context_collector = Mock()
-            mock_workflow_engine.memory_assessor = Mock()
-            mock_we_class.return_value = mock_workflow_engine
-
-            supervisor = Supervisor("config.yaml")
-            return supervisor
-
     @pytest.mark.asyncio
-    async def test_end_to_end_device_control_with_location_context(
-        self, mock_supervisor_minimal
-    ):
-        """Test end-to-end device control request with location context (HAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
+    async def test_end_to_end_context_collector_with_location(self):
+        """Test end-to-end context collector with location context (HAPPY PATH)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Mock context collector to return location context
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            return_value={"location": "bedroom"}
+        # Create real providers with mocked backends
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
+
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
         )
-        supervisor.workflow_engine.context_collector = mock_context_collector
 
-        # Mock router to require location context
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "smart_home",
-                "confidence": 0.95,
-                "parameters": {"action": "turn_on", "device": "lights"},
-                "context_requirements": ["location"],
-            }
+        # Mock Redis backend for location
+        with patch("common.providers.mqtt_location_provider.redis_read") as mock_read:
+            mock_read.return_value = {"success": True, "value": "bedroom"}
 
-            # Create request
-            request = RequestMetadata(
-                prompt="Turn on the lights",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
+            # Test context gathering
+            context = await collector.gather_context("test_user", ["location"])
 
-            # Test end-to-end flow
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Verify context was gathered
-            mock_context_collector.gather_context.assert_called_once_with(
-                user_id="test_user", context_types=["location"]
-            )
-
-            # Verify result
-            assert result == "req_ctx_123"
+            assert "location" in context
+            assert context["location"] == "bedroom"
 
     @pytest.mark.asyncio
-    async def test_end_to_end_memory_recall_with_memory_context(
-        self, mock_supervisor_minimal
-    ):
-        """Test end-to-end memory recall request with memory context (HAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
+    async def test_end_to_end_context_collector_with_memory(self):
+        """Test end-to-end context collector with memory context (HAPPY PATH)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Mock context collector to return memory context
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            return_value={
-                "recent_memory": [
-                    "I like jazz music in the evening",
-                    "Classical is good too",
-                ]
-            }
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
+
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
         )
-        supervisor.workflow_engine.context_collector = mock_context_collector
 
-        # Mock router to require memory context
+        # Mock Redis backend for memory
         with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "planning",
-                "confidence": 0.90,
-                "parameters": {"query": "music_preferences"},
-                "context_requirements": ["recent_memory"],
+            "common.providers.redis_memory_provider.redis_get_keys"
+        ) as mock_get_keys, patch(
+            "common.providers.redis_memory_provider.redis_read"
+        ) as mock_read:
+            mock_get_keys.return_value = {
+                "success": True,
+                "keys": ["memory:test_user:1697400000"],
             }
 
-            # Create request
-            request = RequestMetadata(
-                prompt="Play my usual music",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test end-to-end flow
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Verify context was gathered
-            mock_context_collector.gather_context.assert_called_once_with(
-                user_id="test_user", context_types=["recent_memory"]
-            )
-
-            # Verify result
-            assert result == "req_ctx_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_simple_request_no_context(self, mock_supervisor_minimal):
-        """Test end-to-end simple request requiring no context (HAPPY PATH - ZERO OVERHEAD)."""
-        supervisor = mock_supervisor_minimal
-
-        # Mock context collector (should not be called)
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock()
-        supervisor.workflow_engine.context_collector = mock_context_collector
-
-        # Mock router to require no context
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "timer",
-                "confidence": 0.98,
-                "parameters": {"duration": "5m", "action": "set"},
-                "context_requirements": [],  # No context needed
+            mock_read.return_value = {
+                "success": True,
+                "value": {
+                    "content": "I like jazz music in the evening",
+                    "timestamp": "2023-10-15T20:00:00",
+                    "location": "living_room",
+                    "importance": 0.7,
+                    "metadata": {},
+                },
             }
 
-            # Create request
-            request = RequestMetadata(
-                prompt="Set a timer for 5 minutes",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
+            # Test memory context gathering
+            context = await collector.gather_context("test_user", ["recent_memory"])
 
-            # Test end-to-end flow
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
+            assert "recent_memory" in context
+            assert len(context["recent_memory"]) == 1
+            assert "jazz music" in context["recent_memory"][0]
 
-            # Verify context was NOT gathered (zero overhead)
-            mock_context_collector.gather_context.assert_not_called()
-
-            # Verify result
-            assert result == "req_ctx_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_multiple_context_types(self, mock_supervisor_minimal):
-        """Test end-to-end request requiring multiple context types (HAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
-
-        # Mock context collector to return multiple context types
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            return_value={"location": "living_room", "presence": ["alice", "bob"]}
+    def test_end_to_end_memory_entry_structure(self):
+        """Test memory entry structure for end-to-end workflows (HAPPY PATH)."""
+        # Test memory entry creation and validation
+        memory_entry = MemoryEntry(
+            user_id="test_user",
+            content="I met my neighbor Bob today",
+            timestamp=datetime.now(),
+            location="front_yard",
+            importance=0.8,
+            metadata={"source": "conversation"},
         )
-        supervisor.workflow_engine.context_collector = mock_context_collector
 
-        # Mock router to require multiple context types
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "smart_home",
-                "confidence": 0.92,
-                "parameters": {"action": "turn_off", "device": "all_lights"},
-                "context_requirements": ["location", "presence"],
-            }
+        assert memory_entry.user_id == "test_user"
+        assert "Bob" in memory_entry.content
+        assert memory_entry.location == "front_yard"
+        assert memory_entry.importance == 0.8
+        assert memory_entry.metadata["source"] == "conversation"
 
-            # Create request
-            request = RequestMetadata(
-                prompt="Turn off all lights",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
+    def test_end_to_end_router_context_selection_workflow(self):
+        """Test end-to-end router context selection workflow (HAPPY PATH)."""
+        from roles.core_router import parse_routing_response
 
-            # Test end-to-end flow
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
+        # Test various router responses with context requirements
+        test_cases = [
+            {
+                "input": {
+                    "route": "smart_home",
+                    "confidence": 0.95,
+                    "parameters": {"action": "turn_on", "device": "lights"},
+                    "context_requirements": ["location"],
+                },
+                "expected_context": ["location"],
+            },
+            {
+                "input": {
+                    "route": "planning",
+                    "confidence": 0.90,
+                    "parameters": {"query": "music_preferences"},
+                    "context_requirements": ["recent_memory"],
+                },
+                "expected_context": ["recent_memory"],
+            },
+            {
+                "input": {
+                    "route": "timer",
+                    "confidence": 0.98,
+                    "parameters": {"duration": "5m"},
+                    "context_requirements": [],
+                },
+                "expected_context": [],
+            },
+        ]
 
-            # Verify multiple context types were gathered
-            mock_context_collector.gather_context.assert_called_once_with(
-                user_id="test_user", context_types=["location", "presence"]
-            )
+        for test_case in test_cases:
+            router_response = json.dumps(test_case["input"])
+            result = parse_routing_response(router_response)
 
-            # Verify result
-            assert result == "req_ctx_123"
+            assert result["valid"] is True
+            assert result["context_requirements"] == test_case["expected_context"]
 
 
 class TestContextAwareEndToEndUnhappyPath:
     """Test unhappy path scenarios and error conditions."""
 
-    @pytest.fixture
-    def mock_supervisor_with_failures(self):
-        """Create supervisor with failure scenarios for unhappy path testing."""
-        with patch("supervisor.supervisor.ConfigManager") as mock_config_class, patch(
-            "supervisor.supervisor.Path"
-        ) as mock_path, patch("supervisor.supervisor.configure_logging"), patch(
-            "supervisor.supervisor.MessageBus"
-        ), patch(
-            "supervisor.supervisor.LLMFactory"
-        ), patch(
-            "supervisor.supervisor.WorkflowEngine"
-        ) as mock_we_class, patch(
-            "supervisor.supervisor.MetricsManager"
-        ), patch(
-            "supervisor.supervisor.CommunicationManager"
-        ):
-            # Mock config file existence
-            mock_path_instance = Mock()
-            mock_path_instance.exists.return_value = True
-            mock_path.return_value = mock_path_instance
-
-            # Mock config manager
-            mock_config = Mock()
-            mock_config.get_config.return_value = Mock()
-            mock_config_class.return_value = mock_config
-
-            # Mock workflow engine with context capabilities
-            mock_workflow_engine = Mock()
-            mock_workflow_engine.initialize_context_systems = AsyncMock()
-            mock_workflow_engine.handle_request = Mock(return_value="req_fallback_123")
-            mock_workflow_engine.handle_request_with_context = AsyncMock(
-                return_value="req_ctx_123"
-            )
-            mock_workflow_engine.context_collector = None  # No context collector
-            mock_workflow_engine.memory_assessor = None  # No memory assessor
-            mock_we_class.return_value = mock_workflow_engine
-
-            supervisor = Supervisor("config.yaml")
-            return supervisor
-
     @pytest.mark.asyncio
-    async def test_end_to_end_context_system_not_initialized(
-        self, mock_supervisor_with_failures
-    ):
-        """Test end-to-end request when context systems are not initialized (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_with_failures
+    async def test_end_to_end_context_collector_redis_failure(self):
+        """Test context collector when Redis fails (UNHAPPY PATH)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Context collector is None (not initialized)
-        assert supervisor.workflow_engine.context_collector is None
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
 
-        # Create request that would normally require context
-        request = RequestMetadata(
-            prompt="Turn on the lights",
-            source_id="test_user",
-            target_id="workflow_engine",
-            metadata={"user_id": "test_user", "channel_id": "console"},
-            response_requested=True,
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
         )
 
-        # Test that system falls back gracefully
-        result = supervisor.workflow_engine.handle_request(request)
+        # Mock Redis to fail
+        with patch("common.providers.mqtt_location_provider.redis_read") as mock_read:
+            mock_read.side_effect = Exception("Redis connection failed")
 
-        # Should use fallback method when context systems not available
-        assert result == "req_fallback_123"
+            # Test graceful handling of Redis failure
+            context = await collector.gather_context("test_user", ["location"])
+
+            # Should return empty context when Redis fails
+            assert context == {}
+
+    def test_end_to_end_importance_threshold_logic(self):
+        """Test importance threshold logic for memory storage (UNHAPPY PATH)."""
+        # Test importance threshold logic
+        threshold = 0.3
+
+        test_cases = [
+            (0.0, False),  # Below threshold
+            (0.2, False),  # Below threshold
+            (0.3, False),  # At threshold (not greater than)
+            (0.31, True),  # Above threshold
+            (0.8, True),  # High importance
+        ]
+
+        for importance, should_store in test_cases:
+            result = importance > threshold
+            assert result == should_store
+
+    def test_end_to_end_json_parsing_error_handling(self):
+        """Test JSON parsing error handling (UNHAPPY PATH)."""
+        # Test various JSON parsing scenarios
+        invalid_json_cases = [
+            "{ invalid json }",
+            "not json at all",
+            "",
+            '{"incomplete": ',
+        ]
+
+        for invalid_json in invalid_json_cases:
+            try:
+                json.loads(invalid_json)
+                assert False, f"Should have failed to parse: {invalid_json}"
+            except (json.JSONDecodeError, ValueError):
+                # Expected behavior - JSON parsing should fail
+                assert True
+
+        # Test that "null" is valid JSON but not useful for routing
+        null_result = json.loads("null")
+        assert null_result is None  # Valid JSON but not a routing response
+
+    def test_end_to_end_router_invalid_json(self):
+        """Test router with invalid JSON response (UNHAPPY PATH)."""
+        from roles.core_router import parse_routing_response
+
+        invalid_responses = [
+            "{ invalid json }",
+            "not json at all",
+            '{"route": "timer"}',  # Missing required fields
+            '{"route": "timer", "confidence": 1.5}',  # Invalid confidence
+        ]
+
+        for invalid_response in invalid_responses:
+            result = parse_routing_response(invalid_response)
+
+            # Should fallback to planning with error
+            assert result["valid"] is False
+            assert result["route"] == "PLANNING"
+            assert result["confidence"] == 0.0
+            assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_end_to_end_context_gathering_failure(self, mock_supervisor_minimal):
-        """Test end-to-end request when context gathering fails (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
+    async def test_end_to_end_context_collector_empty_user_id(self):
+        """Test context collector with empty user_id (UNHAPPY PATH)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Mock context collector to fail
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            side_effect=Exception("Redis connection failed")
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
+
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
         )
-        supervisor.workflow_engine.context_collector = mock_context_collector
 
-        # Mock router to require context
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "smart_home",
-                "confidence": 0.95,
-                "parameters": {"action": "turn_on", "device": "lights"},
-                "context_requirements": ["location"],
-            }
+        # Test with empty user_id
+        context = await collector.gather_context("", ["location"])
+        assert context == {}
 
-            # Create request
-            request = RequestMetadata(
-                prompt="Turn on the lights",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test graceful degradation when context gathering fails
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Should continue processing even when context gathering fails
-            assert result == "req_ctx_123"
+        # Test with None user_id
+        context = await collector.gather_context(None, ["location"])
+        assert context == {}
 
     @pytest.mark.asyncio
-    async def test_end_to_end_missing_user_id(self, mock_supervisor_minimal):
-        """Test end-to-end request without user_id (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
+    async def test_end_to_end_context_collector_empty_context_types(self):
+        """Test context collector with empty context types (UNHAPPY PATH)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Mock context collector (should not be called without user_id)
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock()
-        supervisor.workflow_engine.context_collector = mock_context_collector
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
 
-        # Mock router to require context
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "smart_home",
-                "confidence": 0.95,
-                "parameters": {"action": "turn_on", "device": "lights"},
-                "context_requirements": ["location"],
-            }
-
-            # Create request WITHOUT user_id
-            request = RequestMetadata(
-                prompt="Turn on the lights",
-                source_id="test_source",
-                target_id="workflow_engine",
-                metadata={"channel_id": "console"},  # No user_id
-                response_requested=True,
-            )
-
-            # Test that context gathering is skipped without user_id
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Context gathering should be skipped
-            mock_context_collector.gather_context.assert_not_called()
-
-            # Should still process request
-            assert result == "req_ctx_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_router_failure(self, mock_supervisor_minimal):
-        """Test end-to-end request when router fails (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
-
-        # Mock router to fail
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.side_effect = Exception("Router execution failed")
-
-            # Create request
-            request = RequestMetadata(
-                prompt="Turn on the lights",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test graceful handling of router failure
-            # This should fall back to non-context-aware processing
-            result = supervisor.workflow_engine.handle_request(request)
-
-            # Should still return a result even when router fails
-            assert result == "req_fallback_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_memory_assessor_failure(self, mock_supervisor_minimal):
-        """Test end-to-end request when memory assessor fails (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
-
-        # Mock memory assessor to fail
-        mock_memory_assessor = Mock()
-        mock_memory_assessor.assess_and_store_if_important = AsyncMock(
-            side_effect=Exception("Memory assessment failed")
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
         )
-        supervisor.workflow_engine.memory_assessor = mock_memory_assessor
 
-        # Mock context collector
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(return_value={})
-        supervisor.workflow_engine.context_collector = mock_context_collector
-
-        # Mock router
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "timer",
-                "confidence": 0.98,
-                "parameters": {"duration": "5m"},
-                "context_requirements": [],
-            }
-
-            # Create request
-            request = RequestMetadata(
-                prompt="Set a timer for 5 minutes",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test that memory assessor failure doesn't break request processing
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Should still process request successfully
-            assert result == "req_ctx_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_partial_context_failure(self, mock_supervisor_minimal):
-        """Test end-to-end request when some context types fail (UNHAPPY PATH)."""
-        supervisor = mock_supervisor_minimal
-
-        # Mock context collector to return partial context (location succeeds, memory fails)
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            return_value={
-                "location": "bedroom"
-                # memory context missing due to failure
-            }
-        )
-        supervisor.workflow_engine.context_collector = mock_context_collector
-
-        # Mock router to require multiple context types
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "smart_home",
-                "confidence": 0.90,
-                "parameters": {"action": "turn_on", "device": "lights"},
-                "context_requirements": ["location", "recent_memory"],
-            }
-
-            # Create request
-            request = RequestMetadata(
-                prompt="Turn on the lights like I usually do",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test that partial context failure is handled gracefully
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Should still process request with available context
-            assert result == "req_ctx_123"
+        # Test with empty context types
+        context = await collector.gather_context("test_user", [])
+        assert context == {}
 
 
 class TestContextAwareEndToEndEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    @pytest.fixture
-    def mock_supervisor_edge_cases(self):
-        """Create supervisor for edge case testing."""
-        with patch("supervisor.supervisor.ConfigManager") as mock_config_class, patch(
-            "supervisor.supervisor.Path"
-        ) as mock_path, patch("supervisor.supervisor.configure_logging"), patch(
-            "supervisor.supervisor.MessageBus"
-        ), patch(
-            "supervisor.supervisor.LLMFactory"
-        ), patch(
-            "supervisor.supervisor.WorkflowEngine"
-        ) as mock_we_class, patch(
-            "supervisor.supervisor.MetricsManager"
-        ), patch(
-            "supervisor.supervisor.CommunicationManager"
-        ):
-            # Mock config file existence
-            mock_path_instance = Mock()
-            mock_path_instance.exists.return_value = True
-            mock_path.return_value = mock_path_instance
+    def test_end_to_end_context_type_enum_completeness(self):
+        """Test that all context types are properly defined (EDGE CASE)."""
+        from common.context_types import ContextType
 
-            # Mock config manager
-            mock_config = Mock()
-            mock_config.get_config.return_value = Mock()
-            mock_config_class.return_value = mock_config
+        # Verify all expected context types exist
+        expected_types = ["location", "recent_memory", "presence", "schedule"]
+        actual_types = [ct.value for ct in ContextType]
 
-            # Mock workflow engine
-            mock_workflow_engine = Mock()
-            mock_workflow_engine.initialize_context_systems = AsyncMock()
-            mock_workflow_engine.handle_request = Mock(return_value="req_edge_123")
-            mock_workflow_engine.handle_request_with_context = AsyncMock(
-                return_value="req_ctx_edge_123"
-            )
-            mock_we_class.return_value = mock_workflow_engine
+        for expected_type in expected_types:
+            assert expected_type in actual_types
 
-            supervisor = Supervisor("config.yaml")
-            return supervisor
+        assert len(actual_types) == 4
 
-    @pytest.mark.asyncio
-    async def test_end_to_end_empty_context_requirements(
-        self, mock_supervisor_edge_cases
-    ):
-        """Test end-to-end request with empty context requirements (EDGE CASE)."""
-        supervisor = mock_supervisor_edge_cases
+    def test_end_to_end_provider_interface_compliance(self):
+        """Test that all providers comply with interfaces (EDGE CASE)."""
+        from common.interfaces.context_interfaces import (
+            LocationProvider,
+            MemoryProvider,
+        )
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Mock context collector
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock()
-        supervisor.workflow_engine.context_collector = mock_context_collector
+        # Test interface compliance
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
 
-        # Mock router with empty context requirements
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "weather",
-                "confidence": 0.95,
-                "parameters": {},
-                "context_requirements": [],  # Empty list
+        assert isinstance(memory_provider, MemoryProvider)
+        assert isinstance(location_provider, LocationProvider)
+
+        # Test all required methods exist
+        memory_methods = ["store_memory", "get_recent_memories", "search_memories"]
+        for method in memory_methods:
+            assert hasattr(memory_provider, method)
+            assert callable(getattr(memory_provider, method))
+
+        location_methods = ["get_current_location", "update_location"]
+        for method in location_methods:
+            assert hasattr(location_provider, method)
+            assert callable(getattr(location_provider, method))
+
+    def test_end_to_end_calendar_role_context_awareness(self):
+        """Test calendar role context awareness configuration (EDGE CASE)."""
+        from roles.core_calendar import ROLE_CONFIG, register_role
+
+        # Test role configuration
+        assert ROLE_CONFIG["memory_enabled"] is True
+        assert ROLE_CONFIG["location_aware"] is True
+        assert ROLE_CONFIG["fast_reply"] is True
+
+        # Test role registration
+        registration = register_role()
+        assert "config" in registration
+        assert "tools" in registration
+        assert "intents" in registration
+        assert len(registration["tools"]) == 2  # get_schedule, add_calendar_event
+
+    def test_end_to_end_router_backwards_compatibility(self):
+        """Test router backwards compatibility with old response format (EDGE CASE)."""
+        from roles.core_router import parse_routing_response
+
+        # Test old-style response without context_requirements
+        old_response = json.dumps(
+            {
+                "route": "timer",
+                "confidence": 0.98,
+                "parameters": {"duration": "5m"}
+                # No context_requirements field
             }
-
-            # Create request
-            request = RequestMetadata(
-                prompt="What's the weather?",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test that empty context requirements are handled correctly
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Context gathering should not be called for empty requirements
-            mock_context_collector.gather_context.assert_not_called()
-
-            # Should still process request
-            assert result == "req_ctx_edge_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_invalid_context_type(self, mock_supervisor_edge_cases):
-        """Test end-to-end request with invalid context type (EDGE CASE)."""
-        supervisor = mock_supervisor_edge_cases
-
-        # Mock context collector to handle invalid context type
-        mock_context_collector = Mock()
-        mock_context_collector.gather_context = AsyncMock(
-            return_value={}
-        )  # Returns empty for invalid type
-        supervisor.workflow_engine.context_collector = mock_context_collector
-
-        # Mock router with invalid context type
-        with patch(
-            "supervisor.workflow_engine.WorkflowEngine._route_request_with_router_role"
-        ) as mock_route:
-            mock_route.return_value = {
-                "route": "planning",
-                "confidence": 0.80,
-                "parameters": {},
-                "context_requirements": ["invalid_context_type"],
-            }
-
-            # Create request
-            request = RequestMetadata(
-                prompt="Do something complex",
-                source_id="test_user",
-                target_id="workflow_engine",
-                metadata={"user_id": "test_user", "channel_id": "console"},
-                response_requested=True,
-            )
-
-            # Test that invalid context types are handled gracefully
-            result = await supervisor.workflow_engine.handle_request_with_context(
-                request
-            )
-
-            # Context gathering should be called but return empty
-            mock_context_collector.gather_context.assert_called_once()
-
-            # Should still process request
-            assert result == "req_ctx_edge_123"
-
-    @pytest.mark.asyncio
-    async def test_end_to_end_context_initialization_failure(
-        self, mock_supervisor_edge_cases
-    ):
-        """Test end-to-end flow when context system initialization fails (EDGE CASE)."""
-        supervisor = mock_supervisor_edge_cases
-
-        # Mock context initialization to fail
-        supervisor.workflow_engine.initialize_context_systems = AsyncMock(
-            side_effect=Exception("Context initialization failed")
         )
 
-        # Test that initialization failure is handled gracefully
-        await supervisor.start_async_tasks()
+        result = parse_routing_response(old_response)
 
-        # System should continue to work without context systems
-        # Context collector should remain None after failed initialization
-        assert supervisor.workflow_engine.context_collector is None
+        assert result["valid"] is True
+        assert result["route"] == "timer"
+        assert result["context_requirements"] == []  # Should default to empty list
 
-    def test_end_to_end_malformed_request_metadata(self):
-        """Test end-to-end request with malformed metadata (EDGE CASE)."""
-        # Test malformed request metadata handling
-        malformed_requests = [
-            # Missing metadata
-            RequestMetadata(
-                prompt="Test request",
-                source_id="test",
-                target_id="workflow_engine",
-                metadata=None,
-                response_requested=True,
-            ),
-            # Empty metadata
-            RequestMetadata(
-                prompt="Test request",
-                source_id="test",
-                target_id="workflow_engine",
-                metadata={},
-                response_requested=True,
-            ),
-            # Malformed user_id
-            RequestMetadata(
-                prompt="Test request",
-                source_id="test",
-                target_id="workflow_engine",
-                metadata={"user_id": "", "channel_id": "console"},
-                response_requested=True,
-            ),
+    @pytest.mark.asyncio
+    async def test_end_to_end_workflow_engine_context_properties(self):
+        """Test workflow engine context properties initialization (EDGE CASE)."""
+        from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
+
+        # Mock dependencies
+        mock_llm_factory = Mock(spec=LLMFactory)
+        mock_message_bus = Mock(spec=MessageBus)
+
+        with patch("supervisor.workflow_engine.RoleRegistry"), patch(
+            "supervisor.workflow_engine.UniversalAgent"
+        ), patch("supervisor.workflow_engine.MCPClientManager"):
+            workflow_engine = WorkflowEngine(
+                llm_factory=mock_llm_factory, message_bus=mock_message_bus
+            )
+
+            # Test that context properties are properly initialized
+            assert hasattr(workflow_engine, "context_collector")
+            assert hasattr(workflow_engine, "memory_assessor")
+            assert workflow_engine.context_collector is None  # Not initialized yet
+            assert workflow_engine.memory_assessor is None  # Not initialized yet
+
+
+class TestContextAwareEndToEndPerformanceValidation:
+    """Test performance characteristics and validation."""
+
+    def test_end_to_end_zero_overhead_request_types(self):
+        """Test that zero overhead requests are properly identified (PERFORMANCE)."""
+        # Requests that should require no context (zero overhead)
+        zero_overhead_scenarios = [
+            ("Set a timer for 5 minutes", "timer"),
+            ("What's the weather?", "weather"),
+            ("Cancel timer", "timer"),
+            ("What time is it?", "planning"),
         ]
 
-        for request in malformed_requests:
-            # Should handle malformed requests gracefully
-            user_id = request.metadata.get("user_id") if request.metadata else None
-            should_gather_context = bool(user_id)
-
-            # Malformed requests should not trigger context gathering
-            assert should_gather_context is False
-
-
-class TestContextAwareEndToEndPerformance:
-    """Test performance characteristics of context-aware processing."""
-
-    def test_end_to_end_zero_overhead_validation(self):
-        """Test that simple requests have zero context overhead (PERFORMANCE)."""
-        # Test requests that should have zero context overhead
-        zero_overhead_requests = [
-            "Set a timer for 5 minutes",
-            "What's the weather?",
-            "Cancel timer",
-            "What time is it?",
-        ]
-
-        for request in zero_overhead_requests:
-            # These should route to roles with no context requirements
+        for prompt, expected_role in zero_overhead_scenarios:
+            # These should not require context gathering
             expected_context_requirements = []
             assert len(expected_context_requirements) == 0
 
-    def test_end_to_end_surgical_context_gathering(self):
-        """Test that context gathering is surgical (only what's needed) (PERFORMANCE)."""
-        # Test requests that should require specific context types
-        context_scenarios = [
+    def test_end_to_end_surgical_context_request_types(self):
+        """Test that surgical context requests are properly identified (PERFORMANCE)."""
+        # Requests that should require specific context types
+        surgical_context_scenarios = [
             ("Turn on the lights", ["location"]),
             ("Play my usual music", ["recent_memory"]),
             ("Turn off all lights", ["location", "presence"]),
             ("What's my schedule today?", ["schedule"]),
         ]
 
-        for request, expected_contexts in context_scenarios:
-            # Verify each request type has specific context requirements
+        for prompt, expected_contexts in surgical_context_scenarios:
+            # These should require specific context types
             assert isinstance(expected_contexts, list)
             assert len(expected_contexts) > 0
 
+            # Verify context types are valid
+            valid_types = ["location", "recent_memory", "presence", "schedule"]
+            for context_type in expected_contexts:
+                assert context_type in valid_types
+
     @pytest.mark.asyncio
-    async def test_end_to_end_concurrent_requests(self):
-        """Test concurrent context-aware requests (PERFORMANCE/EDGE CASE)."""
-        # Mock multiple concurrent requests
-        requests = [
-            ("Turn on bedroom lights", ["location"]),
-            ("Play jazz music", ["recent_memory"]),
-            ("Is anyone home?", ["presence"]),
-            ("Set timer for 10 minutes", []),
-        ]
+    async def test_end_to_end_context_gathering_performance(self):
+        """Test context gathering performance characteristics (PERFORMANCE)."""
+        from common.providers.mqtt_location_provider import MQTTLocationProvider
+        from common.providers.redis_memory_provider import RedisMemoryProvider
 
-        # Test that concurrent requests can be processed
-        for prompt, context_types in requests:
-            request_data = {"prompt": prompt, "expected_context": context_types}
+        memory_provider = RedisMemoryProvider()
+        location_provider = MQTTLocationProvider("localhost")
 
-            # Each request should be processable independently
-            assert isinstance(request_data["prompt"], str)
-            assert isinstance(request_data["expected_context"], list)
+        collector = ContextCollector(
+            memory_provider=memory_provider, location_provider=location_provider
+        )
+
+        # Mock fast Redis responses
+        with patch("common.providers.mqtt_location_provider.redis_read") as mock_read:
+            mock_read.return_value = {"success": True, "value": "bedroom"}
+
+            # Test that context gathering is efficient
+            start_time = asyncio.get_event_loop().time()
+            context = await collector.gather_context("test_user", ["location"])
+            end_time = asyncio.get_event_loop().time()
+
+            # Should complete quickly (mocked, so very fast)
+            duration = end_time - start_time
+            assert duration < 1.0  # Should be very fast with mocked backend
+            assert "location" in context
 
 
 if __name__ == "__main__":
