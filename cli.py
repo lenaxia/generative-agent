@@ -207,6 +207,11 @@ async def execute_single_workflow(supervisor: Supervisor, workflow_instruction: 
         logger.info("Stopping system...")
         supervisor.stop()
 
+        # Force exit to avoid Slack WebSocket threading issues
+        import os
+
+        os._exit(0)
+
 
 def show_system_status(supervisor: Supervisor):
     """Show system status and exit."""

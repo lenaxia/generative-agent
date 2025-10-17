@@ -318,14 +318,22 @@ def _initialize_fresh_conversation(user_id: str, new_topic: str):
         logger.error(f"Error initializing fresh conversation for {user_id}: {e}")
 
 
-# 5. ROLE REGISTRATION (auto-discovery)
+# 5. INTENT HANDLER REGISTRATION
+async def process_conversation_intent(intent: ConversationIntent):
+    """Process conversation-specific intents - called by IntentProcessor."""
+    logger.info(f"Processing conversation intent: {intent.interaction_type}")
+
+
+# 6. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Auto-discovered by RoleRegistry - LLM can modify this."""
     return {
         "config": ROLE_CONFIG,
         "event_handlers": {},  # No event handlers
         "tools": [start_new_conversation],  # Only topic management tool
-        "intents": [ConversationIntent],
+        "intents": {
+            ConversationIntent: process_conversation_intent,
+        },
         "post_processors": [
             save_conversation_exchange
         ],  # Post-processing for conversation logging

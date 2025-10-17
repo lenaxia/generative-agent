@@ -38,8 +38,7 @@ class MemoryAssessor:
             # Create Universal Agent for importance assessment
             self.agent = UniversalAgent(
                 llm_factory=self.llm_factory,
-                llm_type=LLMType.WEAK,  # Use weak model for efficiency
-                role="memory_assessor",
+                role_registry=None,  # Use default registry
             )
 
             # Initialize memory provider

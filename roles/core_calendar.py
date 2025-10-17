@@ -204,12 +204,20 @@ def add_calendar_event(
     return {"success": True, "event_id": event_id, "message": message}
 
 
-# 5. ROLE REGISTRATION (auto-discovery)
+# 5. INTENT HANDLER REGISTRATION
+async def process_calendar_intent(intent: CalendarIntent):
+    """Process calendar-specific intents - called by IntentProcessor."""
+    logger.info(f"Processing calendar intent: {intent.action}")
+
+
+# 6. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Auto-discovered by RoleRegistry - LLM can modify this."""
     return {
         "config": ROLE_CONFIG,
         "event_handlers": {"CALENDAR_REQUEST": handle_calendar_request},
         "tools": [get_schedule, add_calendar_event],
-        "intents": [CalendarIntent],
+        "intents": {
+            CalendarIntent: process_calendar_intent,
+        },
     }
