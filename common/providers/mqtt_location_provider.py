@@ -49,10 +49,15 @@ class MQTTLocationProvider(LocationProvider):
     async def initialize(self):
         """Setup MQTT client and subscriptions.
 
-        Raises:
-            Exception: If MQTT client initialization fails
+        Gracefully disables if MQTT is not configured properly.
         """
         try:
+            # Check if MQTT configuration is valid
+            if not self.broker_host:
+                logger.info(
+                    "MQTT location provider disabled - no broker host configured"
+                )
+                return
             import aiomqtt
 
             self.mqtt_client = aiomqtt.Client(

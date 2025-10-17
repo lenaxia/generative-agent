@@ -1031,12 +1031,48 @@ class UniversalAgent:
         role_config = role_def.config.get("role", role_def.config)
         system_prompt = role_config.get("prompts", {}).get("system", "")
 
+        # Add detailed logging for debugging
+        logger.debug(f"🔍 _inject_pre_data called for role: {role_def.name}")
+        logger.debug(
+            f"🔍 Raw pre_data keys: {list(pre_data.keys()) if pre_data else 'None'}"
+        )
+        logger.debug(f"🔍 Raw pre_data content: {pre_data}")
+
+        flattened_data = self._flatten_pre_data(pre_data)
+        logger.debug(f"🔍 Flattened pre_data keys: {list(flattened_data.keys())}")
+        logger.debug(f"🔍 Flattened pre_data content: {flattened_data}")
+
+        # Check if system prompt contains format placeholders
+        if "{" in system_prompt and "}" in system_prompt:
+            logger.debug(f"🔍 System prompt contains format placeholders")
+            # Extract placeholders from system prompt for debugging
+            import re
+
+            placeholders = re.findall(r"\{([^}]+)\}", system_prompt)
+            logger.debug(f"🔍 Found placeholders in system prompt: {placeholders}")
+            logger.debug(f"🔍 Available data keys: {list(flattened_data.keys())}")
+            missing_keys = [p for p in placeholders if p not in flattened_data]
+            if missing_keys:
+                logger.warning(f"🔍 Missing keys for formatting: {missing_keys}")
+        else:
+            logger.debug(f"🔍 System prompt has no format placeholders")
+
         # Format system prompt with pre-processed data
         try:
-            formatted_prompt = system_prompt.format(**self._flatten_pre_data(pre_data))
-            return f"{formatted_prompt}\n\nUser Request: {instruction}"
+            if flattened_data and system_prompt:
+                formatted_prompt = system_prompt.format(**flattened_data)
+                logger.debug(f"🔍 Successfully formatted system prompt with pre-data")
+                return f"{formatted_prompt}\n\nUser Request: {instruction}"
+            else:
+                logger.debug(
+                    f"🔍 No pre-data or system prompt, returning original instruction"
+                )
+                return instruction
         except KeyError as e:
-            logger.warning(f"Failed to format system prompt with pre-data: {e}")
+            logger.warning(f"🔍 Failed to format system prompt with pre-data: {e}")
+            logger.warning(f"🔍 System prompt preview: {system_prompt[:200]}...")
+            logger.warning(f"🔍 Available pre-data keys: {list(flattened_data.keys())}")
+            logger.warning(f"🔍 Missing key: {str(e)}")
             return instruction
 
     def _flatten_pre_data(self, pre_data: dict) -> dict[str, Any]:
