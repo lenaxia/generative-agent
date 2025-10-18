@@ -456,17 +456,6 @@ class UniversalAgent:
                             llm_result = str(response)
                     else:
                         llm_result = str(response)
-                        logger.debug(
-                            f"🔧 Converted response to string (fallback): {llm_result[:100]}..."
-                        )
-
-                    logger.info(
-                        f"🔧 Final llm_result length: {len(llm_result) if llm_result else 0}"
-                    )
-                    logger.info(f"🔧 Final llm_result is None: {llm_result is None}")
-                    logger.info(
-                        f"🔧 Final llm_result is empty: {llm_result == '' if llm_result is not None else 'N/A'}"
-                    )
 
                 except Exception as e:
                     logger.error(f"🔧 Exception during LLM execution: {e}")

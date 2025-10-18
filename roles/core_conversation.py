@@ -140,7 +140,7 @@ class TopicSearchIntent(Intent):
 def analyze_conversation() -> dict[str, Any]:
     """Trigger analysis of unanalyzed conversation messages for topic extraction and summarization."""
     try:
-        logger.info("🔧 analyze_conversation tool called - starting execution")
+        logger.info("LLM triggered conversation analysis")
 
         result = {
             "success": True,
@@ -182,15 +182,10 @@ def search_topics(query: str) -> dict[str, Any]:
             },
         }
 
-        logger.info("🔧 search_topics tool completed successfully")
-        logger.debug(f"🔧 search_topics result: {result}")
         return result
 
     except Exception as e:
-        logger.error(f"🔧 search_topics tool failed with exception: {e}")
-        import traceback
-
-        logger.error(f"🔧 search_topics traceback: {traceback.format_exc()}")
+        logger.error(f"Error searching topics: {e}")
         return {"success": False, "error": str(e)}
 
 
