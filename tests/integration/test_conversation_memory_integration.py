@@ -44,7 +44,7 @@ class TestConversationMemoryIntegration:
             mock_read.return_value = {"success": False}
 
             # Test first message processing (user says height)
-            result1 = await load_conversation_context("im 6'4\"", mock_context1, {})
+            result1 = load_conversation_context("im 6'4\"", mock_context1, {})
 
             assert result1["user_id"] == "U52L1U8M6"
             assert result1["message_count"] == 0  # No previous messages
@@ -84,13 +84,11 @@ class TestConversationMemoryIntegration:
 
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(saved_messages),
+                "value": saved_messages,
             }
 
             # Test second message processing (user asks about height)
-            result2 = await load_conversation_context(
-                "how tall am i?", mock_context2, {}
-            )
+            result2 = load_conversation_context("how tall am i?", mock_context2, {})
 
             # The agent should have access to the previous conversation
             assert result2["user_id"] == "U52L1U8M6"
@@ -137,7 +135,7 @@ class TestConversationMemoryIntegration:
 
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(existing_messages),
+                "value": existing_messages,
             }
             mock_uuid.return_value.hex = "12345678"
 
@@ -198,7 +196,7 @@ class TestConversationMemoryIntegration:
         with patch("roles.shared_tools.redis_tools.redis_read") as mock_read:
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(test_messages),
+                "value": test_messages,
             }
 
             # Load recent messages

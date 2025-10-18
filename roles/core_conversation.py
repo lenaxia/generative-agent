@@ -168,9 +168,7 @@ def search_topics(query: str) -> dict[str, Any]:
 
 
 # 4. LIFECYCLE FUNCTIONS
-async def load_conversation_context(
-    instruction: str, context, parameters: dict
-) -> dict:
+def load_conversation_context(instruction: str, context, parameters: dict) -> dict:
     """Pre-processor: Load recent messages and cached recent topics (no heavy search)."""
     try:
         user_id = getattr(context, "user_id", "unknown")
@@ -235,7 +233,13 @@ def _load_recent_messages(user_id: str, limit: int = 30) -> list[dict[str, Any]]
 
         messages_data = redis_read(f"global_messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
-            all_messages = json.loads(messages_data["value"])
+            all_messages = messages_data["value"]  # Already parsed by redis_read
+            # Ensure it's a list
+            if not isinstance(all_messages, list):
+                logger.warning(
+                    f"Expected list but got {type(all_messages)} for messages"
+                )
+                return []
             # Return last N messages
             return all_messages[-limit:] if len(all_messages) > limit else all_messages
         else:
@@ -254,17 +258,23 @@ def _count_unanalyzed_messages(user_id: str) -> int:
         # Get last analysis pointer
         analysis_data = redis_read(f"last_analysis:{user_id}")
         if analysis_data.get("success") and analysis_data.get("value"):
-            last_analysis = json.loads(analysis_data["value"])
-            last_message_index = last_analysis.get("last_message_index", 0)
+            last_analysis = analysis_data["value"]  # Already parsed by redis_read
+            if isinstance(last_analysis, dict):
+                last_message_index = last_analysis.get("last_message_index", 0)
+            else:
+                last_message_index = 0
         else:
             last_message_index = 0
 
         # Get total message count
         messages_data = redis_read(f"global_messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
-            all_messages = json.loads(messages_data["value"])
-            total_messages = len(all_messages)
-            return max(0, total_messages - last_message_index)
+            all_messages = messages_data["value"]  # Already parsed by redis_read
+            if isinstance(all_messages, list):
+                total_messages = len(all_messages)
+                return max(0, total_messages - last_message_index)
+            else:
+                return 0
         else:
             return 0
 
@@ -281,7 +291,14 @@ def _load_recent_topics_cache(user_id: str) -> dict[str, Any]:
         # Load recent topics cache (has TTL of 1 hour)
         cache_data = redis_read(f"recent_topics_cache:{user_id}")
         if cache_data.get("success") and cache_data.get("value"):
-            return json.loads(cache_data["value"])
+            cached_topics = cache_data["value"]  # Already parsed by redis_read
+            # Ensure it's a dict
+            if not isinstance(cached_topics, dict):
+                logger.warning(
+                    f"Expected dict but got {type(cached_topics)} for topics cache"
+                )
+                return {}
+            return cached_topics
         else:
             return {}
 
@@ -302,7 +319,10 @@ def _search_topics_with_relevance(
         if not topics_data.get("success") or not topics_data.get("value"):
             return {}
 
-        all_topics = json.loads(topics_data["value"])
+        all_topics = topics_data["value"]  # Already parsed by redis_read
+        if not isinstance(all_topics, dict):
+            logger.warning(f"Expected dict but got {type(all_topics)} for topics")
+            return {}
         relevant_topics = {}
         query_lower = query.lower()
 
@@ -390,7 +410,7 @@ def _save_message_to_global_log(
         # Load existing messages
         messages_data = redis_read(f"global_messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
-            messages = json.loads(messages_data["value"])
+            messages = messages_data["value"]
         else:
             messages = []
 
@@ -493,7 +513,7 @@ def _get_unanalyzed_messages(user_id: str) -> list[dict[str, Any]]:
         # Get last analysis pointer
         analysis_data = redis_read(f"last_analysis:{user_id}")
         if analysis_data.get("success") and analysis_data.get("value"):
-            last_analysis = json.loads(analysis_data["value"])
+            last_analysis = analysis_data["value"]
             last_message_index = last_analysis.get("last_message_index", 0)
         else:
             last_message_index = 0
@@ -501,7 +521,7 @@ def _get_unanalyzed_messages(user_id: str) -> list[dict[str, Any]]:
         # Get all messages
         messages_data = redis_read(f"global_messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
-            all_messages = json.loads(messages_data["value"])
+            all_messages = messages_data["value"]
             # Return messages after last analysis
             return all_messages[last_message_index:]
         else:
@@ -520,7 +540,7 @@ def _update_analysis_pointer(user_id: str, analyzed_count: int):
         # Get current total message count
         messages_data = redis_read(f"global_messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
-            all_messages = json.loads(messages_data["value"])
+            all_messages = messages_data["value"]
             total_messages = len(all_messages)
         else:
             total_messages = 0
@@ -581,7 +601,7 @@ def _update_topic_knowledge_base(user_id: str, analysis: dict[str, Any]):
         # Load existing topics
         topics_data = redis_read(f"topics:{user_id}")
         if topics_data.get("success") and topics_data.get("value"):
-            topics = json.loads(topics_data["value"])
+            topics = topics_data["value"]
         else:
             topics = {}
 

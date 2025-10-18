@@ -194,7 +194,7 @@ class TestLifecycleFunctions:
             "roles.core_conversation._extract_current_topics_simple",
             return_value=["general"],
         ):
-            result = await load_conversation_context("Hello again", mock_context, {})
+            result = load_conversation_context("Hello again", mock_context, {})
 
             assert result["user_id"] == "test_user"
             assert len(result["recent_messages"]) == 2
@@ -233,7 +233,7 @@ class TestHelperFunctions:
         with patch("roles.shared_tools.redis_tools.redis_read") as mock_read:
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(mock_messages),
+                "value": mock_messages,
             }
 
             result = _load_recent_messages("test_user", limit=10)
@@ -255,7 +255,7 @@ class TestHelperFunctions:
         with patch("roles.shared_tools.redis_tools.redis_read") as mock_read:
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(mock_cached_topics),
+                "value": mock_cached_topics,
             }
 
             result = _load_recent_topics_cache("test_user")
@@ -282,7 +282,7 @@ class TestHelperFunctions:
         with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
             "roles.core_conversation._update_recent_topics_cache"
         ) as mock_cache:
-            mock_read.return_value = {"success": True, "value": json.dumps(mock_topics)}
+            mock_read.return_value = {"success": True, "value": mock_topics}
 
             result = _search_topics_with_relevance("test_user", "dogs", threshold=0.8)
 
@@ -329,9 +329,9 @@ class TestHelperFunctions:
             mock_read.side_effect = [
                 {
                     "success": True,
-                    "value": json.dumps(mock_analysis_data),
+                    "value": mock_analysis_data,
                 },  # analysis data
-                {"success": True, "value": json.dumps(mock_messages)},  # messages
+                {"success": True, "value": mock_messages},  # messages
             ]
 
             result = _count_unanalyzed_messages("test_user")
@@ -356,9 +356,9 @@ class TestHelperFunctions:
             mock_read.side_effect = [
                 {
                     "success": True,
-                    "value": json.dumps(mock_analysis_data),
+                    "value": mock_analysis_data,
                 },  # analysis data
-                {"success": True, "value": json.dumps(mock_messages)},  # messages
+                {"success": True, "value": mock_messages},  # messages
             ]
 
             result = _get_unanalyzed_messages("test_user")
@@ -376,7 +376,7 @@ class TestHelperFunctions:
         ) as mock_write:
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(mock_messages),
+                "value": mock_messages,
             }
 
             _update_analysis_pointer("test_user", 5)
@@ -401,7 +401,7 @@ class TestHelperFunctions:
         ) as mock_write, patch("uuid.uuid4") as mock_uuid:
             mock_read.return_value = {
                 "success": True,
-                "value": json.dumps(existing_messages),
+                "value": existing_messages,
             }
             mock_uuid.return_value.hex = "12345678"
 
