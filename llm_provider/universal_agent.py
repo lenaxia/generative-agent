@@ -432,7 +432,28 @@ class UniversalAgent:
                     llm_result = f"Error executing LLM task: {str(e)}"
 
             # 5. Post-processing phase (if enabled)
-            final_result = llm_result or self._format_pre_data_result(pre_data)
+            # Check if LLM execution failed and log detailed error information
+            if llm_result is None or llm_result == "":
+                logger.error(
+                    f"🚨 LLM execution failed for role '{role}' - no result generated"
+                )
+                logger.error(
+                    f"🚨 Enhanced instruction length: {len(enhanced_instruction) if 'enhanced_instruction' in locals() else 'N/A'}"
+                )
+                logger.error(
+                    f"🚨 Pre-processing data keys: {list(pre_data.keys()) if pre_data else 'None'}"
+                )
+                logger.error(
+                    f"🚨 Agent type: {type(agent).__name__ if 'agent' in locals() else 'N/A'}"
+                )
+                logger.error(
+                    f"🚨 Role definition: {role_def.name if role_def else 'None'}"
+                )
+
+                # Return a user-friendly error message instead of raw data dump
+                final_result = "I apologize, but I encountered an issue processing your request. Please try again."
+            else:
+                final_result = llm_result
             if self._has_post_processing(role_def):
                 post_start_time = time.time()
                 logger.info(f"Running post-processing for {role}")
@@ -1102,5 +1123,15 @@ class UniversalAgent:
         return flattened
 
     def _format_pre_data_result(self, pre_data: dict) -> str:
-        """Format pre-processing data as final result (for programmatic-only execution)."""
-        return str(pre_data)
+        """DEPRECATED: This method should not be used for user-facing responses.
+
+        This was causing raw pre-processing data to be dumped to users when LLM execution failed.
+        If you need programmatic access to pre-processing data, handle it explicitly in your code.
+        """
+        logger.warning(
+            "🚨 _format_pre_data_result called - this should not be used for user responses"
+        )
+        logger.warning(
+            f"🚨 Pre-data keys: {list(pre_data.keys()) if pre_data else 'None'}"
+        )
+        return "Error: Pre-processing data should not be returned as user response"

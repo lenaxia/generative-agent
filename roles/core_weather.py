@@ -70,12 +70,12 @@ ROLE_CONFIG = {
         "system": """You are a weather specialist providing accurate weather information.
 
 WEATHER DATA (pre-fetched):
-{weather_current}
+{{weather_current}}
 
-Location: {location_resolved}
-Coordinates: {coordinates}
-Data timestamp: {data_timestamp}
-Timeframe requested: {timeframe_requested}
+Location: {{location_resolved}}
+Coordinates: {{coordinates}}
+Data timestamp: {{data_timestamp}}
+Timeframe requested: {{timeframe_requested}}
 
 Use the weather data above to provide helpful, accurate weather information.
 Format your response to be clear and informative based on the pre-fetched data."""
