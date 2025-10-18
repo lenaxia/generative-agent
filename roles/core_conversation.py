@@ -91,7 +91,9 @@ Call search_topics(query) when:
 - The user asks about something that might have been discussed before
 - You want to check if a topic has been covered previously
 
-Your responses are automatically saved to the global conversation log."""
+Your responses are automatically saved to the global conversation log.
+
+Ensure your final output is a direct response to the user's most recent message.""",
     },
 }
 
@@ -132,9 +134,9 @@ class TopicSearchIntent(Intent):
 def analyze_conversation() -> dict[str, Any]:
     """Trigger analysis of unanalyzed conversation messages for topic extraction and summarization."""
     try:
-        logger.info("LLM triggered conversation analysis")
+        logger.info("🔧 analyze_conversation tool called - starting execution")
 
-        return {
+        result = {
             "success": True,
             "message": "Conversation analysis triggered - unanalyzed messages will be processed for topic extraction",
             "intent": {
@@ -143,8 +145,16 @@ def analyze_conversation() -> dict[str, Any]:
                 # user_id will be injected by lifecycle functions
             },
         }
+
+        logger.info("🔧 analyze_conversation tool completed successfully")
+        logger.debug(f"🔧 analyze_conversation result: {result}")
+        return result
+
     except Exception as e:
-        logger.error(f"Error triggering conversation analysis: {e}")
+        logger.error(f"🔧 analyze_conversation tool failed with exception: {e}")
+        import traceback
+
+        logger.error(f"🔧 analyze_conversation traceback: {traceback.format_exc()}")
         return {"success": False, "error": str(e)}
 
 
@@ -152,9 +162,9 @@ def analyze_conversation() -> dict[str, Any]:
 def search_topics(query: str) -> dict[str, Any]:
     """Search for relevant past topics based on query with high relevance threshold."""
     try:
-        logger.info(f"LLM triggered topic search: {query}")
+        logger.info(f"🔧 search_topics tool called with query: {query}")
 
-        return {
+        result = {
             "success": True,
             "message": f"Searching for topics related to: {query}",
             "query": query,
@@ -165,8 +175,16 @@ def search_topics(query: str) -> dict[str, Any]:
                 # user_id will be injected by lifecycle functions
             },
         }
+
+        logger.info("🔧 search_topics tool completed successfully")
+        logger.debug(f"🔧 search_topics result: {result}")
+        return result
+
     except Exception as e:
-        logger.error(f"Error searching topics: {e}")
+        logger.error(f"🔧 search_topics tool failed with exception: {e}")
+        import traceback
+
+        logger.error(f"🔧 search_topics traceback: {traceback.format_exc()}")
         return {"success": False, "error": str(e)}
 
 

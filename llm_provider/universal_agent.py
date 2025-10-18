@@ -402,33 +402,85 @@ class UniversalAgent:
                 # Execute LLM with enhanced instruction
                 agent = self.assume_role(role, llm_type, context)
                 try:
+                    logger.debug(f"🔧 Starting LLM execution for role '{role}'")
+                    logger.debug(
+                        f"🔧 Enhanced instruction preview: {enhanced_instruction[:200]}..."
+                    )
+
                     response = agent(enhanced_instruction)
+                    logger.debug(f"🔧 LLM execution completed, processing response...")
+                    logger.debug(f"🔧 Response type: {type(response)}")
+                    logger.debug(
+                        f"🔧 Response has message attr: {hasattr(response, 'message') if response else False}"
+                    )
+
                     if response is None:
+                        logger.warning(
+                            f"🔧 LLM returned None response for role '{role}'"
+                        )
                         llm_result = "No response generated"
                     elif hasattr(response, "message") and hasattr(
                         response.message, "content"
                     ):
+                        logger.debug(f"🔧 Processing Strands AgentResult object")
                         # Handle Strands AgentResult object
                         content = response.message.content
+                        logger.debug(f"🔧 Content type: {type(content)}")
+                        logger.debug(
+                            f"🔧 Content length: {len(content) if hasattr(content, '__len__') else 'N/A'}"
+                        )
+
                         if isinstance(content, list) and len(content) > 0:
                             first_content = content[0]
+                            logger.debug(f"🔧 First content type: {type(first_content)}")
                             if (
                                 isinstance(first_content, dict)
                                 and "text" in first_content
                             ):
                                 llm_result = first_content["text"]
+                                logger.debug(
+                                    f"🔧 Extracted text from dict: {llm_result[:100]}..."
+                                )
                             elif hasattr(first_content, "text"):
                                 llm_result = first_content.text
+                                logger.debug(
+                                    f"🔧 Extracted text from object: {llm_result[:100]}..."
+                                )
                             else:
                                 llm_result = str(content)
+                                logger.debug(
+                                    f"🔧 Converted content to string: {llm_result[:100]}..."
+                                )
                         elif isinstance(content, str):
                             llm_result = content
+                            logger.debug(
+                                f"🔧 Used string content directly: {llm_result[:100]}..."
+                            )
                         else:
                             llm_result = str(response)
+                            logger.debug(
+                                f"🔧 Converted response to string: {llm_result[:100]}..."
+                            )
                     else:
                         llm_result = str(response)
+                        logger.debug(
+                            f"🔧 Converted response to string (fallback): {llm_result[:100]}..."
+                        )
+
+                    logger.debug(
+                        f"🔧 Final llm_result length: {len(llm_result) if llm_result else 0}"
+                    )
+                    logger.debug(f"🔧 Final llm_result is None: {llm_result is None}")
+                    logger.debug(
+                        f"🔧 Final llm_result is empty: {llm_result == '' if llm_result is not None else 'N/A'}"
+                    )
+
                 except Exception as e:
-                    logger.error(f"Error executing LLM task: {e}")
+                    logger.error(f"🔧 Exception during LLM execution: {e}")
+                    logger.error(f"🔧 Exception type: {type(e)}")
+                    import traceback
+
+                    logger.error(f"🔧 Full traceback: {traceback.format_exc()}")
                     llm_result = f"Error executing LLM task: {str(e)}"
 
             # 5. Post-processing phase (if enabled)
