@@ -1,24 +1,26 @@
-"""Conversation role - Simple natural dialogue following timer/weather pattern.
+"""Conversation role - Simplified topic-based knowledge graph with global message log.
 
-This role provides natural conversation capabilities with memory context awareness
-provided by the router. Uses NotificationIntent pattern like timer role for responses.
+This role provides natural conversation capabilities with topic-based memory management.
+Uses a simplified approach with a global message log and periodic LLM-triggered analysis.
 
 Key principles:
-- Natural conversational responses using NotificationIntent
-- Memory context provided by router when needed
-- Simple tools: respond_to_user (with save) + start_new_conversation
-- Fast-reply optimized
+- Global message log for all conversation role messages
+- Single analyze_conversation tool triggered by LLM
+- Pointer tracking last analysis position
+- Topic-based knowledge graph built from analysis
+- Natural conversational responses
 
-Architecture: Simple + Natural + Router-Driven Context + NotificationIntent
+Architecture: Global Message Log + LLM-Triggered Topic Analysis
 Created: 2025-01-17
-Simplified: 2025-01-17
+Redesigned: 2025-01-17 (Simplified global log approach)
 """
 
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from strands import tool
 
@@ -26,14 +28,14 @@ from common.intents import Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (simple like weather role)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "conversation",
-    "version": "3.0.0",
-    "description": "Natural conversation and dialogue with router-provided memory context",
+    "version": "5.0.0",
+    "description": "Natural conversation with global message log and topic-based knowledge extraction",
     "llm_type": "DEFAULT",
     "fast_reply": True,
-    "memory_enabled": True,  # Router provides memory context when needed
+    "memory_enabled": True,
     "location_aware": False,
     "presence_aware": False,
     "schedule_aware": False,
@@ -42,8 +44,8 @@ ROLE_CONFIG = {
         # No specific parameters needed - LLM handles conversation naturally
     },
     "tools": {
-        "automatic": True,  # Include start_new_conversation tool only
-        "shared": [],  # No shared tools needed
+        "automatic": True,  # Include analyze_conversation and search_topics tools
+        "shared": ["redis_tools"],  # Need Redis for message storage
         "include_builtin": False,
         "fast_reply": {
             "enabled": True,
@@ -53,312 +55,598 @@ ROLE_CONFIG = {
         "pre_processing": {"enabled": True, "functions": ["load_conversation_context"]},
         "post_processing": {
             "enabled": True,
-            "functions": ["save_conversation_exchange"],
+            "functions": ["save_message_to_log"],
         },
     },
     "prompts": {
-        "system": """You are a conversational AI assistant focused on natural dialogue.
+        "system": """You are a conversational AI assistant with topic-based memory.
 
 Available tools:
-- start_new_conversation(user_id, new_topic, reason): Start fresh conversation when topic shifts
+- analyze_conversation(): Call this when you feel a conversation topic has concluded or shifted significantly
+- search_topics(query): Search for relevant past topics when you need specific information about previous discussions
 
-CONVERSATION CONTEXT:
-{conversation_history}
+RECENT CONVERSATION CONTEXT:
+{recent_messages}
 
-Previous conversation messages: {message_count}
-Current topic: {topic}
+RECENT TOPICS (auto-injected):
+{recent_topics}
 
-Provide natural, helpful conversational responses. Use the conversation history above to maintain continuity and reference previous discussions naturally. If the user asks about something mentioned in previous messages, refer to that information.
+Recent message count: {message_count}
+Unanalyzed messages: {unanalyzed_count}
+Current topics: {current_topics}
 
-Call start_new_conversation() only when the user shifts to a completely different topic.
+Provide natural, helpful conversational responses. Use the recent conversation context and recent topics to maintain continuity and reference previous discussions.
 
-Conversation history is automatically managed by the system's lifecycle functions."""
+Call analyze_conversation() when:
+- The conversation topic seems to have concluded
+- The user shifts to a completely different topic
+- You sense a natural break in the conversation flow
+- There are many unanalyzed messages building up
+
+Call search_topics(query) when:
+- You need to recall specific information about past discussions
+- The user asks about something that might have been discussed before
+- You want to check if a topic has been covered previously
+
+Your responses are automatically saved to the global conversation log."""
     },
 }
 
 
-# 2. ROLE-SPECIFIC INTENTS (minimal)
+# 2. ROLE-SPECIFIC INTENTS
 @dataclass
-class ConversationIntent(Intent):
-    """Conversation-specific intent for logging conversation interactions."""
+class TopicAnalysisIntent(Intent):
+    """Intent for analyzing conversation topics and extracting knowledge."""
 
-    interaction_type: str = "conversation"
-    user_message: Optional[str] = None
+    user_id: str
+    analysis_trigger: str = "llm_triggered"  # "llm_triggered", "daily", "manual"
 
     def validate(self) -> bool:
-        """Validate conversation intent parameters."""
-        return bool(self.interaction_type)
+        """Validate topic analysis intent parameters."""
+        return bool(self.user_id) and len(self.user_id.strip()) > 0
 
 
-# 3. CONVERSATION TOOLS (simplified)
+@dataclass
+class TopicSearchIntent(Intent):
+    """Intent for searching relevant past topics with high relevance threshold."""
 
+    user_id: str
+    query: str
+    relevance_threshold: float = 0.8
 
-@tool
-def start_new_conversation(
-    user_id: str, new_topic: str, reason: str = "topic_shift"
-) -> dict[str, Any]:
-    """Start a new conversation, archiving the current one automatically."""
-    try:
-        # Archive current conversation if it exists (internal helper)
-        archive_result = _archive_current_conversation(user_id)
-
-        # Initialize fresh conversation
-        _initialize_fresh_conversation(user_id, new_topic)
-
-        logger.info(
-            f"Started new conversation for {user_id}: {new_topic} (reason: {reason})"
+    def validate(self) -> bool:
+        """Validate topic search intent parameters."""
+        return (
+            bool(self.user_id and self.query)
+            and len(self.user_id.strip()) > 0
+            and len(self.query.strip()) > 0
+            and 0.0 <= self.relevance_threshold <= 1.0
         )
+
+
+# 3. CONVERSATION TOOLS
+@tool
+def analyze_conversation() -> dict[str, Any]:
+    """Trigger analysis of unanalyzed conversation messages for topic extraction and summarization."""
+    try:
+        logger.info("LLM triggered conversation analysis")
 
         return {
             "success": True,
-            "new_topic": new_topic,
-            "reason": reason,
-            "archived_previous": archive_result.get("success", False),
+            "message": "Conversation analysis triggered - unanalyzed messages will be processed for topic extraction",
+            "intent": {
+                "type": "TopicAnalysisIntent",
+                "analysis_trigger": "llm_triggered",
+                # user_id will be injected by lifecycle functions
+            },
         }
     except Exception as e:
-        logger.error(f"Error starting new conversation for {user_id}: {e}")
+        logger.error(f"Error triggering conversation analysis: {e}")
         return {"success": False, "error": str(e)}
 
 
-# 4. LIFECYCLE FUNCTIONS (post-processing)
+@tool
+def search_topics(query: str) -> dict[str, Any]:
+    """Search for relevant past topics based on query with high relevance threshold."""
+    try:
+        logger.info(f"LLM triggered topic search: {query}")
+
+        return {
+            "success": True,
+            "message": f"Searching for topics related to: {query}",
+            "query": query,
+            "intent": {
+                "type": "TopicSearchIntent",
+                "query": query,
+                "relevance_threshold": 0.8,
+                # user_id will be injected by lifecycle functions
+            },
+        }
+    except Exception as e:
+        logger.error(f"Error searching topics: {e}")
+        return {"success": False, "error": str(e)}
 
 
+# 4. LIFECYCLE FUNCTIONS
 async def load_conversation_context(
     instruction: str, context, parameters: dict
 ) -> dict:
-    """Pre-processor: Load conversation history using Redis tools."""
+    """Pre-processor: Load recent messages and cached recent topics (no heavy search)."""
     try:
         user_id = getattr(context, "user_id", "unknown")
 
-        # Load existing conversation context
-        from roles.shared_tools.redis_tools import redis_read
+        # Load recent messages (last 30 messages)
+        recent_messages = _load_recent_messages(user_id, limit=30)
 
-        conversation_data = redis_read(f"conversation:{user_id}")
-        if conversation_data.get("success") and conversation_data.get("data"):
-            import json
+        # Load cached recent topics (lightweight, with TTL)
+        recent_topics = _load_recent_topics_cache(user_id)
 
-            conversation = json.loads(conversation_data["data"])
+        # Count unanalyzed messages
+        unanalyzed_count = _count_unanalyzed_messages(user_id)
 
-            # Get recent messages for context
-            recent_messages = conversation.get("messages", [])[-10:]  # Last 10 messages
+        # Extract current topics from recent messages
+        current_topics = _extract_current_topics_simple(recent_messages)
 
-            return {
-                "conversation_history": recent_messages,
-                "message_count": conversation.get("message_count", 0),
-                "topic": conversation.get("topic"),
-                "user_id": user_id,
-            }
-        else:
-            # No existing conversation
-            return {
-                "conversation_history": [],
-                "message_count": 0,
-                "topic": None,
-                "user_id": user_id,
-            }
+        return {
+            "recent_messages": recent_messages,
+            "recent_topics": recent_topics,
+            "message_count": len(recent_messages),
+            "unanalyzed_count": unanalyzed_count,
+            "current_topics": current_topics,
+            "user_id": user_id,
+        }
 
     except Exception as e:
         logger.error(f"Failed to load conversation context for {user_id}: {e}")
         return {
-            "conversation_history": [],
+            "recent_messages": [],
+            "recent_topics": {},
             "message_count": 0,
-            "topic": None,
+            "unanalyzed_count": 0,
+            "current_topics": [],
             "user_id": getattr(context, "user_id", "unknown"),
         }
 
 
-async def save_conversation_exchange(llm_result: str, context, pre_data: dict) -> str:
-    """Post-processing function to save conversation exchange to Redis."""
+def save_message_to_log(llm_result: str, context, pre_data: dict) -> str:
+    """Post-processing function to save conversation message to global log (sync version)."""
     try:
-        # Extract user info from context
         user_id = getattr(context, "user_id", "unknown")
-        channel = getattr(context, "channel_id", "unknown")
-
-        # Get the original user message from the request
+        channel_id = getattr(context, "channel_id", "unknown")
         user_message = getattr(context, "original_prompt", "unknown")
 
-        # Save the conversation exchange
-        _save_conversation_exchange(user_id, user_message, llm_result, channel)
+        # Save message to global conversation log (synchronous)
+        _save_message_to_global_log(user_id, user_message, llm_result, channel_id)
 
-        logger.info(f"Post-processing: Saved conversation exchange for {user_id}")
+        logger.info(f"Saved conversation message for {user_id}")
 
-        # Return the LLM result unchanged
         return llm_result
 
     except Exception as e:
-        logger.error(f"Post-processing conversation save failed: {e}")
-        # Return LLM result unchanged even if saving fails
+        logger.error(f"Post-processing message save failed: {e}")
         return llm_result
 
 
-# 5. INTERNAL HELPERS (not exposed as tools)
+# 5. INTERNAL HELPERS
+def _load_recent_messages(user_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Load recent messages from global conversation log."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read
+
+        messages_data = redis_read(f"global_messages:{user_id}")
+        if messages_data.get("success") and messages_data.get("value"):
+            all_messages = json.loads(messages_data["value"])
+            # Return last N messages
+            return all_messages[-limit:] if len(all_messages) > limit else all_messages
+        else:
+            return []
+
+    except Exception as e:
+        logger.error(f"Error loading recent messages for {user_id}: {e}")
+        return []
 
 
-def _save_conversation_exchange(
-    user_id: str, user_message: str, response_text: str, channel: str
-):
-    """Internal helper to save conversation exchange to Redis."""
+def _count_unanalyzed_messages(user_id: str) -> int:
+    """Count messages that haven't been analyzed yet."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read
+
+        # Get last analysis pointer
+        analysis_data = redis_read(f"last_analysis:{user_id}")
+        if analysis_data.get("success") and analysis_data.get("value"):
+            last_analysis = json.loads(analysis_data["value"])
+            last_message_index = last_analysis.get("last_message_index", 0)
+        else:
+            last_message_index = 0
+
+        # Get total message count
+        messages_data = redis_read(f"global_messages:{user_id}")
+        if messages_data.get("success") and messages_data.get("value"):
+            all_messages = json.loads(messages_data["value"])
+            total_messages = len(all_messages)
+            return max(0, total_messages - last_message_index)
+        else:
+            return 0
+
+    except Exception as e:
+        logger.error(f"Error counting unanalyzed messages for {user_id}: {e}")
+        return 0
+
+
+def _load_recent_topics_cache(user_id: str) -> dict[str, Any]:
+    """Load cached recent topics (lightweight, with TTL)."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read
+
+        # Load recent topics cache (has TTL of 1 hour)
+        cache_data = redis_read(f"recent_topics_cache:{user_id}")
+        if cache_data.get("success") and cache_data.get("value"):
+            return json.loads(cache_data["value"])
+        else:
+            return {}
+
+    except Exception as e:
+        logger.error(f"Error loading recent topics cache for {user_id}: {e}")
+        return {}
+
+
+def _search_topics_with_relevance(
+    user_id: str, query: str, threshold: float = 0.8
+) -> dict[str, Any]:
+    """Search topics with relevance scoring and high threshold filtering."""
     try:
         from roles.shared_tools.redis_tools import redis_read, redis_write
 
-        # Load existing conversation
-        conversation_data = redis_read(f"conversation:{user_id}")
-        if conversation_data.get("success") and conversation_data.get("data"):
-            conversation = json.loads(conversation_data["data"])
+        # Load all topics
+        topics_data = redis_read(f"topics:{user_id}")
+        if not topics_data.get("success") or not topics_data.get("value"):
+            return {}
+
+        all_topics = json.loads(topics_data["value"])
+        relevant_topics = {}
+        query_lower = query.lower()
+
+        # Simple relevance scoring (could be enhanced with embeddings)
+        for topic_name, topic_data in all_topics.items():
+            relevance_score = 0.0
+
+            # Topic name match (high weight)
+            if topic_name.lower() in query_lower:
+                relevance_score += 0.6
+
+            # Summary match (medium weight)
+            summary = topic_data.get("summary", "").lower()
+            if any(word in summary for word in query_lower.split()):
+                relevance_score += 0.3
+
+            # Key details match (medium weight)
+            key_details = topic_data.get("key_details", [])
+            for detail in key_details:
+                if any(word in detail.lower() for word in query_lower.split()):
+                    relevance_score += 0.2
+                    break
+
+            # Only include if above threshold
+            if relevance_score >= threshold:
+                topic_data_with_score = topic_data.copy()
+                topic_data_with_score["relevance_score"] = relevance_score
+                relevant_topics[topic_name] = topic_data_with_score
+
+        # Update recent topics cache with found topics (TTL 1 hour)
+        if relevant_topics:
+            _update_recent_topics_cache(user_id, relevant_topics)
+
+        return relevant_topics
+
+    except Exception as e:
+        logger.error(f"Error searching topics for {user_id}: {e}")
+        return {}
+
+
+def _update_recent_topics_cache(user_id: str, topics: dict[str, Any]):
+    """Update recent topics cache with TTL."""
+    try:
+        from roles.shared_tools.redis_tools import redis_write
+
+        # Cache for 1 hour (3600 seconds)
+        redis_write(f"recent_topics_cache:{user_id}", json.dumps(topics), ttl=3600)
+        logger.info(
+            f"Updated recent topics cache for {user_id} with {len(topics)} topics"
+        )
+
+    except Exception as e:
+        logger.error(f"Error updating recent topics cache for {user_id}: {e}")
+
+
+def _extract_current_topics_simple(messages: list[dict[str, Any]]) -> list[str]:
+    """Extract simple topic keywords from recent messages."""
+    try:
+        # Simple keyword extraction - could be enhanced with NLP
+        topics = set()
+        for message in messages[-5:]:  # Look at last 5 messages
+            content = message.get("content", "").lower()
+            # Simple topic detection based on common patterns
+            if any(word in content for word in ["dog", "puppy", "pet"]):
+                topics.add("pets")
+            if any(word in content for word in ["college", "university", "school"]):
+                topics.add("education")
+            if any(word in content for word in ["work", "job", "career"]):
+                topics.add("career")
+
+        return list(topics)
+
+    except Exception as e:
+        logger.error(f"Error extracting current topics: {e}")
+        return []
+
+
+def _save_message_to_global_log(
+    user_id: str, user_message: str, assistant_response: str, channel_id: str
+):
+    """Save message exchange to global conversation log."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read, redis_write
+
+        # Load existing messages
+        messages_data = redis_read(f"global_messages:{user_id}")
+        if messages_data.get("success") and messages_data.get("value"):
+            messages = json.loads(messages_data["value"])
         else:
-            conversation = {
-                "messages": [],
-                "topic": None,
-                "started_at": None,
-                "last_active": None,
-                "message_count": 0,
-            }
+            messages = []
 
         # Add user message
-        conversation["messages"].append(
+        messages.append(
             {
+                "id": f"msg_{uuid.uuid4().hex[:8]}",
                 "timestamp": time.time(),
-                "channel": channel,
                 "role": "user",
                 "content": user_message,
+                "channel_id": channel_id,
             }
         )
 
         # Add assistant response
-        conversation["messages"].append(
+        messages.append(
             {
+                "id": f"msg_{uuid.uuid4().hex[:8]}",
                 "timestamp": time.time(),
-                "channel": channel,
                 "role": "assistant",
-                "content": response_text,
+                "content": assistant_response,
+                "channel_id": channel_id,
             }
         )
 
-        conversation["last_active"] = time.time()
-        conversation["message_count"] = len(conversation["messages"])
-
-        if not conversation["started_at"]:
-            conversation["started_at"] = time.time()
+        # Keep only last 200 messages to prevent unbounded growth
+        if len(messages) > 200:
+            messages = messages[-200:]
 
         # Save back to Redis
-        redis_write(f"conversation:{user_id}", json.dumps(conversation))
+        redis_write(f"global_messages:{user_id}", json.dumps(messages))
 
         logger.info(
-            f"Saved conversation exchange for {user_id}: {len(conversation['messages'])} total messages"
+            f"Saved message exchange for {user_id}: {len(messages)} total messages"
         )
 
     except Exception as e:
-        logger.error(f"Error saving conversation exchange for {user_id}: {e}")
+        logger.error(f"Error saving message to global log for {user_id}: {e}")
 
 
-def _archive_current_conversation(user_id: str) -> dict[str, Any]:
-    """Internal helper to archive current conversation (not exposed as tool)."""
+# 6. INTENT HANDLER REGISTRATION
+async def process_topic_analysis_intent(intent: TopicAnalysisIntent):
+    """Process topic analysis intents - extract topics from unanalyzed messages."""
+    try:
+        logger.info(f"Processing topic analysis for {intent.user_id}")
+
+        # Get unanalyzed messages
+        unanalyzed_messages = _get_unanalyzed_messages(intent.user_id)
+
+        if not unanalyzed_messages:
+            logger.info(f"No unanalyzed messages for {intent.user_id}")
+            return
+
+        # Analyze topics using LLM (this would be a separate LLM call)
+        topic_analysis = await _analyze_topics_with_llm(unanalyzed_messages)
+
+        # Update topic knowledge base
+        _update_topic_knowledge_base(intent.user_id, topic_analysis)
+
+        # Update analysis pointer
+        _update_analysis_pointer(intent.user_id, len(unanalyzed_messages))
+
+        logger.info(
+            f"Completed topic analysis for {intent.user_id}: {len(topic_analysis.get('topics', []))} topics"
+        )
+
+    except Exception as e:
+        logger.error(f"Topic analysis failed for {intent.user_id}: {e}")
+
+
+async def process_topic_search_intent(intent: TopicSearchIntent):
+    """Process topic search intents - search for relevant topics and update cache."""
+    try:
+        logger.info(f"Processing topic search for {intent.user_id}: {intent.query}")
+
+        # Search topics with high relevance threshold
+        relevant_topics = _search_topics_with_relevance(
+            intent.user_id, intent.query, intent.relevance_threshold
+        )
+
+        if relevant_topics:
+            logger.info(
+                f"Found {len(relevant_topics)} relevant topics for query: {intent.query}"
+            )
+            # Topics are automatically cached by _search_topics_with_relevance
+        else:
+            logger.info(
+                f"No topics found above threshold {intent.relevance_threshold} for query: {intent.query}"
+            )
+
+    except Exception as e:
+        logger.error(f"Topic search failed for {intent.user_id}: {e}")
+
+
+def _get_unanalyzed_messages(user_id: str) -> list[dict[str, Any]]:
+    """Get messages that haven't been analyzed yet."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read
+
+        # Get last analysis pointer
+        analysis_data = redis_read(f"last_analysis:{user_id}")
+        if analysis_data.get("success") and analysis_data.get("value"):
+            last_analysis = json.loads(analysis_data["value"])
+            last_message_index = last_analysis.get("last_message_index", 0)
+        else:
+            last_message_index = 0
+
+        # Get all messages
+        messages_data = redis_read(f"global_messages:{user_id}")
+        if messages_data.get("success") and messages_data.get("value"):
+            all_messages = json.loads(messages_data["value"])
+            # Return messages after last analysis
+            return all_messages[last_message_index:]
+        else:
+            return []
+
+    except Exception as e:
+        logger.error(f"Error getting unanalyzed messages for {user_id}: {e}")
+        return []
+
+
+def _update_analysis_pointer(user_id: str, analyzed_count: int):
+    """Update the pointer to track last analysis position."""
     try:
         from roles.shared_tools.redis_tools import redis_read, redis_write
 
-        # Load current conversation
-        conversation_data = redis_read(f"conversation:{user_id}")
-        if not conversation_data.get("success") or not conversation_data.get("data"):
-            return {"success": False, "reason": "no_conversation"}
+        # Get current total message count
+        messages_data = redis_read(f"global_messages:{user_id}")
+        if messages_data.get("success") and messages_data.get("value"):
+            all_messages = json.loads(messages_data["value"])
+            total_messages = len(all_messages)
+        else:
+            total_messages = 0
 
-        conversation = json.loads(conversation_data["data"])
-
-        if len(conversation.get("messages", [])) < 3:
-            return {"success": False, "reason": "too_short"}
-
-        # Create simple archive entry
-        archive_entry = {
-            "archived_at": time.time(),
-            "message_count": len(conversation["messages"]),
-            "topic": conversation.get("topic", "general"),
-            "summary": f"Conversation with {len(conversation['messages'])} messages",
+        # Update analysis pointer
+        analysis_pointer = {
+            "last_analysis_timestamp": time.time(),
+            "last_message_index": total_messages,  # Point to end of current messages
+            "analyzed_message_count": analyzed_count,
         }
 
-        # Save to archive (simplified)
-        archive_key = f"conversation_archive:{user_id}"
-        archive_data = redis_read(archive_key)
-        if archive_data.get("success") and archive_data.get("data"):
-            archive = json.loads(archive_data["data"])
-        else:
-            archive = {"archived_conversations": []}
-
-        archive["archived_conversations"].append(archive_entry)
-        archive["archived_conversations"] = archive["archived_conversations"][
-            -10:
-        ]  # Keep last 10
-
-        redis_write(archive_key, json.dumps(archive))
+        redis_write(f"last_analysis:{user_id}", json.dumps(analysis_pointer))
 
         logger.info(
-            f"Archived conversation for {user_id}: {len(conversation['messages'])} messages"
+            f"Updated analysis pointer for {user_id}: analyzed {analyzed_count} messages"
         )
-        return {"success": True, "archived": True}
 
     except Exception as e:
-        logger.error(f"Error archiving conversation for {user_id}: {e}")
-        return {"success": False, "error": str(e)}
+        logger.error(f"Error updating analysis pointer for {user_id}: {e}")
 
 
-def _initialize_fresh_conversation(user_id: str, new_topic: str):
-    """Internal helper to initialize fresh conversation."""
+async def _analyze_topics_with_llm(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Analyze messages with LLM to extract topics and key information."""
+    # This would make an LLM call to analyze the conversation
+    # For now, return a simple mock analysis
     try:
-        from roles.shared_tools.redis_tools import redis_write
+        # Create conversation text for analysis
+        conversation_text = "\n".join(
+            [f"{msg['role']}: {msg['content']}" for msg in messages]
+        )
 
-        new_conversation = {
-            "messages": [],
-            "topic": new_topic,
-            "started_at": time.time(),
-            "last_active": time.time(),
-            "message_count": 0,
+        # Mock analysis - in real implementation, this would be an LLM call
+        mock_analysis = {
+            "topics": ["general_conversation"],
+            "key_details": ["User engaged in natural conversation"],
+            "importance": 5,
+            "summary": f"Conversation with {len(messages)} messages",
         }
 
-        redis_write(f"conversation:{user_id}", json.dumps(new_conversation))
+        logger.info(f"Analyzed {len(messages)} messages")
+        return mock_analysis
 
     except Exception as e:
-        logger.error(f"Error initializing fresh conversation for {user_id}: {e}")
+        logger.error(f"LLM topic analysis failed: {e}")
+        return {
+            "topics": [],
+            "key_details": [],
+            "importance": 1,
+            "summary": "Analysis failed",
+        }
 
 
-# 5. INTENT HANDLER REGISTRATION
-async def process_conversation_intent(intent: ConversationIntent):
-    """Process conversation-specific intents - called by IntentProcessor."""
-    logger.info(f"Processing conversation intent: {intent.interaction_type}")
+def _update_topic_knowledge_base(user_id: str, analysis: dict[str, Any]):
+    """Update the topic knowledge base with analysis results."""
+    try:
+        from roles.shared_tools.redis_tools import redis_read, redis_write
+
+        # Load existing topics
+        topics_data = redis_read(f"topics:{user_id}")
+        if topics_data.get("success") and topics_data.get("value"):
+            topics = json.loads(topics_data["value"])
+        else:
+            topics = {}
+
+        # Update topics with new analysis
+        for topic in analysis.get("topics", []):
+            if topic in topics:
+                # Update existing topic
+                topics[topic]["last_discussed"] = time.time()
+                topics[topic]["key_details"].extend(analysis.get("key_details", []))
+                # Keep only unique details
+                topics[topic]["key_details"] = list(set(topics[topic]["key_details"]))
+            else:
+                # Create new topic
+                topics[topic] = {
+                    "summary": analysis.get("summary", f"Discussion about {topic}"),
+                    "key_details": analysis.get("key_details", []),
+                    "last_discussed": time.time(),
+                    "importance": analysis.get("importance", 5),
+                    "related_topics": [],
+                }
+
+        # Save updated topics
+        redis_write(f"topics:{user_id}", json.dumps(topics))
+
+        logger.info(f"Updated topic knowledge base for {user_id}")
+
+    except Exception as e:
+        logger.error(f"Error updating topic knowledge base for {user_id}: {e}")
 
 
-# 6. ROLE REGISTRATION (auto-discovery)
+# 7. ROLE REGISTRATION
 def register_role():
-    """Auto-discovered by RoleRegistry - LLM can modify this."""
+    """Auto-discovered by RoleRegistry."""
     return {
         "config": ROLE_CONFIG,
-        "event_handlers": {},  # No event handlers
-        "tools": [start_new_conversation],  # Only topic management tool
+        "event_handlers": {},  # No event handlers needed
+        "tools": [analyze_conversation, search_topics],
         "intents": {
-            ConversationIntent: process_conversation_intent,
+            TopicAnalysisIntent: process_topic_analysis_intent,
+            TopicSearchIntent: process_topic_search_intent,
         },
-        "post_processors": [
-            save_conversation_exchange
-        ],  # Post-processing for conversation logging
+        "pre_processors": [load_conversation_context],
+        "post_processors": [save_message_to_log],
     }
 
 
-# 6. CONVERSATION UTILITIES (helper functions)
+# 8. CONVERSATION UTILITIES
 def get_conversation_statistics() -> dict[str, Any]:
-    """Get conversation role statistics (for monitoring/debugging)."""
+    """Get conversation role statistics."""
     return {
         "role_name": "conversation",
         "version": ROLE_CONFIG["version"],
-        "memory_enabled": ROLE_CONFIG["memory_enabled"],
-        "fast_reply": ROLE_CONFIG["fast_reply"],
-        "tools_required": True,
-        "context_types": ["recent_memory"],  # Router provides memory context
-        "features": ["natural_conversation", "memory_aware", "notification_intent"],
+        "architecture": "global_message_log_with_topic_analysis",
+        "features": [
+            "global_message_log",
+            "topic_extraction",
+            "memory_importance_ranking",
+            "llm_triggered_analysis",
+            "analysis_pointer_tracking",
+            "natural_conversation",
+        ],
     }
 
 
-# 7. CONSTANTS AND CONFIGURATION
-DEFAULT_RESPONSE_TIMEOUT = 10  # seconds
-
-
-# 8. ERROR HANDLING UTILITIES
+# 9. ERROR HANDLING
 def create_conversation_error_response(
     error: Exception, context: str = ""
 ) -> dict[str, Any]:
@@ -368,5 +656,5 @@ def create_conversation_error_response(
         "error": str(error),
         "error_type": error.__class__.__name__,
         "context": context,
-        "suggestion": "Try rephrasing your message or starting a new conversation",
+        "suggestion": "Try rephrasing your message or calling analyze_conversation()",
     }
