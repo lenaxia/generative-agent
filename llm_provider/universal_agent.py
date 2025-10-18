@@ -402,15 +402,15 @@ class UniversalAgent:
                 # Execute LLM with enhanced instruction
                 agent = self.assume_role(role, llm_type, context)
                 try:
-                    logger.debug(f"🔧 Starting LLM execution for role '{role}'")
-                    logger.debug(
+                    logger.info(f"🔧 Starting LLM execution for role '{role}'")
+                    logger.info(
                         f"🔧 Enhanced instruction preview: {enhanced_instruction[:200]}..."
                     )
 
                     response = agent(enhanced_instruction)
-                    logger.debug(f"🔧 LLM execution completed, processing response...")
-                    logger.debug(f"🔧 Response type: {type(response)}")
-                    logger.debug(
+                    logger.info(f"🔧 LLM execution completed, processing response...")
+                    logger.info(f"🔧 Response type: {type(response)}")
+                    logger.info(
                         f"🔧 Response has message attr: {hasattr(response, 'message') if response else False}"
                     )
 
@@ -467,11 +467,11 @@ class UniversalAgent:
                             f"🔧 Converted response to string (fallback): {llm_result[:100]}..."
                         )
 
-                    logger.debug(
+                    logger.info(
                         f"🔧 Final llm_result length: {len(llm_result) if llm_result else 0}"
                     )
-                    logger.debug(f"🔧 Final llm_result is None: {llm_result is None}")
-                    logger.debug(
+                    logger.info(f"🔧 Final llm_result is None: {llm_result is None}")
+                    logger.info(
                         f"🔧 Final llm_result is empty: {llm_result == '' if llm_result is not None else 'N/A'}"
                     )
 
