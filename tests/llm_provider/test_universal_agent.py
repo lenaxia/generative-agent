@@ -5,7 +5,7 @@ from common.task_context import TaskContext
 from common.task_graph import TaskDescription, TaskGraph
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.tool_registry import ToolRegistry
-from llm_provider.universal_agent import ExecutionMode, UniversalAgent
+from llm_provider.universal_agent import UniversalAgent
 
 
 class TestUniversalAgent(unittest.TestCase):

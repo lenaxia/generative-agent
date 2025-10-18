@@ -151,16 +151,9 @@ def analyze_conversation() -> dict[str, Any]:
                 # user_id will be injected by lifecycle functions
             },
         }
-
-        logger.info("🔧 analyze_conversation tool completed successfully")
-        logger.debug(f"🔧 analyze_conversation result: {result}")
         return result
 
     except Exception as e:
-        logger.error(f"🔧 analyze_conversation tool failed with exception: {e}")
-        import traceback
-
-        logger.error(f"🔧 analyze_conversation traceback: {traceback.format_exc()}")
         return {"success": False, "error": str(e)}
 
 
@@ -168,8 +161,6 @@ def analyze_conversation() -> dict[str, Any]:
 def search_topics(query: str) -> dict[str, Any]:
     """Search for relevant past topics based on query with high relevance threshold."""
     try:
-        logger.info(f"🔧 search_topics tool called with query: {query}")
-
         result = {
             "success": True,
             "message": f"Searching for topics related to: {query}",
