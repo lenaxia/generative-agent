@@ -231,7 +231,7 @@ def _load_recent_messages(user_id: str, limit: int = 30) -> list[dict[str, Any]]
     try:
         from roles.shared_tools.redis_tools import redis_read
 
-        messages_data = redis_read(f"global_messages:{user_id}")
+        messages_data = redis_read(f"conversation:messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
             all_messages = messages_data["value"]  # Already parsed by redis_read
             # Ensure it's a list
@@ -256,7 +256,7 @@ def _count_unanalyzed_messages(user_id: str) -> int:
         from roles.shared_tools.redis_tools import redis_read
 
         # Get last analysis pointer
-        analysis_data = redis_read(f"last_analysis:{user_id}")
+        analysis_data = redis_read(f"conversation:last_analysis:{user_id}")
         if analysis_data.get("success") and analysis_data.get("value"):
             last_analysis = analysis_data["value"]  # Already parsed by redis_read
             if isinstance(last_analysis, dict):
@@ -267,7 +267,7 @@ def _count_unanalyzed_messages(user_id: str) -> int:
             last_message_index = 0
 
         # Get total message count
-        messages_data = redis_read(f"global_messages:{user_id}")
+        messages_data = redis_read(f"conversation:messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
             all_messages = messages_data["value"]  # Already parsed by redis_read
             if isinstance(all_messages, list):
@@ -289,7 +289,7 @@ def _load_recent_topics_cache(user_id: str) -> dict[str, Any]:
         from roles.shared_tools.redis_tools import redis_read
 
         # Load recent topics cache (has TTL of 1 hour)
-        cache_data = redis_read(f"recent_topics_cache:{user_id}")
+        cache_data = redis_read(f"conversation:recent_topics_cache:{user_id}")
         if cache_data.get("success") and cache_data.get("value"):
             cached_topics = cache_data["value"]  # Already parsed by redis_read
             # Ensure it's a dict
@@ -315,7 +315,7 @@ def _search_topics_with_relevance(
         from roles.shared_tools.redis_tools import redis_read, redis_write
 
         # Load all topics
-        topics_data = redis_read(f"topics:{user_id}")
+        topics_data = redis_read(f"conversation:topics:{user_id}")
         if not topics_data.get("success") or not topics_data.get("value"):
             return {}
 
@@ -408,7 +408,7 @@ def _save_message_to_global_log(
         from roles.shared_tools.redis_tools import redis_read, redis_write
 
         # Load existing messages
-        messages_data = redis_read(f"global_messages:{user_id}")
+        messages_data = redis_read(f"conversation:messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
             messages = messages_data["value"]
         else:
@@ -441,7 +441,7 @@ def _save_message_to_global_log(
             messages = messages[-200:]
 
         # Save back to Redis
-        redis_write(f"global_messages:{user_id}", json.dumps(messages))
+        redis_write(f"conversation:messages:{user_id}", json.dumps(messages))
 
         logger.info(
             f"Saved message exchange for {user_id}: {len(messages)} total messages"
@@ -519,7 +519,7 @@ def _get_unanalyzed_messages(user_id: str) -> list[dict[str, Any]]:
             last_message_index = 0
 
         # Get all messages
-        messages_data = redis_read(f"global_messages:{user_id}")
+        messages_data = redis_read(f"conversation:messages:{user_id}")
         if messages_data.get("success") and messages_data.get("value"):
             all_messages = messages_data["value"]
             # Return messages after last analysis
@@ -552,7 +552,9 @@ def _update_analysis_pointer(user_id: str, analyzed_count: int):
             "analyzed_message_count": analyzed_count,
         }
 
-        redis_write(f"last_analysis:{user_id}", json.dumps(analysis_pointer))
+        redis_write(
+            f"conversation:last_analysis:{user_id}", json.dumps(analysis_pointer)
+        )
 
         logger.info(
             f"Updated analysis pointer for {user_id}: analyzed {analyzed_count} messages"
@@ -599,7 +601,7 @@ def _update_topic_knowledge_base(user_id: str, analysis: dict[str, Any]):
         from roles.shared_tools.redis_tools import redis_read, redis_write
 
         # Load existing topics
-        topics_data = redis_read(f"topics:{user_id}")
+        topics_data = redis_read(f"conversation:topics:{user_id}")
         if topics_data.get("success") and topics_data.get("value"):
             topics = topics_data["value"]
         else:
@@ -624,7 +626,7 @@ def _update_topic_knowledge_base(user_id: str, analysis: dict[str, Any]):
                 }
 
         # Save updated topics
-        redis_write(f"topics:{user_id}", json.dumps(topics))
+        redis_write(f"conversation:topics:{user_id}", json.dumps(topics))
 
         logger.info(f"Updated topic knowledge base for {user_id}")
 

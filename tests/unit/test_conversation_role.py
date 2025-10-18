@@ -240,7 +240,7 @@ class TestHelperFunctions:
 
             assert len(result) == 2
             assert result[0]["content"] == "Hello"
-            mock_read.assert_called_once_with("global_messages:test_user")
+            mock_read.assert_called_once_with("conversation:messages:test_user")
 
     def test_load_recent_topics_cache(self):
         """Test loading recent topics cache."""
@@ -262,7 +262,9 @@ class TestHelperFunctions:
 
             assert "dogs" in result
             assert result["dogs"]["relevance_score"] == 0.9
-            mock_read.assert_called_once_with("recent_topics_cache:test_user")
+            mock_read.assert_called_once_with(
+                "conversation:recent_topics_cache:test_user"
+            )
 
     def test_search_topics_with_relevance(self):
         """Test searching topics with relevance scoring."""
@@ -384,7 +386,7 @@ class TestHelperFunctions:
             # Should have called write with updated pointer
             mock_write.assert_called_once()
             call_args = mock_write.call_args[0]
-            assert call_args[0] == "last_analysis:test_user"
+            assert call_args[0] == "conversation:last_analysis:test_user"
 
             saved_pointer = json.loads(call_args[1])
             assert saved_pointer["last_message_index"] == 10  # Total message count
@@ -410,7 +412,7 @@ class TestHelperFunctions:
             # Should have called write with updated messages
             mock_write.assert_called_once()
             call_args = mock_write.call_args[0]
-            assert call_args[0] == "global_messages:test_user"
+            assert call_args[0] == "conversation:messages:test_user"
 
             saved_messages = json.loads(call_args[1])
             assert len(saved_messages) == 3  # 1 existing + 2 new (user + assistant)
