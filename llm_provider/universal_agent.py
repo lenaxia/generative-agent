@@ -402,67 +402,58 @@ class UniversalAgent:
                 # Execute LLM with enhanced instruction
                 agent = self.assume_role(role, llm_type, context)
                 try:
-                    logger.info(f"🔧 Starting LLM execution for role '{role}'")
-                    logger.info(
-                        f"🔧 Enhanced instruction preview: {enhanced_instruction[:200]}..."
-                    )
-
                     response = agent(enhanced_instruction)
-                    logger.info(f"🔧 LLM execution completed, processing response...")
-                    logger.info(f"🔧 Response type: {type(response)}")
-                    logger.info(
-                        f"🔧 Response has message attr: {hasattr(response, 'message') if response else False}"
-                    )
 
                     if response is None:
-                        logger.warning(
-                            f"🔧 LLM returned None response for role '{role}'"
-                        )
                         llm_result = "No response generated"
                     elif hasattr(response, "message") and hasattr(
                         response.message, "content"
                     ):
-                        logger.info(f"🔧 Processing Strands AgentResult object")
                         # Handle Strands AgentResult object
                         content = response.message.content
-                        logger.info(f"🔧 Content type: {type(content)}")
-                        logger.info(f"🔧 Content value: {repr(content)}")
-                        logger.info(
-                            f"🔧 Content length: {len(content) if hasattr(content, '__len__') else 'N/A'}"
-                        )
+                    elif (
+                        hasattr(response, "message")
+                        and isinstance(response.message, dict)
+                        and "content" in response.message
+                    ):
+                        # Handle dict-based message access
+                        content = response.message["content"]
 
-                        if isinstance(content, list) and len(content) > 0:
-                            first_content = content[0]
-                            logger.info(f"🔧 First content type: {type(first_content)}")
-                            logger.info(f"🔧 First content value: {repr(first_content)}")
-                            if (
-                                isinstance(first_content, dict)
-                                and "text" in first_content
-                            ):
-                                llm_result = first_content["text"]
-                                logger.info(
-                                    f"🔧 Extracted text from dict: {repr(llm_result[:100])}"
-                                )
-                            elif hasattr(first_content, "text"):
-                                llm_result = first_content.text
-                                logger.info(
-                                    f"🔧 Extracted text from object: {repr(llm_result[:100])}"
-                                )
+                        if isinstance(content, list) and len(content) == 0:
+                            # Handle empty content arrays (LLM called tools but generated no follow-up text)
+                            if role == "conversation":
+                                llm_result = "I've processed your request and updated my understanding."
                             else:
-                                llm_result = str(content)
-                                logger.info(
-                                    f"🔧 Converted content to string: {repr(llm_result[:100])}"
-                                )
+                                llm_result = "Task completed successfully."
+                        elif isinstance(content, list) and len(content) > 0:
+                            # Extract all text content from all blocks
+                            text_parts = []
+                            for content_block in content:
+                                if (
+                                    isinstance(content_block, dict)
+                                    and "text" in content_block
+                                ):
+                                    text_content = content_block["text"]
+                                    if text_content:  # Only add non-empty text
+                                        text_parts.append(text_content)
+                                elif hasattr(content_block, "text"):
+                                    text_content = content_block.text
+                                    if text_content:  # Only add non-empty text
+                                        text_parts.append(text_content)
+
+                            # Combine all text parts
+                            if text_parts:
+                                llm_result = "\n".join(text_parts)
+                            else:
+                                # No text content found - provide fallback
+                                if role == "conversation":
+                                    llm_result = "I've analyzed our conversation to better understand the context for future interactions."
+                                else:
+                                    llm_result = "Task completed successfully."
                         elif isinstance(content, str):
                             llm_result = content
-                            logger.info(
-                                f"🔧 Used string content directly: {repr(llm_result[:100])}"
-                            )
                         else:
                             llm_result = str(response)
-                            logger.info(
-                                f"🔧 Converted response to string: {repr(llm_result[:100])}"
-                            )
                     else:
                         llm_result = str(response)
                         logger.debug(
