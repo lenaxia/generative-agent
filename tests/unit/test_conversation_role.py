@@ -72,9 +72,9 @@ class TestConversationRoleConfig:
         assert "conversational AI" in system_prompt
         assert "analyze_conversation" in system_prompt
         assert "topic-based memory" in system_prompt
-        assert "{recent_messages}" in system_prompt
-        assert "{recent_topics}" in system_prompt
-        assert "{unanalyzed_count}" in system_prompt
+        assert "{{recent_messages}}" in system_prompt
+        assert "{{recent_topics}}" in system_prompt
+        assert "{{unanalyzed_count}}" in system_prompt
 
 
 class TestTopicAnalysisIntent:

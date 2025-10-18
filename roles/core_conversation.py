@@ -66,14 +66,14 @@ Available tools:
 - search_topics(query): Search for relevant past topics when you need specific information about previous discussions
 
 RECENT CONVERSATION CONTEXT:
-{recent_messages}
+{{recent_messages}}
 
 RECENT TOPICS (auto-injected):
-{recent_topics}
+{{recent_topics}}
 
-Recent message count: {message_count}
-Unanalyzed messages: {unanalyzed_count}
-Current topics: {current_topics}
+Recent message count: {{message_count}}
+Unanalyzed messages: {{unanalyzed_count}}
+Current topics: {{current_topics}}
 
 Provide natural, helpful conversational responses. Use the recent conversation context and recent topics to maintain continuity and reference previous discussions.
 
