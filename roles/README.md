@@ -1,6 +1,6 @@
 # Universal Agent System - Roles Directory
 
-This directory contains the specialized roles for the Universal Agent System, implementing a **single-file role architecture** with **Router-Driven Context Selection** capabilities.
+This directory contains the specialized roles for the Universal Agent System, implementing a **single-file role architecture** with **Router-Driven Context Selection** capabilities and **lifecycle function support**.
 
 ## 🎭 **Role Architecture Overview**
 
@@ -8,11 +8,12 @@ The Universal Agent System uses a **single agent with multiple specialized roles
 
 ### **Key Architectural Principles**
 
-- **Single-File Roles**: Each role consolidated into one Python file (~300 lines vs 1800+ lines)
-- **Context-Aware**: Roles can request and utilize contextual information
+- **Single-File Roles**: Each role consolidated into one Python file (~300-700 lines vs 1800+ lines)
+- **Context-Aware**: Roles can request and utilize contextual information via Router-Driven Context Selection
 - **LLM-Safe**: Designed specifically for AI agent development and modification
 - **Intent-Based**: Pure function event handlers returning intents
 - **Single Event Loop**: No background threads, no race conditions
+- **Lifecycle Support**: Pre/post processing functions for enhanced capabilities
 
 ## 🤖 **Available Roles**
 
@@ -33,7 +34,16 @@ The Universal Agent System uses a **single agent with multiple specialized roles
 - **Context Requirements**: Environment context (optional)
 - **LLM Type**: DEFAULT
 - **Features**: Current weather, forecasts, weather-based recommendations
+- **Lifecycle Functions**: Pre-processing (fetch_weather_data), Post-processing (format_for_tts, pii_scrubber)
 - **Example**: "What's the weather?" → May use location context if available
+
+#### **Search Role** - [`core_search.py`](core_search.py)
+
+- **Purpose**: Web search and news search via Tavily API
+- **Context Requirements**: None
+- **LLM Type**: DEFAULT
+- **Features**: Web search, news search, search result processing
+- **Example**: "Search for latest AI news" → Uses Tavily API for current results
 
 #### **Smart Home Role** - [`core_smart_home.py`](core_smart_home.py)
 
@@ -45,10 +55,11 @@ The Universal Agent System uses a **single agent with multiple specialized roles
 
 #### **Planning Role** - [`core_planning.py`](core_planning.py)
 
-- **Purpose**: Complex task planning and analysis
+- **Purpose**: Complex task planning and TaskGraph generation
 - **Context Requirements**: Memory context (for personalized planning)
 - **LLM Type**: STRONG (complex reasoning)
-- **Features**: Multi-step planning, task analysis, workflow creation
+- **Features**: Multi-step planning, task analysis, workflow creation using available system roles
+- **Lifecycle Functions**: Pre-processing (load_available_roles), Post-processing (validate_task_graph)
 - **Example**: "Plan my morning routine" → Router requests memory context for preferences
 
 #### **Router Role** - [`core_router.py`](core_router.py)
@@ -68,6 +79,14 @@ The Universal Agent System uses a **single agent with multiple specialized roles
 - **Features**: Schedule retrieval, event creation, calendar queries
 - **Context Aware**: Uses memory for recurring events, location for event suggestions
 - **Example**: "What's my schedule today?" → Router requests schedule context
+
+#### **Conversation Role** - [`core_conversation.py`](core_conversation.py)
+
+- **Purpose**: Conversation analysis and memory management
+- **Context Requirements**: Memory context
+- **LLM Type**: DEFAULT
+- **Features**: Conversation analysis, topic search, memory storage
+- **Example**: "What did we discuss about the project?" → Uses memory context for conversation history
 
 ## 🧠 **Router-Driven Context Selection**
 
@@ -124,7 +143,7 @@ User Input → Router Analysis → Context Requirements → Context Gathering �
 
 ## 🏗️ **Role Implementation Pattern**
 
-Each role follows a standardized single-file pattern:
+Each role follows a standardized single-file pattern with 6 main sections:
 
 ```python
 # roles/core_example.py
@@ -149,9 +168,17 @@ ROLE_CONFIG = {
     "fast_reply": True,
     "memory_enabled": False,  # Set to True if role benefits from memory context
     "location_aware": False,  # Set to True if role needs location context
+    "presence_aware": False,  # Set to True if role considers household presence
+    "schedule_aware": False,  # Set to True if role uses calendar/schedule data
     "when_to_use": "When to use this role",
     "parameters": {
         # Parameter schema for router context selection
+        "action": {
+            "type": "string",
+            "required": True,
+            "description": "Action to perform",
+            "examples": ["get", "set", "list"]
+        }
     },
     "tools": {
         "automatic": True,
@@ -159,7 +186,7 @@ ROLE_CONFIG = {
         "include_builtin": False,
     },
     "prompts": {
-        "system": "Role-specific system prompt"
+        "system": "Role-specific system prompt with clear instructions"
     }
 }
 
@@ -187,7 +214,37 @@ def example_tool(parameter: str) -> Dict[str, Any]:
     """Example tool function."""
     return {"success": True, "result": parameter}
 
-# 5. ROLE REGISTRATION (auto-discovery)
+# 5. LIFECYCLE FUNCTIONS (optional - discovered automatically)
+def example_pre_processor(instruction: str, context, parameters: dict) -> dict:
+    """Pre-processing function - runs before LLM execution.
+
+    Args:
+        instruction: User instruction
+        context: Task context
+        parameters: Extracted parameters from routing
+
+    Returns:
+        dict: Data to inject into LLM prompt
+    """
+    return {
+        "processed_data": f"Pre-processed: {instruction}",
+        "timestamp": "2025-01-01T00:00:00Z"
+    }
+
+def example_post_processor(llm_result: str, context, pre_data: dict) -> str:
+    """Post-processing function - runs after LLM execution.
+
+    Args:
+        llm_result: LLM response text
+        context: Task context
+        pre_data: Data from pre-processing
+
+    Returns:
+        str: Final processed result
+    """
+    return f"Post-processed: {llm_result}"
+
+# 6. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Auto-discovered by RoleRegistry."""
     return {
@@ -237,12 +294,68 @@ Roles can influence memory storage through interaction importance:
 
 The system automatically assesses and stores important interactions using LLM-based scoring.
 
+## 🔄 **Lifecycle Functions**
+
+Lifecycle functions provide pre and post-processing capabilities for roles.
+
+### **Pre-Processing Functions**
+
+Pre-processing functions run **before** LLM execution and can:
+
+- Fetch external data
+- Process parameters
+- Prepare context for LLM
+
+**Function Signature:**
+
+```python
+def function_name(instruction: str, context, parameters: dict) -> dict:
+    """Pre-processing function."""
+    return {"key": "value"}  # Data injected into LLM prompt
+```
+
+**Examples:**
+
+- `fetch_weather_data()` - Fetches weather data before LLM processes request
+- `load_available_roles()` - Loads system roles for planning tasks
+
+### **Post-Processing Functions**
+
+Post-processing functions run **after** LLM execution and can:
+
+- Format LLM output
+- Scrub sensitive data
+- Transform results
+
+**Function Signature:**
+
+```python
+def function_name(llm_result: str, context, pre_data: dict) -> str:
+    """Post-processing function."""
+    return "processed_result"  # Final result returned to user
+```
+
+**Examples:**
+
+- `format_for_tts()` - Formats weather responses for text-to-speech
+- `pii_scrubber()` - Removes sensitive data from responses
+- `validate_task_graph()` - Validates planning output structure
+
+### **Lifecycle Function Discovery**
+
+Lifecycle functions are **automatically discovered** by the Universal Agent:
+
+- **No registration required** - functions are found by naming convention
+- **No configuration needed** - not declared in ROLE_CONFIG or register_role()
+- **Flexible naming** - any function name works as long as signature matches
+- **Optional** - roles work fine without lifecycle functions
+
 ## 📊 **Role Performance Characteristics**
 
 ### **LLM Type Guidelines**
 
 - **WEAK**: Fast routing, simple operations (Router, Timer)
-- **DEFAULT**: Standard role operations (Weather, Smart Home, Calendar)
+- **DEFAULT**: Standard role operations (Weather, Smart Home, Calendar, Search, Conversation)
 - **STRONG**: Complex reasoning and planning (Planning role)
 
 ### **Context Overhead**
@@ -268,6 +381,7 @@ The system automatically discovers roles using the `register_role()` function:
 2. **Registration**: Calls `register_role()` function in each file
 3. **Validation**: Validates role structure and configuration
 4. **Integration**: Registers tools, intents, and event handlers
+5. **Lifecycle Discovery**: Finds lifecycle functions by signature matching
 
 ### **Role Registry Integration**
 
@@ -280,6 +394,7 @@ def register_role():
         "tools": [...],                  # List of @tool decorated functions
         "intents": [...]                 # List of Intent classes
     }
+    # Note: Lifecycle functions are NOT declared here - they're auto-discovered
 ```
 
 ## 🧪 **Testing Context-Aware Roles**
@@ -296,13 +411,22 @@ def test_role_config():
 def test_role_context_integration():
     registration = register_role()
     assert registration["config"]["memory_enabled"] == True
+
+# Test lifecycle functions
+def test_pre_processing():
+    result = example_pre_processor("test instruction", Mock(), {})
+    assert "processed_data" in result
+
+def test_post_processing():
+    result = example_post_processor("test result", Mock(), {})
+    assert result.startswith("Post-processed:")
 ```
 
 ### **Integration Testing**
 
 Context-aware roles are tested through:
 
-- **Unit Tests**: Role-specific functionality
+- **Unit Tests**: Role-specific functionality and lifecycle functions
 - **Integration Tests**: Context gathering and usage
 - **End-to-End Tests**: Complete request flow with context
 
@@ -312,11 +436,13 @@ Context-aware roles are tested through:
 roles/
 ├── README.md                    # This file - role development guide
 ├── core_timer.py               # Timer role with heartbeat architecture
-├── core_weather.py             # Weather role with environment context
+├── core_weather.py             # Weather role with lifecycle functions
+├── core_search.py              # Search role with Tavily API integration
 ├── core_smart_home.py          # Smart home role with location context
-├── core_planning.py            # Planning role with memory context
+├── core_planning.py            # Planning role with TaskGraph generation
 ├── core_router.py              # Router role with context selection
 ├── core_calendar.py            # Calendar role with schedule context
+├── core_conversation.py        # Conversation role with memory context
 ├── shared_tools/               # Shared tool functions
 │   ├── __init__.py
 │   └── redis_tools.py          # Redis operations for context storage
@@ -331,8 +457,9 @@ roles/
 1. **Follow Single-File Pattern**: Keep all role logic in one file
 2. **Use Context Flags**: Set `memory_enabled`, `location_aware` flags appropriately
 3. **Implement Pure Functions**: Event handlers should be pure functions returning intents
-4. **Type Safety**: Ensure all examples in parameters are properly typed
-5. **Test Coverage**: Write comprehensive tests for all role functionality
+4. **Add Lifecycle Functions**: Use pre/post processing for external data and formatting
+5. **Type Safety**: Ensure all examples in parameters are properly typed
+6. **Test Coverage**: Write comprehensive tests for all role functionality
 
 ### **Context Integration**
 
@@ -341,17 +468,27 @@ roles/
 3. **Graceful Degradation**: Roles work without context if gathering fails
 4. **Memory Assessment**: Important interactions are automatically stored
 
+### **Lifecycle Function Guidelines**
+
+1. **Optional Enhancement**: Lifecycle functions are optional - roles work without them
+2. **Automatic Discovery**: No need to register or configure lifecycle functions
+3. **Proper Signatures**: Follow exact function signatures for pre/post processing
+4. **Error Handling**: Include proper error handling in lifecycle functions
+5. **Sync by Default**: Lifecycle functions should be synchronous unless specifically needed async
+
 ### **Performance Considerations**
 
 1. **Fast Reply**: Mark simple roles with `"fast_reply": True`
 2. **LLM Type**: Use appropriate LLM strength for role complexity
 3. **Context Overhead**: Consider context gathering cost in role design
 4. **Tool Selection**: Use `"automatic": True` for role-specific tools only
+5. **Lifecycle Efficiency**: Keep lifecycle functions fast and focused
 
 ## 📖 **Related Documentation**
 
 - **[Document 33](../docs/33_ROUTER_DRIVEN_CONTEXT_SELECTION_DESIGN.md)**: Complete Router-Driven Context Selection design
+- **[Document 34](../docs/34_PLANNING_ROLE_DESIGN.md)**: Planning role implementation with lifecycle functions
 - **[Architecture Overview](../docs/01_ARCHITECTURE_OVERVIEW.md)**: System architecture patterns
 - **[Tool Development Guide](../docs/05_TOOL_DEVELOPMENT_GUIDE.md)**: Creating new tools and roles
 
-The roles directory implements a sophisticated context-aware agent system that provides intelligent, personalized responses while maintaining LLM-safe architecture principles and zero-overhead performance for simple requests.
+The roles directory implements a sophisticated context-aware agent system that provides intelligent, personalized responses while maintaining LLM-safe architecture principles and zero-overhead performance for simple requests. The addition of lifecycle functions enables powerful pre and post-processing capabilities while maintaining the simplicity of the single-file role architecture.
