@@ -159,7 +159,7 @@ from common.event_context import LLMSafeEventContext
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "example",
     "version": "1.0.0",
@@ -214,7 +214,7 @@ def example_tool(parameter: str) -> Dict[str, Any]:
     """Example tool function."""
     return {"success": True, "result": parameter}
 
-# 5. LIFECYCLE FUNCTIONS (optional - discovered automatically)
+# 5. LIFECYCLE FUNCTIONS (optional - defined in metadata)
 def example_pre_processor(instruction: str, context, parameters: dict) -> dict:
     """Pre-processing function - runs before LLM execution.
 
@@ -260,6 +260,8 @@ def register_role():
 ### **Making Roles Context-Aware**
 
 To make a role context-aware, set the appropriate flags in `ROLE_CONFIG`:
+
+# TODO: Move these to a sub key
 
 ```python
 ROLE_CONFIG = {
