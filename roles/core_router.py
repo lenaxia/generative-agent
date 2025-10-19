@@ -77,6 +77,7 @@ Example:
 
 ROUTING RULES:
 - Choose the role that best matches the request intent and capabilities
+- ONLY SELECT ONE ROLE, RETURN ONLY ONE JSON OBJECT
 - Use confidence 0.0-1.0 based on how well the request matches the role
 - If confidence < 0.7, route to "planning" for complex analysis
 - Consider role priorities: timer (urgent) > weather > smart_home > search > planning

@@ -37,8 +37,8 @@ def mock_planning_phase():
             "request_id": request_id,
         }
 
-    with patch("llm_provider.planning_tools.create_task_plan") as mock_create_plan:
-        mock_create_plan.side_effect = mock_plan_side_effect
+        # Legacy planning tools removed - no longer using task decomposition
+        # Complex requests now route through router to appropriate roles
         yield mock_create_plan
 
 

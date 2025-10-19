@@ -469,24 +469,15 @@ class WorkflowEngine:
                 instruction=request.prompt,
             )
 
-            # Create task plan using Universal Agent with planning role
-            task_context = self._create_task_plan(request.prompt, request_id)
+            # With new architecture, complex workflows should not use automatic task decomposition
+            # Instead, route complex requests through the router to appropriate roles
+            logger.info(f"Routing complex request '{request_id}' through router")
 
-            # Store the workflow context
-            self.active_workflows[request_id] = task_context
+            # Route the request using the router role
+            routing_result = self._route_request_with_router_role(request.prompt)
 
-            # Start execution and workflow state
-            task_context.start_execution()
-            if self.state == WorkflowState.IDLE:
-                self.state = WorkflowState.RUNNING
-                self.start_time = time.time()
-                self.last_checkpoint_time = self.start_time
-
-            # Execute DAG with parallel task processing
-            self._execute_dag_parallel(task_context)
-
-            logger.info(f"Workflow '{request_id}' created and started")
-            return request_id
+            # Execute the routed request as a fast-reply
+            return self._handle_fast_reply(request, routing_result)
 
         except Exception as e:
             logger.error(f"Error handling workflow request: {e}")
@@ -714,30 +705,6 @@ class WorkflowEngine:
         Raises:
             Exception: If task planning fails - no fallbacks, return error to user
         """
-        # Use existing planning tools via Universal Agent
-        # This follows the architecture: WorkflowEngine → Universal Agent → @tool functions
-        from llm_provider.planning_tools import create_task_plan
-
-        # Use the dynamic planning tool to create TaskGraph
-        planning_result = create_task_plan(
-            instruction=instruction, llm_factory=self.llm_factory, request_id=request_id
-        )
-
-        # Extract TaskGraph from planning result
-        task_graph = planning_result.get("task_graph")
-        tasks = planning_result.get("tasks", [])
-        dependencies = planning_result.get("dependencies", [])
-
-        if not task_graph or not tasks:
-            raise ValueError("Planning tool did not return valid tasks and task_graph")
-
-        # Convert TaskGraph to TaskContext using from_tasks method
-        task_context = TaskContext.from_tasks(
-            tasks=tasks, dependencies=dependencies, request_id=request_id
-        )
-
-        logger.info(f"Successfully created task plan with {len(tasks)} tasks")
-        return task_context
 
     def delegate_task(self, task_context: TaskContext, task: TaskNode):
         r"""\1
