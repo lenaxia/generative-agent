@@ -76,12 +76,18 @@ Example:
 }
 
 ROUTING RULES:
-- Choose the role that best matches the request intent and capabilities
-- ONLY SELECT ONE ROLE, RETURN ONLY ONE JSON OBJECT
+- For multi-task requests (multiple actions), ALWAYS route to "planning" role
+- For single-task requests, choose the role that best matches the intent
+- ONLY SELECT ONE ROLE FOR ROUTING, Do not route to multiple roles.
+- If something will take more than one step, route to "planning"
 - Use confidence 0.0-1.0 based on how well the request matches the role
 - If confidence < 0.7, route to "planning" for complex analysis
 - Consider role priorities: timer (urgent) > weather > smart_home > search > planning
-- Respond with ONLY the JSON object, nothing else"""
+- Use lowercase role names: "planning", "weather", "timer", "search", etc.
+- Respond with ONLY the JSON object, nothing else
+
+CRITICAL: If the request contains multiple tasks (like "do X, then Y, then Z"),
+route to "planning" role with confidence 0.95. The planning role will break it down properly."""
     },
 }
 
