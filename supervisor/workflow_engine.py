@@ -280,8 +280,14 @@ class WorkflowEngine:
                 # Fast-path execution
                 return self._handle_fast_reply(request, routing_result)
 
-        # Existing complex workflow path (unchanged)
-        return self._handle_complex_workflow(request)
+        # With new architecture, there are no complex workflows
+        # All requests should be handled through fast-reply routing
+        logger.warning(f"Router failed for request, falling back to planning role")
+
+        # Create fallback routing result for planning role
+        fallback_routing = {"route": "planning", "confidence": 0.5, "parameters": {}}
+
+        return self._handle_fast_reply(request, fallback_routing)
 
     def _handle_fast_reply(self, request: RequestMetadata, routing_result: dict) -> str:
         """Execute fast-reply with unified TaskContext storage."""
@@ -1510,13 +1516,32 @@ Respond with ONLY valid JSON in this exact format:
   "parameters": {{}}
 }}"""
 
-            # Delegate to router role's routing function (single-file role ownership)
-            from roles.core_router import route_request_with_available_roles
+            # Use Universal Agent with router role (proper architecture)
+            # This follows the pattern: WorkflowEngine → Universal Agent → Router Role
 
-            # Set universal agent reference for router role to use
-            self.role_registry._universal_agent = self.universal_agent
+            # Get available roles for context injection
+            available_roles = self.role_registry.get_fast_reply_roles()
+            roles_info = []
+            for role_def in available_roles:
+                role_config = role_def.config
+                roles_info.append(
+                    f"**{role_def.name}**: {role_config.get('description', '')}"
+                )
 
-            return route_request_with_available_roles(request_text, self.role_registry)
+            roles_context = "\n".join(roles_info)
+            enhanced_instruction = (
+                f"{request_text}\n\nAVAILABLE ROLES:\n{roles_context}"
+            )
+
+            # Execute through Universal Agent with router role
+            result = self.universal_agent.execute_task(
+                instruction=enhanced_instruction, role="router", llm_type=LLMType.WEAK
+            )
+
+            # Parse the JSON response from router
+            from roles.core_router import parse_routing_response
+
+            return parse_routing_response(result)
 
         except Exception as e:
             logger.error(f"Router role routing failed: {e}")

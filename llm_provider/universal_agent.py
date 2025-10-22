@@ -783,7 +783,27 @@ class UniversalAgent:
             prompts = role_def.get("config", {}).get("prompts", {})
         else:
             prompts = role_def.config.get("prompts", {})
-        return prompts.get("system", "You are a helpful AI assistant.")
+
+        system_prompt = prompts.get("system", "You are a helpful AI assistant.")
+
+        # Debug logging for router role specifically
+        if hasattr(role_def, "name") and role_def.name == "router":
+            logger.info(f"🔍 Router system prompt length: {len(system_prompt)}")
+            logger.info(
+                f"🔍 Router system prompt contains 'ONLY SELECT ONE': {'ONLY SELECT ONE' in system_prompt}"
+            )
+            logger.info(f"🔍 Router system prompt preview: {system_prompt[:200]}...")
+        elif (
+            isinstance(role_def, dict)
+            and role_def.get("config", {}).get("name") == "router"
+        ):
+            logger.info(f"🔍 Router system prompt length: {len(system_prompt)}")
+            logger.info(
+                f"🔍 Router system prompt contains 'ONLY SELECT ONE': {'ONLY SELECT ONE' in system_prompt}"
+            )
+            logger.info(f"🔍 Router system prompt preview: {system_prompt[:200]}...")
+
+        return system_prompt
 
     def _assemble_role_tools(
         self,

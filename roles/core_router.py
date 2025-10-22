@@ -220,20 +220,17 @@ def route_request_with_available_roles(
 
         roles_description = "\n".join(roles_description_parts)
 
-        routing_instruction = f"""USER REQUEST: "{request_text}"
+        # Use the router role's system prompt instead of creating a custom one
+        router_system_prompt = ROLE_CONFIG["prompts"]["system"]
+
+        routing_instruction = f"""{router_system_prompt}
+
+USER REQUEST: "{request_text}"
 
 AVAILABLE ROLES:
 {roles_description}
 
-Extract relevant parameters from the user request based on the role's parameter schema.
-Respond with ONLY valid JSON in this exact format:
-{{
-  "route": "role_name",
-  "confidence": 0.95,
-  "parameters": {{
-    "param_name": "extracted_value"
-  }}
-}}"""
+Extract relevant parameters from the user request based on the role's parameter schema."""
 
         # Execute with router role - this will output JSON
         from llm_provider.factory import LLMType
@@ -245,7 +242,7 @@ Respond with ONLY valid JSON in this exact format:
             # Fallback: create minimal universal agent
             logger.warning("No universal agent available, using fallback routing")
             return {
-                "route": "PLANNING",
+                "route": "planning",  # Use lowercase for consistency
                 "confidence": 0.0,
                 "parameters": {},
                 "valid": False,
@@ -277,8 +274,26 @@ def parse_routing_response(response_text: str) -> dict[str, Any]:
         # Clean the response text
         response_text = response_text.strip()
 
+        # Handle multiple JSON objects by extracting only the first one
+        import json
+        import re
+
+        # Find the first complete JSON object
+        json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", response_text)
+        if json_match:
+            first_json = json_match.group()
+            logger.info(
+                f"Extracted first JSON object from multi-object response: {first_json}"
+            )
+        else:
+            # Fallback to original response
+            first_json = response_text
+            logger.warning(
+                f"No JSON object found, using full response: {response_text}"
+            )
+
         # Parse JSON and validate with Pydantic
-        routing_response = RoutingResponse.model_validate_json(response_text)
+        routing_response = RoutingResponse.model_validate_json(first_json)
 
         # Apply confidence threshold logic
         selected_role = routing_response.route.lower()
