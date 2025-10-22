@@ -177,19 +177,19 @@ class RoleRegistry:
             logger.warning(f"Roles directory not found: {self.roles_directory}")
             return roles
 
-        # Discover multi-file roles (legacy pattern)
+        # Discover single-file roles FIRST (new LLM-safe pattern - prioritized)
+        for role_file in self.roles_directory.glob("core_*.py"):
+            role_name = role_file.stem.replace("core_", "")
+            roles.append(role_name)
+            logger.debug(f"Discovered single-file role: {role_name}")
+
+        # Discover multi-file roles SECOND (legacy pattern - only if no single-file exists)
         for role_dir in self.roles_directory.iterdir():
             if role_dir.is_dir() and (role_dir / "definition.yaml").exists():
                 # Skip shared_tools directory
-                if role_dir.name != "shared_tools":
+                if role_dir.name != "shared_tools" and role_dir.name not in roles:
                     roles.append(role_dir.name)
-
-        # Discover single-file roles (new LLM-safe pattern)
-        for role_file in self.roles_directory.glob("core_*.py"):
-            role_name = role_file.stem.replace("core_", "")
-            if role_name not in roles:  # Avoid duplicates
-                roles.append(role_name)
-                logger.debug(f"Discovered single-file role: {role_name}")
+                    logger.debug(f"Discovered multi-file role: {role_dir.name}")
 
         return roles
 
