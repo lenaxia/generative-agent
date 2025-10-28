@@ -147,28 +147,25 @@ class TestPlanningRoleIntentCreation:
         }
 
     def test_invalid_json_returns_error_message(self):
-        """Test that invalid JSON returns error message, not intent."""
+        """Test that invalid JSON raises ValueError exception."""
         # Arrange
         invalid_json = "This is not valid JSON"
 
-        # Act
-        result = execute_task_graph(
-            llm_result=invalid_json, context=self.mock_context, pre_data={}
-        )
-
-        # Assert
-        assert isinstance(result, str)
-        assert "No valid JSON found" in result or "Invalid" in result
+        # Act & Assert
+        with pytest.raises(ValueError, match="Invalid JSON in TaskGraph"):
+            execute_task_graph(
+                llm_result=invalid_json, context=self.mock_context, pre_data={}
+            )
 
     def test_missing_required_task_fields_returns_error(self):
-        """Test that missing required task fields returns error."""
+        """Test that missing required task fields creates intent (validation happens later)."""
         # Arrange
         invalid_task_graph = json.dumps(
             {
                 "tasks": [
                     {
                         "id": "task_1",
-                        # Missing name, description, role
+                        # Missing name, description, role - but intent creation succeeds
                     }
                 ],
                 "dependencies": [],
@@ -180,12 +177,13 @@ class TestPlanningRoleIntentCreation:
             llm_result=invalid_task_graph, context=self.mock_context, pre_data={}
         )
 
-        # Assert
-        assert isinstance(result, str)
-        assert "missing" in result.lower()
+        # Assert - Intent is created, validation happens at processing time
+        assert isinstance(result, WorkflowExecutionIntent)
+        assert len(result.tasks) == 1
+        assert result.tasks[0]["id"] == "task_1"
 
     def test_invalid_role_references_returns_error(self):
-        """Test that invalid role references return error."""
+        """Test that invalid role references create intent (validation happens later)."""
         # Arrange
         invalid_role_graph = json.dumps(
             {
@@ -209,9 +207,10 @@ class TestPlanningRoleIntentCreation:
             pre_data={"available_roles": ["search", "weather", "timer"]},
         )
 
-        # Assert
-        assert isinstance(result, str)
-        assert "Invalid role references" in result
+        # Assert - Intent is created, role validation happens at execution time
+        assert isinstance(result, WorkflowExecutionIntent)
+        assert len(result.tasks) == 1
+        assert result.tasks[0]["role"] == "nonexistent_role"
 
     def test_context_without_required_fields_handled_gracefully(self):
         """Test that context without required fields is handled gracefully."""
@@ -236,7 +235,7 @@ class TestPlanningRoleIntentCreation:
         assert result.original_instruction == "Multi-step workflow"  # Default value
 
     def test_empty_task_list_returns_error(self):
-        """Test that empty task list returns error."""
+        """Test that empty task list creates invalid intent (fails validation)."""
         # Arrange
         empty_task_graph = json.dumps({"tasks": [], "dependencies": []})
 
@@ -245,9 +244,10 @@ class TestPlanningRoleIntentCreation:
             llm_result=empty_task_graph, context=self.mock_context, pre_data={}
         )
 
-        # Assert
-        assert isinstance(result, str)
-        assert "At least one task is required" in result
+        # Assert - Intent is created but will fail validation
+        assert isinstance(result, WorkflowExecutionIntent)
+        assert len(result.tasks) == 0
+        assert not result.validate()  # Validation should fail for empty tasks
 
     def test_mixed_content_with_json_extracts_json(self):
         """Test that mixed content with embedded JSON extracts the JSON."""

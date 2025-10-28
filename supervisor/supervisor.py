@@ -72,8 +72,9 @@ class Supervisor:
         logger.info("Initializing LLM-safe Supervisor...")
         self.config_file = config_file
 
-        # NEW: Single event loop management
-        self._scheduled_tasks: list[asyncio.Task] = []
+        # Document 35: LLM-safe scheduled task management (no asyncio)
+        self._scheduled_tasks: list[dict] = []
+        self._scheduled_intervals: dict[str, float] = {}  # task_type -> last_run_time
 
         # Initialize intent processing and workflow suspension
         self.intent_processor = None
@@ -81,6 +82,68 @@ class Supervisor:
 
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
+
+    def add_scheduled_task(self, task: dict) -> None:
+        """Document 35: Add task to scheduled execution queue (LLM-safe).
+
+        Following Documents 25 & 26 LLM-safe architecture - no asyncio.
+
+        Args:
+            task: Task dictionary with 'type', 'handler', and optional 'interval', 'intent', 'data'
+        """
+        self._scheduled_tasks.append(task)
+        logger.debug(f"Added scheduled task: {task.get('type', 'unknown')}")
+
+    def process_scheduled_tasks(self) -> None:
+        """Document 35: Process scheduled tasks in single event loop (LLM-safe).
+
+        Following Documents 25 & 26 LLM-safe architecture - synchronous execution only.
+        """
+        import time
+
+        current_time = time.time()
+
+        # Process one-time tasks
+        one_time_tasks = [
+            task for task in self._scheduled_tasks if "interval" not in task
+        ]
+        for task in one_time_tasks:
+            try:
+                handler = task.get("handler")
+                if callable(handler):
+                    if "intent" in task:
+                        # Process intent-based tasks
+                        handler(task["intent"])
+                    else:
+                        # Process regular tasks
+                        handler(task)
+
+                self._scheduled_tasks.remove(task)
+                logger.debug(f"Executed scheduled task: {task.get('type', 'unknown')}")
+
+            except Exception as e:
+                logger.error(f"Scheduled task failed: {e}")
+                self._scheduled_tasks.remove(task)  # Remove failed tasks
+
+        # Process interval tasks
+        interval_tasks = [task for task in self._scheduled_tasks if "interval" in task]
+        for task in interval_tasks:
+            task_type = task.get("type", "unknown")
+            interval = task.get("interval", 60)
+            last_run = self._scheduled_intervals.get(task_type, 0)
+
+            if current_time - last_run >= interval:
+                try:
+                    handler = task.get("handler")
+                    if callable(handler):
+                        handler()
+
+                    self._scheduled_intervals[task_type] = current_time
+                    logger.debug(f"Executed interval task: {task_type}")
+
+                except Exception as e:
+                    logger.error(f"Interval task {task_type} failed: {e}")
+
         self.initialize_components()
         logger.info("LLM-safe Supervisor initialization complete.")
 
