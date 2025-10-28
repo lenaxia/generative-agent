@@ -148,14 +148,17 @@ def validate_task_graph(llm_result: str, context, pre_data: dict) -> str:
     try:
         # Parse JSON - try direct parsing first
         task_graph = None
+        clean_json = llm_result  # Default to original
+
         try:
             task_graph = json.loads(llm_result)
         except json.JSONDecodeError:
             # Try to extract JSON from mixed content
             json_match = re.search(r"\{.*\}", llm_result, re.DOTALL)
             if json_match:
+                clean_json = json_match.group()
                 try:
-                    task_graph = json.loads(json_match.group())
+                    task_graph = json.loads(clean_json)
                 except json.JSONDecodeError as e:
                     return f"Invalid JSON generated. Please try again. Error: {e}"
             else:
@@ -177,11 +180,8 @@ def validate_task_graph(llm_result: str, context, pre_data: dict) -> str:
         if role_errors:
             return f"Invalid role references: {'; '.join(role_errors)}"
 
-        # Success - return formatted result
-        task_count = len(task_graph.get("tasks", []))
-        dependency_count = len(task_graph.get("dependencies", []))
-
-        return f"TaskGraph created successfully with {task_count} tasks and {dependency_count} dependencies.\n\n{llm_result}"
+        # Success - return the clean JSON for execute_task_graph to process
+        return clean_json
 
     except Exception as e:
         logger.error(f"TaskGraph validation failed: {e}")

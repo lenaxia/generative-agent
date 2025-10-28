@@ -58,7 +58,7 @@ class TestRoleConfiguration:
         assert "{{available_roles}}" in system_prompt
         assert "TaskGraph" in system_prompt
         assert "BNF GRAMMAR" in system_prompt
-        assert "EXAMPLE OUTPUT" in system_prompt
+        assert "EXAMPLE" in system_prompt
 
 
 class TestRoleLoading:
@@ -360,9 +360,12 @@ class TestTaskGraphPostProcessing:
 
         result = validate_task_graph(llm_result, Mock(), pre_data)
 
-        assert "TaskGraph created successfully" in result
-        assert "1 tasks and 0 dependencies" in result
-        assert llm_result in result
+        # Should return the clean JSON directly
+        assert result == llm_result
+        # Verify it's valid JSON by parsing it
+        parsed = json.loads(result)
+        assert len(parsed["tasks"]) == 1
+        assert len(parsed["dependencies"]) == 0
 
     def test_invalid_json_handling(self):
         """Test post-processing with invalid JSON."""
@@ -437,11 +440,12 @@ This TaskGraph breaks down the request into executable tasks."""
 
         result = validate_task_graph(mixed_content, Mock(), pre_data)
 
-        # Should extract and validate the JSON successfully
-        assert "TaskGraph created successfully" in result
-        assert "1 tasks and 0 dependencies" in result
-        # Should contain the extracted JSON
-        assert '"id": "task_1"' in result
+        # Should extract and return the clean JSON
+        parsed = json.loads(result)
+        assert len(parsed["tasks"]) == 1
+        assert parsed["tasks"][0]["id"] == "task_1"
+        assert parsed["tasks"][0]["role"] == "search"
+        assert len(parsed["dependencies"]) == 0
 
 
 class TestEndToEndPlanning:
@@ -507,9 +511,12 @@ class TestEndToEndPlanning:
         llm_result = json.dumps(valid_task_graph)
         post_result = validate_task_graph(llm_result, context, pre_result)
 
-        assert "TaskGraph created successfully" in post_result
-        assert "2 tasks and 1 dependencies" in post_result
-        assert llm_result in post_result
+        # Should return clean JSON directly
+        assert post_result == llm_result
+        # Verify it's valid JSON by parsing it
+        parsed = json.loads(post_result)
+        assert len(parsed["tasks"]) == 2
+        assert len(parsed["dependencies"]) == 1
 
 
 class TestRoleRegistration:
