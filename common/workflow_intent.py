@@ -6,7 +6,7 @@ through the event-driven architecture described in Document 34 Phase 2.
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from common.intents import Intent
 
@@ -61,3 +61,13 @@ class WorkflowExecutionIntent(Intent):
             original_instruction=data["original_instruction"],
             created_at=data.get("created_at", 0.0),
         )
+
+    def get_expected_workflow_ids(self) -> set[str]:
+        """Get set of workflow IDs this intent will spawn.
+
+        Following Document 35 design for workflow lifecycle tracking.
+
+        Returns:
+            Set of workflow IDs that will be created from this intent's tasks.
+        """
+        return {f"{self.request_id}_task_{task['id']}" for task in self.tasks}

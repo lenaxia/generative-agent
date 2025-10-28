@@ -13,6 +13,9 @@ Created: 2025-10-19 (Document 34 Implementation)
 import json
 import logging
 import re
+from typing import Union
+
+from common.workflow_intent import WorkflowExecutionIntent
 
 logger = logging.getLogger(__name__)
 
@@ -315,6 +318,63 @@ def _extract_available_role_names(roles_text: str) -> list[str]:
     """Extract role names from formatted roles text."""
     matches = re.findall(r"\*\*([^*]+)\*\*:", roles_text)
     return matches
+
+
+def create_workflow_execution_intent(
+    llm_result: str, context, pre_data: dict
+) -> WorkflowExecutionIntent:
+    """LLM-SAFE: Create WorkflowExecutionIntent (pure function, no I/O).
+
+    Following Document 35 Phase 1: Planning role creates intent instead of direct execution.
+    This follows Documents 25 & 26 LLM-safe architecture - pure function returning intent.
+    """
+    try:
+        import json
+
+        # Check if input is already an error message from validate_task_graph
+        if llm_result.startswith(("Invalid", "No valid JSON", "Validation error")):
+            # For error cases, raise an exception since we can't return a string
+            raise ValueError(
+                f"Cannot create WorkflowExecutionIntent from error message: {llm_result}"
+            )
+
+        # Parse validated TaskGraph JSON (extract from mixed content if needed)
+        try:
+            task_graph_data = json.loads(llm_result)
+        except json.JSONDecodeError:
+            # Try to extract JSON from mixed content using regex (like validate_task_graph does)
+            json_match = re.search(r"\{.*\}", llm_result, re.DOTALL)
+            if json_match:
+                clean_json = json_match.group(0)
+                task_graph_data = json.loads(clean_json)
+            else:
+                raise
+
+        # LLM-SAFE: Create WorkflowExecutionIntent (declarative - what should happen)
+        workflow_intent = WorkflowExecutionIntent(
+            tasks=task_graph_data["tasks"],
+            dependencies=task_graph_data["dependencies"],
+            request_id=getattr(context, "context_id", "planning_exec"),
+            user_id=getattr(context, "user_id", "unknown"),
+            channel_id=getattr(context, "channel_id", "console"),
+            original_instruction=getattr(
+                context, "original_prompt", "Multi-step workflow"
+            ),
+        )
+
+        logger.info(
+            f"Created WorkflowExecutionIntent for request {workflow_intent.request_id} with {len(workflow_intent.tasks)} tasks"
+        )
+
+        # LLM-SAFE: Return intent only, no execution (pure function)
+        return workflow_intent
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse TaskGraph JSON: {e}")
+        raise ValueError(f"Invalid JSON in TaskGraph: {e}")
+    except Exception as e:
+        logger.error(f"TaskGraph intent creation failed: {e}")
+        raise ValueError(f"TaskGraph intent creation error: {e}")
 
 
 # 4. POST-PROCESSING: TASKGRAPH EXECUTION
