@@ -700,7 +700,8 @@ class WorkflowEngine:
             try:
                 from llm_provider.factory import LLMType
 
-                llm_type = LLMType(llm_type_str)
+                # Make case-insensitive comparison by converting to lowercase
+                llm_type = LLMType(llm_type_str.lower())
             except (ValueError, AttributeError):
                 logger.warning(
                     f"Invalid LLM type '{llm_type_str}' for task '{task.task_id}', using DEFAULT"
@@ -740,11 +741,14 @@ Current task: {base_prompt}"""
 
             # Execute task using Universal Agent with enhanced context
             # If role is "None", Universal Agent will handle dynamic role generation
+            # Pass task parameters to the universal agent for pre-processing
+            task_parameters = getattr(task, "parameters", {})
             result = self.universal_agent.execute_task(
                 instruction=enhanced_prompt,
                 role=role_name,
                 llm_type=llm_type,
                 context=task_context,
+                extracted_parameters=task_parameters,
             )
 
             # Complete the task and get next ready tasks
