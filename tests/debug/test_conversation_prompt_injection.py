@@ -102,16 +102,17 @@ class TestConversationPromptInjection:
             },
         ]
 
-        with patch(
-            "roles.core_conversation._load_recent_messages",
-            return_value=real_redis_data,
-        ), patch(
-            "roles.core_conversation._load_recent_topics_cache", return_value={}
-        ), patch(
-            "roles.core_conversation._count_unanalyzed_messages", return_value=2
-        ), patch(
-            "roles.core_conversation._extract_current_topics_simple",
-            return_value=["height"],
+        with (
+            patch(
+                "roles.core_conversation._load_recent_messages",
+                return_value=real_redis_data,
+            ),
+            patch("roles.core_conversation._load_recent_topics_cache", return_value={}),
+            patch("roles.core_conversation._count_unanalyzed_messages", return_value=2),
+            patch(
+                "roles.core_conversation._extract_current_topics_simple",
+                return_value=["height"],
+            ),
         ):
             # Test context loading
             result = load_conversation_context("how tall am i?", mock_context, {})

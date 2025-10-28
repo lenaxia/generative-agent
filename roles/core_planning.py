@@ -13,15 +13,14 @@ Created: 2025-10-19 (Document 34 Implementation)
 import json
 import logging
 import re
-from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 # 1. ROLE METADATA (Enhanced with lifecycle and BNF grammar prompt)
 ROLE_CONFIG = {
     "name": "planning",
-    "version": "3.0.0",
-    "description": "Generate executable TaskGraphs using available system roles",
+    "version": "4.0.0",
+    "description": "Generate and execute TaskGraphs using available system roles",
     "llm_type": "STRONG",
     "fast_reply": False,
     "when_to_use": "Create multi-step workflows, break down complex tasks, coordinate multiple roles",
@@ -29,6 +28,13 @@ ROLE_CONFIG = {
         "automatic": False,  # No tools needed
         "shared": [],
         "include_builtin": False,
+    },
+    "lifecycle": {
+        "pre_processing": {"enabled": True, "functions": ["load_available_roles"]},
+        "post_processing": {
+            "enabled": True,
+            "functions": ["validate_task_graph", "execute_task_graph"],
+        },
     },
     "prompts": {
         "system": """You are a task planning specialist that creates executable workflows using available system roles.
@@ -275,7 +281,124 @@ def _extract_available_role_names(roles_text: str) -> list[str]:
     return matches
 
 
-# 4. ROLE REGISTRATION (auto-discovery)
+# 4. POST-PROCESSING: TASKGRAPH EXECUTION
+def execute_task_graph(llm_result: str, context, pre_data: dict) -> str:
+    """Execute TaskGraph synchronously and return consolidated results."""
+    try:
+        import json
+
+        from common.task_context import TaskContext
+        from common.task_graph import TaskGraph, TaskNode, TaskStatus
+
+        # Parse validated TaskGraph JSON
+        task_graph_data = json.loads(llm_result)
+
+        # Convert planning format to WorkflowEngine format
+        task_nodes = []
+        for task_def in task_graph_data["tasks"]:
+            task_node = TaskNode(
+                task_id=task_def["id"],
+                task_name=task_def["name"],
+                request_id=getattr(context, "context_id", "planning_exec"),
+                agent_id=task_def["role"],
+                task_type="planning_generated",
+                prompt=task_def["description"],
+                status=TaskStatus.PENDING,
+                inbound_edges=[],
+                outbound_edges=[],
+                result=None,
+                stop_reason=None,
+                include_full_history=False,
+                start_time=None,
+                duration=None,
+                retry_count=0,
+                role=task_def["role"],
+                llm_type="DEFAULT",
+                required_tools=[],
+                task_context=task_def.get("parameters", {}),
+            )
+            task_nodes.append(task_node)
+
+        # Create TaskGraph
+        task_graph = TaskGraph(
+            tasks=task_nodes,
+            dependencies=task_graph_data["dependencies"],
+            request_id=getattr(context, "context_id", "planning_exec"),
+        )
+
+        # Create TaskContext
+        task_context = TaskContext(
+            task_graph=task_graph,
+            context_id=getattr(context, "context_id", "planning_exec"),
+            user_id=getattr(context, "user_id", None),
+            channel_id=getattr(context, "channel_id", None),
+        )
+
+        # Get WorkflowEngine reference
+        workflow_engine = _get_workflow_engine_from_context(context)
+
+        # Execute TaskGraph synchronously
+        workflow_engine._execute_dag_parallel(task_context)
+
+        # Wait for completion with timeout
+        return _wait_for_completion_and_collect_results(task_context)
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid TaskGraph JSON: {e}")
+        return f"Invalid TaskGraph JSON: {e}"
+    except Exception as e:
+        logger.error(f"TaskGraph execution failed: {e}")
+        return f"TaskGraph execution failed: {e}"
+
+
+def _get_workflow_engine_from_context(context):
+    """Get WorkflowEngine reference from execution context."""
+    # Try to get from context first
+    if hasattr(context, "workflow_engine") and context.workflow_engine:
+        return context.workflow_engine
+
+    # Fallback: get from global registry or supervisor - simplified approach
+    try:
+        # Try to get from role registry if it has workflow engine reference
+        from llm_provider.role_registry import RoleRegistry
+
+        registry = RoleRegistry.get_global_registry()
+        if hasattr(registry, "_workflow_engine") and registry._workflow_engine:
+            return registry._workflow_engine
+    except Exception as e:
+        logger.warning(f"Could not get WorkflowEngine from registry: {e}")
+
+    # Last resort: raise error
+    raise RuntimeError("WorkflowEngine not available in context")
+
+
+def _wait_for_completion_and_collect_results(task_context, timeout: int = 300) -> str:
+    """Wait for TaskGraph completion and collect consolidated results."""
+    import time
+
+    from common.task_graph import TaskStatus
+
+    start_time = time.time()
+
+    while not task_context.is_completed() and (time.time() - start_time) < timeout:
+        time.sleep(1)  # Poll every second
+
+    if task_context.is_completed():
+        # Collect results from all completed tasks
+        results = []
+        for _, task_node in task_context.task_graph.nodes.items():
+            if task_node.status == TaskStatus.COMPLETED and task_node.result:
+                results.append(f"**{task_node.task_name}**: {task_node.result}")
+
+        if results:
+            return "Workflow completed successfully:\n\n" + "\n\n".join(results)
+        else:
+            return "Workflow completed but no results were generated."
+    else:
+        return f"Workflow execution timed out after {timeout} seconds"
+
+
+# 5. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Register the planning role."""
     return {

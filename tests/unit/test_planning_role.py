@@ -10,9 +10,12 @@ Following TDD approach with comprehensive coverage of:
 """
 
 import json
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
+
+# Import TaskStatus for tests
+from common.task_graph import TaskStatus
 
 # Import functions that will be implemented
 from roles.core_planning import (
@@ -35,7 +38,7 @@ class TestRoleConfiguration:
     def test_role_config_structure(self):
         """Test that ROLE_CONFIG has required fields."""
         assert ROLE_CONFIG["name"] == "planning"
-        assert ROLE_CONFIG["version"] == "3.0.0"
+        assert ROLE_CONFIG["version"] == "4.0.0"
         assert ROLE_CONFIG["llm_type"] == "STRONG"
         assert ROLE_CONFIG["fast_reply"] is False
         assert "when_to_use" in ROLE_CONFIG
@@ -212,7 +215,7 @@ class TestTaskValidation:
         """Test validation fails for missing required task fields."""
         invalid_task = {
             "id": "task_1",
-            "name": "Test Task"
+            "name": "Test Task",
             # Missing description and role
         }
 
@@ -522,6 +525,284 @@ class TestErrorHandling:
         errors = _validate_role_references(task_graph, ["weather"])
         # Should not crash, role None should be handled gracefully
         assert len(errors) == 0  # None role is not validated against available roles
+
+
+class TestExecuteTaskGraph:
+    """Test the execute_task_graph post-processing function."""
+
+    def test_execute_task_graph_success(self):
+        """Test successful TaskGraph execution with consolidated results."""
+        # Mock context with WorkflowEngine
+        mock_context = Mock()
+        mock_workflow_engine = Mock()
+        mock_context.workflow_engine = mock_workflow_engine
+        mock_context.context_id = "test_123"
+        mock_context.user_id = "user_123"
+        mock_context.channel_id = "channel_123"
+
+        # Mock TaskContext completion
+        mock_task_context = Mock()
+        mock_task_context.is_completed.return_value = True
+
+        # Mock completed task nodes with results
+        mock_task_node_1 = Mock()
+        mock_task_node_1.status = TaskStatus.COMPLETED
+        mock_task_node_1.result = "Weather is sunny, 75°F"
+        mock_task_node_1.task_name = "Get Weather"
+
+        mock_task_node_2 = Mock()
+        mock_task_node_2.status = TaskStatus.COMPLETED
+        mock_task_node_2.result = "Timer set for 1 hour"
+        mock_task_node_2.task_name = "Set Timer"
+
+        mock_task_context.task_graph.nodes = {
+            "task_1": mock_task_node_1,
+            "task_2": mock_task_node_2,
+        }
+
+        # Mock workflow engine execution
+        def mock_execute_dag(task_context):
+            # Simulate completion by setting the mock
+            task_context.is_completed.return_value = True
+
+        mock_workflow_engine._execute_dag_parallel = Mock(side_effect=mock_execute_dag)
+
+        # Valid TaskGraph JSON
+        task_graph_json = json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "name": "Get Weather",
+                        "description": "Check current weather",
+                        "role": "weather",
+                        "parameters": {"location": "current"},
+                    },
+                    {
+                        "id": "task_2",
+                        "name": "Set Timer",
+                        "description": "Set a timer",
+                        "role": "timer",
+                        "parameters": {"duration": "1h"},
+                    },
+                ],
+                "dependencies": [],
+            }
+        )
+
+        # Mock TaskContext and TaskGraph creation
+        with (
+            patch("common.task_context.TaskContext") as mock_task_context_class,
+            patch("common.task_graph.TaskGraph") as mock_task_graph_class,
+            patch("common.task_graph.TaskNode") as mock_task_node_class,
+        ):
+            mock_task_context_class.return_value = mock_task_context
+            mock_task_graph_class.return_value = Mock()
+            mock_task_node_class.return_value = Mock()
+
+            # Import and test the function (it doesn't exist yet, so this will fail)
+            from roles.core_planning import execute_task_graph
+
+            result = execute_task_graph(task_graph_json, mock_context, {})
+
+            # Verify WorkflowEngine was called
+            mock_workflow_engine._execute_dag_parallel.assert_called_once()
+
+            # Verify consolidated results are returned
+            assert "Workflow completed successfully" in result
+            assert "Get Weather" in result
+            assert "Weather is sunny, 75°F" in result
+            assert "Set Timer" in result
+            assert "Timer set for 1 hour" in result
+
+    def test_execute_task_graph_timeout(self):
+        """Test TaskGraph execution timeout handling."""
+        # Mock context with WorkflowEngine
+        mock_context = Mock()
+        mock_workflow_engine = Mock()
+        mock_context.workflow_engine = mock_workflow_engine
+        mock_context.context_id = "test_timeout"
+
+        # Mock TaskContext that never completes
+        mock_task_context = Mock()
+        mock_task_context.is_completed.return_value = False
+
+        mock_workflow_engine._execute_dag_parallel = Mock()
+
+        # Valid TaskGraph JSON
+        task_graph_json = json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "name": "Long Task",
+                        "description": "Takes forever",
+                        "role": "weather",
+                    }
+                ],
+                "dependencies": [],
+            }
+        )
+
+        # Mock TaskContext creation
+        with (
+            patch("common.task_context.TaskContext") as mock_task_context_class,
+            patch("common.task_graph.TaskGraph"),
+            patch("common.task_graph.TaskNode"),
+            patch("time.sleep"),
+            patch("time.time") as mock_time,
+        ):
+            # Mock time progression to trigger timeout
+            mock_time.side_effect = [0, 301]  # Start at 0, then jump to 301 seconds
+            mock_task_context_class.return_value = mock_task_context
+
+            from roles.core_planning import execute_task_graph
+
+            result = execute_task_graph(task_graph_json, mock_context, {})
+
+            # Verify timeout message
+            assert "Workflow execution timed out" in result
+            assert "300 seconds" in result
+
+    def test_execute_task_graph_invalid_json(self):
+        """Test TaskGraph execution with invalid JSON."""
+        mock_context = Mock()
+        mock_context.workflow_engine = Mock()
+
+        invalid_json = "{ invalid json structure"
+
+        from roles.core_planning import execute_task_graph
+
+        result = execute_task_graph(invalid_json, mock_context, {})
+
+        assert "Invalid TaskGraph JSON" in result
+
+    def test_execute_task_graph_no_workflow_engine(self):
+        """Test TaskGraph execution when WorkflowEngine is not available."""
+        # Mock context without WorkflowEngine
+        mock_context = Mock()
+        mock_context.workflow_engine = None
+        mock_context.context_id = "test_no_engine"
+
+        task_graph_json = json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "name": "Test",
+                        "description": "Test",
+                        "role": "weather",
+                    }
+                ],
+                "dependencies": [],
+            }
+        )
+
+        # Mock other dependencies
+        with (
+            patch("common.task_context.TaskContext") as mock_task_context_class,
+            patch("common.task_graph.TaskGraph"),
+            patch("common.task_graph.TaskNode"),
+            patch("llm_provider.role_registry.RoleRegistry") as mock_registry_class,
+        ):
+            # Mock role registry fallback
+            mock_registry = Mock()
+            mock_workflow_engine = Mock()
+            mock_registry._workflow_engine = mock_workflow_engine
+            mock_registry_class.get_global_registry.return_value = mock_registry
+
+            mock_task_context = Mock()
+            mock_task_context.is_completed.return_value = True
+            mock_task_context.task_graph.nodes = {}
+            mock_task_context_class.return_value = mock_task_context
+
+            from roles.core_planning import execute_task_graph
+
+            result = execute_task_graph(task_graph_json, mock_context, {})
+
+            # Should use registry's workflow engine
+            mock_workflow_engine._execute_dag_parallel.assert_called_once()
+
+    def test_execute_task_graph_execution_error(self):
+        """Test TaskGraph execution error handling."""
+        mock_context = Mock()
+        mock_workflow_engine = Mock()
+        mock_context.workflow_engine = mock_workflow_engine
+        mock_context.context_id = "test_error"
+
+        # Mock workflow engine to raise an exception
+        mock_workflow_engine._execute_dag_parallel.side_effect = Exception(
+            "Execution failed"
+        )
+
+        task_graph_json = json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "name": "Test",
+                        "description": "Test",
+                        "role": "weather",
+                    }
+                ],
+                "dependencies": [],
+            }
+        )
+
+        # Mock dependencies
+        with (
+            patch("common.task_context.TaskContext"),
+            patch("common.task_graph.TaskGraph"),
+            patch("common.task_graph.TaskNode"),
+        ):
+            from roles.core_planning import execute_task_graph
+
+            result = execute_task_graph(task_graph_json, mock_context, {})
+
+            assert "TaskGraph execution failed" in result
+            assert "Execution failed" in result
+
+    def test_execute_task_graph_no_results(self):
+        """Test TaskGraph execution with no results generated."""
+        mock_context = Mock()
+        mock_workflow_engine = Mock()
+        mock_context.workflow_engine = mock_workflow_engine
+        mock_context.context_id = "test_no_results"
+
+        # Mock TaskContext that completes but has no results
+        mock_task_context = Mock()
+        mock_task_context.is_completed.return_value = True
+        mock_task_context.task_graph.nodes = {}
+
+        mock_workflow_engine._execute_dag_parallel = Mock()
+
+        task_graph_json = json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "name": "Test",
+                        "description": "Test",
+                        "role": "weather",
+                    }
+                ],
+                "dependencies": [],
+            }
+        )
+
+        # Mock dependencies
+        with (
+            patch("common.task_context.TaskContext") as mock_task_context_class,
+            patch("common.task_graph.TaskGraph"),
+            patch("common.task_graph.TaskNode"),
+        ):
+            mock_task_context_class.return_value = mock_task_context
+
+            from roles.core_planning import execute_task_graph
+
+            result = execute_task_graph(task_graph_json, mock_context, {})
+
+            assert "Workflow completed but no results were generated" in result
 
 
 # Integration test markers for pytest

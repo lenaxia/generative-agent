@@ -37,9 +37,10 @@ class TestConversationMemoryIntegration:
         mock_context1.original_prompt = "im 6'4\""
 
         # Mock Redis to simulate empty initial state
-        with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_write:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_read,
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_write,
+        ):
             # First call - no existing messages
             mock_read.return_value = {"success": False}
 
@@ -125,9 +126,11 @@ class TestConversationMemoryIntegration:
     def test_message_storage_format(self):
         """Test that messages are stored in the correct format for retrieval."""
 
-        with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_write, patch("uuid.uuid4") as mock_uuid:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_read,
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_write,
+            patch("uuid.uuid4") as mock_uuid,
+        ):
             # Mock existing messages
             existing_messages = [
                 {"id": "msg1", "content": "Previous message", "role": "user"}

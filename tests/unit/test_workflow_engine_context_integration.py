@@ -284,7 +284,7 @@ class TestWorkflowEngineContextIntegration:
         routing_result = {
             "route": "weather",
             "confidence": 0.90,
-            "parameters": {}
+            "parameters": {},
             # No context_requirements field
         }
 

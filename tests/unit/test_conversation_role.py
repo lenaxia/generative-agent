@@ -173,26 +173,29 @@ class TestLifecycleFunctions:
         mock_context = Mock()
         mock_context.user_id = "test_user"
 
-        with patch(
-            "roles.core_conversation._load_recent_messages",
-            return_value=[
-                {"content": "Hello", "role": "user"},
-                {"content": "Hi there!", "role": "assistant"},
-            ],
-        ), patch(
-            "roles.core_conversation._load_recent_topics_cache",
-            return_value={
-                "greetings": {
-                    "summary": "User greetings",
-                    "key_details": ["polite"],
-                    "relevance_score": 0.9,
-                }
-            },
-        ), patch(
-            "roles.core_conversation._count_unanalyzed_messages", return_value=5
-        ), patch(
-            "roles.core_conversation._extract_current_topics_simple",
-            return_value=["general"],
+        with (
+            patch(
+                "roles.core_conversation._load_recent_messages",
+                return_value=[
+                    {"content": "Hello", "role": "user"},
+                    {"content": "Hi there!", "role": "assistant"},
+                ],
+            ),
+            patch(
+                "roles.core_conversation._load_recent_topics_cache",
+                return_value={
+                    "greetings": {
+                        "summary": "User greetings",
+                        "key_details": ["polite"],
+                        "relevance_score": 0.9,
+                    }
+                },
+            ),
+            patch("roles.core_conversation._count_unanalyzed_messages", return_value=5),
+            patch(
+                "roles.core_conversation._extract_current_topics_simple",
+                return_value=["general"],
+            ),
         ):
             result = load_conversation_context("Hello again", mock_context, {})
 
@@ -281,9 +284,10 @@ class TestHelperFunctions:
             },
         }
 
-        with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
-            "roles.core_conversation._update_recent_topics_cache"
-        ) as mock_cache:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_read,
+            patch("roles.core_conversation._update_recent_topics_cache") as mock_cache,
+        ):
             mock_read.return_value = {"success": True, "value": mock_topics}
 
             result = _search_topics_with_relevance("test_user", "dogs", threshold=0.8)
@@ -373,9 +377,10 @@ class TestHelperFunctions:
         """Test updating analysis pointer."""
         mock_messages = [{"id": f"msg{i}"} for i in range(10)]
 
-        with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_write:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_read,
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_write,
+        ):
             mock_read.return_value = {
                 "success": True,
                 "value": mock_messages,
@@ -398,9 +403,11 @@ class TestHelperFunctions:
             {"id": "msg1", "content": "Previous message", "role": "user"}
         ]
 
-        with patch("roles.shared_tools.redis_tools.redis_read") as mock_read, patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_write, patch("uuid.uuid4") as mock_uuid:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_read,
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_write,
+            patch("uuid.uuid4") as mock_uuid,
+        ):
             mock_read.return_value = {
                 "success": True,
                 "value": existing_messages,

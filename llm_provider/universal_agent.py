@@ -605,13 +605,28 @@ class UniversalAgent:
             if processor:
                 func_start_time = time.time()
                 try:
+                    # Inject WorkflowEngine reference into context for lifecycle functions
+                    enhanced_context = context
+                    if context and hasattr(self.role_registry, "_workflow_engine"):
+                        if hasattr(context, "workflow_engine"):
+                            # Context already has workflow_engine, keep existing
+                            enhanced_context = context
+                        else:
+                            # Create enhanced context with WorkflowEngine reference
+                            enhanced_context = context
+                            enhanced_context.workflow_engine = (
+                                self.role_registry._workflow_engine
+                            )
+
                     # LLM-SAFE: Use asyncio.run() for async functions, direct call for sync
                     if inspect.iscoroutinefunction(processor):
                         current_result = asyncio.run(
-                            processor(current_result, context, pre_data)
+                            processor(current_result, enhanced_context, pre_data)
                         )
                     else:
-                        current_result = processor(current_result, context, pre_data)
+                        current_result = processor(
+                            current_result, enhanced_context, pre_data
+                        )
 
                     func_execution_time = (time.time() - func_start_time) * 1000
                     logger.debug(
@@ -780,9 +795,9 @@ class UniversalAgent:
         """Get system prompt from role definition."""
         # Handle both dict and RoleDefinition objects
         if isinstance(role_def, dict):
-            prompts = role_def.get("config", {}).get("prompts", {})
+            prompts = role_def.get("config", {}).get("role", {}).get("prompts", {})
         else:
-            prompts = role_def.config.get("prompts", {})
+            prompts = role_def.config.get("role", {}).get("prompts", {})
 
         system_prompt = prompts.get("system", "You are a helpful AI assistant.")
 
@@ -795,7 +810,7 @@ class UniversalAgent:
             logger.info(f"🔍 Router system prompt preview: {system_prompt[:200]}...")
         elif (
             isinstance(role_def, dict)
-            and role_def.get("config", {}).get("name") == "router"
+            and role_def.get("config", {}).get("role", {}).get("name") == "router"
         ):
             logger.info(f"🔍 Router system prompt length: {len(system_prompt)}")
             logger.info(

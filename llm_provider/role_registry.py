@@ -37,7 +37,11 @@ class RoleRegistry:
     _global_registry = None
 
     def __init__(
-        self, roles_directory: str = "roles", message_bus=None, intent_processor=None
+        self,
+        roles_directory: str = "roles",
+        message_bus=None,
+        intent_processor=None,
+        workflow_engine=None,
     ):
         """Initialize the role registry.
 
@@ -45,10 +49,12 @@ class RoleRegistry:
             roles_directory: Path to the roles directory
             message_bus: Optional MessageBus for dynamic event registration
             intent_processor: Optional IntentProcessor for intent handler registration
+            workflow_engine: Optional WorkflowEngine for role execution context
         """
         self.roles_directory = Path(roles_directory)
         self.message_bus = message_bus
         self.intent_processor = intent_processor
+        self._workflow_engine = workflow_engine
 
         # Enhanced role storage for hybrid architecture
         self.llm_roles: dict[str, RoleDefinition] = {}  # All roles are hybrid now
@@ -97,6 +103,15 @@ class RoleRegistry:
         """
         self.intent_processor = intent_processor
         logger.info("IntentProcessor set on RoleRegistry")
+
+    def set_workflow_engine(self, workflow_engine):
+        """Set WorkflowEngine reference for role execution context.
+
+        Args:
+            workflow_engine: WorkflowEngine instance for role execution context
+        """
+        self._workflow_engine = workflow_engine
+        logger.info("WorkflowEngine set on RoleRegistry")
 
         # Re-register all single-file role intents
         self._register_all_single_file_role_intents()

@@ -59,11 +59,12 @@ class TestContextAwareEndToEndHappyPath:
         )
 
         # Mock Redis backend for memory
-        with patch(
-            "common.providers.redis_memory_provider.redis_get_keys"
-        ) as mock_get_keys, patch(
-            "common.providers.redis_memory_provider.redis_read"
-        ) as mock_read:
+        with (
+            patch(
+                "common.providers.redis_memory_provider.redis_get_keys"
+            ) as mock_get_keys,
+            patch("common.providers.redis_memory_provider.redis_read") as mock_read,
+        ):
             mock_get_keys.return_value = {
                 "success": True,
                 "keys": ["memory:test_user:1697400000"],
@@ -340,7 +341,7 @@ class TestContextAwareEndToEndEdgeCases:
             {
                 "route": "timer",
                 "confidence": 0.98,
-                "parameters": {"duration": "5m"}
+                "parameters": {"duration": "5m"},
                 # No context_requirements field
             }
         )
@@ -361,9 +362,11 @@ class TestContextAwareEndToEndEdgeCases:
         mock_llm_factory = Mock(spec=LLMFactory)
         mock_message_bus = Mock(spec=MessageBus)
 
-        with patch("supervisor.workflow_engine.RoleRegistry"), patch(
-            "supervisor.workflow_engine.UniversalAgent"
-        ), patch("supervisor.workflow_engine.MCPClientManager"):
+        with (
+            patch("supervisor.workflow_engine.RoleRegistry"),
+            patch("supervisor.workflow_engine.UniversalAgent"),
+            patch("supervisor.workflow_engine.MCPClientManager"),
+        ):
             workflow_engine = WorkflowEngine(
                 llm_factory=mock_llm_factory, message_bus=mock_message_bus
             )

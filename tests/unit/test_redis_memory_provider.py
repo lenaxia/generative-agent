@@ -64,11 +64,12 @@ class TestRedisMemoryProvider:
     @pytest.mark.asyncio
     async def test_get_recent_memories_success(self, memory_provider):
         """Test successful retrieval of recent memories."""
-        with patch(
-            "common.providers.redis_memory_provider.redis_get_keys"
-        ) as mock_get_keys, patch(
-            "common.providers.redis_memory_provider.redis_read"
-        ) as mock_read:
+        with (
+            patch(
+                "common.providers.redis_memory_provider.redis_get_keys"
+            ) as mock_get_keys,
+            patch("common.providers.redis_memory_provider.redis_read") as mock_read,
+        ):
             mock_get_keys.return_value = {
                 "success": True,
                 "keys": ["memory:test_user:1697400000"],
@@ -94,11 +95,12 @@ class TestRedisMemoryProvider:
     @pytest.mark.asyncio
     async def test_search_memories_success(self, memory_provider):
         """Test successful memory search."""
-        with patch(
-            "common.providers.redis_memory_provider.redis_get_keys"
-        ) as mock_get_keys, patch(
-            "common.providers.redis_memory_provider.redis_read"
-        ) as mock_read:
+        with (
+            patch(
+                "common.providers.redis_memory_provider.redis_get_keys"
+            ) as mock_get_keys,
+            patch("common.providers.redis_memory_provider.redis_read") as mock_read,
+        ):
             mock_get_keys.return_value = {
                 "success": True,
                 "keys": ["memory:test_user:1697400000"],

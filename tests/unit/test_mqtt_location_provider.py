@@ -56,9 +56,10 @@ class TestMQTTLocationProvider:
         mock_client.connect = AsyncMock()
         mock_client.subscribe = AsyncMock()
 
-        with patch("aiomqtt.Client") as mock_client_class, patch(
-            "asyncio.create_task"
-        ) as mock_create_task:
+        with (
+            patch("aiomqtt.Client") as mock_client_class,
+            patch("asyncio.create_task") as mock_create_task,
+        ):
             mock_client_class.return_value = mock_client
 
             await location_provider.initialize()
@@ -244,11 +245,10 @@ class TestMQTTLocationProviderEdgeCases:
         """Test operations when MQTT client is None."""
         provider = MQTTLocationProvider("localhost")
 
-        with patch(
-            "common.providers.mqtt_location_provider.redis_read"
-        ) as mock_read, patch(
-            "common.providers.mqtt_location_provider.redis_write"
-        ) as mock_write:
+        with (
+            patch("common.providers.mqtt_location_provider.redis_read") as mock_read,
+            patch("common.providers.mqtt_location_provider.redis_write") as mock_write,
+        ):
             mock_read.return_value = {"success": False}
             mock_write.return_value = {"success": False}
 

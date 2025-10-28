@@ -44,9 +44,10 @@ class TestSupervisorContextIntegration:
     @pytest.fixture
     def supervisor_with_mocks(self, mock_config_manager):
         """Create supervisor with mocked dependencies."""
-        with patch("supervisor.supervisor.ConfigManager") as mock_config_class, patch(
-            "supervisor.supervisor.Path"
-        ) as mock_path:
+        with (
+            patch("supervisor.supervisor.ConfigManager") as mock_config_class,
+            patch("supervisor.supervisor.Path") as mock_path,
+        ):
             mock_config_class.return_value = mock_config_manager
 
             # Mock the config file path check

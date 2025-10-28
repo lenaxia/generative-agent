@@ -23,18 +23,15 @@ class TestContextAwareIntegration:
     @pytest.fixture
     def mock_supervisor_config(self):
         """Create mock supervisor with minimal config."""
-        with patch("supervisor.supervisor.ConfigManager") as mock_config_class, patch(
-            "supervisor.supervisor.Path"
-        ) as mock_path, patch("supervisor.supervisor.configure_logging"), patch(
-            "supervisor.supervisor.MessageBus"
-        ), patch(
-            "supervisor.supervisor.LLMFactory"
-        ), patch(
-            "supervisor.supervisor.WorkflowEngine"
-        ), patch(
-            "supervisor.supervisor.MetricsManager"
-        ), patch(
-            "common.communication_manager.CommunicationManager"
+        with (
+            patch("supervisor.supervisor.ConfigManager") as mock_config_class,
+            patch("supervisor.supervisor.Path") as mock_path,
+            patch("supervisor.supervisor.configure_logging"),
+            patch("supervisor.supervisor.MessageBus"),
+            patch("supervisor.supervisor.LLMFactory"),
+            patch("supervisor.supervisor.WorkflowEngine"),
+            patch("supervisor.supervisor.MetricsManager"),
+            patch("common.communication_manager.CommunicationManager"),
         ):
             # Mock config file existence
             mock_path_instance = Mock()
@@ -215,9 +212,11 @@ class TestContextAwareIntegration:
         mock_llm_factory = Mock(spec=LLMFactory)
         mock_message_bus = Mock(spec=MessageBus)
 
-        with patch("supervisor.workflow_engine.RoleRegistry"), patch(
-            "supervisor.workflow_engine.UniversalAgent"
-        ), patch("supervisor.workflow_engine.MCPClientManager"):
+        with (
+            patch("supervisor.workflow_engine.RoleRegistry"),
+            patch("supervisor.workflow_engine.UniversalAgent"),
+            patch("supervisor.workflow_engine.MCPClientManager"),
+        ):
             workflow_engine = WorkflowEngine(
                 llm_factory=mock_llm_factory, message_bus=mock_message_bus
             )

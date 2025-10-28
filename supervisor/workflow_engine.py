@@ -136,7 +136,9 @@ class WorkflowEngine:
         self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
 
         # Initialize role registry with MessageBus for dynamic event registration
-        self.role_registry = RoleRegistry(roles_directory, message_bus=self.message_bus)
+        self.role_registry = RoleRegistry(
+            roles_directory, message_bus=self.message_bus, workflow_engine=self
+        )
 
         # Inject dependencies into MessageBus for event handler wrapping
         self.message_bus.workflow_engine = self
@@ -147,6 +149,9 @@ class WorkflowEngine:
         RoleRegistry._global_registry = self.role_registry
         # Use initialize_once for performance - avoid repeated loading
         self.role_registry.initialize_once()
+
+        # Inject WorkflowEngine reference into role registry for context access
+        self.role_registry.set_workflow_engine(self)
 
         # Get fast-reply roles count for logging (uses cache)
         fast_reply_roles = self.role_registry.get_fast_reply_roles()
@@ -456,53 +461,13 @@ class WorkflowEngine:
 
         except Exception as e:
             logger.error(f"Fast-reply execution failed: {e}")
-            return self._handle_complex_workflow(request)
-
-    def _handle_complex_workflow(self, request: RequestMetadata) -> str:
-        """Existing complex workflow handling with duration tracking"""
-        try:
-            request_id = "wf_" + str(uuid.uuid4()).split("-")[-1]
-            time.time()
-
-            logger.info(f"Handling workflow '{request_id}' with Universal Agent")
-
-            # Start duration tracking at the beginning of execution
-            duration_logger = get_duration_logger()
-            duration_logger.start_workflow_tracking(
-                workflow_id=request_id,
-                source=WorkflowSource.CLI,  # Will be updated by caller if needed
-                workflow_type=WorkflowType.COMPLEX_WORKFLOW,
-                instruction=request.prompt,
-            )
-
-            # With new architecture, complex workflows should not use automatic task decomposition
-            # Instead, route complex requests through the router to appropriate roles
-            logger.info(f"Routing complex request '{request_id}' through router")
-
-            # Route the request using the router role
-            routing_result = self._route_request_with_router_role(request.prompt)
-
-            # Execute the routed request as a fast-reply
-            return self._handle_fast_reply(request, routing_result)
-
-        except Exception as e:
-            logger.error(f"Error handling workflow request: {e}")
-
-            # Create a failed task context for error tracking
-            try:
-                # Create minimal task context for error tracking
-                task_graph = TaskGraph(tasks=[])  # Empty task list for error tracking
-                task_context = TaskContext(task_graph, context_id=request_id)
-                task_context.fail_execution(f"Workflow failed: {str(e)}")
-
-                # Store the failed workflow context
-                self.active_workflows[request_id] = task_context
-
-                return request_id  # Return ID even for failed workflows for tracking
-
-            except Exception as context_error:
-                logger.error(f"Error creating failed workflow context: {context_error}")
-                return None
+            # Fallback to planning role for complex requests
+            fallback_routing = {
+                "route": "planning",
+                "confidence": 0.5,
+                "parameters": {},
+            }
+            return self._handle_fast_reply(request, fallback_routing)
 
     def pause_workflow(self, workflow_id: Optional[str] = None) -> dict:
         """Pause workflow execution and create comprehensive checkpoint.
@@ -1753,4 +1718,6 @@ Respond with ONLY valid JSON in this exact format:
             ):
                 return self._handle_fast_reply(enhanced_request, routing_result)
 
-        return self._handle_complex_workflow(enhanced_request)
+        # Fallback to planning role for complex requests
+        fallback_routing = {"route": "planning", "confidence": 0.5, "parameters": {}}
+        return self._handle_fast_reply(enhanced_request, fallback_routing)
