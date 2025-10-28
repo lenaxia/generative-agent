@@ -37,18 +37,18 @@ ROLE_CONFIG = {
         },
     },
     "prompts": {
-        "system": """You are a task planning specialist that creates executable workflows using available system roles.
+        "system": """CRITICAL: RESPOND WITH ONLY VALID JSON - NO EXPLANATIONS, NO ADDITIONAL TEXT
 
 AVAILABLE ROLES:
 {{available_roles}}
 
-Your task is to analyze the user's request and create a TaskGraph that breaks it down into executable tasks using the available roles.
+TASK: Create TaskGraph JSON that breaks down the user's request into executable tasks.
 
-OUTPUT REQUIREMENTS:
-- Generate valid JSON following the TaskGraph BNF grammar
+STRICT OUTPUT REQUIREMENTS:
+- ONLY valid JSON following the TaskGraph BNF grammar
+- NO explanatory text before or after JSON
+- NO markdown formatting or code blocks
 - Use only the roles listed above
-- Include proper task dependencies
-- Provide clear task descriptions
 
 BNF GRAMMAR:
 <TaskGraph> ::= {
@@ -70,7 +70,7 @@ BNF GRAMMAR:
   "type": "sequential" | "parallel"
 }
 
-EXAMPLE OUTPUT:
+EXAMPLE (RESPOND EXACTLY LIKE THIS - JSON ONLY):
 {
   "tasks": [
     {
@@ -79,25 +79,12 @@ EXAMPLE OUTPUT:
       "description": "Check current weather conditions",
       "role": "weather",
       "parameters": {"location": "current"}
-    },
-    {
-      "id": "task_2",
-      "name": "Set Reminder",
-      "description": "Set reminder based on weather",
-      "role": "timer",
-      "parameters": {"duration": "1h", "label": "Check weather again"}
     }
   ],
-  "dependencies": [
-    {
-      "source_task_id": "task_1",
-      "target_task_id": "task_2",
-      "type": "sequential"
-    }
-  ]
+  "dependencies": []
 }
 
-Generate a TaskGraph for the user's request using only the available roles."""
+RESPOND WITH ONLY JSON - NO OTHER TEXT."""
     },
 }
 
@@ -159,11 +146,23 @@ def _format_roles_for_prompt(role_info: list) -> str:
 def validate_task_graph(llm_result: str, context, pre_data: dict) -> str:
     """Validate LLM output is valid JSON and TaskGraph structure."""
     try:
-        # Parse JSON
+        # Parse JSON - try direct parsing first
+        task_graph = None
         try:
             task_graph = json.loads(llm_result)
-        except json.JSONDecodeError as e:
-            return f"Invalid JSON generated. Please try again. Error: {e}"
+        except json.JSONDecodeError:
+            # Try to extract JSON from mixed content
+            json_match = re.search(r"\{.*\}", llm_result, re.DOTALL)
+            if json_match:
+                try:
+                    task_graph = json.loads(json_match.group())
+                except json.JSONDecodeError as e:
+                    return f"Invalid JSON generated. Please try again. Error: {e}"
+            else:
+                return f"No valid JSON found in response. Please try again."
+
+        if task_graph is None:
+            return f"Invalid JSON generated. Please try again."
 
         # Validate TaskGraph structure
         validation_errors = _validate_task_graph_structure(task_graph)

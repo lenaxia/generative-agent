@@ -370,7 +370,7 @@ class TestTaskGraphPostProcessing:
 
         result = validate_task_graph(invalid_json, Mock(), {})
 
-        assert "Invalid JSON generated" in result
+        assert "No valid JSON found in response" in result
         assert "Please try again" in result
 
     def test_invalid_task_graph_structure_handling(self):
@@ -413,6 +413,35 @@ class TestTaskGraphPostProcessing:
 
             assert "Validation error occurred" in result
             assert "Test error" in result
+
+    def test_mixed_content_json_extraction(self):
+        """Test post-processing with mixed content containing valid JSON."""
+        mixed_content = """I'll help create a TaskGraph to break down this multi-part request into executable tasks.
+
+{
+  "tasks": [
+    {
+      "id": "task_1",
+      "name": "Search Travel Info",
+      "description": "Search for travel information about Thailand",
+      "role": "search",
+      "parameters": {"query": "Thailand travel guide"}
+    }
+  ],
+  "dependencies": []
+}
+
+This TaskGraph breaks down the request into executable tasks."""
+
+        pre_data = {"available_roles": "**search**: Search information"}
+
+        result = validate_task_graph(mixed_content, Mock(), pre_data)
+
+        # Should extract and validate the JSON successfully
+        assert "TaskGraph created successfully" in result
+        assert "1 tasks and 0 dependencies" in result
+        # Should contain the extracted JSON
+        assert '"id": "task_1"' in result
 
 
 class TestEndToEndPlanning:
@@ -803,6 +832,36 @@ class TestExecuteTaskGraph:
             result = execute_task_graph(task_graph_json, mock_context, {})
 
             assert "Workflow completed but no results were generated" in result
+
+    def test_execute_task_graph_mixed_content_with_json(self):
+        """Test TaskGraph execution when LLM generates text before JSON."""
+        mock_context = Mock()
+        mock_context.workflow_engine = Mock()
+
+        # This is what actually happened - LLM generated text before JSON
+        mixed_content = """I'll help create a TaskGraph to break down this multi-part request into executable tasks.
+
+{
+  "tasks": [
+    {
+      "id": "task_1",
+      "name": "Search Travel Info",
+      "description": "Search for travel information about Thailand",
+      "role": "search",
+      "parameters": {"query": "Thailand travel guide"}
+    }
+  ],
+  "dependencies": []
+}
+
+This TaskGraph breaks down the request..."""
+
+        from roles.core_planning import execute_task_graph
+
+        result = execute_task_graph(mixed_content, mock_context, {})
+
+        # Should handle mixed content gracefully
+        assert "Invalid TaskGraph JSON" in result
 
 
 # Integration test markers for pytest
