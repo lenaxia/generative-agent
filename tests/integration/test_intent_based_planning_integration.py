@@ -15,7 +15,7 @@ from common.workflow_intent import WorkflowExecutionIntent
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
-from roles.core_planning import create_workflow_execution_intent
+from roles.core_planning import execute_task_graph
 
 
 class TestIntentBasedPlanningIntegration:
@@ -61,7 +61,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Plan Thailand trip and check weather"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json, context=mock_context, pre_data={}
         )
 
@@ -82,7 +82,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Multi-step workflow"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json, context=mock_context, pre_data={}
         )
 
@@ -103,7 +103,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Serialization test workflow"
 
         # Act
-        original_intent = create_workflow_execution_intent(
+        original_intent = execute_task_graph(
             llm_result=self.valid_task_graph_json, context=mock_context, pre_data={}
         )
 
@@ -136,7 +136,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Mixed content test"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=mixed_content, context=mock_context, pre_data={}
         )
 
@@ -160,7 +160,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Invalid intent test"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=invalid_task_graph, context=mock_context, pre_data={}
         )
 
@@ -185,7 +185,7 @@ class TestIntentBasedPlanningIntegration:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Invalid JSON in TaskGraph"):
-            create_workflow_execution_intent(
+            execute_task_graph(
                 llm_result=malformed_json, context=mock_context, pre_data={}
             )
 
@@ -206,7 +206,7 @@ class TestIntentBasedPlanningIntegration:
         with pytest.raises(
             ValueError, match="Cannot create WorkflowExecutionIntent from error message"
         ):
-            create_workflow_execution_intent(
+            execute_task_graph(
                 llm_result=error_message, context=mock_context, pre_data={}
             )
 
@@ -239,7 +239,7 @@ class TestIntentBasedPlanningIntegration:
         mock_context.original_prompt = "Parameter preservation test"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=task_graph_with_params, context=mock_context, pre_data={}
         )
 

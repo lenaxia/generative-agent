@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from common.workflow_intent import WorkflowExecutionIntent
-from roles.core_planning import create_workflow_execution_intent
+from roles.core_planning import execute_task_graph
 
 
 class TestPlanningRoleIntentCreation:
@@ -57,7 +57,7 @@ class TestPlanningRoleIntentCreation:
     def test_valid_task_graph_creates_workflow_execution_intent(self):
         """Test that valid TaskGraph JSON creates WorkflowExecutionIntent."""
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
             context=self.mock_context,
             pre_data={},
@@ -75,7 +75,7 @@ class TestPlanningRoleIntentCreation:
     def test_intent_contains_all_task_information(self):
         """Test that created intent preserves all task information."""
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
             context=self.mock_context,
             pre_data={},
@@ -101,7 +101,7 @@ class TestPlanningRoleIntentCreation:
     def test_intent_contains_dependency_information(self):
         """Test that created intent preserves dependency information."""
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
             context=self.mock_context,
             pre_data={},
@@ -119,7 +119,7 @@ class TestPlanningRoleIntentCreation:
     def test_intent_validation_works(self):
         """Test that created intent passes validation."""
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
             context=self.mock_context,
             pre_data={},
@@ -132,7 +132,7 @@ class TestPlanningRoleIntentCreation:
     def test_intent_get_expected_workflow_ids(self):
         """Test that intent can generate expected workflow IDs."""
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
             context=self.mock_context,
             pre_data={},
@@ -152,7 +152,7 @@ class TestPlanningRoleIntentCreation:
         invalid_json = "This is not valid JSON"
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=invalid_json, context=self.mock_context, pre_data={}
         )
 
@@ -176,7 +176,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=invalid_task_graph, context=self.mock_context, pre_data={}
         )
 
@@ -203,7 +203,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=invalid_role_graph,
             context=self.mock_context,
             pre_data={"available_roles": ["search", "weather", "timer"]},
@@ -224,7 +224,7 @@ class TestPlanningRoleIntentCreation:
         del minimal_context.original_prompt
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=self.valid_task_graph_json, context=minimal_context, pre_data={}
         )
 
@@ -241,7 +241,7 @@ class TestPlanningRoleIntentCreation:
         empty_task_graph = json.dumps({"tasks": [], "dependencies": []})
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=empty_task_graph, context=self.mock_context, pre_data={}
         )
 
@@ -261,7 +261,7 @@ class TestPlanningRoleIntentCreation:
         """
 
         # Act
-        result = create_workflow_execution_intent(
+        result = execute_task_graph(
             llm_result=mixed_content, context=self.mock_context, pre_data={}
         )
 
