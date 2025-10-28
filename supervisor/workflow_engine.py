@@ -1720,4 +1720,120 @@ Respond with ONLY valid JSON in this exact format:
 
         # Fallback to planning role for complex requests
         fallback_routing = {"route": "planning", "confidence": 0.5, "parameters": {}}
+
+    # ==================== PHASE 2: EVENT-DRIVEN WORKFLOW EXECUTION ====================
+
+    def execute_workflow_from_intent(self, intent) -> str:
+        """Execute workflow from WorkflowExecutionIntent."""
+        from common.task_context import TaskContext
+        from common.task_graph import TaskGraph, TaskNode, TaskStatus
+
+        # Convert intent to TaskGraph format
+        task_nodes = self._convert_intent_to_task_nodes(intent)
+
+        # Create TaskGraph and TaskContext
+        task_graph = TaskGraph(
+            tasks=task_nodes,
+            dependencies=intent.dependencies,
+            request_id=intent.request_id,
+        )
+
+        task_context = TaskContext(
+            task_graph=task_graph,
+            context_id=intent.request_id,
+            user_id=intent.user_id,
+            channel_id=intent.channel_id,
+        )
+
+        # Execute DAG asynchronously
+        asyncio.create_task(self._execute_workflow_async(task_context))
+
+        return intent.request_id
+
+    def _convert_intent_to_task_nodes(self, intent):
+        """Convert WorkflowExecutionIntent tasks to TaskNode objects."""
+        from common.task_graph import TaskNode, TaskStatus
+
+        task_nodes = []
+        for task_def in intent.tasks:
+            task_node = TaskNode(
+                task_id=task_def["id"],
+                task_name=task_def["name"],
+                request_id=intent.request_id,
+                agent_id=task_def["role"],
+                task_type="workflow_generated",
+                prompt=task_def["description"],
+                status=TaskStatus.PENDING,
+                inbound_edges=[],
+                outbound_edges=[],
+                result=None,
+                stop_reason=None,
+                include_full_history=False,
+                start_time=None,
+                duration=None,
+                retry_count=0,
+                role=task_def["role"],
+                llm_type="DEFAULT",
+                required_tools=[],
+                task_context=task_def.get("parameters", {}),
+            )
+            task_nodes.append(task_node)
+        return task_nodes
+
+    async def _execute_workflow_async(self, task_context):
+        """Execute workflow asynchronously and emit completion event."""
+        try:
+            # Execute DAG
+            await self._execute_dag_parallel_async(task_context)
+
+            # Collect consolidated results
+            consolidated_results = self._get_consolidated_results(task_context)
+
+            # Emit completion event
+            self.message_bus.emit(
+                "WORKFLOW_COMPLETED",
+                {
+                    "request_id": task_context.context_id,
+                    "consolidated_results": consolidated_results,
+                    "success": task_context.is_successful(),
+                    "execution_time": task_context.get_execution_time(),
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Workflow execution failed: {e}")
+
+            # Emit failure event
+            self.message_bus.emit(
+                "WORKFLOW_COMPLETED",
+                {
+                    "request_id": task_context.context_id,
+                    "error": str(e),
+                    "success": False,
+                },
+            )
+
+    async def _execute_dag_parallel_async(self, task_context):
+        """Async version of DAG execution."""
+        # For now, use the existing sync method in a thread
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            await asyncio.get_event_loop().run_in_executor(
+                executor, self._execute_dag_parallel, task_context
+            )
+
+    def _get_consolidated_results(self, task_context):
+        """Collect consolidated results from completed tasks."""
+        from common.task_graph import TaskStatus
+
+        results = []
+        for task_id, task_node in task_context.task_graph.nodes.items():
+            if task_node.status == TaskStatus.COMPLETED and task_node.result:
+                results.append(f"**{task_node.task_name}**: {task_node.result}")
+
+        if results:
+            return "Workflow completed successfully:\n\n" + "\n\n".join(results)
+        else:
+            return "Workflow completed but no results were generated."
         return self._handle_fast_reply(enhanced_request, fallback_routing)

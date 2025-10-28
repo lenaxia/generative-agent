@@ -13,7 +13,9 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
+from common.intent_processor import IntentProcessor
 from common.message_bus import MessageBus
+from common.workflow_intent import WorkflowExecutionIntent
 from config.anthropic_config import AnthropicConfig
 from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
@@ -55,6 +57,8 @@ class Supervisor:
         object
     ] = None  # REMOVED: FastHeartbeat - using scheduled tasks now
     communication_manager: Optional[object] = None  # Import will be done in method
+    intent_processor: Optional[IntentProcessor] = None
+    suspended_requests: dict = None
 
     def __init__(self, config_file: Optional[str] = None):
         """Initializes the Supervisor with the given configuration file.
@@ -70,6 +74,10 @@ class Supervisor:
 
         # NEW: Single event loop management
         self._scheduled_tasks: list[asyncio.Task] = []
+
+        # Initialize intent processing and workflow suspension
+        self.intent_processor = None
+        self.suspended_requests = {}
 
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
@@ -140,6 +148,7 @@ class Supervisor:
         self._initialize_llm_factory()
         self._initialize_workflow_engine()
         self._initialize_metrics_manager()
+        self._initialize_intent_processor()
 
         logger.info("Component initialization complete.")
 
@@ -311,6 +320,60 @@ class Supervisor:
         """Initialize metrics manager."""
         self.metrics_manager = MetricsManager()
         logger.info("Metrics manager initialized.")
+
+    def _initialize_intent_processor(self):
+        """Initialize intent processor and register workflow intent handlers."""
+        self.intent_processor = IntentProcessor(self.message_bus)
+
+        # Register workflow intent handler
+        self.intent_processor.register_role_intent_handler(
+            WorkflowExecutionIntent, self.handle_workflow_execution_intent, "supervisor"
+        )
+
+        # Subscribe to workflow completion events
+        self.message_bus.subscribe(
+            self, "WORKFLOW_COMPLETED", self.handle_workflow_completed
+        )
+
+        logger.info("Intent processor initialized with workflow intent handlers.")
+
+    def handle_workflow_execution_intent(self, intent: WorkflowExecutionIntent):
+        """Handle workflow execution intent by suspending request and starting execution."""
+        # Suspend original request
+        self.suspended_requests[intent.request_id] = {
+            "intent": intent,
+            "suspended_at": time.time(),
+            "user_id": intent.user_id,
+            "channel_id": intent.channel_id,
+        }
+
+        # Start workflow execution
+        workflow_id = self.workflow_engine.execute_workflow_from_intent(intent)
+
+        logger.info(f"Workflow {workflow_id} started for request {intent.request_id}")
+        return f"Multi-step workflow initiated"
+
+    def handle_workflow_completed(self, event_data):
+        """Resume suspended request with consolidated results."""
+        request_id = event_data["request_id"]
+
+        if request_id in self.suspended_requests:
+            suspended_request = self.suspended_requests[request_id]
+
+            # Send results back to user via communication manager
+            self.communication_manager.send_message(
+                channel_id=suspended_request["channel_id"],
+                message=event_data["consolidated_results"],
+                context={
+                    "user_id": suspended_request["user_id"],
+                    "request_id": request_id,
+                },
+            )
+
+            # Clean up suspended request
+            del self.suspended_requests[request_id]
+
+            logger.info(f"Workflow results sent for request {request_id}")
 
     def start(self):
         """Starts the Supervisor by starting the message bus and task scheduler.

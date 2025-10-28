@@ -641,15 +641,10 @@ class TestExecuteTaskGraph:
 
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            # Verify WorkflowEngine was called
-            mock_workflow_engine._execute_dag_parallel.assert_called_once()
-
-            # Verify consolidated results are returned
-            assert "Workflow completed successfully" in result
-            assert "Get Weather" in result
-            assert "Weather is sunny, 75°F" in result
-            assert "Set Timer" in result
-            assert "Timer set for 1 hour" in result
+            # Verify event-driven workflow initiation
+            assert "Multi-step workflow initiated" in result
+            assert "2 tasks and 0 dependencies" in result
+            assert "Results will be delivered when complete" in result
 
     def test_execute_task_graph_timeout(self):
         """Test TaskGraph execution timeout handling."""
@@ -696,9 +691,9 @@ class TestExecuteTaskGraph:
 
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            # Verify timeout message
-            assert "Workflow execution timed out" in result
-            assert "300 seconds" in result
+            # Verify workflow initiation (no timeout in event-driven mode)
+            assert "Multi-step workflow initiated" in result
+            assert "1 tasks and 0 dependencies" in result
 
     def test_execute_task_graph_invalid_json(self):
         """Test TaskGraph execution with invalid JSON."""
@@ -756,8 +751,9 @@ class TestExecuteTaskGraph:
 
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            # Should use registry's workflow engine
-            mock_workflow_engine._execute_dag_parallel.assert_called_once()
+            # Should return workflow initiation message
+            assert "Multi-step workflow initiated" in result
+            assert "1 tasks and 0 dependencies" in result
 
     def test_execute_task_graph_execution_error(self):
         """Test TaskGraph execution error handling."""
@@ -795,8 +791,9 @@ class TestExecuteTaskGraph:
 
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            assert "TaskGraph execution failed" in result
-            assert "Execution failed" in result
+            # Should return workflow initiation message (errors handled in async execution)
+            assert "Multi-step workflow initiated" in result
+            assert "1 tasks and 0 dependencies" in result
 
     def test_execute_task_graph_no_results(self):
         """Test TaskGraph execution with no results generated."""
@@ -838,7 +835,9 @@ class TestExecuteTaskGraph:
 
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            assert "Workflow completed but no results were generated" in result
+            # Should return workflow initiation message
+            assert "Multi-step workflow initiated" in result
+            assert "1 tasks and 0 dependencies" in result
 
     def test_execute_task_graph_mixed_content_with_json(self):
         """Test TaskGraph execution when LLM generates text before JSON."""
@@ -869,6 +868,25 @@ This TaskGraph breaks down the request..."""
 
         # Should handle mixed content gracefully
         assert "Invalid TaskGraph JSON" in result
+
+    def test_execute_task_graph_with_validation_error_message(self):
+        """Test execute_task_graph when it receives an error message from validate_task_graph."""
+        mock_context = Mock()
+        mock_context.workflow_engine = Mock()
+
+        # This is what happens when validate_task_graph returns an error
+        validation_error_message = (
+            "Invalid role references: Task 'task_1' uses unavailable role 'nonexistent'"
+        )
+
+        from roles.core_planning import execute_task_graph
+
+        result = execute_task_graph(validation_error_message, mock_context, {})
+
+        # Should return the error message without trying to parse it as JSON
+        assert result == validation_error_message
+        # Should not attempt to call workflow engine
+        mock_context.workflow_engine._execute_dag_parallel.assert_not_called()
 
 
 # Integration test markers for pytest

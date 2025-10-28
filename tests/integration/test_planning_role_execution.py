@@ -100,15 +100,10 @@ class TestPlanningRoleExecution:
             # Execute the TaskGraph
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            # Verify execution was called
-            mock_workflow_engine._execute_dag_parallel.assert_called_once()
-
-            # Verify consolidated results
-            assert "Workflow completed successfully" in result
-            assert "Get Weather" in result
-            assert "Current weather: Sunny, 72°F" in result
-            assert "Set Timer" in result
-            assert "Timer set for 30 minutes" in result
+            # Verify event-driven workflow initiation
+            assert "Multi-step workflow initiated" in result
+            assert "2 tasks and 1 dependencies" in result
+            assert "Results will be delivered when complete" in result
 
     def test_complex_multi_role_workflow(self):
         """Test execution of a complex workflow with multiple roles."""
@@ -186,17 +181,10 @@ class TestPlanningRoleExecution:
             # Execute the complex workflow
             result = execute_task_graph(complex_task_graph, mock_context, {})
 
-            # Verify execution was called
-            mock_workflow_engine._execute_dag_parallel.assert_called_once()
-
-            # Verify all results are consolidated
-            assert "Workflow completed successfully" in result
-            assert "Search Thailand Info" in result
-            assert "Found 5 articles about Thailand travel" in result
-            assert "Check Chicago Weather" in result
-            assert "Chicago weather: Cloudy, 45°F" in result
-            assert "Write Thomas Paine Essay" in result
-            assert "Essay on Thomas Paine completed" in result
+            # Verify event-driven workflow initiation
+            assert "Multi-step workflow initiated" in result
+            assert "3 tasks and 0 dependencies" in result
+            assert "Results will be delivered when complete" in result
 
     def test_workflow_execution_with_dependencies(self):
         """Test workflow execution with task dependencies."""
@@ -264,13 +252,10 @@ class TestPlanningRoleExecution:
 
             result = execute_task_graph(dependent_workflow, mock_context, {})
 
-            # Verify execution and results
-            mock_workflow_engine._execute_dag_parallel.assert_called_once()
-            assert "Workflow completed successfully" in result
-            assert "First Task" in result
-            assert "Second Task" in result
-            assert "Step 1 completed" in result
-            assert "Step 2 completed using results from Step 1" in result
+            # Verify event-driven workflow initiation
+            assert "Multi-step workflow initiated" in result
+            assert "2 tasks and 1 dependencies" in result
+            assert "Results will be delivered when complete" in result
 
 
 # Integration test marker
