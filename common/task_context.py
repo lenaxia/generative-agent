@@ -214,25 +214,6 @@ class TaskContext:
 
         return checkpoint
 
-    # Serialization
-    def set_workflow_intent(self, intent):
-        """Store a workflow intent for later processing.
-
-        Args:
-            intent: WorkflowIntent object to store
-        """
-        self.pending_workflow_intent = intent
-
-    def get_workflow_intent(self):
-        """Retrieve and clear the stored workflow intent.
-
-        Returns:
-            WorkflowIntent object or None
-        """
-        intent = self.pending_workflow_intent
-        self.pending_workflow_intent = None
-        return intent
-
     def to_dict(self) -> dict:
         """Serialize TaskContext to dictionary.
 
