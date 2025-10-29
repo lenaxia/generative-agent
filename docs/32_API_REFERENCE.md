@@ -17,6 +17,7 @@ WorkflowEngine(llm_factory: LLMFactory, message_bus: MessageBus, max_concurrent_
 ```
 
 **Parameters:**
+
 - `llm_factory`: LLMFactory instance for creating StrandsAgent models
 - `message_bus`: MessageBus instance for event communication
 - `max_concurrent_tasks`: Maximum number of concurrent tasks (default: 5)
@@ -28,12 +29,15 @@ WorkflowEngine(llm_factory: LLMFactory, message_bus: MessageBus, max_concurrent_
 Creates and starts a new workflow from user instruction.
 
 **Parameters:**
+
 - `instruction`: User instruction describing the task to be performed
 
 **Returns:**
+
 - `str`: Unique workflow ID for tracking
 
 **Example:**
+
 ```python
 workflow_id = workflow_engine.start_workflow("Search for weather in Seattle and summarize the results")
 ```
@@ -43,12 +47,15 @@ workflow_id = workflow_engine.start_workflow("Search for weather in Seattle and 
 Pauses an active workflow and creates a comprehensive checkpoint.
 
 **Parameters:**
+
 - `workflow_id`: ID of the workflow to pause
 
 **Returns:**
+
 - `Dict`: Checkpoint data containing workflow state
 
 **Example:**
+
 ```python
 checkpoint = workflow_engine.pause_workflow("wf_12345")
 ```
@@ -58,10 +65,12 @@ checkpoint = workflow_engine.pause_workflow("wf_12345")
 Resumes a paused workflow from checkpoint data.
 
 **Parameters:**
+
 - `workflow_id`: ID of the workflow to resume
 - `checkpoint`: Checkpoint data from pause_workflow()
 
 **Example:**
+
 ```python
 workflow_engine.resume_workflow("wf_12345", checkpoint)
 ```
@@ -71,12 +80,15 @@ workflow_engine.resume_workflow("wf_12345", checkpoint)
 Gets the current status of a workflow.
 
 **Parameters:**
+
 - `workflow_id`: ID of the workflow to check
 
 **Returns:**
+
 - `Dict`: Workflow status information
 
 **Example:**
+
 ```python
 status = workflow_engine.get_workflow_status("wf_12345")
 print(f"State: {status['state']}, Progress: {status['progress']}")
@@ -87,9 +99,11 @@ print(f"State: {status['state']}, Progress: {status['progress']}")
 Gets comprehensive metrics for the WorkflowEngine.
 
 **Returns:**
+
 - `Dict`: Metrics including active workflows, queue size, and performance data
 
 **Example:**
+
 ```python
 metrics = workflow_engine.get_workflow_metrics()
 print(f"Active workflows: {metrics['active_workflows']}")
@@ -100,9 +114,11 @@ print(f"Active workflows: {metrics['active_workflows']}")
 Gets the status of the Universal Agent integration.
 
 **Returns:**
+
 - `Dict`: Universal Agent status and configuration
 
 **Example:**
+
 ```python
 ua_status = workflow_engine.get_universal_agent_status()
 print(f"Framework: {ua_status['framework']}")
@@ -119,6 +135,7 @@ UniversalAgent(llm_factory: LLMFactory)
 ```
 
 **Parameters:**
+
 - `llm_factory`: LLMFactory instance for creating models
 
 #### Methods
@@ -128,15 +145,18 @@ UniversalAgent(llm_factory: LLMFactory)
 Creates a role-specific agent instance.
 
 **Parameters:**
+
 - `role`: Role name (planning, search, weather, summarizer, slack)
 - `llm_type`: LLM type for semantic model selection (WEAK, DEFAULT, STRONG)
 - `context`: TaskContext for external state management
 - `tools`: List of tool names to make available
 
 **Returns:**
+
 - `Agent`: StrandsAgent instance configured for the role
 
 **Example:**
+
 ```python
 agent = universal_agent.assume_role(
     role="planning",
@@ -157,6 +177,7 @@ LLMFactory(configs: Dict[LLMType, List[BaseConfig]], framework: str = "strands")
 ```
 
 **Parameters:**
+
 - `configs`: Configuration mapping for different LLM types
 - `framework`: Framework type ("strands" only)
 
@@ -167,13 +188,16 @@ LLMFactory(configs: Dict[LLMType, List[BaseConfig]], framework: str = "strands")
 Creates a StrandsAgent model instance.
 
 **Parameters:**
+
 - `llm_type`: Semantic model type (WEAK, DEFAULT, STRONG)
 - `name`: Optional specific model name
 
 **Returns:**
+
 - `Model`: StrandsAgent model instance
 
 **Example:**
+
 ```python
 model = llm_factory.create_strands_model(LLMType.STRONG)
 ```
@@ -183,11 +207,13 @@ model = llm_factory.create_strands_model(LLMType.STRONG)
 Creates a Universal Agent with specified configuration.
 
 **Parameters:**
+
 - `llm_type`: Semantic model type
 - `role`: Agent role
 - `tools`: Available tools
 
 **Returns:**
+
 - `Agent`: Configured Universal Agent instance
 
 ### TaskContext
@@ -201,6 +227,7 @@ TaskContext(task_graph: TaskGraph)
 ```
 
 **Parameters:**
+
 - `task_graph`: TaskGraph instance for DAG management
 
 #### Methods
@@ -210,6 +237,7 @@ TaskContext(task_graph: TaskGraph)
 Creates a comprehensive checkpoint of current state.
 
 **Returns:**
+
 - `Dict`: Checkpoint data including task graph state, conversation history, and metadata
 
 ##### resume_from_checkpoint(checkpoint: Dict) -> None
@@ -217,6 +245,7 @@ Creates a comprehensive checkpoint of current state.
 Restores state from checkpoint data.
 
 **Parameters:**
+
 - `checkpoint`: Checkpoint data from create_checkpoint()
 
 ##### update_task_result(task_id: str, result: Any) -> None
@@ -224,6 +253,7 @@ Restores state from checkpoint data.
 Updates the result of a completed task.
 
 **Parameters:**
+
 - `task_id`: ID of the completed task
 - `result`: Task execution result
 
@@ -232,6 +262,7 @@ Updates the result of a completed task.
 Gets the conversation history for the context.
 
 **Returns:**
+
 - `List[Dict]`: Conversation messages and metadata
 
 ## Tool Functions
@@ -293,13 +324,13 @@ llm_providers:
     provider_type: bedrock
     model_id: us.amazon.nova-pro-v1:0
     temperature: 0.3
-  
+
   strong:
     llm_class: STRONG
     provider_type: bedrock
     model_id: us.amazon.nova-premier-v1:0
     temperature: 0.1
-  
+
   weak:
     llm_class: WEAK
     provider_type: bedrock
@@ -311,19 +342,19 @@ universal_agent:
   framework: strands
   max_concurrent_tasks: 5
   checkpoint_interval: 300
-  
+
   # Role-based LLM optimization
   role_optimization:
-    planning: STRONG      # Complex reasoning
-    search: WEAK         # Simple queries
-    weather: WEAK        # Simple lookups
-    summarizer: DEFAULT  # Balanced processing
-    slack: DEFAULT       # Conversational
+    planning: STRONG # Complex reasoning
+    search: WEAK # Simple queries
+    weather: WEAK # Simple lookups
+    summarizer: DEFAULT # Balanced processing
+    slack: DEFAULT # Conversational
 
 # MCP server configuration
 mcp:
   config_file: config/mcp_config.yaml
-  
+
 # Feature flags
 features:
   universal_agent_enabled: true
@@ -382,6 +413,7 @@ llm_providers:
 The system publishes the following events:
 
 #### TASK_STARTED
+
 Published when a task begins execution.
 
 ```python
@@ -395,6 +427,7 @@ Published when a task begins execution.
 ```
 
 #### TASK_COMPLETED
+
 Published when a task completes successfully.
 
 ```python
@@ -409,6 +442,7 @@ Published when a task completes successfully.
 ```
 
 #### TASK_FAILED
+
 Published when a task fails.
 
 ```python
@@ -423,6 +457,7 @@ Published when a task fails.
 ```
 
 #### WORKFLOW_PAUSED
+
 Published when a workflow is paused.
 
 ```python
@@ -435,6 +470,7 @@ Published when a workflow is paused.
 ```
 
 #### WORKFLOW_RESUMED
+
 Published when a workflow is resumed.
 
 ```python
@@ -558,16 +594,19 @@ message_bus.subscribe("TASK_COMPLETED", handle_task_completion)
 ### Common Issues
 
 #### WorkflowEngine Creation Fails
+
 - Check LLMFactory configuration
 - Verify MessageBus initialization
 - Ensure all required dependencies are installed
 
 #### Task Execution Timeouts
+
 - Increase timeout values in configuration
 - Check external service availability
 - Monitor system resource usage
 
 #### Universal Agent Role Errors
+
 - Verify role name is supported (planning, search, weather, summarizer, slack)
 - Check tool availability for the role
 - Ensure LLMType is appropriate for the task complexity
@@ -631,3 +670,4 @@ agents:
 universal_agent:
   role_optimization:
     planning: STRONG
+```

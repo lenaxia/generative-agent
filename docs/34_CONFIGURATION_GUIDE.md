@@ -29,7 +29,7 @@ llm_providers:
     temperature: 0.3
     max_tokens: 4096
     timeout: 30
-  
+
   # Strong model for complex reasoning
   strong:
     llm_class: STRONG
@@ -38,7 +38,7 @@ llm_providers:
     temperature: 0.1
     max_tokens: 8192
     timeout: 60
-  
+
   # Weak model for simple tasks
   weak:
     llm_class: WEAK
@@ -55,14 +55,14 @@ universal_agent:
   checkpoint_interval: 300
   retry_attempts: 3
   retry_delay: 1.0
-  
+
   # Role-based LLM optimization
   role_optimization:
-    planning: STRONG      # Complex reasoning and task planning
-    search: WEAK         # Simple search queries
-    weather: WEAK        # Basic weather lookups
-    summarizer: DEFAULT  # Balanced text processing
-    slack: DEFAULT       # Conversational interactions
+    planning: STRONG # Complex reasoning and task planning
+    search: WEAK # Simple search queries
+    weather: WEAK # Basic weather lookups
+    summarizer: DEFAULT # Balanced text processing
+    slack: DEFAULT # Conversational interactions
 
 # MCP server configuration
 mcp:
@@ -115,16 +115,17 @@ Controls system-wide logging behavior:
 
 ```yaml
 logging:
-  log_level: INFO              # DEBUG, INFO, WARNING, ERROR, CRITICAL
-  log_file: logs/system.log    # Log file path
+  log_level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: logs/system.log # Log file path
   log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  max_file_size: 10MB          # Maximum log file size before rotation
-  backup_count: 5              # Number of backup log files to keep
-  console_output: true         # Enable console logging
-  structured_logging: false    # Enable JSON structured logging
+  max_file_size: 10MB # Maximum log file size before rotation
+  backup_count: 5 # Number of backup log files to keep
+  console_output: true # Enable console logging
+  structured_logging: false # Enable JSON structured logging
 ```
 
 **Log Levels:**
+
 - `DEBUG`: Detailed debugging information
 - `INFO`: General system information (recommended for production)
 - `WARNING`: Warning messages for potential issues
@@ -139,13 +140,13 @@ Defines available LLM models with semantic types:
 llm_providers:
   # Configuration name (can be any identifier)
   default:
-    llm_class: DEFAULT         # Semantic type: WEAK, DEFAULT, STRONG
-    provider_type: bedrock     # Provider: bedrock, openai, anthropic
+    llm_class: DEFAULT # Semantic type: WEAK, DEFAULT, STRONG
+    provider_type: bedrock # Provider: bedrock, openai, anthropic
     model_id: us.amazon.nova-pro-v1:0
-    temperature: 0.3           # Creativity level (0.0-1.0)
-    max_tokens: 4096          # Maximum response tokens
-    timeout: 30               # Request timeout in seconds
-    
+    temperature: 0.3 # Creativity level (0.0-1.0)
+    max_tokens: 4096 # Maximum response tokens
+    timeout: 30 # Request timeout in seconds
+
     # Provider-specific parameters
     additional_params:
       top_p: 0.9
@@ -154,11 +155,13 @@ llm_providers:
 ```
 
 **Semantic Types:**
+
 - `WEAK`: Fast, cost-effective models for simple tasks
 - `DEFAULT`: Balanced models for general-purpose tasks
 - `STRONG`: Powerful models for complex reasoning and analysis
 
 **Supported Providers:**
+
 - `bedrock`: AWS Bedrock models
 - `openai`: OpenAI models
 - `anthropic`: Anthropic Claude models
@@ -169,21 +172,21 @@ Controls Universal Agent behavior and optimization:
 
 ```yaml
 universal_agent:
-  framework: strands           # Framework type (strands only)
-  max_concurrent_tasks: 5      # Maximum parallel task execution
-  checkpoint_interval: 300     # Checkpoint creation interval (seconds)
-  retry_attempts: 3            # Maximum retry attempts for failed tasks
-  retry_delay: 1.0            # Delay between retries (seconds)
-  task_timeout: 600           # Maximum task execution time (seconds)
-  
+  framework: strands # Framework type (strands only)
+  max_concurrent_tasks: 5 # Maximum parallel task execution
+  checkpoint_interval: 300 # Checkpoint creation interval (seconds)
+  retry_attempts: 3 # Maximum retry attempts for failed tasks
+  retry_delay: 1.0 # Delay between retries (seconds)
+  task_timeout: 600 # Maximum task execution time (seconds)
+
   # Role-based model optimization
   role_optimization:
-    planning: STRONG           # Use STRONG models for planning tasks
-    search: WEAK              # Use WEAK models for search tasks
-    weather: WEAK             # Use WEAK models for weather tasks
-    summarizer: DEFAULT       # Use DEFAULT models for summarization
-    slack: DEFAULT            # Use DEFAULT models for Slack tasks
-    
+    planning: STRONG # Use STRONG models for planning tasks
+    search: WEAK # Use WEAK models for search tasks
+    weather: WEAK # Use WEAK models for weather tasks
+    summarizer: DEFAULT # Use DEFAULT models for summarization
+    slack: DEFAULT # Use DEFAULT models for Slack tasks
+
   # Tool configuration per role
   role_tools:
     planning:
@@ -210,12 +213,12 @@ Controls Model Context Protocol server integration:
 
 ```yaml
 mcp:
-  config_file: config/mcp_config.yaml  # Separate MCP configuration file
-  enabled: true                        # Enable/disable MCP integration
-  timeout: 30                         # MCP server connection timeout
-  retry_attempts: 3                   # Connection retry attempts
-  discovery_interval: 60              # Server discovery interval (seconds)
-  
+  config_file: config/mcp_config.yaml # Separate MCP configuration file
+  enabled: true # Enable/disable MCP integration
+  timeout: 30 # MCP server connection timeout
+  retry_attempts: 3 # Connection retry attempts
+  discovery_interval: 60 # Server discovery interval (seconds)
+
   # Server-specific settings
   servers:
     aws_docs:
@@ -235,15 +238,15 @@ Enable or disable system capabilities:
 
 ```yaml
 features:
-  universal_agent_enabled: true      # Enable Universal Agent system
-  mcp_integration_enabled: true      # Enable MCP server integration
-  task_scheduling_enabled: true      # Enable task scheduling and queuing
-  checkpoint_persistence: true       # Enable workflow pause/resume
-  metrics_collection: true           # Enable metrics and monitoring
-  health_monitoring: true            # Enable health checks
-  security_enabled: false            # Enable authentication/authorization
-  rate_limiting_enabled: false       # Enable API rate limiting
-  caching_enabled: false             # Enable response caching
+  universal_agent_enabled: true # Enable Universal Agent system
+  mcp_integration_enabled: true # Enable MCP server integration
+  task_scheduling_enabled: true # Enable task scheduling and queuing
+  checkpoint_persistence: true # Enable workflow pause/resume
+  metrics_collection: true # Enable metrics and monitoring
+  health_monitoring: true # Enable health checks
+  security_enabled: false # Enable authentication/authorization
+  rate_limiting_enabled: false # Enable API rate limiting
+  caching_enabled: false # Enable response caching
 ```
 
 ### Development Settings
@@ -252,18 +255,18 @@ Configuration for development and debugging:
 
 ```yaml
 development:
-  debug_mode: false                  # Enable debug logging and features
-  test_mode: false                   # Enable test mode with mocked services
-  mock_external_services: false      # Mock external API calls
-  verbose_logging: false             # Enable verbose logging
-  performance_profiling: false       # Enable performance profiling
-  auto_reload: false                 # Auto-reload configuration changes
-  
+  debug_mode: false # Enable debug logging and features
+  test_mode: false # Enable test mode with mocked services
+  mock_external_services: false # Mock external API calls
+  verbose_logging: false # Enable verbose logging
+  performance_profiling: false # Enable performance profiling
+  auto_reload: false # Auto-reload configuration changes
+
   # Test-specific settings
   test_settings:
-    fast_execution: true             # Skip delays in test mode
-    mock_llm_responses: false        # Use mock LLM responses
-    disable_external_calls: true     # Disable external API calls
+    fast_execution: true # Skip delays in test mode
+    mock_llm_responses: false # Use mock LLM responses
+    disable_external_calls: true # Disable external API calls
 ```
 
 ## Environment Variable Substitution
@@ -336,11 +339,13 @@ if not config_manager.is_valid():
 ### Validation Rules
 
 **Required Fields:**
+
 - `llm_providers.default` must be defined
 - `universal_agent.framework` must be "strands"
 - `logging.log_level` must be valid level
 
 **Value Constraints:**
+
 - `temperature` must be between 0.0 and 1.0
 - `max_concurrent_tasks` must be positive integer
 - `timeout` values must be positive numbers
@@ -356,11 +361,11 @@ from config.config_manager import ConfigManager
 class CustomConfigManager(ConfigManager):
     def validate_custom_rules(self, config):
         errors = []
-        
+
         # Custom validation logic
         if config.get('universal_agent', {}).get('max_concurrent_tasks', 0) > 20:
             errors.append("max_concurrent_tasks should not exceed 20 for stability")
-        
+
         return errors
 ```
 
@@ -481,13 +486,13 @@ config_manager.add_change_listener(on_config_change)
 security:
   authentication:
     enabled: true
-    method: token          # token, oauth, basic
-    token_expiry: 3600    # Token expiry in seconds
-    
+    method: token # token, oauth, basic
+    token_expiry: 3600 # Token expiry in seconds
+
   authorization:
     enabled: true
-    default_role: user    # Default role for authenticated users
-    
+    default_role: user # Default role for authenticated users
+
   # API security
   api:
     cors_enabled: true
@@ -502,14 +507,14 @@ security:
 
 ```yaml
 secrets:
-  provider: environment     # environment, vault, aws_secrets
-  
+  provider: environment # environment, vault, aws_secrets
+
   # Environment variable mapping
   environment_mapping:
     openai_api_key: OPENAI_API_KEY
     slack_token: SLACK_BOT_TOKEN
     weather_api_key: WEATHER_API_KEY
-    
+
   # AWS Secrets Manager (if using aws_secrets provider)
   aws_secrets:
     region: us-west-2
@@ -526,20 +531,20 @@ secrets:
 performance:
   # WorkflowEngine settings
   workflow_engine:
-    max_concurrent_tasks: 5        # Balance throughput vs resources
-    task_queue_size: 100          # Maximum queued tasks
-    worker_pool_size: 10          # Background worker threads
-    
+    max_concurrent_tasks: 5 # Balance throughput vs resources
+    task_queue_size: 100 # Maximum queued tasks
+    worker_pool_size: 10 # Background worker threads
+
   # Universal Agent settings
   universal_agent:
-    model_cache_size: 50          # Cached model instances
-    conversation_cache_size: 100   # Cached conversation contexts
-    tool_timeout: 30              # Tool execution timeout
-    
+    model_cache_size: 50 # Cached model instances
+    conversation_cache_size: 100 # Cached conversation contexts
+    tool_timeout: 30 # Tool execution timeout
+
   # Memory management
   memory:
-    max_conversation_history: 1000  # Maximum conversation messages
-    checkpoint_compression: true    # Compress checkpoint data
+    max_conversation_history: 1000 # Maximum conversation messages
+    checkpoint_compression: true # Compress checkpoint data
     garbage_collection_interval: 300 # GC interval in seconds
 ```
 
@@ -549,21 +554,21 @@ performance:
 optimization:
   # Model selection optimization
   model_selection:
-    auto_optimization: true       # Automatically optimize model selection
-    performance_tracking: true    # Track model performance
-    cost_optimization: true       # Optimize for cost efficiency
-    
+    auto_optimization: true # Automatically optimize model selection
+    performance_tracking: true # Track model performance
+    cost_optimization: true # Optimize for cost efficiency
+
   # Caching configuration
   caching:
     enabled: true
-    ttl: 3600                    # Cache TTL in seconds
-    max_size: 1000               # Maximum cached items
-    
+    ttl: 3600 # Cache TTL in seconds
+    max_size: 1000 # Maximum cached items
+
   # Batch processing
   batching:
     enabled: true
-    batch_size: 10               # Tasks per batch
-    batch_timeout: 5             # Batch collection timeout
+    batch_size: 10 # Tasks per batch
+    batch_timeout: 5 # Batch collection timeout
 ```
 
 ## Monitoring Configuration
@@ -574,22 +579,22 @@ optimization:
 monitoring:
   metrics:
     enabled: true
-    collection_interval: 60      # Metrics collection interval
-    retention_days: 30          # Metrics retention period
-    
+    collection_interval: 60 # Metrics collection interval
+    retention_days: 30 # Metrics retention period
+
     # Metric categories
     categories:
-      system: true              # System resource metrics
-      workflow: true            # Workflow execution metrics
-      agent: true               # Universal Agent metrics
-      mcp: true                # MCP server metrics
-      
+      system: true # System resource metrics
+      workflow: true # Workflow execution metrics
+      agent: true # Universal Agent metrics
+      mcp: true # MCP server metrics
+
   # Health checks
   health_checks:
     enabled: true
-    check_interval: 30          # Health check interval
-    timeout: 10                 # Health check timeout
-    
+    check_interval: 30 # Health check interval
+    timeout: 10 # Health check timeout
+
     # Component health checks
     components:
       workflow_engine: true
@@ -603,26 +608,26 @@ monitoring:
 ```yaml
 alerting:
   enabled: true
-  
+
   # Alert channels
   channels:
     email:
       enabled: true
       smtp_server: smtp.example.com
       recipients: ["admin@example.com"]
-    
+
     slack:
       enabled: true
       webhook_url: ${SLACK_WEBHOOK_URL}
       channel: "#alerts"
-    
+
   # Alert rules
   rules:
     high_error_rate:
       condition: "error_rate > 0.05"
       severity: critical
       cooldown: 300
-    
+
     high_memory_usage:
       condition: "memory_usage > 0.8"
       severity: warning
@@ -646,7 +651,7 @@ servers:
     enabled: true
     priority: high
     timeout: 30
-    
+
   web_search:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-web-search"]
@@ -655,7 +660,7 @@ servers:
     enabled: true
     priority: medium
     timeout: 20
-    
+
   weather:
     command: python
     args: ["-m", "weather_mcp_server"]
@@ -664,14 +669,14 @@ servers:
     enabled: true
     priority: low
     timeout: 15
-    
+
   filesystem:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
     enabled: true
     priority: medium
     timeout: 10
-    
+
   github:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-github"]
@@ -680,7 +685,7 @@ servers:
     enabled: false
     priority: low
     timeout: 25
-    
+
   slack:
     command: python
     args: ["-m", "slack_mcp_server"]
@@ -742,8 +747,8 @@ secrets:
 universal_agent:
   max_concurrent_tasks: 10
   role_optimization:
-    search: WEAK        # Use fast models for simple searches
-    planning: STRONG    # Use powerful models for complex planning
+    search: WEAK # Use fast models for simple searches
+    planning: STRONG # Use powerful models for complex planning
 ```
 
 ### Monitoring Best Practices
@@ -758,12 +763,14 @@ universal_agent:
 ### Common Configuration Issues
 
 #### Invalid YAML Syntax
+
 ```bash
 # Check YAML syntax
 python -c "import yaml; yaml.safe_load(open('config.yaml'))"
 ```
 
 #### Missing Environment Variables
+
 ```bash
 # Check required environment variables
 python -c "
@@ -778,6 +785,7 @@ else:
 ```
 
 #### Configuration Validation Errors
+
 ```python
 from config.config_manager import ConfigManager
 
@@ -797,14 +805,14 @@ def test_configuration():
     try:
         config_manager = ConfigManager("config.yaml")
         config = config_manager.get_config()
-        
+
         # Test LLM factory creation
         from llm_provider.factory import LLMFactory
         llm_factory = LLMFactory(config['llm_providers'])
-        
+
         # Test model creation
         model = llm_factory.create_strands_model(LLMType.DEFAULT)
-        
+
         print("✅ Configuration test passed")
         return True
     except Exception as e:
@@ -841,16 +849,19 @@ llm_providers:
 ### Manual Migration Steps
 
 1. **Backup existing configuration**:
+
    ```bash
    cp config.yaml config.yaml.backup
    ```
 
 2. **Update configuration format**:
+
    ```bash
    python scripts/migrate_config.py config.yaml
    ```
 
 3. **Validate new configuration**:
+
    ```bash
    python -m config.config_manager --validate config.yaml
    ```
@@ -866,53 +877,54 @@ llm_providers:
 
 ```yaml
 # Root configuration schema
-logging:                    # Logging configuration (optional)
-  log_level: str           # Log level (default: INFO)
-  log_file: str            # Log file path (default: logs/system.log)
-  log_format: str          # Log format string
-  max_file_size: str       # Max file size before rotation
-  backup_count: int        # Number of backup files
+logging: # Logging configuration (optional)
+  log_level: str # Log level (default: INFO)
+  log_file: str # Log file path (default: logs/system.log)
+  log_format: str # Log format string
+  max_file_size: str # Max file size before rotation
+  backup_count: int # Number of backup files
 
-llm_providers:             # LLM provider configurations (required)
-  <provider_name>:         # Provider configuration name
-    llm_class: str         # WEAK, DEFAULT, STRONG (required)
-    provider_type: str     # bedrock, openai, anthropic (required)
-    model_id: str          # Model identifier (required)
-    temperature: float     # Temperature 0.0-1.0 (default: 0.3)
-    max_tokens: int        # Maximum tokens (default: 4096)
-    timeout: int           # Timeout in seconds (default: 30)
+llm_providers: # LLM provider configurations (required)
+  <provider_name>: # Provider configuration name
+    llm_class: str # WEAK, DEFAULT, STRONG (required)
+    provider_type: str # bedrock, openai, anthropic (required)
+    model_id: str # Model identifier (required)
+    temperature: float # Temperature 0.0-1.0 (default: 0.3)
+    max_tokens: int # Maximum tokens (default: 4096)
+    timeout: int # Timeout in seconds (default: 30)
     additional_params: dict # Provider-specific parameters (optional)
 
-universal_agent:           # Universal Agent configuration (optional)
-  framework: str           # Framework type (default: strands)
+universal_agent: # Universal Agent configuration (optional)
+  framework: str # Framework type (default: strands)
   max_concurrent_tasks: int # Max parallel tasks (default: 5)
-  checkpoint_interval: int  # Checkpoint interval seconds (default: 300)
-  retry_attempts: int      # Max retry attempts (default: 3)
-  retry_delay: float       # Retry delay seconds (default: 1.0)
-  role_optimization: dict  # Role to LLM type mapping (optional)
-  role_tools: dict         # Role to tools mapping (optional)
+  checkpoint_interval: int # Checkpoint interval seconds (default: 300)
+  retry_attempts: int # Max retry attempts (default: 3)
+  retry_delay: float # Retry delay seconds (default: 1.0)
+  role_optimization: dict # Role to LLM type mapping (optional)
+  role_tools: dict # Role to tools mapping (optional)
 
-mcp:                       # MCP configuration (optional)
-  config_file: str         # MCP config file path (default: config/mcp_config.yaml)
-  enabled: bool            # Enable MCP integration (default: true)
-  timeout: int             # Connection timeout (default: 30)
-  retry_attempts: int      # Connection retries (default: 3)
+mcp: # MCP configuration (optional)
+  config_file: str # MCP config file path (default: config/mcp_config.yaml)
+  enabled: bool # Enable MCP integration (default: true)
+  timeout: int # Connection timeout (default: 30)
+  retry_attempts: int # Connection retries (default: 3)
 
-features:                  # Feature flags (optional)
-  universal_agent_enabled: bool    # Enable Universal Agent (default: true)
-  mcp_integration_enabled: bool    # Enable MCP integration (default: true)
-  task_scheduling_enabled: bool    # Enable task scheduling (default: true)
-  checkpoint_persistence: bool     # Enable checkpointing (default: true)
-  metrics_collection: bool         # Enable metrics (default: true)
-  health_monitoring: bool          # Enable health checks (default: true)
+features: # Feature flags (optional)
+  universal_agent_enabled: bool # Enable Universal Agent (default: true)
+  mcp_integration_enabled: bool # Enable MCP integration (default: true)
+  task_scheduling_enabled: bool # Enable task scheduling (default: true)
+  checkpoint_persistence: bool # Enable checkpointing (default: true)
+  metrics_collection: bool # Enable metrics (default: true)
+  health_monitoring: bool # Enable health checks (default: true)
 
-development:               # Development settings (optional)
-  debug_mode: bool         # Enable debug mode (default: false)
-  test_mode: bool          # Enable test mode (default: false)
+development: # Development settings (optional)
+  debug_mode: bool # Enable debug mode (default: false)
+  test_mode: bool # Enable test mode (default: false)
   mock_external_services: bool # Mock external services (default: false)
-  verbose_logging: bool    # Enable verbose logging (default: false)
+  verbose_logging: bool # Enable verbose logging (default: false)
 
-agents:                    # Legacy agent configuration (optional, for backward compatibility)
-  <agent_name>:           # Legacy agent configuration
-    enabled: bool          # Enable agent (default: true)
-    model_type: str        # Model type (weak, default, strong)
+agents: # Legacy agent configuration (optional, for backward compatibility)
+  <agent_name>: # Legacy agent configuration
+    enabled: bool # Enable agent (default: true)
+    model_type: str # Model type (weak, default, strong)
+```

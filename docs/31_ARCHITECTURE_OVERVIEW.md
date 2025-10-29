@@ -12,34 +12,34 @@ graph TD
         UI[User Interface] --> API[API Gateway]
         CLI[CLI Interface] --> API
     end
-    
+
     subgraph "Orchestration Layer"
         API --> S[Supervisor]
         S --> WE[WorkflowEngine]
         WE --> MB[Message Bus]
     end
-    
+
     subgraph "Agent Layer"
         WE --> UA[Universal Agent]
         UA --> PL[Prompt Library]
         UA --> TR[Tool Registry]
         UA --> LLM[LLM Factory]
     end
-    
+
     subgraph "State Management"
         WE --> TC[TaskContext]
         TC --> TG[TaskGraph]
         TC --> CH[Conversation History]
         TC --> CP[Checkpoints]
     end
-    
+
     subgraph "External Integration"
         UA --> MCP[MCP Servers]
         MCP --> AWS[AWS Docs]
         MCP --> WEB[Web Search]
         MCP --> WEATHER[Weather API]
     end
-    
+
     subgraph "Configuration & Monitoring"
         S --> CM[Config Manager]
         S --> MM[Metrics Manager]
@@ -59,6 +59,7 @@ The `Supervisor` is the top-level system coordinator responsible for:
 - Component coordination and status reporting
 
 **Key Responsibilities:**
+
 - Load and validate system configuration
 - Initialize WorkflowEngine with proper dependencies
 - Provide system status and health information
@@ -75,6 +76,7 @@ The `WorkflowEngine` is the unified orchestration component that combines:
 - **Task Result Sharing**: Automatic predecessor result passing to dependent tasks
 
 **Key Features:**
+
 - DAG-based workflow execution with parallel task processing
 - Pause/resume functionality with comprehensive checkpointing
 - Message bus integration for event-driven communication
@@ -86,6 +88,7 @@ The `WorkflowEngine` is the unified orchestration component that combines:
 The `UniversalAgent` provides a single agent interface that can assume different roles:
 
 **Supported Roles:**
+
 - **Planning**: Complex task planning and dependency analysis
 - **Search**: Web search and information retrieval
 - **Weather**: Weather data lookup and forecasting
@@ -93,6 +96,7 @@ The `UniversalAgent` provides a single agent interface that can assume different
 - **Slack**: Slack integration and messaging
 
 **Role-based LLM Optimization:**
+
 - **STRONG Models**: Used for planning and complex reasoning tasks
 - **DEFAULT Models**: Used for balanced processing and conversational tasks
 - **WEAK Models**: Used for simple lookups and basic operations
@@ -121,6 +125,7 @@ Enhanced factory pattern for creating StrandsAgent models:
 Converted from individual agent classes to @tool decorated functions:
 
 **Tool Categories:**
+
 - **Planning Tools**: Task planning, dependency analysis, execution optimization
 - **Search Tools**: Web search, filtered search, result processing
 - **Weather Tools**: Current weather, forecasts, location resolution
@@ -149,21 +154,21 @@ sequenceDiagram
     participant UA as Universal Agent
     participant TC as TaskContext
     participant MB as Message Bus
-    
+
     U->>S: Submit instruction
     S->>WE: start_workflow(instruction)
     WE->>TC: Create TaskContext
     WE->>UA: assume_role("planning")
     UA->>WE: Return task plan
     WE->>TC: Update task graph
-    
+
     loop For each ready task
         WE->>UA: assume_role(task.role)
         UA->>WE: Execute task
         WE->>TC: Update task result
         WE->>MB: Publish TASK_COMPLETED
     end
-    
+
     WE->>S: Workflow complete
     S->>U: Return results
 ```
@@ -206,6 +211,7 @@ Incremental summary building that:
 The system integrates with multiple MCP servers for enhanced capabilities:
 
 **Configured MCP Servers:**
+
 - **AWS Documentation**: Technical documentation and API references
 - **Web Search**: Internet search capabilities
 - **Weather Services**: Real-time weather data
@@ -214,6 +220,7 @@ The system integrates with multiple MCP servers for enhanced capabilities:
 - **Slack**: Team communication and collaboration
 
 **MCP Integration Features:**
+
 - **Dynamic Discovery**: Automatic server discovery and registration
 - **Tool Registration**: MCP tools automatically available to Universal Agent
 - **Authentication**: Secure authentication with external services
@@ -224,6 +231,7 @@ The system integrates with multiple MCP servers for enhanced capabilities:
 Event-driven architecture with comprehensive event types:
 
 **Core Events:**
+
 - `WORKFLOW_STARTED`: New workflow initiated
 - `WORKFLOW_COMPLETED`: Workflow finished successfully
 - `WORKFLOW_FAILED`: Workflow failed with error
@@ -278,6 +286,7 @@ Event-driven architecture with comprehensive event types:
 ### Metrics Collection
 
 **System Metrics:**
+
 - Active workflow count
 - Task execution rates
 - Error rates by component
@@ -285,6 +294,7 @@ Event-driven architecture with comprehensive event types:
 - Response times and latencies
 
 **Business Metrics:**
+
 - Workflow completion rates
 - User satisfaction scores
 - Feature usage statistics
@@ -293,6 +303,7 @@ Event-driven architecture with comprehensive event types:
 ### Health Monitoring
 
 **Component Health Checks:**
+
 - WorkflowEngine status and capacity
 - Universal Agent availability
 - MCP server connectivity
@@ -300,6 +311,7 @@ Event-driven architecture with comprehensive event types:
 - External service availability
 
 **System Health Indicators:**
+
 - Overall system status (healthy/degraded/critical)
 - Component-specific health scores
 - Performance trend analysis

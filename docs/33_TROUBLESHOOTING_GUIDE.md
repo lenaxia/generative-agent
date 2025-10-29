@@ -11,6 +11,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: System fails to start with configuration errors
 
 **Symptoms:**
+
 - Configuration validation errors on startup
 - Missing required configuration sections
 - Invalid configuration values
@@ -18,14 +19,16 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Validate configuration syntax:**
+
    ```bash
    python -c "import yaml; yaml.safe_load(open('config.yaml'))"
    ```
 
 2. **Check required sections:**
+
    ```python
    from config.config_manager import ConfigManager
-   
+
    config_manager = ConfigManager("config.yaml")
    if not config_manager.is_valid():
        for error in config_manager.get_validation_errors():
@@ -42,6 +45,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: LLM Factory creation fails
 
 **Symptoms:**
+
 - "No valid LLM configuration found" error
 - Provider-specific authentication errors
 - Model ID not found errors
@@ -49,6 +53,7 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check LLM provider configuration:**
+
    ```yaml
    llm_providers:
      default:
@@ -58,19 +63,21 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 2. **Verify provider credentials:**
+
    ```bash
    # For Bedrock
    aws sts get-caller-identity
-   
+
    # For OpenAI
    curl -H "Authorization: Bearer $OPENAI_API_KEY" \
         https://api.openai.com/v1/models
    ```
 
 3. **Test model availability:**
+
    ```python
    from llm_provider.factory import LLMFactory, LLMType
-   
+
    factory = LLMFactory(configs)
    try:
        model = factory.create_strands_model(LLMType.DEFAULT)
@@ -84,6 +91,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Workflows fail to start
 
 **Symptoms:**
+
 - "Failed to create task plan" errors
 - Universal Agent initialization failures
 - Task delegation errors
@@ -91,6 +99,7 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check Universal Agent status:**
+
    ```python
    status = workflow_engine.get_universal_agent_status()
    print(f"Universal Agent enabled: {status['universal_agent_enabled']}")
@@ -98,6 +107,7 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 2. **Verify role configuration:**
+
    ```yaml
    universal_agent:
      role_optimization:
@@ -107,10 +117,11 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 3. **Check task planning:**
+
    ```python
    # Test task planning directly
    from llm_provider.planning_tools import create_task_plan
-   
+
    plan = create_task_plan("Test instruction", ["search", "summarizer"])
    print(f"Task plan: {plan}")
    ```
@@ -118,6 +129,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Tasks hang or timeout
 
 **Symptoms:**
+
 - Tasks remain in RUNNING state indefinitely
 - Timeout errors in logs
 - High memory usage
@@ -125,19 +137,21 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check task timeouts:**
+
    ```yaml
    universal_agent:
-     task_timeout: 600  # Increase timeout for complex tasks
+     task_timeout: 600 # Increase timeout for complex tasks
    ```
 
 2. **Monitor resource usage:**
+
    ```python
    import psutil
-   
+
    # Check memory usage
    memory = psutil.virtual_memory()
    print(f"Memory usage: {memory.percent}%")
-   
+
    # Check CPU usage
    cpu = psutil.cpu_percent(interval=1)
    print(f"CPU usage: {cpu}%")
@@ -155,6 +169,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Role switching fails
 
 **Symptoms:**
+
 - "Unknown role" errors
 - Role assumption failures
 - Tool availability errors
@@ -162,12 +177,14 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Verify supported roles:**
+
    ```python
    supported_roles = ["planning", "search", "weather", "summarizer", "slack"]
    print(f"Supported roles: {supported_roles}")
    ```
 
 2. **Check role configuration:**
+
    ```yaml
    universal_agent:
      role_optimization:
@@ -190,6 +207,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Tool execution failures
 
 **Symptoms:**
+
 - "Tool not found" errors
 - Tool execution timeouts
 - External service connection failures
@@ -197,18 +215,20 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check tool registration:**
+
    ```python
    from llm_provider.tool_registry import ToolRegistry
-   
+
    registry = ToolRegistry()
    tools = registry.get_available_tools()
    print(f"Available tools: {tools}")
    ```
 
 2. **Test tool execution:**
+
    ```python
    from llm_provider.search_tools import web_search
-   
+
    try:
        result = web_search("test query")
        print(f"✅ Tool execution successful: {result}")
@@ -217,10 +237,11 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 3. **Check external service connectivity:**
+
    ```bash
    # Test internet connectivity
    curl -I https://www.google.com
-   
+
    # Test specific APIs
    curl -H "Authorization: Bearer $API_KEY" https://api.service.com/health
    ```
@@ -230,6 +251,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: MCP servers fail to start
 
 **Symptoms:**
+
 - "MCP server connection failed" errors
 - "MCP dependencies not available" warnings
 - Tool unavailability from MCP servers
@@ -237,6 +259,7 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check MCP configuration:**
+
    ```yaml
    mcp:
      config_file: config/mcp_config.yaml
@@ -245,15 +268,17 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 2. **Verify MCP server commands:**
+
    ```bash
    # Test MCP server command manually
    uvx awslabs.aws-documentation-mcp-server@latest
    ```
 
 3. **Check MCP client status:**
+
    ```python
    from llm_provider.mcp_client import MCPClient
-   
+
    client = MCPClient("config/mcp_config.yaml")
    status = client.get_all_server_status()
    for server, info in status.items():
@@ -272,6 +297,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Slow workflow execution
 
 **Symptoms:**
+
 - Long response times
 - High latency between tasks
 - Resource exhaustion
@@ -279,32 +305,36 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Optimize concurrency settings:**
+
    ```yaml
    universal_agent:
-     max_concurrent_tasks: 10  # Increase for better throughput
+     max_concurrent_tasks: 10 # Increase for better throughput
    ```
 
 2. **Use appropriate model types:**
+
    ```yaml
    universal_agent:
      role_optimization:
-       search: WEAK      # Use fast models for simple tasks
-       planning: STRONG  # Use powerful models only when needed
+       search: WEAK # Use fast models for simple tasks
+       planning: STRONG # Use powerful models only when needed
    ```
 
 3. **Enable performance monitoring:**
+
    ```yaml
    development:
      performance_profiling: true
-   
+
    features:
      metrics_collection: true
    ```
 
 4. **Check system resources:**
+
    ```python
    import psutil
-   
+
    # Monitor system resources
    print(f"CPU: {psutil.cpu_percent()}%")
    print(f"Memory: {psutil.virtual_memory().percent}%")
@@ -314,6 +344,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: High memory usage
 
 **Symptoms:**
+
 - Memory usage continuously increasing
 - Out of memory errors
 - System slowdown over time
@@ -321,22 +352,25 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Configure conversation history limits:**
+
    ```yaml
    universal_agent:
-     max_conversation_history: 500  # Limit conversation history
+     max_conversation_history: 500 # Limit conversation history
    ```
 
 2. **Enable checkpoint compression:**
+
    ```yaml
    features:
      checkpoint_compression: true
    ```
 
 3. **Monitor memory usage:**
+
    ```python
    # Add memory monitoring to workflows
    import psutil
-   
+
    def monitor_memory():
        memory = psutil.virtual_memory()
        if memory.percent > 80:
@@ -348,6 +382,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Checkpoint creation/restoration fails
 
 **Symptoms:**
+
 - "Failed to create checkpoint" errors
 - Workflow resume failures
 - State corruption errors
@@ -355,6 +390,7 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check checkpoint permissions:**
+
    ```bash
    # Ensure checkpoint directory is writable
    mkdir -p checkpoints
@@ -362,12 +398,13 @@ This guide provides solutions for common issues encountered when using the Stran
    ```
 
 2. **Validate checkpoint data:**
+
    ```python
    import json
-   
+
    # Test checkpoint serialization
    checkpoint = workflow_engine.pause_workflow(workflow_id)
-   
+
    # Verify checkpoint can be serialized
    json_data = json.dumps(checkpoint)
    restored = json.loads(json_data)
@@ -383,6 +420,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: TaskGraph execution errors
 
 **Symptoms:**
+
 - Dependency resolution failures
 - Circular dependency errors
 - Task execution order issues
@@ -390,13 +428,14 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Validate task dependencies:**
+
    ```python
    from common.task_graph import TaskGraph
-   
+
    # Check for circular dependencies
    task_graph = TaskGraph()
    # Add tasks and dependencies
-   
+
    if task_graph.has_cycles():
        print("❌ Circular dependency detected")
    else:
@@ -415,6 +454,7 @@ This guide provides solutions for common issues encountered when using the Stran
 #### Issue: Event delivery failures
 
 **Symptoms:**
+
 - Events not received by subscribers
 - Message bus connection errors
 - Event processing delays
@@ -422,20 +462,22 @@ This guide provides solutions for common issues encountered when using the Stran
 **Solutions:**
 
 1. **Check message bus status:**
+
    ```python
    from common.message_bus import MessageBus
-   
+
    message_bus = MessageBus()
    status = message_bus.get_status()
    print(f"Message bus status: {status}")
    ```
 
 2. **Test event publishing:**
+
    ```python
    # Test event publishing and subscription
    def test_handler(event):
        print(f"Received event: {event}")
-   
+
    message_bus.subscribe("TEST_EVENT", test_handler)
    message_bus.publish("TEST_EVENT", {"test": "data"})
    ```
@@ -478,10 +520,10 @@ logger.debug(f"Started workflow: {workflow_id}")
 while True:
     status = workflow_engine.get_workflow_status(workflow_id)
     logger.debug(f"Workflow {workflow_id} status: {status}")
-    
+
     if status['state'] in ['COMPLETED', 'FAILED']:
         break
-    
+
     time.sleep(1)
 ```
 
@@ -519,13 +561,13 @@ def check_system_health():
         "mcp_servers": check_mcp_servers_health(),
         "message_bus": check_message_bus_health()
     }
-    
+
     overall_status = "healthy"
     for component, status in health.items():
         if status != "healthy":
             overall_status = "degraded"
             print(f"⚠️ {component}: {status}")
-    
+
     return overall_status
 
 def check_workflow_engine_health():
@@ -547,11 +589,11 @@ def check_workflow_engine_health():
         # Test basic functionality
         test_id = workflow_engine._generate_workflow_id()
         metrics = workflow_engine.get_workflow_metrics()
-        
+
         # Check for concerning metrics
         if metrics['failed_workflows'] > 10:
             return "degraded"
-        
+
         return "healthy"
     except Exception as e:
         return f"unhealthy: {e}"
@@ -562,7 +604,7 @@ def check_universal_agent_health():
         status = workflow_engine.get_universal_agent_status()
         if not status['universal_agent_enabled']:
             return "disabled"
-        
+
         # Test role assumption
         agent = universal_agent.assume_role("search", llm_type=LLMType.WEAK)
         return "healthy"
@@ -574,33 +616,33 @@ def check_universal_agent_health():
 
 ### WorkflowEngine Errors
 
-| Error Code | Message | Solution |
-|------------|---------|----------|
-| WE001 | Workflow creation failed | Check Universal Agent configuration |
-| WE002 | Task execution timeout | Increase task timeout or optimize task |
-| WE003 | Checkpoint creation failed | Check filesystem permissions |
-| WE004 | Invalid workflow ID | Verify workflow ID format |
-| WE005 | Concurrency limit exceeded | Reduce concurrent tasks or increase limit |
+| Error Code | Message                    | Solution                                  |
+| ---------- | -------------------------- | ----------------------------------------- |
+| WE001      | Workflow creation failed   | Check Universal Agent configuration       |
+| WE002      | Task execution timeout     | Increase task timeout or optimize task    |
+| WE003      | Checkpoint creation failed | Check filesystem permissions              |
+| WE004      | Invalid workflow ID        | Verify workflow ID format                 |
+| WE005      | Concurrency limit exceeded | Reduce concurrent tasks or increase limit |
 
 ### Universal Agent Errors
 
-| Error Code | Message | Solution |
-|------------|---------|----------|
-| UA001 | Unknown role requested | Use supported role (planning, search, weather, summarizer, slack) |
-| UA002 | Model creation failed | Check LLM provider configuration |
-| UA003 | Tool execution failed | Verify tool availability and parameters |
-| UA004 | Role assumption timeout | Check model availability and network |
-| UA005 | Invalid LLM type | Use WEAK, DEFAULT, or STRONG |
+| Error Code | Message                 | Solution                                                          |
+| ---------- | ----------------------- | ----------------------------------------------------------------- |
+| UA001      | Unknown role requested  | Use supported role (planning, search, weather, summarizer, slack) |
+| UA002      | Model creation failed   | Check LLM provider configuration                                  |
+| UA003      | Tool execution failed   | Verify tool availability and parameters                           |
+| UA004      | Role assumption timeout | Check model availability and network                              |
+| UA005      | Invalid LLM type        | Use WEAK, DEFAULT, or STRONG                                      |
 
 ### MCP Integration Errors
 
-| Error Code | Message | Solution |
-|------------|---------|----------|
-| MCP001 | Server connection failed | Check MCP server command and arguments |
-| MCP002 | Tool not available | Verify MCP server is running and tool exists |
-| MCP003 | Authentication failed | Check MCP server credentials |
-| MCP004 | Server startup timeout | Increase MCP timeout or check server health |
-| MCP005 | Protocol version mismatch | Update MCP server to compatible version |
+| Error Code | Message                   | Solution                                     |
+| ---------- | ------------------------- | -------------------------------------------- |
+| MCP001     | Server connection failed  | Check MCP server command and arguments       |
+| MCP002     | Tool not available        | Verify MCP server is running and tool exists |
+| MCP003     | Authentication failed     | Check MCP server credentials                 |
+| MCP004     | Server startup timeout    | Increase MCP timeout or check server health  |
+| MCP005     | Protocol version mismatch | Update MCP server to compatible version      |
 
 ## Diagnostic Commands
 
@@ -670,6 +712,7 @@ for name, status in servers.items():
 ### Important Log Patterns
 
 **Successful Operations:**
+
 ```
 INFO - WorkflowEngine - Workflow wf_12345 started successfully
 INFO - UniversalAgent - Assumed role 'planning' with STRONG model
@@ -677,6 +720,7 @@ INFO - TaskContext - Checkpoint created for workflow wf_12345
 ```
 
 **Warning Patterns:**
+
 ```
 WARNING - MCPClient - Server 'aws_docs' connection timeout, retrying...
 WARNING - WorkflowEngine - High queue size: 50 tasks pending
@@ -684,6 +728,7 @@ WARNING - UniversalAgent - Model response truncated due to token limit
 ```
 
 **Error Patterns:**
+
 ```
 ERROR - WorkflowEngine - Task execution failed: task_123
 ERROR - UniversalAgent - Role assumption failed: unknown role 'invalid_role'
@@ -718,10 +763,10 @@ import logging
 class PerformanceMonitor:
     def __init__(self):
         self.timings = {}
-    
+
     def start_timer(self, operation):
         self.timings[operation] = time.time()
-    
+
     def end_timer(self, operation):
         if operation in self.timings:
             duration = time.time() - self.timings[operation]
@@ -740,30 +785,33 @@ monitor.end_timer("workflow_execution")
 ### Optimization Strategies
 
 1. **Model Selection Optimization:**
+
    ```yaml
    # Use faster models for simple tasks
    universal_agent:
      role_optimization:
-       search: WEAK      # Fast model for searches
-       weather: WEAK     # Fast model for weather
-       planning: STRONG  # Powerful model only for complex planning
+       search: WEAK # Fast model for searches
+       weather: WEAK # Fast model for weather
+       planning: STRONG # Powerful model only for complex planning
    ```
 
 2. **Concurrency Optimization:**
+
    ```yaml
    # Optimize based on system resources
    universal_agent:
-     max_concurrent_tasks: 8  # Increase for better throughput
+     max_concurrent_tasks: 8 # Increase for better throughput
    ```
 
 3. **Caching Configuration:**
+
    ```yaml
    features:
      caching_enabled: true
-   
+
    caching:
-     ttl: 3600           # Cache responses for 1 hour
-     max_size: 1000      # Cache up to 1000 responses
+     ttl: 3600 # Cache responses for 1 hour
+     max_size: 1000 # Cache up to 1000 responses
    ```
 
 ## Recovery Procedures
@@ -775,7 +823,7 @@ monitor.end_timer("workflow_execution")
 def recover_failed_workflows():
     metrics = workflow_engine.get_workflow_metrics()
     failed_workflows = metrics.get('failed_workflows', [])
-    
+
     for workflow_id in failed_workflows:
         try:
             # Attempt to restart workflow
@@ -796,7 +844,7 @@ def recover_failed_workflows():
 # Complete system recovery procedure
 def system_recovery():
     print("🔄 Starting system recovery...")
-    
+
     # 1. Stop all active workflows
     active_workflows = workflow_engine.get_active_workflows()
     for workflow_id in active_workflows:
@@ -805,13 +853,13 @@ def system_recovery():
             print(f"✅ Paused workflow {workflow_id}")
         except Exception as e:
             print(f"❌ Failed to pause workflow {workflow_id}: {e}")
-    
+
     # 2. Restart MCP servers
     mcp_client.restart_all_servers()
-    
+
     # 3. Clear caches
     workflow_engine.clear_caches()
-    
+
     # 4. Resume workflows
     for workflow_id, checkpoint in saved_checkpoints.items():
         try:
@@ -819,7 +867,7 @@ def system_recovery():
             print(f"✅ Resumed workflow {workflow_id}")
         except Exception as e:
             print(f"❌ Failed to resume workflow {workflow_id}: {e}")
-    
+
     print("✅ System recovery completed")
 ```
 
@@ -870,17 +918,20 @@ print(f'Disk: {psutil.disk_usage(\".\").percent}%')
 When creating support tickets, include:
 
 1. **System Information:**
+
    - Python version
    - StrandsAgent version
    - Operating system
    - Hardware specifications
 
 2. **Configuration:**
+
    - Sanitized configuration file (remove secrets)
    - Environment variable list (names only)
    - Feature flags status
 
 3. **Error Information:**
+
    - Complete error messages
    - Stack traces
    - Recent log entries
@@ -933,3 +984,4 @@ cp -r checkpoints.backup/* checkpoints/
 cp logs.backup/* logs/
 
 echo "✅ Data recovery completed"
+```
