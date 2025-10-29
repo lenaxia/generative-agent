@@ -301,9 +301,15 @@ class WorkflowEngine:
             role = routing_result["route"]
             parameters = routing_result.get("parameters", {})
 
-            logger.info(
-                f"Fast-reply '{request_id}' via {role} role with {len(parameters)} parameters"
-            )
+            # Distinguish planning workflows from fast-replies in logging
+            if role == "planning":
+                logger.info(
+                    f"Planning workflow '{request_id}' via {role} role with {len(parameters)} parameters"
+                )
+            else:
+                logger.info(
+                    f"Fast-reply '{request_id}' via {role} role with {len(parameters)} parameters"
+                )
 
             # Start duration tracking
             duration_logger = get_duration_logger()
@@ -742,7 +748,8 @@ Current task: {base_prompt}"""
             # Execute task using Universal Agent with enhanced context
             # If role is "None", Universal Agent will handle dynamic role generation
             # Pass task parameters to the universal agent for pre-processing
-            task_parameters = getattr(task, "parameters", {})
+            # Note: Parameters are stored in task_context field (see _convert_intent_to_task_nodes line 1847)
+            task_parameters = getattr(task, "task_context", {})
             result = self.universal_agent.execute_task(
                 instruction=enhanced_prompt,
                 role=role_name,
