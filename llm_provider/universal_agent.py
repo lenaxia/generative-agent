@@ -572,8 +572,10 @@ class UniversalAgent:
                         "No intent processor available - WorkflowIntent cannot be executed"
                     )
 
-                # Return user-friendly message for fast-reply storage
-                final_result = f"I've created a workflow with {task_count} tasks:\n{task_list}\n\nWorkflow execution started."
+                # Return status message for fast-reply storage (immediate notification already sent)
+                final_result = (
+                    f"Workflow started with {task_count} tasks (notification sent)"
+                )
 
             execution_time = time.time() - start_time
             logger.info(

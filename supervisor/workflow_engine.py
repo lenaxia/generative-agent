@@ -446,7 +446,8 @@ class WorkflowEngine:
             logger.info(f"Fast-reply '{request_id}' stored in unified TaskContext")
 
             # Send response back to the requester if response_requested is True
-            if request.response_requested:
+            # Skip for planning workflows since immediate notification was already sent
+            if request.response_requested and role != "planning":
                 logger.info(
                     f"📤 Sending fast-reply result back to requester: {request.metadata.get('channel_id')}"
                 )
@@ -461,6 +462,10 @@ class WorkflowEngine:
                             "request_id": request.metadata.get("request_id"),
                         },
                     },
+                )
+            elif role == "planning":
+                logger.info(
+                    f"📤 Skipping fast-reply message for planning workflow (immediate notification already sent)"
                 )
 
             return request_id
@@ -750,6 +755,9 @@ Current task: {base_prompt}"""
             # Pass task parameters to the universal agent for pre-processing
             # Note: Parameters are stored in task_context field (see _convert_intent_to_task_nodes line 1847)
             task_parameters = getattr(task, "task_context", {})
+            logger.info(
+                f"Task '{task.task_id}' parameters from task_context: {task_parameters}"
+            )
             result = self.universal_agent.execute_task(
                 instruction=enhanced_prompt,
                 role=role_name,
