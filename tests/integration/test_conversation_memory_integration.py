@@ -223,7 +223,10 @@ class TestConversationMemoryIntegration:
             result = _load_recent_topics_cache("test_user")
 
             assert result == {}
-            mock_read.assert_called_once_with("recent_topics_cache:test_user")
+            # Updated to match the new namespaced key format
+            mock_read.assert_called_once_with(
+                "conversation:recent_topics_cache:test_user"
+            )
 
 
 if __name__ == "__main__":
