@@ -163,6 +163,31 @@ class TaskContext:
         """Get the progressive summary."""
         return self.task_graph.progressive_summary.copy()
 
+    def is_successful(self) -> bool:
+        """Check if the workflow completed successfully.
+
+        Returns:
+            bool: True if all tasks completed successfully, False otherwise
+        """
+        from common.task_graph import TaskStatus
+
+        for task_node in self.task_graph.nodes.values():
+            if task_node.status in [TaskStatus.FAILED, TaskStatus.RETRIESEXCEEDED]:
+                return False
+        return True
+
+    def get_execution_time(self) -> float:
+        """Get the total execution time for the workflow.
+
+        Returns:
+            float: Execution time in seconds, or 0 if not completed
+        """
+        if self.start_time and self.end_time:
+            return self.end_time - self.start_time
+        elif self.start_time:
+            return time.time() - self.start_time
+        return 0.0
+
     def condense_summary(self, max_entries: int = 10):
         """Condense the progressive summary to keep only the most recent entries.
 
