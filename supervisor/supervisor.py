@@ -446,13 +446,17 @@ class Supervisor:
         if request_id in self.suspended_requests:
             suspended_request = self.suspended_requests[request_id]
 
-            # Send results back to user via communication manager
-            self.communication_manager.send_message(
-                channel_id=suspended_request["channel_id"],
-                message=event_data["consolidated_results"],
-                context={
-                    "user_id": suspended_request["user_id"],
-                    "request_id": request_id,
+            # Send results back to user via message bus (LLM-SAFE: single event loop)
+            self.message_bus.publish(
+                self,
+                MessageType.SEND_MESSAGE,
+                {
+                    "message": event_data["consolidated_results"],
+                    "context": {
+                        "channel_id": suspended_request["channel_id"],
+                        "user_id": suspended_request["user_id"],
+                        "request_id": request_id,
+                    },
                 },
             )
 
