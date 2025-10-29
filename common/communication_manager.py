@@ -9,11 +9,13 @@ import asyncio
 import glob
 import importlib
 import inspect
+import json
 import logging
 import os
 import pkgutil
 import queue
 import threading
+import time
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -254,8 +256,11 @@ class CommunicationManager:
             cls._instance = CommunicationManager(message_bus)
         return cls._instance
 
-    def __init__(self, message_bus: MessageBus):
-        """Initialize the communication manager with supervisor's MessageBus."""
+    def __init__(self, message_bus: MessageBus, supervisor=None):
+        """Initialize the communication manager with supervisor's MessageBus.
+
+        Document 35 Phase 2.4: Added supervisor parameter for lifecycle tracking.
+        """
         self.message_bus = message_bus  # Use supervisor's MessageBus
         self.channels: dict[str, ChannelHandler] = {}
         self.channel_queues: dict[str, asyncio.Queue] = {}  # Thread communication
@@ -269,8 +274,26 @@ class CommunicationManager:
             str, dict
         ] = {}  # Track requests awaiting responses
 
+        # Document 35 Phase 2.4: Workflow lifecycle tracking
+        self.active_workflows: dict[str, set[str]] = {}  # request_id -> {workflow_ids}
+        self.request_timeouts: dict[str, float] = {}  # request_id -> expiry_time
+        self.supervisor = supervisor  # Reference for scheduled cleanup
+
         # Subscribe to communication events
         self._setup_message_subscriptions()
+
+        # Document 35 Phase 2.4: Subscribe to workflow lifecycle events
+        self._setup_workflow_lifecycle_subscriptions()
+
+        # Document 35 Phase 2.4: Schedule cleanup task
+        if self.supervisor:
+            self.supervisor.add_scheduled_task(
+                {
+                    "type": "cleanup_expired_requests",
+                    "interval": 60,  # Run every 60 seconds
+                    "handler": self._cleanup_expired_requests,
+                }
+            )
 
     async def initialize(self):
         """Initialize channels and start background tasks."""
@@ -350,6 +373,94 @@ class CommunicationManager:
 
         for message_type, handler in subscriptions:
             self.message_bus.subscribe(self, message_type, handler)
+
+    def _setup_workflow_lifecycle_subscriptions(self):
+        """Document 35 Phase 2.4: Subscribe to workflow lifecycle events."""
+        lifecycle_subscriptions = [
+            (MessageType.WORKFLOW_STARTED, self._handle_workflow_started),
+            (MessageType.WORKFLOW_COMPLETED, self._handle_workflow_completed),
+            (MessageType.WORKFLOW_FAILED, self._handle_workflow_failed),
+        ]
+
+        for message_type, handler in lifecycle_subscriptions:
+            self.message_bus.subscribe(self, message_type, handler)
+
+    def _handle_workflow_started(self, event_data: dict) -> None:
+        """Document 35 Phase 2.4: Track workflow start (LLM-SAFE, pure function)."""
+        workflow_id = event_data.get("workflow_id")
+        parent_request_id = event_data.get("parent_request_id")
+
+        if workflow_id and parent_request_id:
+            if parent_request_id not in self.active_workflows:
+                self.active_workflows[parent_request_id] = set()
+                self.request_timeouts[parent_request_id] = (
+                    time.time() + 300
+                )  # 5 min timeout
+                logger.debug(
+                    f"Started tracking workflows for request {parent_request_id}"
+                )
+
+            self.active_workflows[parent_request_id].add(workflow_id)
+            logger.debug(
+                f"Tracking workflow {workflow_id} for request {parent_request_id}"
+            )
+
+    def _handle_workflow_completed(self, event_data: dict) -> None:
+        """Document 35 Phase 2.4: Handle workflow completion (LLM-SAFE, pure function)."""
+        workflow_id = event_data.get("workflow_id")
+        parent_request_id = event_data.get("parent_request_id")
+
+        if (
+            workflow_id
+            and parent_request_id
+            and parent_request_id in self.active_workflows
+        ):
+            self.active_workflows[parent_request_id].discard(workflow_id)
+
+            # Check if all workflows are complete
+            if len(self.active_workflows[parent_request_id]) == 0:
+                # All workflows done - clean up
+                self.active_workflows.pop(parent_request_id, None)
+                self.request_timeouts.pop(parent_request_id, None)
+                self._pending_requests.pop(parent_request_id, None)
+                logger.info(
+                    f"Request {parent_request_id} completed - all workflows finished"
+                )
+
+    def _handle_workflow_failed(self, event_data: dict) -> None:
+        """Document 35 Phase 2.4: Handle workflow failure (same as completion for cleanup)."""
+        self._handle_workflow_completed(event_data)
+
+    def _cleanup_expired_requests(self) -> None:
+        """Document 35 Phase 2.4: Cleanup expired requests (LLM-SAFE, scheduled task)."""
+        import json
+
+        current_time = time.time()
+
+        expired = [
+            req_id
+            for req_id, expiry in self.request_timeouts.items()
+            if current_time > expiry
+        ]
+
+        for req_id in expired:
+            pending = self.active_workflows.get(req_id, set())
+
+            # Dead letter queue logging
+            error_info = {
+                "request_id": req_id,
+                "pending_workflows": list(pending),
+                "expired_at": current_time,
+                "timeout_reason": "5_minute_timeout",
+            }
+            logger.error(
+                f"DEAD LETTER QUEUE: Request expired with pending workflows: {json.dumps(error_info)}"
+            )
+
+            # Force cleanup
+            self.active_workflows.pop(req_id, None)
+            self.request_timeouts.pop(req_id, None)
+            self._pending_requests.pop(req_id, None)
 
     async def _process_channel_queues(self):
         """Process incoming messages from channel background threads."""
@@ -511,13 +622,15 @@ class CommunicationManager:
                 return
 
             if request_id not in self._pending_requests:
-                logger.warning(
-                    f"Received response for unknown request ID: {request_id}"
+                # Document 35 Phase 2.4: Expected for multi-workflow requests or completed requests
+                logger.debug(
+                    f"Response for completed/multi-workflow request: {request_id}"
                 )
                 return
 
-            # Get the original request info
-            request_info = self._pending_requests.pop(request_id)
+            # Document 35 Phase 2.4: Get request info but DON'T remove it
+            # Lifecycle events handle cleanup when all workflows complete
+            request_info = self._pending_requests[request_id]
             source_channel = request_info["source_channel"]
             channel_id = request_info["channel_id"]
             user_id = request_info["user_id"]

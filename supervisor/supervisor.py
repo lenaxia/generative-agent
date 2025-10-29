@@ -231,7 +231,9 @@ class Supervisor:
         """Initialize communication manager with supervisor's MessageBus."""
         from common.communication_manager import CommunicationManager
 
-        self.communication_manager = CommunicationManager(self.message_bus)
+        self.communication_manager = CommunicationManager(
+            self.message_bus, supervisor=self
+        )
         # Initialize channels synchronously during startup
         self.communication_manager.initialize_sync()
 
