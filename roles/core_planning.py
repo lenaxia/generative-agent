@@ -351,7 +351,7 @@ def execute_task_graph(llm_result: str, context, pre_data: dict) -> WorkflowInte
         )
 
         logger.info(
-            f"Created WorkflowIntent with task graph for request {workflow_intent.request_id} with {len(workflow_intent.tasks)} tasks"
+            f"Created WorkflowIntent with task graph for request {workflow_intent.request_id} with {len(workflow_intent.tasks or [])} tasks"
         )
 
         # LLM-SAFE: Return intent only, no execution (pure function)

@@ -180,6 +180,13 @@ class UniversalAgent:
         # Initialize intent processing hook
         self.intent_hook = IntentProcessingHook(self)
 
+        # Access intent processor through role registry
+        self.intent_processor = (
+            self.role_registry.intent_processor
+            if hasattr(self.role_registry, "intent_processor")
+            else None
+        )
+
     def assume_role(
         self,
         role: str,
@@ -501,6 +508,41 @@ class UniversalAgent:
                 logger.info(
                     f"Post-processing for {role} completed in {post_execution_time:.1f}ms"
                 )
+
+            # Document 35 Phase 2: Detect and process WorkflowIntent from post-processors
+            from common.intents import WorkflowIntent
+
+            if isinstance(final_result, WorkflowIntent):
+                logger.info(
+                    f"Post-processor returned WorkflowIntent with {len(final_result.tasks or [])} tasks - scheduling for execution"
+                )
+
+                # Schedule workflow intent for execution via intent processor
+                if hasattr(self, "intent_processor") and self.intent_processor:
+                    import asyncio
+
+                    asyncio.create_task(
+                        self.intent_processor.process_intents([final_result])
+                    )
+                    logger.info(
+                        f"WorkflowIntent scheduled for execution: {final_result.request_id}"
+                    )
+                else:
+                    logger.warning(
+                        "No intent processor available - WorkflowIntent cannot be executed"
+                    )
+
+                # Return user-friendly message instead of intent object
+                task_count = len(final_result.tasks) if final_result.tasks else 0
+                task_names = [
+                    task.get("name", f"Task {i+1}")
+                    for i, task in enumerate(final_result.tasks or [])
+                ]
+                task_list = "\n".join(
+                    f"  {i+1}. {name}" for i, name in enumerate(task_names)
+                )
+
+                final_result = f"I've created a workflow with {task_count} tasks:\n{task_list}\n\nExecuting the workflow now..."
 
             execution_time = time.time() - start_time
             logger.info(
