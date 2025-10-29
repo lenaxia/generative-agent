@@ -156,38 +156,44 @@ class TestUnifiedResultStorage:
         assert not hasattr(workflow_engine, "_store_fast_reply_result")
 
     def test_complex_workflow_still_works(self, workflow_engine):
-        """Test that complex workflows still work with unified storage."""
-        # Mock complex workflow creation
-        with patch.object(workflow_engine, "_create_task_plan") as mock_create_plan:
-            with patch.object(workflow_engine, "_execute_dag_parallel") as mock_execute:
-                with patch(
-                    "supervisor.workflow_engine.get_duration_logger"
-                ) as mock_logger:
-                    mock_duration_logger = Mock()
-                    mock_logger.return_value = mock_duration_logger
+        """Test that planning workflows work with unified storage."""
+        # In the new architecture, complex workflows go through planning role
+        # which creates WorkflowIntent that gets executed
 
-                    # Mock task context
-                    mock_task_context = Mock()
-                    mock_task_context.start_execution.return_value = None
-                    mock_create_plan.return_value = mock_task_context
+        # Mock the universal agent execution for planning role
+        workflow_engine.universal_agent = Mock()
+        workflow_engine.universal_agent.execute_task.return_value = (
+            "Planning workflow initiated"
+        )
 
-                    # Create request
-                    request = RequestMetadata(
-                        prompt="complex multi-step task",
-                        source_id="test_user",
-                        target_id="supervisor",
-                    )
+        # Mock role registry
+        workflow_engine.role_registry = Mock()
+        workflow_engine.role_registry.get_role_execution_type.return_value = "hybrid"
 
-                    # Execute complex workflow
-                    request_id = workflow_engine._handle_complex_workflow(request)
+        with patch("supervisor.workflow_engine.get_duration_logger") as mock_logger:
+            mock_duration_logger = Mock()
+            mock_logger.return_value = mock_duration_logger
 
-                    # Verify workflow was created
-                    assert request_id.startswith("wf_")
-                    assert request_id in workflow_engine.active_workflows
-                    assert (
-                        workflow_engine.active_workflows[request_id]
-                        == mock_task_context
-                    )
+            # Create request that would route to planning
+            request = RequestMetadata(
+                prompt="complex multi-step task",
+                source_id="test_user",
+                target_id="supervisor",
+            )
+
+            # Mock routing to planning role
+            routing_result = {"route": "planning", "confidence": 0.8, "parameters": {}}
+
+            # Execute through fast-reply (planning role)
+            request_id = workflow_engine._handle_fast_reply(request, routing_result)
+
+            # Verify workflow was created
+            assert request_id.startswith("fr_")
+            assert request_id in workflow_engine.active_workflows
+
+            # Verify TaskContext was created
+            task_context = workflow_engine.active_workflows[request_id]
+            assert task_context.execution_state == ExecutionState.COMPLETED
 
     def test_unified_retrieval_interface(self, workflow_engine):
         """Test that both fast-reply and complex workflows use same retrieval interface."""
