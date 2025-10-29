@@ -1190,17 +1190,3 @@ class UniversalAgent:
                 for key, value in data.items():
                     flattened[key] = value
         return flattened
-
-    def _format_pre_data_result(self, pre_data: dict) -> str:
-        """DEPRECATED: This method should not be used for user-facing responses.
-
-        This was causing raw pre-processing data to be dumped to users when LLM execution failed.
-        If you need programmatic access to pre-processing data, handle it explicitly in your code.
-        """
-        logger.warning(
-            "🚨 _format_pre_data_result called - this should not be used for user responses"
-        )
-        logger.warning(
-            f"🚨 Pre-data keys: {list(pre_data.keys()) if pre_data else 'None'}"
-        )
-        return "Error: Pre-processing data should not be returned as user response"
