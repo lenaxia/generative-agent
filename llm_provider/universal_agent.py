@@ -561,15 +561,16 @@ class UniversalAgent:
                     except Exception as e:
                         logger.warning(f"Failed to send immediate notification: {e}")
 
-                # Schedule workflow intent for execution via intent processor
+                # Execute workflow intent synchronously via intent processor
+                # Following Documents 25 & 26: no fire-and-forget async tasks
                 if hasattr(self, "intent_processor") and self.intent_processor:
+                    # Execute synchronously - process_intents handles async internally if needed
                     import asyncio
 
-                    asyncio.create_task(
-                        self.intent_processor.process_intents([final_result])
-                    )
+                    # Since we're in a sync context, use asyncio.run for the async method
+                    asyncio.run(self.intent_processor.process_intents([final_result]))
                     logger.info(
-                        f"WorkflowIntent scheduled for execution: {final_result.request_id}"
+                        f"WorkflowIntent executed synchronously: {final_result.request_id}"
                     )
                 else:
                     logger.warning(
