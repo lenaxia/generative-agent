@@ -1776,6 +1776,9 @@ Respond with ONLY valid JSON in this exact format:
         )
         logger.info(f"Sent workflow start notification for {intent.request_id}")
 
+        # Small delay to allow start message to be delivered before workflow executes
+        time.sleep(0.1)
+
         # Convert intent to TaskGraph format
         task_nodes = self._convert_intent_to_task_nodes(intent)
 
