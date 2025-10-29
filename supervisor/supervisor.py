@@ -391,9 +391,9 @@ class Supervisor:
     def _initialize_intent_processor(self):
         """Initialize intent processor and register workflow intent handlers."""
         self.intent_processor = IntentProcessor(
-            self.message_bus,
-            workflow_engine=self.workflow_engine,
             communication_manager=self.communication_manager,
+            workflow_engine=self.workflow_engine,
+            message_bus=self.message_bus,
         )
 
         # Register workflow intent handler
