@@ -390,7 +390,11 @@ class Supervisor:
 
     def _initialize_intent_processor(self):
         """Initialize intent processor and register workflow intent handlers."""
-        self.intent_processor = IntentProcessor(self.message_bus)
+        self.intent_processor = IntentProcessor(
+            self.message_bus,
+            workflow_engine=self.workflow_engine,
+            communication_manager=self.communication_manager,
+        )
 
         # Register workflow intent handler
         self.intent_processor.register_role_intent_handler(
@@ -401,6 +405,21 @@ class Supervisor:
         self.message_bus.subscribe(
             self, "WORKFLOW_COMPLETED", self.handle_workflow_completed
         )
+
+        # Document 35 Phase 2: Inject intent processor into Universal Agent
+        if hasattr(self.workflow_engine, "universal_agent"):
+            self.workflow_engine.universal_agent.intent_processor = (
+                self.intent_processor
+            )
+            logger.info(
+                "Intent processor injected into Universal Agent for Phase 2 intent detection"
+            )
+
+        # Also inject into role registry for backward compatibility
+        if hasattr(self.workflow_engine, "role_registry"):
+            self.workflow_engine.role_registry.set_intent_processor(
+                self.intent_processor
+            )
 
         logger.info("Intent processor initialized with workflow intent handlers.")
 
