@@ -532,24 +532,28 @@ class UniversalAgent:
                 )
 
                 # Send immediate notification if communication manager is available
+                # Use message bus instead of direct async call to avoid cancellation issues
                 if (
                     hasattr(self, "intent_processor")
                     and self.intent_processor
-                    and self.intent_processor.communication_manager
+                    and hasattr(self.intent_processor, "message_bus")
+                    and self.intent_processor.message_bus
                 ):
-                    import asyncio
+                    from common.message_bus import MessageType
 
-                    # Send immediate notification
+                    # Send via message bus (synchronous, no cancellation risk)
                     try:
-                        asyncio.create_task(
-                            self.intent_processor.communication_manager.route_message(
-                                message=immediate_message,
-                                context={
+                        self.intent_processor.message_bus.publish(
+                            self,
+                            MessageType.SEND_MESSAGE,
+                            {
+                                "message": immediate_message,
+                                "context": {
                                     "channel_id": final_result.channel_id,
                                     "user_id": final_result.user_id,
                                     "request_id": final_result.request_id,
                                 },
-                            )
+                            },
                         )
                         logger.info(
                             f"Sent immediate workflow start notification for {final_result.request_id}"
