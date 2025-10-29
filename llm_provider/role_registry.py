@@ -104,6 +104,9 @@ class RoleRegistry:
         self.intent_processor = intent_processor
         logger.info("IntentProcessor set on RoleRegistry")
 
+        # Re-register all single-file role intents now that we have an IntentProcessor
+        self._register_all_single_file_role_intents()
+
     def set_workflow_engine(self, workflow_engine):
         """Set WorkflowEngine reference for role execution context.
 

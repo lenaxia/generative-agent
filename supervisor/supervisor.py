@@ -21,8 +21,6 @@ from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
 from llm_provider.factory import LLMFactory, LLMType
 from supervisor.config_manager import ConfigManager
-
-# REMOVED: from supervisor.heartbeat import Heartbeat - using scheduled tasks now
 from supervisor.logging_config import configure_logging
 from supervisor.metrics_manager import MetricsManager
 from supervisor.supervisor_config import SupervisorConfig
@@ -52,10 +50,6 @@ class Supervisor:
     workflow_engine: Optional[WorkflowEngine] = None
     metrics_manager: Optional[MetricsManager] = None
     llm_factory: Optional[LLMFactory] = None
-    heartbeat: Optional[object] = None  # REMOVED: Heartbeat - using scheduled tasks
-    fast_heartbeat: Optional[
-        object
-    ] = None  # REMOVED: FastHeartbeat - using scheduled tasks now
     communication_manager: Optional[object] = None  # Import will be done in method
     intent_processor: Optional[IntentProcessor] = None
     suspended_requests: dict = None
@@ -72,9 +66,8 @@ class Supervisor:
         logger.info("Initializing LLM-safe Supervisor...")
         self.config_file = config_file
 
-        # Document 35: LLM-safe scheduled task management (no asyncio)
         self._scheduled_tasks: list[dict] = []
-        self._scheduled_intervals: dict[str, float] = {}  # task_type -> last_run_time
+        self._scheduled_intervals: dict[str, float] = {}
 
         # Initialize intent processing and workflow suspension
         self.intent_processor = None
@@ -86,9 +79,7 @@ class Supervisor:
         logger.info("LLM-safe Supervisor initialization complete.")
 
     def add_scheduled_task(self, task: dict) -> None:
-        """Document 35: Add task to scheduled execution queue (LLM-safe).
-
-        Following Documents 25 & 26 LLM-safe architecture - no asyncio.
+        """Add task to scheduled execution queue.
 
         Args:
             task: Task dictionary with 'type', 'handler', and optional 'interval', 'intent', 'data'
@@ -97,10 +88,7 @@ class Supervisor:
         logger.debug(f"Added scheduled task: {task.get('type', 'unknown')}")
 
     def process_scheduled_tasks(self) -> None:
-        """Document 35: Process scheduled tasks in single event loop (LLM-safe).
-
-        Following Documents 25 & 26 LLM-safe architecture - synchronous execution only.
-        """
+        """Process scheduled tasks in single event loop."""
         import time
 
         current_time = time.time()
@@ -753,16 +741,20 @@ class Supervisor:
 
     def _start_scheduled_tasks(self):
         """Start scheduled tasks for heartbeat operations."""
-
-        # Check if tasks already exist and clean them up
-        # Document 35: LLM-safe scheduled tasks (dicts, not asyncio.Task objects)
-        # No cleanup needed - tasks are dicts that will be processed by process_scheduled_tasks()
-        logger.info(
-            f"Supervisor using LLM-safe scheduled task system with {len(self._scheduled_tasks)} tasks"
-        )
+        try:
+            loop = asyncio.get_running_loop()
+            # Create and schedule the heartbeat tasks
+            asyncio.create_task(self._create_heartbeat_task())
+            asyncio.create_task(self._create_fast_heartbeat_task())
+            logger.info("Heartbeat tasks started successfully in event loop")
+        except RuntimeError:
+            # No event loop available yet - will be started when async context is available
+            logger.warning(
+                "No event loop available - heartbeat tasks will start with async context"
+            )
 
     def _stop_scheduled_tasks(self):
-        """Document 35: Stop scheduled tasks (LLM-safe - just clear the list)."""
+        """Stop scheduled tasks."""
         if self._scheduled_tasks:
             logger.info(f"Clearing {len(self._scheduled_tasks)} scheduled tasks")
             self._scheduled_tasks.clear()

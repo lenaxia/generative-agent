@@ -753,11 +753,8 @@ Current task: {base_prompt}"""
             # Execute task using Universal Agent with enhanced context
             # If role is "None", Universal Agent will handle dynamic role generation
             # Pass task parameters to the universal agent for pre-processing
-            # Note: Parameters are stored in task_context field (see _convert_intent_to_task_nodes line 1847)
+            # Note: Parameters are stored in task_context field (see _convert_intent_to_task_nodes line 1860)
             task_parameters = getattr(task, "task_context", {})
-            logger.info(
-                f"Task '{task.task_id}' parameters from task_context: {task_parameters}"
-            )
             result = self.universal_agent.execute_task(
                 instruction=enhanced_prompt,
                 role=role_name,
@@ -1855,8 +1852,6 @@ Respond with ONLY valid JSON in this exact format:
 
         task_nodes = []
         for task_def in intent.tasks:
-            logger.info(f"Creating TaskNode from task_def: {task_def}")
-            logger.info(f"Task parameters: {task_def.get('parameters', {})}")
             task_node = TaskNode(
                 task_id=task_def["id"],
                 task_name=task_def["name"],
