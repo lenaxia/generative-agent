@@ -1728,17 +1728,50 @@ Respond with ONLY valid JSON in this exact format:
     # ==================== PHASE 2: EVENT-DRIVEN WORKFLOW EXECUTION ====================
 
     def execute_workflow_intent(self, intent) -> str:
-        """Execute workflow from WorkflowExecutionIntent."""
+        """Document 35 Phase 2.3: Execute workflow from WorkflowIntent (LLM-SAFE).
+
+        Following Documents 25 & 26 LLM-safe architecture - uses scheduled tasks
+        instead of asyncio.create_task for single event loop compliance.
+        """
         from common.task_context import TaskContext
         from common.task_graph import TaskGraph, TaskNode, TaskStatus
+
+        logger.info(
+            f"Executing WorkflowIntent {intent.request_id} with {len(intent.tasks or [])} tasks"
+        )
 
         # Convert intent to TaskGraph format
         task_nodes = self._convert_intent_to_task_nodes(intent)
 
+        # Convert dict dependencies to TaskDependency objects
+        # Map task IDs to task names for TaskGraph compatibility
+        from common.task_graph import TaskDependency
+
+        task_id_to_name = {
+            task_def["id"]: task_def["name"] for task_def in intent.tasks
+        }
+
+        task_dependencies = []
+        for dep_dict in intent.dependencies or []:
+            source_id = dep_dict.get("source_task_id", dep_dict.get("source"))
+            target_id = dep_dict.get("target_task_id", dep_dict.get("target"))
+
+            # Convert task IDs to task names for TaskGraph
+            source_name = task_id_to_name.get(source_id, source_id)
+            target_name = task_id_to_name.get(target_id, target_id)
+
+            task_dependencies.append(
+                TaskDependency(
+                    source=source_name,
+                    target=target_name,
+                    condition=dep_dict.get("condition"),
+                )
+            )
+
         # Create TaskGraph and TaskContext
         task_graph = TaskGraph(
             tasks=task_nodes,
-            dependencies=intent.dependencies,
+            dependencies=task_dependencies,
             request_id=intent.request_id,
         )
 
@@ -1749,8 +1782,40 @@ Respond with ONLY valid JSON in this exact format:
             channel_id=intent.channel_id,
         )
 
-        # Execute DAG asynchronously
-        asyncio.create_task(self._execute_workflow_async(task_context))
+        # LLM-SAFE: Execute workflow synchronously via DAG execution
+        try:
+            # Execute DAG synchronously
+            self._execute_dag_parallel(task_context)
+
+            # Collect consolidated results
+            consolidated_results = self._get_consolidated_results(task_context)
+
+            # Publish completion event
+            self.message_bus.publish(
+                self,
+                MessageType.WORKFLOW_COMPLETED,
+                {
+                    "request_id": task_context.context_id,
+                    "consolidated_results": consolidated_results,
+                    "success": task_context.is_successful(),
+                    "execution_time": task_context.get_execution_time(),
+                },
+            )
+            logger.info(f"Workflow {intent.request_id} completed successfully")
+
+        except Exception as e:
+            logger.error(f"Workflow execution failed for {intent.request_id}: {e}")
+
+            # Publish failure event
+            self.message_bus.publish(
+                self,
+                MessageType.WORKFLOW_FAILED,
+                {
+                    "request_id": task_context.context_id,
+                    "error": str(e),
+                    "success": False,
+                },
+            )
 
         return intent.request_id
 
@@ -1783,49 +1848,6 @@ Respond with ONLY valid JSON in this exact format:
             )
             task_nodes.append(task_node)
         return task_nodes
-
-    async def _execute_workflow_async(self, task_context):
-        """Execute workflow asynchronously and emit completion event."""
-        try:
-            # Execute DAG
-            await self._execute_dag_parallel_async(task_context)
-
-            # Collect consolidated results
-            consolidated_results = self._get_consolidated_results(task_context)
-
-            # Emit completion event
-            self.message_bus.emit(
-                "WORKFLOW_COMPLETED",
-                {
-                    "request_id": task_context.context_id,
-                    "consolidated_results": consolidated_results,
-                    "success": task_context.is_successful(),
-                    "execution_time": task_context.get_execution_time(),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Workflow execution failed: {e}")
-
-            # Emit failure event
-            self.message_bus.emit(
-                "WORKFLOW_COMPLETED",
-                {
-                    "request_id": task_context.context_id,
-                    "error": str(e),
-                    "success": False,
-                },
-            )
-
-    async def _execute_dag_parallel_async(self, task_context):
-        """Async version of DAG execution."""
-        # For now, use the existing sync method in a thread
-        import concurrent.futures
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            await asyncio.get_event_loop().run_in_executor(
-                executor, self._execute_dag_parallel, task_context
-            )
 
     def _get_consolidated_results(self, task_context):
         """Collect consolidated results from completed tasks."""
