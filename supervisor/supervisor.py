@@ -732,56 +732,16 @@ class Supervisor:
         """Start scheduled tasks for heartbeat operations."""
 
         # Check if tasks already exist and clean them up
-        if self._scheduled_tasks:
-            logger.info(
-                f"Found {len(self._scheduled_tasks)} existing scheduled tasks, cleaning up..."
-            )
-            for i, task in enumerate(self._scheduled_tasks):
-                logger.debug(f"Cleaning up existing task {i}: {task}")
-                if not task.done():
-                    task.cancel()
-                    logger.debug(f"Cancelled task {i}")
-            self._scheduled_tasks.clear()
-            logger.info("Existing tasks cleaned up successfully")
-
-        try:
-            # Get the current running event loop
-            loop = asyncio.get_running_loop()
-            logger.debug(f"Got event loop: {loop}")
-
-            # Create system heartbeat for health monitoring (30-second intervals)
-            logger.debug("Creating heartbeat task...")
-            heartbeat_task = loop.create_task(self._create_heartbeat_task())
-            self._scheduled_tasks.append(heartbeat_task)
-            logger.debug(f"System heartbeat task created: {heartbeat_task}")
-
-            # Create fast heartbeat for timer monitoring (5-second intervals)
-            logger.debug("Creating fast heartbeat task...")
-            fast_heartbeat_task = loop.create_task(self._create_fast_heartbeat_task())
-            self._scheduled_tasks.append(fast_heartbeat_task)
-            logger.debug(f"Fast heartbeat task created: {fast_heartbeat_task}")
-
-            logger.debug(f"Total scheduled tasks: {len(self._scheduled_tasks)}")
-
-        except RuntimeError as e:
-            logger.error(f"No running event loop found: {e}")
-            logger.error(
-                "Supervisor must be started within an async context (asyncio.run)"
-            )
-            raise RuntimeError(
-                "Supervisor requires an async context. Use asyncio.run() or ensure an event loop is running."
-            )
-        except Exception as e:
-            logger.error(f"Failed to create scheduled tasks: {e}")
-            raise
+        # Document 35: LLM-safe scheduled tasks (dicts, not asyncio.Task objects)
+        # No cleanup needed - tasks are dicts that will be processed by process_scheduled_tasks()
+        logger.info(
+            f"Supervisor using LLM-safe scheduled task system with {len(self._scheduled_tasks)} tasks"
+        )
 
     def _stop_scheduled_tasks(self):
-        """Stop and cancel all scheduled tasks."""
+        """Document 35: Stop scheduled tasks (LLM-safe - just clear the list)."""
         if self._scheduled_tasks:
-            logger.info(f"Cancelling {len(self._scheduled_tasks)} scheduled tasks")
-            for task in self._scheduled_tasks:
-                if not task.done():
-                    task.cancel()
+            logger.info(f"Clearing {len(self._scheduled_tasks)} scheduled tasks")
             self._scheduled_tasks.clear()
 
     def _setup_message_bus_dependencies(self):
