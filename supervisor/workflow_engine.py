@@ -1840,6 +1840,8 @@ Respond with ONLY valid JSON in this exact format:
 
         task_nodes = []
         for task_def in intent.tasks:
+            logger.info(f"Creating TaskNode from task_def: {task_def}")
+            logger.info(f"Task parameters: {task_def.get('parameters', {})}")
             task_node = TaskNode(
                 task_id=task_def["id"],
                 task_name=task_def["name"],
