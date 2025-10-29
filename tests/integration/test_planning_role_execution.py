@@ -100,10 +100,13 @@ class TestPlanningRoleExecution:
             # Execute the TaskGraph
             result = execute_task_graph(task_graph_json, mock_context, {})
 
-            # Verify event-driven workflow initiation
-            assert "Multi-step workflow initiated" in result
-            assert "2 tasks and 1 dependencies" in result
-            assert "Results will be delivered when complete" in result
+            # Verify WorkflowIntent was created
+            from common.intents import WorkflowIntent
+
+            assert isinstance(result, WorkflowIntent)
+            assert result.workflow_type == "task_graph_execution"
+            assert result.tasks is not None and len(result.tasks) == 2
+            assert result.dependencies is not None and len(result.dependencies) == 1
 
     def test_complex_multi_role_workflow(self):
         """Test execution of a complex workflow with multiple roles."""
@@ -181,10 +184,13 @@ class TestPlanningRoleExecution:
             # Execute the complex workflow
             result = execute_task_graph(complex_task_graph, mock_context, {})
 
-            # Verify event-driven workflow initiation
-            assert "Multi-step workflow initiated" in result
-            assert "3 tasks and 0 dependencies" in result
-            assert "Results will be delivered when complete" in result
+            # Verify WorkflowIntent was created
+            from common.intents import WorkflowIntent
+
+            assert isinstance(result, WorkflowIntent)
+            assert result.workflow_type == "task_graph_execution"
+            assert result.tasks is not None and len(result.tasks) == 3
+            assert result.dependencies is not None and len(result.dependencies) == 0
 
     def test_workflow_execution_with_dependencies(self):
         """Test workflow execution with task dependencies."""
@@ -252,10 +258,13 @@ class TestPlanningRoleExecution:
 
             result = execute_task_graph(dependent_workflow, mock_context, {})
 
-            # Verify event-driven workflow initiation
-            assert "Multi-step workflow initiated" in result
-            assert "2 tasks and 1 dependencies" in result
-            assert "Results will be delivered when complete" in result
+            # Verify WorkflowIntent was created
+            from common.intents import WorkflowIntent
+
+            assert isinstance(result, WorkflowIntent)
+            assert result.workflow_type == "task_graph_execution"
+            assert result.tasks is not None and len(result.tasks) == 2
+            assert result.dependencies is not None and len(result.dependencies) == 1
 
 
 # Integration test marker
