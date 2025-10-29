@@ -564,11 +564,8 @@ class UniversalAgent:
                 # Execute workflow intent synchronously via intent processor
                 # Following Documents 25 & 26: no fire-and-forget async tasks
                 if hasattr(self, "intent_processor") and self.intent_processor:
-                    # Execute synchronously - process_intents handles async internally if needed
-                    import asyncio
-
-                    # Since we're in a sync context, use asyncio.run for the async method
-                    asyncio.run(self.intent_processor.process_intents([final_result]))
+                    # Call _process_workflow directly (it's synchronous)
+                    self.intent_processor._process_workflow(final_result)
                     logger.info(
                         f"WorkflowIntent executed synchronously: {final_result.request_id}"
                     )
