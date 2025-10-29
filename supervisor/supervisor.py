@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from common.intent_processor import IntentProcessor
+from common.intents import WorkflowIntent
 from common.message_bus import MessageBus
-from common.workflow_intent import WorkflowExecutionIntent
 from config.anthropic_config import AnthropicConfig
 from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
@@ -114,6 +114,9 @@ class Supervisor:
                     if "intent" in task:
                         # Process intent-based tasks
                         handler(task["intent"])
+                    elif "data" in task:
+                        # Process tasks with data
+                        handler(task["data"])
                     else:
                         # Process regular tasks
                         handler(task)
@@ -143,9 +146,6 @@ class Supervisor:
 
                 except Exception as e:
                     logger.error(f"Interval task {task_type} failed: {e}")
-
-        self.initialize_components()
-        logger.info("LLM-safe Supervisor initialization complete.")
 
     def initialize_config_manager(self, config_file: Optional[str] = None):
         """Initializes the config manager and loads the configuration.
@@ -390,7 +390,7 @@ class Supervisor:
 
         # Register workflow intent handler
         self.intent_processor.register_role_intent_handler(
-            WorkflowExecutionIntent, self.handle_workflow_execution_intent, "supervisor"
+            WorkflowIntent, self.handle_workflow_execution_intent, "supervisor"
         )
 
         # Subscribe to workflow completion events
@@ -400,7 +400,7 @@ class Supervisor:
 
         logger.info("Intent processor initialized with workflow intent handlers.")
 
-    def handle_workflow_execution_intent(self, intent: WorkflowExecutionIntent):
+    def handle_workflow_execution_intent(self, intent: WorkflowIntent):
         """Handle workflow execution intent by suspending request and starting execution."""
         # Suspend original request
         self.suspended_requests[intent.request_id] = {
@@ -411,7 +411,7 @@ class Supervisor:
         }
 
         # Start workflow execution
-        workflow_id = self.workflow_engine.execute_workflow_from_intent(intent)
+        workflow_id = self.workflow_engine.execute_workflow_intent(intent)
 
         logger.info(f"Workflow {workflow_id} started for request {intent.request_id}")
         return f"Multi-step workflow initiated"

@@ -73,15 +73,17 @@ class TestSupervisorScheduledTasks:
         self.supervisor.process_scheduled_tasks()
 
         # Assert
-        self.mock_handler.assert_called_once_with(task)
+        self.mock_handler.assert_called_once_with({"test": "data"})
         assert len(self.supervisor._scheduled_tasks) == 0  # One-time task removed
 
     def test_process_scheduled_tasks_with_intent(self):
         """Test processing scheduled tasks with intent parameter."""
         # Arrange
-        from common.workflow_intent import WorkflowExecutionIntent
+        from common.intents import WorkflowIntent
 
-        intent = WorkflowExecutionIntent(
+        intent = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[
                 {
                     "id": "task_1",
@@ -244,6 +246,6 @@ class TestSupervisorScheduledTasks:
         self.supervisor.process_scheduled_tasks()
 
         # Assert
-        self.mock_handler.assert_called_once_with(task)
+        self.mock_handler.assert_called_once_with(test_data)
         call_args = self.mock_handler.call_args[0][0]
-        assert call_args["data"] == test_data
+        assert call_args == test_data

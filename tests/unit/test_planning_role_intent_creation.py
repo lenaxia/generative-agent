@@ -1,6 +1,6 @@
-"""Unit tests for planning role WorkflowExecutionIntent creation.
+"""Unit tests for planning role WorkflowIntent creation.
 
-Tests the planning role's ability to create valid WorkflowExecutionIntent objects
+Tests the planning role's ability to create valid WorkflowIntent objects
 from TaskGraph JSON following Document 35 Phase 1 implementation.
 
 Following Documents 25 & 26 LLM-safe architecture patterns.
@@ -11,12 +11,12 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from common.workflow_intent import WorkflowExecutionIntent
+from common.intents import WorkflowIntent
 from roles.core_planning import execute_task_graph
 
 
 class TestPlanningRoleIntentCreation:
-    """Test planning role WorkflowExecutionIntent creation."""
+    """Test planning role WorkflowIntent creation."""
 
     def setup_method(self):
         """Set up test fixtures."""
@@ -55,7 +55,7 @@ class TestPlanningRoleIntentCreation:
         )
 
     def test_valid_task_graph_creates_workflow_execution_intent(self):
-        """Test that valid TaskGraph JSON creates WorkflowExecutionIntent."""
+        """Test that valid TaskGraph JSON creates WorkflowIntent."""
         # Act
         result = execute_task_graph(
             llm_result=self.valid_task_graph_json,
@@ -64,7 +64,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.request_id == "test_request_123"
         assert result.user_id == "test_user"
         assert result.channel_id == "slack:C123"
@@ -82,7 +82,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
 
         # Check first task
         task_1 = result.tasks[0]
@@ -108,7 +108,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.dependencies) == 1
 
         dependency = result.dependencies[0]
@@ -126,7 +126,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.validate() is True
 
     def test_intent_get_expected_workflow_ids(self):
@@ -139,7 +139,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         expected_ids = result.get_expected_workflow_ids()
         assert expected_ids == {
             "test_request_123_task_task_1",
@@ -178,7 +178,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert - Intent is created, validation happens at processing time
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 1
         assert result.tasks[0]["id"] == "task_1"
 
@@ -208,7 +208,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert - Intent is created, role validation happens at execution time
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 1
         assert result.tasks[0]["role"] == "nonexistent_role"
 
@@ -228,7 +228,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.request_id == "minimal_123"
         assert result.user_id == "unknown"  # Default value
         assert result.channel_id == "console"  # Default value
@@ -245,7 +245,7 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert - Intent is created but will fail validation
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 0
         assert not result.validate()  # Validation should fail for empty tasks
 
@@ -266,5 +266,5 @@ class TestPlanningRoleIntentCreation:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 2

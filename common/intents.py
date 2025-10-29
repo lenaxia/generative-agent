@@ -104,8 +104,11 @@ class WorkflowIntent(Intent):
     """
     Universal intent: Any role can start workflows.
 
-    This intent represents the desire to start a new workflow.
-    The actual workflow execution is handled by the infrastructure.
+    This intent supports two modes:
+    1. Simple workflow: Just workflow_type + parameters (generic workflow request)
+    2. Explicit task graph: Includes tasks + dependencies (detailed execution plan)
+
+    The workflow engine handles both modes, converting to TaskGraph internally.
     """
 
     workflow_type: str
@@ -113,13 +116,89 @@ class WorkflowIntent(Intent):
     priority: int = 1
     context: Optional[dict[str, Any]] = None
 
+    # Optional: Explicit task graph for detailed workflow execution
+    tasks: Optional[list[dict[str, Any]]] = None
+    dependencies: Optional[list[dict[str, Any]]] = None
+    request_id: Optional[str] = None
+    user_id: Optional[str] = None
+    channel_id: Optional[str] = None
+    original_instruction: Optional[str] = None
+
     def validate(self) -> bool:
         """Validate workflow intent parameters."""
-        return (
+        # Basic validation for simple workflow
+        basic_valid = (
             bool(self.workflow_type and isinstance(self.parameters, dict))
             and isinstance(self.priority, int)
             and self.priority >= 0
             and len(self.workflow_type.strip()) > 0
+        )
+
+        # If tasks are provided, validate task graph structure
+        if self.tasks is not None:
+            task_graph_valid = (
+                bool(self.tasks)
+                and bool(self.request_id)
+                and all(task.get("id") and task.get("role") for task in self.tasks)
+            )
+            return bool(basic_valid and task_graph_valid)
+
+        return basic_valid
+
+    def is_task_graph_workflow(self) -> bool:
+        """Check if this is an explicit task graph workflow.
+
+        Returns True if tasks field is set (even if empty), indicating this is
+        a task graph workflow rather than a simple workflow type request.
+        """
+        return self.tasks is not None
+
+    def get_expected_workflow_ids(self) -> set[str]:
+        """Get set of workflow IDs this intent will spawn (for task graph workflows).
+
+        Returns:
+            Set of workflow IDs that will be created from this intent's tasks.
+        """
+        if not self.is_task_graph_workflow() or not self.tasks or not self.request_id:
+            return set()
+        return {f"{self.request_id}_task_{task['id']}" for task in self.tasks}
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert intent to dictionary for serialization."""
+        result = {
+            "workflow_type": self.workflow_type,
+            "parameters": self.parameters,
+            "priority": self.priority,
+        }
+        if self.context:
+            result["context"] = self.context
+        if self.is_task_graph_workflow():
+            result.update(
+                {
+                    "tasks": self.tasks,
+                    "dependencies": self.dependencies,
+                    "request_id": self.request_id,
+                    "user_id": self.user_id,
+                    "channel_id": self.channel_id,
+                    "original_instruction": self.original_instruction,
+                }
+            )
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WorkflowIntent":
+        """Create WorkflowIntent from dictionary."""
+        return cls(
+            workflow_type=data["workflow_type"],
+            parameters=data["parameters"],
+            priority=data.get("priority", 1),
+            context=data.get("context"),
+            tasks=data.get("tasks"),
+            dependencies=data.get("dependencies"),
+            request_id=data.get("request_id"),
+            user_id=data.get("user_id"),
+            channel_id=data.get("channel_id"),
+            original_instruction=data.get("original_instruction"),
         )
 
 

@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from common.workflow_intent import WorkflowExecutionIntent
+from common.intents import WorkflowIntent
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
@@ -52,7 +52,7 @@ class TestIntentBasedPlanningIntegration:
         )
 
     def test_planning_role_creates_valid_intent(self):
-        """Test that planning role creates valid WorkflowExecutionIntent."""
+        """Test that planning role creates valid WorkflowIntent."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "integration_test_123"
@@ -66,7 +66,7 @@ class TestIntentBasedPlanningIntegration:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.validate() is True
         assert len(result.tasks) == 2
         assert len(result.dependencies) == 1
@@ -94,7 +94,7 @@ class TestIntentBasedPlanningIntegration:
         }
 
     def test_intent_serialization_and_deserialization(self):
-        """Test that WorkflowExecutionIntent can be serialized and deserialized."""
+        """Test that WorkflowIntent can be serialized and deserialized."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "serialization_test_789"
@@ -109,7 +109,7 @@ class TestIntentBasedPlanningIntegration:
 
         # Serialize and deserialize
         serialized = original_intent.to_dict()
-        deserialized_intent = WorkflowExecutionIntent.from_dict(serialized)
+        deserialized_intent = WorkflowIntent.from_dict(serialized)
 
         # Assert
         assert deserialized_intent.request_id == original_intent.request_id
@@ -141,7 +141,7 @@ class TestIntentBasedPlanningIntegration:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 2
         assert result.tasks[0]["name"] == "Search Thailand Info"
         assert result.tasks[1]["name"] == "Get Weather"
@@ -165,7 +165,7 @@ class TestIntentBasedPlanningIntegration:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert (
             result.validate() is False
         )  # Should fail validation due to empty tasks and request_id
@@ -204,7 +204,7 @@ class TestIntentBasedPlanningIntegration:
 
         # Act & Assert
         with pytest.raises(
-            ValueError, match="Cannot create WorkflowExecutionIntent from error message"
+            ValueError, match="Cannot create WorkflowIntent from error message"
         ):
             execute_task_graph(
                 llm_result=error_message, context=mock_context, pre_data={}
@@ -244,7 +244,7 @@ class TestIntentBasedPlanningIntegration:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         weather_task = result.tasks[0]
         assert weather_task["parameters"]["location"] == "Chicago"
         assert weather_task["parameters"]["timeframe"] == "current"

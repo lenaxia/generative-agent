@@ -1,28 +1,29 @@
-"""Unit tests for Intent Processor WorkflowExecutionIntent handling.
+"""Unit tests for Intent Processor WorkflowIntent handling.
 
-Tests the Intent Processor's ability to handle WorkflowExecutionIntent processing
+Tests the Intent Processor's ability to handle WorkflowIntent processing
 following Document 35 Phase 2 implementation for LLM-safe architecture compliance.
 
 Following Documents 25 & 26 LLM-safe architecture patterns.
 """
 
+import asyncio
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from common.intent_processor import IntentProcessor
-from common.intents import NotificationIntent
-from common.workflow_intent import WorkflowExecutionIntent
+from common.intents import NotificationIntent, WorkflowIntent
 
 
 class TestIntentProcessorWorkflowHandling:
-    """Test Intent Processor WorkflowExecutionIntent handling."""
+    """Test Intent Processor WorkflowIntent handling."""
 
     def setup_method(self):
         """Set up test fixtures."""
-        # Create mock dependencies
+        # Create mock dependencies with async support
         self.mock_communication_manager = Mock()
+        self.mock_communication_manager.route_message = AsyncMock()
         self.mock_workflow_engine = Mock()
         self.mock_message_bus = Mock()
 
@@ -33,8 +34,10 @@ class TestIntentProcessorWorkflowHandling:
             message_bus=self.mock_message_bus,
         )
 
-        # Create sample WorkflowExecutionIntent
-        self.sample_intent = WorkflowExecutionIntent(
+        # Create sample WorkflowIntent with task graph
+        self.sample_intent = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[
                 {
                     "id": "search_task",
@@ -65,7 +68,7 @@ class TestIntentProcessorWorkflowHandling:
         )
 
     def test_workflow_intent_processing_delegates_to_workflow_engine(self):
-        """Test that WorkflowExecutionIntent processing delegates to workflow engine."""
+        """Test that WorkflowIntent processing delegates to workflow engine."""
         # Act
         self.intent_processor._process_workflow(self.sample_intent)
 
@@ -86,9 +89,11 @@ class TestIntentProcessorWorkflowHandling:
         self.mock_workflow_engine.execute_workflow_intent.assert_not_called()
 
     def test_workflow_intent_processing_with_invalid_intent(self):
-        """Test handling of invalid WorkflowExecutionIntent."""
+        """Test handling of invalid WorkflowIntent."""
         # Arrange
-        invalid_intent = WorkflowExecutionIntent(
+        invalid_intent = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[],  # Empty tasks
             dependencies=[],
             request_id="",  # Empty request_id
@@ -132,21 +137,22 @@ class TestIntentProcessorWorkflowHandling:
         self.mock_workflow_engine.execute_workflow_intent.assert_called_once()
 
     def test_workflow_intent_registration_in_core_handlers(self):
-        """Test that WorkflowExecutionIntent is registered in core handlers."""
+        """Test that WorkflowIntent is registered in core handlers."""
         # Assert
-        assert WorkflowExecutionIntent in self.intent_processor._core_handlers
+        assert WorkflowIntent in self.intent_processor._core_handlers
         assert (
-            self.intent_processor._core_handlers[WorkflowExecutionIntent]
+            self.intent_processor._core_handlers[WorkflowIntent]
             == self.intent_processor._process_workflow
         )
 
-    def test_process_intents_handles_workflow_execution_intent(self):
-        """Test that process_intents method handles WorkflowExecutionIntent."""
+    @pytest.mark.asyncio
+    async def test_process_intents_handles_workflow_execution_intent(self):
+        """Test that process_intents method handles WorkflowIntent."""
         # Arrange
         intents = [self.sample_intent]
 
         # Act
-        result = self.intent_processor.process_intents(intents)
+        result = await self.intent_processor.process_intents(intents)
 
         # Assert
         assert result["processed"] == 1
@@ -154,8 +160,9 @@ class TestIntentProcessorWorkflowHandling:
         assert len(result["errors"]) == 0
         self.mock_workflow_engine.execute_workflow_intent.assert_called_once()
 
-    def test_process_intents_handles_mixed_intent_types(self):
-        """Test processing mixed intent types including WorkflowExecutionIntent."""
+    @pytest.mark.asyncio
+    async def test_process_intents_handles_mixed_intent_types(self):
+        """Test processing mixed intent types including WorkflowIntent."""
         # Arrange
         notification_intent = NotificationIntent(
             message="Test notification", channel="console", priority="medium"
@@ -164,17 +171,20 @@ class TestIntentProcessorWorkflowHandling:
         intents = [self.sample_intent, notification_intent]
 
         # Act
-        result = self.intent_processor.process_intents(intents)
+        result = await self.intent_processor.process_intents(intents)
 
         # Assert
         assert result["processed"] == 2
         assert result["failed"] == 0
         self.mock_workflow_engine.execute_workflow_intent.assert_called_once()
 
-    def test_workflow_intent_validation_before_processing(self):
+    @pytest.mark.asyncio
+    async def test_workflow_intent_validation_before_processing(self):
         """Test that intent validation occurs before processing."""
         # Arrange
-        invalid_intent = WorkflowExecutionIntent(
+        invalid_intent = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[],  # Empty tasks should fail validation
             dependencies=[],
             request_id="",  # Empty request_id should fail validation
@@ -186,7 +196,7 @@ class TestIntentProcessorWorkflowHandling:
         intents = [invalid_intent]
 
         # Act
-        result = self.intent_processor.process_intents(intents)
+        result = await self.intent_processor.process_intents(intents)
 
         # Assert - Invalid intent should be marked as failed
         assert result["processed"] == 0
@@ -207,10 +217,13 @@ class TestIntentProcessorWorkflowHandling:
         assert execution_time < 0.1  # Should be very fast (synchronous)
         self.mock_workflow_engine.execute_workflow_intent.assert_called_once()
 
-    def test_multiple_workflow_intents_processing(self):
-        """Test processing multiple WorkflowExecutionIntent objects."""
+    @pytest.mark.asyncio
+    async def test_multiple_workflow_intents_processing(self):
+        """Test processing multiple WorkflowIntent objects."""
         # Arrange
-        intent1 = WorkflowExecutionIntent(
+        intent1 = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[
                 {
                     "id": "task_1",
@@ -226,7 +239,9 @@ class TestIntentProcessorWorkflowHandling:
             original_instruction="First workflow",
         )
 
-        intent2 = WorkflowExecutionIntent(
+        intent2 = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=[
                 {
                     "id": "task_2",
@@ -245,7 +260,7 @@ class TestIntentProcessorWorkflowHandling:
         intents = [intent1, intent2]
 
         # Act
-        result = self.intent_processor.process_intents(intents)
+        result = await self.intent_processor.process_intents(intents)
 
         # Assert
         assert result["processed"] == 2

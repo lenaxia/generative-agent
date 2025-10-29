@@ -1727,7 +1727,7 @@ Respond with ONLY valid JSON in this exact format:
 
     # ==================== PHASE 2: EVENT-DRIVEN WORKFLOW EXECUTION ====================
 
-    def execute_workflow_from_intent(self, intent) -> str:
+    def execute_workflow_intent(self, intent) -> str:
         """Execute workflow from WorkflowExecutionIntent."""
         from common.task_context import TaskContext
         from common.task_graph import TaskGraph, TaskNode, TaskStatus

@@ -16,7 +16,7 @@ import logging
 import re
 from typing import Union
 
-from common.workflow_intent import WorkflowExecutionIntent
+from common.intents import WorkflowIntent
 
 logger = logging.getLogger(__name__)
 
@@ -305,13 +305,14 @@ def _extract_available_role_names(roles_text: str) -> list[str]:
 
 
 # 4. POST-PROCESSING: TASKGRAPH EXECUTION (Document 35 - Intent-Based)
-def execute_task_graph(
-    llm_result: str, context, pre_data: dict
-) -> WorkflowExecutionIntent:
-    """Document 35: Create WorkflowExecutionIntent (LLM-SAFE, pure function).
+def execute_task_graph(llm_result: str, context, pre_data: dict) -> WorkflowIntent:
+    """Document 35: Create WorkflowIntent with task graph (LLM-SAFE, pure function).
 
-    This function creates WorkflowExecutionIntent following Documents 25 & 26 LLM-safe architecture.
-    All legacy execution logic has been removed in favor of intent-based processing.
+    This function creates WorkflowIntent with explicit task graph following Documents 25 & 26
+    LLM-safe architecture. All legacy execution logic has been removed in favor of
+    intent-based processing.
+
+    Refactored to use consolidated WorkflowIntent instead of separate WorkflowExecutionIntent.
     """
     try:
         import json
@@ -320,7 +321,7 @@ def execute_task_graph(
         if llm_result.startswith(("Invalid", "No valid JSON", "Validation error")):
             # For error cases, raise an exception since we can't return a string
             raise ValueError(
-                f"Cannot create WorkflowExecutionIntent from error message: {llm_result}"
+                f"Cannot create WorkflowIntent from error message: {llm_result}"
             )
 
         # Parse validated TaskGraph JSON (extract from mixed content if needed)
@@ -335,8 +336,10 @@ def execute_task_graph(
             else:
                 raise
 
-        # LLM-SAFE: Create WorkflowExecutionIntent (declarative - what should happen)
-        workflow_intent = WorkflowExecutionIntent(
+        # LLM-SAFE: Create WorkflowIntent with task graph (declarative - what should happen)
+        workflow_intent = WorkflowIntent(
+            workflow_type="task_graph_execution",
+            parameters={},
             tasks=task_graph_data["tasks"],
             dependencies=task_graph_data["dependencies"],
             request_id=getattr(context, "context_id", "planning_exec"),
@@ -348,7 +351,7 @@ def execute_task_graph(
         )
 
         logger.info(
-            f"Created WorkflowExecutionIntent for request {workflow_intent.request_id} with {len(workflow_intent.tasks)} tasks"
+            f"Created WorkflowIntent with task graph for request {workflow_intent.request_id} with {len(workflow_intent.tasks)} tasks"
         )
 
         # LLM-SAFE: Return intent only, no execution (pure function)

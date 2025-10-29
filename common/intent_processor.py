@@ -20,7 +20,6 @@ from common.intents import (
     NotificationIntent,
     WorkflowIntent,
 )
-from common.workflow_intent import WorkflowExecutionIntent
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,6 @@ class IntentProcessor:
             NotificationIntent: self._process_notification,
             AuditIntent: self._process_audit,
             WorkflowIntent: self._process_workflow,
-            WorkflowExecutionIntent: self._process_workflow_execution,  # Document 35
             ErrorIntent: self._process_error,
         }
 
@@ -113,19 +111,31 @@ class IntentProcessor:
         """
         Process single intent with type-specific handling.
 
+        Handles both sync and async handlers for LLM-safe architecture compatibility.
+
         Args:
             intent: Intent object to process
         """
+        import inspect
+
         intent_type = type(intent)
         intent_type_name = f"{intent_type.__module__}.{intent_type.__qualname__}"
 
         # Check core handlers first
         if intent_type in self._core_handlers:
-            await self._core_handlers[intent_type](intent)
+            handler = self._core_handlers[intent_type]
+            if inspect.iscoroutinefunction(handler):
+                await handler(intent)
+            else:
+                handler(intent)
         # Check role-specific handlers by class identity first, then by name
         elif intent_type in self._role_handlers:
             handler_info = self._role_handlers[intent_type]
-            await handler_info["handler"](intent)
+            handler = handler_info["handler"]
+            if inspect.iscoroutinefunction(handler):
+                await handler(intent)
+            else:
+                handler(intent)
         else:
             # Fallback: search by class name for class identity issues
             found_handler = None
@@ -139,7 +149,11 @@ class IntentProcessor:
                     break
 
             if found_handler:
-                await found_handler["handler"](intent)
+                handler = found_handler["handler"]
+                if inspect.iscoroutinefunction(handler):
+                    await handler(intent)
+                else:
+                    handler(intent)
             else:
                 # Log warning but don't fail - allows for unknown intent types
                 logger.warning(
@@ -195,80 +209,37 @@ class IntentProcessor:
         log_level = getattr(logging, intent.severity.upper(), logging.INFO)
         logger.log(log_level, f"Audit: {intent.action} - {intent.details}")
 
-    async def _process_workflow(self, intent: WorkflowIntent):
+    def _process_workflow(self, intent: WorkflowIntent):
         """
-        Process workflow intent.
+        Process workflow intent - handles both simple and task graph workflows.
+
+        Document 35: Made synchronous following Documents 25 & 26 LLM-safe architecture.
 
         Args:
-            intent: WorkflowIntent to process
+            intent: WorkflowIntent to process (simple or with task graph)
         """
         if not self.workflow_engine:
             logger.error("No workflow engine available for workflow")
             return
 
         try:
-            workflow_id = await self.workflow_engine.start_workflow(
-                request=f"Execute {intent.workflow_type}", parameters=intent.parameters
-            )
-            logger.info(
-                f"Started workflow {workflow_id} from intent: {intent.workflow_type}"
-            )
+            # Check if this is a task graph workflow (Document 35 enhancement)
+            if intent.is_task_graph_workflow():
+                logger.info(
+                    f"Processing task graph workflow for request {intent.request_id} with {len(intent.tasks or [])} tasks"
+                )
+                # Execute via workflow engine's task graph execution (synchronous)
+                self.workflow_engine.execute_workflow_intent(intent)
+            else:
+                # Simple workflow - use generic start_workflow (synchronous)
+                workflow_id = self.workflow_engine.start_workflow(
+                    instruction=f"Execute {intent.workflow_type}"
+                )
+                logger.info(
+                    f"Started workflow {workflow_id} from intent: {intent.workflow_type}"
+                )
         except Exception as e:
-            logger.error(f"Failed to start workflow: {e}")
-
-    def _process_workflow_execution(self, intent: WorkflowExecutionIntent):
-        """Document 35: Process WorkflowExecutionIntent (LLM-SAFE, synchronous).
-
-        Following Documents 25 & 26 LLM-safe architecture - no async/await.
-
-        Args:
-            intent: WorkflowExecutionIntent to process
-        """
-        if not self.workflow_engine:
-            logger.error(
-                "No workflow engine available for WorkflowExecutionIntent processing"
-            )
-            return
-
-        try:
-            logger.info(
-                f"Processing WorkflowExecutionIntent for request {intent.request_id} with {len(intent.tasks)} tasks"
-            )
-
-            # LLM-SAFE: Execute workflow via workflow engine (synchronous)
-            self.workflow_engine.execute_workflow_intent(intent)
-
-        except Exception as e:
-            logger.error(f"Failed to process WorkflowExecutionIntent: {e}")
-            # Don't re-raise - intent processor should handle errors gracefully
-
-    def _process_workflow_execution(self, intent: WorkflowExecutionIntent):
-        """Document 35: Process WorkflowExecutionIntent (LLM-SAFE, synchronous).
-
-        Following Documents 25 & 26 LLM-safe architecture - no async/await.
-
-        Args:
-            intent: WorkflowExecutionIntent to process
-        """
-        if not self.workflow_engine:
-            logger.error(
-                "No workflow engine available for WorkflowExecutionIntent processing"
-            )
-            return
-
-        try:
-            logger.info(
-                f"Processing WorkflowExecutionIntent for request {intent.request_id} with {len(intent.tasks)} tasks"
-            )
-
-            # LLM-SAFE: Execute workflow via workflow engine (synchronous)
-            self.workflow_engine.execute_workflow_intent(intent)
-
-        except Exception as e:
-            logger.error(f"Failed to process WorkflowExecutionIntent: {e}")
-            # Don't re-raise - intent processor should handle errors gracefully
-
-            raise
+            logger.error(f"Failed to process workflow intent: {e}")
 
     async def _process_error(self, intent: ErrorIntent):
         """

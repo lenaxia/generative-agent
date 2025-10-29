@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from common.workflow_intent import WorkflowExecutionIntent
+from common.intents import WorkflowIntent
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
@@ -87,7 +87,7 @@ class TestDocument35EndToEnd:
         )
 
     def test_planning_role_creates_complex_workflow_intent(self):
-        """Test that planning role creates WorkflowExecutionIntent for complex workflows."""
+        """Test that planning role creates WorkflowIntent for complex workflows."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "complex_workflow_123"
@@ -103,7 +103,7 @@ class TestDocument35EndToEnd:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.validate() is True
         assert len(result.tasks) == 4
         assert len(result.dependencies) == 3
@@ -118,7 +118,7 @@ class TestDocument35EndToEnd:
         assert "complex_workflow_123_task_essay_generation" in expected_workflow_ids
 
     def test_workflow_intent_contains_all_task_parameters(self):
-        """Test that WorkflowExecutionIntent preserves all task parameters."""
+        """Test that WorkflowIntent preserves all task parameters."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "params_test_456"
@@ -132,7 +132,7 @@ class TestDocument35EndToEnd:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
 
         # Verify search task parameters
         search_task = next(task for task in result.tasks if task["id"] == "search_task")
@@ -160,7 +160,7 @@ class TestDocument35EndToEnd:
         )
 
     def test_workflow_intent_dependency_structure(self):
-        """Test that WorkflowExecutionIntent preserves dependency structure."""
+        """Test that WorkflowIntent preserves dependency structure."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "dependency_test_789"
@@ -174,7 +174,7 @@ class TestDocument35EndToEnd:
         )
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.dependencies) == 3
 
         # Verify sequential dependencies
@@ -247,9 +247,7 @@ class TestDocument35EndToEnd:
             )
 
             # Assert
-            assert isinstance(
-                result, WorkflowExecutionIntent
-            ), f"Test case {i+1} failed"
+            assert isinstance(result, WorkflowIntent), f"Test case {i+1} failed"
             assert (
                 len(result.tasks) == 4
             ), f"Test case {i+1}: Expected 4 tasks, got {len(result.tasks)}"
@@ -281,7 +279,7 @@ class TestDocument35EndToEnd:
 
         # Test Case 3: Validation error message
         with pytest.raises(
-            ValueError, match="Cannot create WorkflowExecutionIntent from error message"
+            ValueError, match="Cannot create WorkflowIntent from error message"
         ):
             execute_task_graph(
                 llm_result="Invalid role references: Task 'task_1' uses unavailable role 'nonexistent'",
@@ -294,7 +292,7 @@ class TestDocument35EndToEnd:
             execute_task_graph(llm_result="{}", context=mock_context, pre_data={})
 
     def test_intent_serialization_roundtrip(self):
-        """Test that WorkflowExecutionIntent can be serialized and deserialized without loss."""
+        """Test that WorkflowIntent can be serialized and deserialized without loss."""
         # Arrange
         mock_context = Mock()
         mock_context.context_id = "serialization_test_202"
@@ -311,7 +309,7 @@ class TestDocument35EndToEnd:
         serialized = original_intent.to_dict()
 
         # Deserialize back to intent
-        deserialized_intent = WorkflowExecutionIntent.from_dict(serialized)
+        deserialized_intent = WorkflowIntent.from_dict(serialized)
 
         # Assert
         assert deserialized_intent.request_id == original_intent.request_id
@@ -412,9 +410,7 @@ class TestDocument35EndToEnd:
             )
 
             # Assert
-            assert isinstance(
-                result, WorkflowExecutionIntent
-            ), f"Test case {i+1} failed"
+            assert isinstance(result, WorkflowIntent), f"Test case {i+1} failed"
             assert result.request_id == context_data["context_id"]
 
             # Verify defaults are applied correctly
@@ -438,7 +434,7 @@ class TestDocument35EndToEnd:
         result = execute_task_graph(
             llm_result=empty_tasks_json, context=mock_context, pre_data={}
         )
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert result.validate() is False  # Should fail validation
 
         # Test Case 2: Tasks without required fields (should create intent)
@@ -451,7 +447,7 @@ class TestDocument35EndToEnd:
         result = execute_task_graph(
             llm_result=incomplete_tasks_json, context=mock_context, pre_data={}
         )
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 1
 
         # Test Case 3: Invalid dependency references (should create intent)
@@ -477,7 +473,7 @@ class TestDocument35EndToEnd:
         result = execute_task_graph(
             llm_result=invalid_deps_json, context=mock_context, pre_data={}
         )
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.dependencies) == 1
 
     def test_performance_with_large_workflows(self):
@@ -525,7 +521,7 @@ class TestDocument35EndToEnd:
         execution_time = time.time() - start_time
 
         # Assert
-        assert isinstance(result, WorkflowExecutionIntent)
+        assert isinstance(result, WorkflowIntent)
         assert len(result.tasks) == 20
         assert len(result.dependencies) == 19
         assert execution_time < 1.0  # Should complete within 1 second
@@ -561,7 +557,7 @@ class TestDocument35EndToEnd:
         # Assert
         assert len(results) == 10
         for result in results:
-            assert isinstance(result, WorkflowExecutionIntent)
+            assert isinstance(result, WorkflowIntent)
             assert result.validate() is True
             assert len(result.tasks) == 4
             assert len(result.dependencies) == 3
@@ -588,7 +584,7 @@ class TestDocument35EndToEnd:
             result = execute_task_graph(
                 llm_result=self.complex_workflow_json, context=mock_context, pre_data={}
             )
-            assert isinstance(result, WorkflowExecutionIntent)
+            assert isinstance(result, WorkflowIntent)
 
             # Force garbage collection every 10 iterations
             if i % 10 == 0:
@@ -631,5 +627,5 @@ class TestDocument35EndToEnd:
 
         # Verify no asyncio usage (should not raise any asyncio-related errors)
         # This is validated by the function executing synchronously
-        assert isinstance(result1, WorkflowExecutionIntent)
-        assert isinstance(result2, WorkflowExecutionIntent)
+        assert isinstance(result1, WorkflowIntent)
+        assert isinstance(result2, WorkflowIntent)
