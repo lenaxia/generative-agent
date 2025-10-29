@@ -1755,30 +1755,6 @@ Respond with ONLY valid JSON in this exact format:
             f"Executing WorkflowIntent {intent.request_id} with {len(intent.tasks or [])} tasks"
         )
 
-        # Send immediate notification to user
-        task_count = len(intent.tasks) if intent.tasks else 0
-        task_names = [
-            task.get("name", f"Task {i+1}") for i, task in enumerate(intent.tasks or [])
-        ]
-        task_list = "\n".join(f"  {i+1}. {name}" for i, name in enumerate(task_names))
-
-        self.message_bus.publish(
-            self,
-            MessageType.SEND_MESSAGE,
-            {
-                "message": f"Starting workflow with {task_count} tasks:\n{task_list}",
-                "context": {
-                    "channel_id": intent.channel_id,
-                    "user_id": intent.user_id,
-                    "request_id": intent.request_id,
-                },
-            },
-        )
-        logger.info(f"Sent workflow start notification for {intent.request_id}")
-
-        # Small delay to allow start message to be delivered before workflow executes
-        time.sleep(0.1)
-
         # Convert intent to TaskGraph format
         task_nodes = self._convert_intent_to_task_nodes(intent)
 
