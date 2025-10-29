@@ -58,42 +58,24 @@ class TestWorkflowEngine:
         assert workflow_engine.max_retries > 0
         assert workflow_engine.retry_delay > 0
 
-    @patch("llm_provider.planning_tools.create_task_plan")
-    def test_start_workflow_interface(self, mock_create_plan, workflow_engine):
+    def test_start_workflow_interface(self, workflow_engine):
         """Test unified start_workflow interface."""
-
-        # Mock the planning phase to avoid real LLM calls
-        def mock_plan_side_effect(instruction, llm_factory, request_id):
-            from common.task_graph import TaskGraph, TaskNode, TaskStatus
-
-            # Create a simple single-task plan
-            task = TaskNode(
-                task_id="task_1",
-                task_name="Execute Workflow",
-                request_id=request_id,  # Required field
-                agent_id="default",
-                task_type="execution",
-                prompt=instruction,
-                status=TaskStatus.PENDING,  # Use enum, not string
-            )
-            task_graph = TaskGraph(tasks=[task], dependencies=[], request_id=request_id)
-
-            return {
-                "task_graph": task_graph,
-                "tasks": [task],
-                "dependencies": [],
-                "request_id": request_id,
-            }
-
-        mock_create_plan.side_effect = mock_plan_side_effect
-
+        # In the new architecture, all requests go through fast-reply routing
         # Mock Universal Agent execution
-        with patch.object(
-            workflow_engine.universal_agent, "execute_task"
-        ) as mock_execute:
-            mock_execute.return_value = "Workflow started successfully"
+        workflow_engine.universal_agent.execute_task = Mock(
+            return_value="Workflow started successfully"
+        )
 
-            # Test start_workflow method (currently handle_request)
+        # Mock role registry for routing
+        workflow_engine.role_registry.get_role_execution_type = Mock(
+            return_value="hybrid"
+        )
+
+        with patch("supervisor.workflow_engine.get_duration_logger") as mock_logger:
+            mock_duration_logger = Mock()
+            mock_logger.return_value = mock_duration_logger
+
+            # Test start_workflow method
             request = RequestMetadata(
                 prompt="Create a project management workflow",
                 source_id="workflow_client",
@@ -103,15 +85,13 @@ class TestWorkflowEngine:
             workflow_id = workflow_engine.handle_request(request)
 
             assert workflow_id is not None
-            assert workflow_id.startswith("wf_")
-
-            # Verify planning was called
-            mock_create_plan.assert_called_once()
+            # New architecture uses fr_ prefix for fast-reply
+            assert workflow_id.startswith("fr_")
 
             # Verify workflow context was created
             context = workflow_engine.get_request_context(workflow_id)
             assert context is not None
-            assert context.execution_state == ExecutionState.RUNNING
+            assert context.execution_state == ExecutionState.COMPLETED
 
     def test_pause_workflow_interface(self, workflow_engine):
         """Test unified pause_workflow interface."""
@@ -129,7 +109,7 @@ class TestWorkflowEngine:
         )
 
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -180,7 +160,7 @@ class TestWorkflowEngine:
         )
 
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -230,7 +210,7 @@ class TestWorkflowEngine:
         )
 
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -273,7 +253,7 @@ class TestWorkflowEngine:
 
         # Create some workflows to generate metrics
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -324,7 +304,7 @@ class TestWorkflowEngine:
         )
 
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -410,7 +390,7 @@ class TestWorkflowEngine:
         )
 
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
@@ -439,7 +419,9 @@ class TestWorkflowEngine:
             assert status is not None
             assert "request_id" in status
             assert "execution_state" in status
-            assert "performance_metrics" in status
+            # Check for actual keys in fast-reply status
+            assert "is_completed" in status
+            assert "execution_time_ms" in status
 
     def test_role_based_task_delegation(self, workflow_engine):
         """Test role-based task delegation with dynamic LLM type optimization."""
@@ -488,7 +470,7 @@ class TestWorkflowEngine:
 
         # Create multiple workflows with proper mocking
         with (
-            patch("llm_provider.planning_tools.create_task_plan") as mock_plan,
+            patch("roles.core_planning.execute_task_graph") as mock_plan,
             patch.object(
                 workflow_engine.universal_agent, "execute_task"
             ) as mock_execute,
