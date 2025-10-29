@@ -398,9 +398,17 @@ class TaskGraph:
                 task_type=task.task_type,
                 prompt=task.prompt,
                 include_full_history=task.include_full_history,
-                llm_type=getattr(
-                    task, "llm_type", "DEFAULT"
-                ),  # Transfer llm_type from TaskDescription
+                llm_type=getattr(task, "llm_type", "DEFAULT"),
+                task_context=getattr(task, "task_context", {}),
+                role=getattr(task, "role", None),
+                inbound_edges=[],
+                outbound_edges=[],
+                result=None,
+                stop_reason=None,
+                start_time=None,
+                duration=None,
+                retry_count=0,
+                required_tools=getattr(task, "required_tools", []),
             )
             self.nodes[task_id] = node
             self.task_name_map[task.task_name] = task_id
