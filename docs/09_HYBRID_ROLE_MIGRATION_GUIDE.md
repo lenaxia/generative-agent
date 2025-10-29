@@ -41,7 +41,7 @@ role:
   name: "weather"
   version: "2.0.0"
   description: "Weather role with pre-processing data fetching"
-  execution_type: "hybrid"  # NEW: Specify hybrid execution
+  execution_type: "hybrid" # NEW: Specify hybrid execution
   fast_reply: true
 
 # NEW: Parameter schema for routing extraction
@@ -51,7 +51,7 @@ parameters:
     required: true
     description: "City, state, country, or coordinates"
     examples: ["Seattle", "New York, NY", "90210"]
-  
+
   timeframe:
     type: "string"
     required: false
@@ -65,7 +65,7 @@ lifecycle:
     functions:
       - name: "fetch_weather_data"
         uses_parameters: ["location", "timeframe"]
-  
+
   post_processing:
     enabled: true
     functions:
@@ -77,13 +77,13 @@ prompts:
     You are a weather specialist. Weather data has been pre-fetched:
     - Current weather: {weather_current}
     - Location: {location_resolved}
-    
+
     Interpret this data naturally for the user.
 
 # UPDATED: Remove tools since data is pre-fetched
 tools:
   automatic: false
-  shared: []  # No tools needed - data is pre-fetched
+  shared: [] # No tools needed - data is pre-fetched
 ```
 
 ### Step 2: Create Lifecycle Functions
@@ -103,31 +103,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def fetch_weather_data(instruction: str, context: TaskContext, 
+async def fetch_weather_data(instruction: str, context: TaskContext,
                            parameters: Dict) -> Dict[str, Any]:
     """
     Pre-processor: Fetch weather data before LLM call.
-    
+
     Args:
         instruction: Original user instruction
         context: Task context
         parameters: Extracted parameters from routing
-        
+
     Returns:
         Dict containing weather data for LLM context
     """
     location = parameters.get("location")
     timeframe = parameters.get("timeframe", "current")
-    
+
     if not location:
         raise ValueError("Location parameter is required")
-    
+
     # Fetch weather data using existing tools
     weather_result = get_weather(location)
-    
+
     if weather_result.get("status") == "error":
         raise ValueError(f"Weather API error: {weather_result.get('error')}")
-    
+
     return {
         "weather_current": weather_result.get("weather", {}),
         "location_resolved": weather_result.get("location", location),
@@ -135,16 +135,16 @@ async def fetch_weather_data(instruction: str, context: TaskContext,
     }
 
 
-async def format_for_tts(llm_result: str, context: TaskContext, 
+async def format_for_tts(llm_result: str, context: TaskContext,
                        pre_data: Dict) -> str:
     """
     Post-processor: Format result for text-to-speech.
-    
+
     Args:
         llm_result: Result from LLM processing
         context: Task context
         pre_data: Data from pre-processing
-        
+
     Returns:
         TTS-formatted result
     """
@@ -152,7 +152,7 @@ async def format_for_tts(llm_result: str, context: TaskContext,
     tts_result = llm_result.replace("°F", " degrees Fahrenheit")
     tts_result = tts_result.replace("mph", " miles per hour")
     tts_result = tts_result.replace("%", " percent")
-    
+
     return tts_result
 ```
 
@@ -169,15 +169,15 @@ from llm_provider.role_registry import RoleRegistry
 def test_hybrid_role_loading():
     """Test hybrid role loads correctly."""
     registry = RoleRegistry("roles")
-    
+
     # Verify execution type
     assert registry.get_role_execution_type("weather") == "hybrid"
-    
+
     # Verify parameters
     parameters = registry.get_role_parameters("weather")
     assert "location" in parameters
     assert parameters["location"]["required"] is True
-    
+
     # Verify lifecycle functions
     lifecycle_functions = registry.get_lifecycle_functions("weather")
     assert "fetch_weather_data" in lifecycle_functions
@@ -205,7 +205,7 @@ parameters:
     required: true
     description: "Description of required parameter"
     examples: ["example1", "example2"]
-  
+
   optional_param:
     type: "string"
     required: false
@@ -221,7 +221,7 @@ lifecycle:
         uses_parameters: ["required_param", "optional_param"]
       - name: "validate_input"
         uses_parameters: ["required_param"]
-  
+
   post_processing:
     enabled: true
     functions:
@@ -231,12 +231,12 @@ lifecycle:
 # System prompt with data injection placeholders
 prompts:
   system: |
-    You are a specialist for {role_purpose}. 
-    
+    You are a specialist for {role_purpose}.
+
     Pre-fetched data:
     - Data: {fetched_data}
     - Validation: {validation_result}
-    
+
     Use this data to provide helpful responses.
 
 model_config:
@@ -245,7 +245,7 @@ model_config:
 
 tools:
   automatic: false
-  shared: []  # Data is pre-fetched
+  shared: [] # Data is pre-fetched
 ```
 
 ### 2. Lifecycle Functions Template
@@ -262,36 +262,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def fetch_data(instruction: str, context: TaskContext, 
+async def fetch_data(instruction: str, context: TaskContext,
                     parameters: Dict) -> Dict[str, Any]:
     """Pre-processor: Fetch required data."""
     required_param = parameters.get("required_param")
     optional_param = parameters.get("optional_param", "default_value")
-    
+
     # Your data fetching logic here
     data = await your_data_source(required_param, optional_param)
-    
+
     return {
         "fetched_data": data,
         "fetch_timestamp": datetime.now().isoformat()
     }
 
 
-async def validate_input(instruction: str, context: TaskContext, 
+async def validate_input(instruction: str, context: TaskContext,
                         parameters: Dict) -> Dict[str, Any]:
     """Pre-processor: Validate input parameters."""
     required_param = parameters.get("required_param")
-    
+
     # Your validation logic here
     is_valid = validate_parameter(required_param)
-    
+
     return {
         "validation_result": "valid" if is_valid else "invalid",
         "validated_param": required_param
     }
 
 
-async def format_output(llm_result: str, context: TaskContext, 
+async def format_output(llm_result: str, context: TaskContext,
                        pre_data: Dict) -> str:
     """Post-processor: Format the output."""
     # Your formatting logic here
@@ -299,7 +299,7 @@ async def format_output(llm_result: str, context: TaskContext,
     return formatted_result
 
 
-async def audit_log(llm_result: str, context: TaskContext, 
+async def audit_log(llm_result: str, context: TaskContext,
                    pre_data: Dict) -> str:
     """Post-processor: Log the interaction."""
     # Your audit logging here
@@ -342,16 +342,16 @@ async def audit_log(llm_result: str, context: TaskContext,
 ### Data Fetching Pattern
 
 ```python
-async def fetch_external_data(instruction: str, context: TaskContext, 
+async def fetch_external_data(instruction: str, context: TaskContext,
                              parameters: Dict) -> Dict[str, Any]:
     """Fetch data from external API."""
     try:
         # Extract parameters
         key_param = parameters.get("key_param")
-        
+
         # Fetch data
         api_result = await external_api_call(key_param)
-        
+
         # Return structured data
         return {
             "api_data": api_result,
@@ -366,19 +366,19 @@ async def fetch_external_data(instruction: str, context: TaskContext,
 ### Validation Pattern
 
 ```python
-async def validate_parameters(instruction: str, context: TaskContext, 
+async def validate_parameters(instruction: str, context: TaskContext,
                              parameters: Dict) -> Dict[str, Any]:
     """Validate and normalize parameters."""
     errors = []
     normalized = {}
-    
+
     # Validate each parameter
     for param_name, param_value in parameters.items():
         try:
             normalized[param_name] = normalize_parameter(param_value)
         except ValueError as e:
             errors.append(f"{param_name}: {e}")
-    
+
     return {
         "validation_errors": errors,
         "normalized_parameters": normalized,
@@ -389,7 +389,7 @@ async def validate_parameters(instruction: str, context: TaskContext,
 ### Formatting Pattern
 
 ```python
-async def format_for_channel(llm_result: str, context: TaskContext, 
+async def format_for_channel(llm_result: str, context: TaskContext,
                             pre_data: Dict) -> str:
     """Format result for specific output channel."""
     # Apply channel-specific formatting
@@ -406,16 +406,19 @@ async def format_for_channel(llm_result: str, context: TaskContext,
 ### Common Issues
 
 1. **Lifecycle functions not loading**
+
    - Check file path: `roles/{role_name}/lifecycle.py`
    - Verify function names match YAML configuration
    - Check for syntax errors in lifecycle.py
 
 2. **Parameters not extracted**
+
    - Verify parameter schema in role definition
    - Check routing prompt includes parameter information
    - Test with simple, clear parameter requests
 
 3. **Data injection failing**
+
    - Check placeholder names in system prompt match pre-processing return keys
    - Verify pre-processing functions return dictionaries
    - Handle missing data gracefully in system prompt
@@ -428,12 +431,14 @@ async def format_for_channel(llm_result: str, context: TaskContext,
 ### Debugging Tips
 
 1. **Enable debug logging**:
+
    ```python
    import logging
    logging.getLogger('llm_provider').setLevel(logging.DEBUG)
    ```
 
 2. **Test lifecycle functions independently**:
+
    ```python
    # Test pre-processing function directly
    result = await fetch_weather_data("test", context, {"location": "Seattle"})
@@ -486,12 +491,14 @@ async def format_for_channel(llm_result: str, context: TaskContext,
 ## Examples
 
 See the migrated weather role in `roles/weather/` for a complete example of:
+
 - Parameter schema design
 - Lifecycle function implementation
 - System prompt with data injection
 - Comprehensive test coverage
 
 The weather role demonstrates all hybrid role features:
+
 - Location parameter extraction with multiple formats
 - Weather data pre-fetching
 - TTS formatting post-processing

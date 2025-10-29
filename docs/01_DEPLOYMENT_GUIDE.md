@@ -9,12 +9,14 @@ This guide provides comprehensive instructions for deploying the StrandsAgent Un
 ### System Requirements
 
 **Minimum Requirements:**
+
 - Python 3.8 or higher
 - 4 GB RAM
 - 2 CPU cores
 - 10 GB disk space
 
 **Recommended Requirements:**
+
 - Python 3.11 or higher
 - 16 GB RAM
 - 8 CPU cores
@@ -24,6 +26,7 @@ This guide provides comprehensive instructions for deploying the StrandsAgent Un
 ### Dependencies
 
 **Core Dependencies:**
+
 ```bash
 # Install system dependencies
 sudo apt-get update
@@ -34,6 +37,7 @@ pip install -r requirements.txt
 ```
 
 **Optional Dependencies:**
+
 ```bash
 # For MCP server integration
 npm install -g @modelcontextprotocol/server-web-search
@@ -137,7 +141,7 @@ llm_providers:
     temperature: 0.3
     max_tokens: 4096
     timeout: 60
-  
+
   strong:
     llm_class: STRONG
     provider_type: bedrock
@@ -145,7 +149,7 @@ llm_providers:
     temperature: 0.1
     max_tokens: 8192
     timeout: 120
-  
+
   weak:
     llm_class: WEAK
     provider_type: bedrock
@@ -161,7 +165,7 @@ universal_agent:
   retry_attempts: 3
   retry_delay: 2.0
   task_timeout: 1800
-  
+
   role_optimization:
     planning: STRONG
     search: WEAK
@@ -190,7 +194,7 @@ security:
     enabled: true
     method: token
     token_expiry: 3600
-  
+
   api:
     cors_enabled: true
     cors_origins: ["https://your-frontend.com"]
@@ -203,12 +207,12 @@ monitoring:
     enabled: true
     collection_interval: 30
     retention_days: 90
-  
+
   health_checks:
     enabled: true
     check_interval: 15
     timeout: 5
-  
+
   alerting:
     enabled: true
     channels:
@@ -277,7 +281,7 @@ CMD ["python", "-m", "supervisor.supervisor", "--config", "config.yaml"]
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   strands-agent:
@@ -297,12 +301,18 @@ services:
       - ./config:/app/config
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "from supervisor.supervisor import Supervisor; s = Supervisor('config.yaml'); exit(0 if s.status()['status'] == 'running' else 1)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from supervisor.supervisor import Supervisor; s = Supervisor('config.yaml'); exit(0 if s.status()['status'] == 'running' else 1)",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    
+
   # Optional: Redis for caching
   redis:
     image: redis:7-alpine
@@ -311,7 +321,7 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    
+
   # Optional: PostgreSQL for state persistence
   postgres:
     image: postgres:15-alpine
@@ -351,55 +361,55 @@ spec:
         app: strands-agent
     spec:
       containers:
-      - name: strands-agent
-        image: your-registry/strands-agent:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: LOG_LEVEL
-          value: "INFO"
-        - name: MAX_CONCURRENT_TASKS
-          value: "10"
-        envFrom:
-        - secretRef:
-            name: strands-agent-secrets
-        - configMapRef:
-            name: strands-agent-config
-        volumeMounts:
-        - name: logs
-          mountPath: /app/logs
-        - name: checkpoints
-          mountPath: /app/checkpoints
-        - name: config
-          mountPath: /app/config
-        resources:
-          requests:
-            memory: "2Gi"
-            cpu: "1000m"
-          limits:
-            memory: "8Gi"
-            cpu: "4000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
+        - name: strands-agent
+          image: your-registry/strands-agent:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: MAX_CONCURRENT_TASKS
+              value: "10"
+          envFrom:
+            - secretRef:
+                name: strands-agent-secrets
+            - configMapRef:
+                name: strands-agent-config
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: checkpoints
+              mountPath: /app/checkpoints
+            - name: config
+              mountPath: /app/config
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "8Gi"
+              cpu: "4000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
       volumes:
-      - name: logs
-        emptyDir: {}
-      - name: checkpoints
-        persistentVolumeClaim:
-          claimName: strands-agent-checkpoints
-      - name: config
-        configMap:
-          name: strands-agent-config
+        - name: logs
+          emptyDir: {}
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: strands-agent-checkpoints
+        - name: config
+          configMap:
+            name: strands-agent-config
 ```
 
 #### Service and Ingress
@@ -414,9 +424,9 @@ spec:
   selector:
     app: strands-agent
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8000
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
   type: ClusterIP
 
 ---
@@ -430,20 +440,20 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
-  - hosts:
-    - strands-agent.your-domain.com
-    secretName: strands-agent-tls
+    - hosts:
+        - strands-agent.your-domain.com
+      secretName: strands-agent-tls
   rules:
-  - host: strands-agent.your-domain.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: strands-agent-service
-            port:
-              number: 80
+    - host: strands-agent.your-domain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: strands-agent-service
+                port:
+                  number: 80
 ```
 
 ### 3. Systemd Service
@@ -481,6 +491,7 @@ WantedBy=multi-user.target
 ```
 
 **Installation:**
+
 ```bash
 # Create service user
 sudo useradd -r -s /bin/false strands-agent
@@ -500,6 +511,7 @@ sudo systemctl status strands-agent
 ### 1. Security Hardening
 
 **File Permissions:**
+
 ```bash
 # Set secure file permissions
 chmod 600 config.yaml .env
@@ -508,6 +520,7 @@ chown -R strands-agent:strands-agent /opt/strands-agent
 ```
 
 **Firewall Configuration:**
+
 ```bash
 # Configure firewall (UFW example)
 sudo ufw allow 22/tcp    # SSH
@@ -516,6 +529,7 @@ sudo ufw enable
 ```
 
 **SSL/TLS Configuration:**
+
 ```yaml
 # config/production.yaml
 security:
@@ -529,6 +543,7 @@ security:
 ### 2. Database Setup
 
 **PostgreSQL Setup:**
+
 ```sql
 -- Create database and user
 CREATE DATABASE strands_agent;
@@ -559,6 +574,7 @@ CREATE INDEX idx_metrics_timestamp ON metrics(timestamp);
 ```
 
 **Database Configuration:**
+
 ```yaml
 # config/production.yaml
 database:
@@ -573,6 +589,7 @@ database:
 ### 3. Caching Setup
 
 **Redis Configuration:**
+
 ```yaml
 # config/production.yaml
 caching:
@@ -584,7 +601,7 @@ caching:
     password: ${REDIS_PASSWORD}
     db: 0
     max_connections: 50
-  
+
   # Cache settings
   default_ttl: 3600
   max_memory: 1GB
@@ -596,6 +613,7 @@ caching:
 ### 1. Health Checks
 
 **Health Check Endpoint:**
+
 ```python
 # supervisor/health_check.py
 from flask import Flask, jsonify
@@ -612,12 +630,12 @@ def health_check():
         memory = psutil.virtual_memory()
         cpu = psutil.cpu_percent(interval=1)
         disk = psutil.disk_usage('/')
-        
+
         # Check application components
         workflow_engine_health = check_workflow_engine()
         universal_agent_health = check_universal_agent()
         mcp_health = check_mcp_servers()
-        
+
         health_data = {
             "status": "healthy",
             "timestamp": time.time(),
@@ -632,17 +650,17 @@ def health_check():
                 "mcp_servers": mcp_health
             }
         }
-        
+
         # Determine overall health
         if any(comp != "healthy" for comp in health_data["components"].values()):
             health_data["status"] = "degraded"
-        
+
         if memory.percent > 90 or cpu > 90 or disk.percent > 90:
             health_data["status"] = "critical"
-        
+
         status_code = 200 if health_data["status"] == "healthy" else 503
         return jsonify(health_data), status_code
-        
+
     except Exception as e:
         return jsonify({
             "status": "unhealthy",
@@ -658,12 +676,12 @@ def readiness_check():
         from supervisor.supervisor import Supervisor
         supervisor = Supervisor('config.yaml')
         status = supervisor.status()
-        
+
         if status['status'] == 'running':
             return jsonify({"status": "ready"}), 200
         else:
             return jsonify({"status": "not_ready"}), 503
-            
+
     except Exception as e:
         return jsonify({"status": "not_ready", "error": str(e)}), 503
 
@@ -674,6 +692,7 @@ if __name__ == '__main__':
 ### 2. Metrics Collection
 
 **Prometheus Integration:**
+
 ```python
 # supervisor/metrics_collector.py
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
@@ -689,15 +708,15 @@ class MetricsCollector:
     def __init__(self, port=8002):
         self.port = port
         start_http_server(port)
-    
+
     def record_workflow_started(self, workflow_id):
         active_workflows.inc()
-    
+
     def record_workflow_completed(self, workflow_id, duration, status):
         workflow_counter.labels(status=status).inc()
         workflow_duration.observe(duration)
         active_workflows.dec()
-    
+
     def record_task_completed(self, task_role, status):
         task_counter.labels(role=task_role, status=status).inc()
 ```
@@ -705,6 +724,7 @@ class MetricsCollector:
 ### 3. Logging Configuration
 
 **Structured Logging:**
+
 ```python
 # supervisor/logging_config.py
 import logging
@@ -722,7 +742,7 @@ class StructuredFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno
         }
-        
+
         # Add extra fields if present
         if hasattr(record, 'workflow_id'):
             log_entry['workflow_id'] = record.workflow_id
@@ -730,7 +750,7 @@ class StructuredFormatter(logging.Formatter):
             log_entry['task_id'] = record.task_id
         if hasattr(record, 'user_id'):
             log_entry['user_id'] = record.user_id
-        
+
         return json.dumps(log_entry)
 
 # Configure structured logging
@@ -747,6 +767,7 @@ def setup_structured_logging():
 ### 1. Horizontal Scaling
 
 **Load Balancer Configuration (Nginx):**
+
 ```nginx
 # /etc/nginx/sites-available/strands-agent
 upstream strands_agent_backend {
@@ -759,7 +780,7 @@ upstream strands_agent_backend {
 server {
     listen 80;
     server_name strands-agent.your-domain.com;
-    
+
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
 }
@@ -767,35 +788,35 @@ server {
 server {
     listen 443 ssl http2;
     server_name strands-agent.your-domain.com;
-    
+
     ssl_certificate /etc/ssl/certs/strands-agent.crt;
     ssl_certificate_key /etc/ssl/private/strands-agent.key;
-    
+
     # Security headers
     add_header X-Frame-Options DENY;
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
-    
+
     # Rate limiting
     limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
     limit_req zone=api burst=20 nodelay;
-    
+
     location / {
         proxy_pass http://strands_agent_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 300s;
-        
+
         # Health check
         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
     }
-    
+
     location /health {
         proxy_pass http://strands_agent_backend/health;
         access_log off;
@@ -806,6 +827,7 @@ server {
 ### 2. Auto-Scaling
 
 **Kubernetes HPA:**
+
 ```yaml
 # k8s/hpa.yaml
 apiVersion: autoscaling/v2
@@ -820,25 +842,25 @@ spec:
   minReplicas: 3
   maxReplicas: 20
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-  - type: Pods
-    pods:
-      metric:
-        name: active_workflows
-      target:
-        type: AverageValue
-        averageValue: "10"
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: active_workflows
+        target:
+          type: AverageValue
+          averageValue: "10"
 ```
 
 ## Backup and Recovery
@@ -846,6 +868,7 @@ spec:
 ### 1. Backup Strategy
 
 **Automated Backup Script:**
+
 ```bash
 #!/bin/bash
 # scripts/backup.sh
@@ -883,6 +906,7 @@ echo "Backup completed: $BACKUP_PATH"
 ### 2. Recovery Procedures
 
 **Disaster Recovery Script:**
+
 ```bash
 #!/bin/bash
 # scripts/recovery.sh
@@ -976,18 +1000,21 @@ fi
 ### Regular Maintenance Tasks
 
 **Daily:**
+
 - Check system health and metrics
 - Review error logs
 - Verify backup completion
 - Monitor resource usage
 
 **Weekly:**
+
 - Update dependencies
 - Review performance metrics
 - Clean up old logs and checkpoints
 - Test backup recovery procedures
 
 **Monthly:**
+
 - Security updates
 - Performance optimization review
 - Capacity planning review
@@ -1024,3 +1051,4 @@ if [ "$RESTART_REQUIRED" = "true" ]; then
 fi
 
 echo "Maintenance completed"
+```

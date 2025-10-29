@@ -3,6 +3,7 @@
 This guide provides comprehensive documentation for the Redis shared tools that enable roles to utilize Redis for caching, data storage, and inter-role communication.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Features](#features)
 - [Configuration](#configuration)
@@ -18,6 +19,7 @@ This guide provides comprehensive documentation for the Redis shared tools that 
 The Redis shared tools provide a comprehensive interface for roles to interact with Redis, offering both synchronous and asynchronous operations with automatic key prefixing to prevent collisions between different roles/agents.
 
 ### Key Benefits
+
 - **Automatic Key Prefixing**: Prevents key collisions between different roles
 - **TTL Support**: Optional time-to-live for all write operations
 - **Sync/Async Operations**: Both blocking and fire-and-forget operations
@@ -28,12 +30,14 @@ The Redis shared tools provide a comprehensive interface for roles to interact w
 ## Features
 
 ### Core Operations
+
 - **Synchronous Operations**: `redis_write()`, `redis_read()`, `redis_get_keys()`
 - **Asynchronous Operations**: `redis_write_async()`, `redis_read_async()`
 - **Utility Functions**: `redis_delete()`, `redis_exists()`, `redis_health_check()`
 - **Role Management**: `redis_clear_role_data()`
 
 ### Advanced Features
+
 - **Automatic Role Detection**: Keys are automatically prefixed with the calling role name
 - **JSON Serialization**: Automatic serialization/deserialization of complex data types
 - **TTL Management**: Optional time-to-live for cached data
@@ -59,18 +63,18 @@ redis:
     socket_timeout: 5
     retry_on_timeout: true
     decode_responses: true
-  
+
   # Connection pooling
   pool:
     max_connections: 10
     retry_on_timeout: true
-  
+
   # Key management
   key_management:
-    auto_prefix: true                 # Automatically prefix keys with role name
-    default_ttl: 3600                # Default TTL in seconds (1 hour)
-    max_ttl: 86400                   # Maximum allowed TTL (24 hours)
-  
+    auto_prefix: true # Automatically prefix keys with role name
+    default_ttl: 3600 # Default TTL in seconds (1 hour)
+    max_ttl: 86400 # Maximum allowed TTL (24 hours)
+
   # Environment variable overrides (these take precedence)
   # REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
   use_env_overrides: true
@@ -108,14 +112,17 @@ PyYAML>=6.0.0
 Write data to Redis synchronously.
 
 **Parameters:**
+
 - `key`: Redis key (will be prefixed with role name)
 - `value`: Value to store (strings, numbers, dicts, and lists supported)
 - `ttl`: Time to live in seconds (optional)
 
 **Returns:**
+
 - Dict containing operation result with `success`, `key`, `prefixed_key`, `ttl`, and `message` fields
 
 **Example:**
+
 ```python
 result = redis_write("user_session", {"user_id": 123, "login_time": "2024-01-01"}, ttl=3600)
 if result["success"]:
@@ -127,12 +134,15 @@ if result["success"]:
 Read data from Redis synchronously.
 
 **Parameters:**
+
 - `key`: Redis key (will be prefixed with role name)
 
 **Returns:**
+
 - Dict containing `success`, `key`, `prefixed_key`, `value`, `ttl`, and `message` fields
 
 **Example:**
+
 ```python
 result = redis_read("user_session")
 if result["success"]:
@@ -145,12 +155,15 @@ if result["success"]:
 Get all keys for the current role matching a pattern.
 
 **Parameters:**
+
 - `pattern`: Key pattern to match (applied after role prefix)
 
 **Returns:**
+
 - Dict containing `success`, `pattern`, `role`, `keys`, `count`, and `message` fields
 
 **Example:**
+
 ```python
 keys_result = redis_get_keys("session:*")
 for key in keys_result["keys"]:
@@ -164,12 +177,15 @@ for key in keys_result["keys"]:
 Write data to Redis asynchronously (fire and forget).
 
 **Parameters:**
+
 - Same as `redis_write()`
 
 **Returns:**
+
 - Dict indicating the async operation was started
 
 **Example:**
+
 ```python
 result = redis_write_async("log_entry", {"timestamp": "2024-01-01", "event": "user_login"})
 print("Async write started")  # Returns immediately
@@ -180,13 +196,16 @@ print("Async write started")  # Returns immediately
 Read data from Redis asynchronously with optional callback.
 
 **Parameters:**
+
 - `key`: Redis key (will be prefixed with role name)
 - `callback`: Optional callback function to handle the result
 
 **Returns:**
+
 - Dict indicating the async operation was started
 
 **Example:**
+
 ```python
 def handle_result(result):
     if result["success"]:
@@ -223,18 +242,18 @@ from roles.shared_tools.redis_tools import redis_write, redis_read
 
 async def cache_user_data(instruction: str, context: TaskContext, parameters: Dict) -> Dict[str, Any]:
     user_id = parameters.get("user_id")
-    
+
     # Try to read from cache first
     cache_result = redis_read(f"user:{user_id}")
     if cache_result["success"]:
         return {"user_data": cache_result["value"]}
-    
+
     # Fetch from API if not cached
     user_data = await fetch_user_from_api(user_id)
-    
+
     # Cache for 1 hour
     redis_write(f"user:{user_id}", user_data, ttl=3600)
-    
+
     return {"user_data": user_data}
 ```
 
@@ -380,12 +399,12 @@ def test_redis_operations():
     with patch('roles.shared_tools.redis_tools._get_redis_client') as mock_client:
         mock_redis = Mock()
         mock_client.return_value = mock_redis
-        
+
         # Test write
         mock_redis.set.return_value = True
         result = redis_write("test_key", "test_value")
         assert result["success"] is True
-        
+
         # Test read
         mock_redis.get.return_value = "test_value"
         mock_redis.ttl.return_value = 3600
@@ -402,19 +421,19 @@ def test_redis_integration():
     health = redis_health_check()
     if not health["success"]:
         pytest.skip("Redis not available")
-    
+
     # Test full workflow
     test_data = {"test": True}
-    
+
     # Write
     write_result = redis_write("integration_test", test_data, ttl=60)
     assert write_result["success"]
-    
+
     # Read
     read_result = redis_read("integration_test")
     assert read_result["success"]
     assert read_result["value"] == test_data
-    
+
     # Cleanup
     redis_delete("integration_test")
 ```
@@ -438,6 +457,7 @@ python -m pytest tests/unit/test_redis_tools.py -v --timeout=30
 **Error:** `Redis connection failed: Connection refused`
 
 **Solutions:**
+
 - Ensure Redis server is running: `redis-server`
 - Check host/port configuration
 - Verify network connectivity
@@ -448,6 +468,7 @@ python -m pytest tests/unit/test_redis_tools.py -v --timeout=30
 **Error:** `ImportError: Redis not available`
 
 **Solutions:**
+
 - Install Redis dependencies: `pip install redis>=5.0.0 aioredis>=2.0.0`
 - Verify installation: `python -c "import redis; print('Redis available')"`
 
@@ -456,6 +477,7 @@ python -m pytest tests/unit/test_redis_tools.py -v --timeout=30
 **Error:** `Key not found` in read operations
 
 **Debugging:**
+
 - Check if key exists: `redis_exists("your_key")`
 - List all keys for role: `redis_get_keys("*")`
 - Verify TTL hasn't expired
@@ -464,10 +486,12 @@ python -m pytest tests/unit/test_redis_tools.py -v --timeout=30
 #### 4. Async Operations Not Working
 
 **Issues:**
+
 - Async writes appear to succeed but data not stored
 - Callbacks not called for async reads
 
 **Solutions:**
+
 - Check Redis server logs for errors
 - Verify aioredis installation
 - Use sync operations for critical data
@@ -510,16 +534,19 @@ print(f"Redis config: {config}")
 ## Performance Considerations
 
 ### Connection Management
+
 - Redis connections are pooled and reused
 - Connections are created lazily on first use
 - Failed connections are retried automatically
 
 ### Memory Usage
+
 - Use appropriate TTLs to prevent memory bloat
 - Monitor Redis memory usage: `redis_health_check()`
 - Consider data compression for large values
 
 ### Network Latency
+
 - Use async operations for non-critical data
 - Batch operations when possible
 - Consider Redis pipelining for multiple operations
@@ -527,15 +554,18 @@ print(f"Redis config: {config}")
 ## Security Considerations
 
 ### Authentication
+
 - Use Redis AUTH if password is configured
 - Store passwords in environment variables, not config files
 
 ### Network Security
+
 - Use Redis over secure networks only
 - Consider Redis over TLS for production
 - Restrict Redis access with firewall rules
 
 ### Data Privacy
+
 - Be mindful of sensitive data in Redis
 - Use appropriate TTLs for sensitive information
 - Consider encryption for highly sensitive data
@@ -543,12 +573,14 @@ print(f"Redis config: {config}")
 ## Migration and Deployment
 
 ### Development to Production
+
 1. Update Redis configuration in config.yaml
 2. Set production environment variables
 3. Test Redis connectivity in production environment
 4. Monitor Redis performance and memory usage
 
 ### Scaling Considerations
+
 - Consider Redis Cluster for high availability
 - Monitor connection pool usage
 - Plan for Redis memory requirements
@@ -556,6 +588,7 @@ print(f"Redis config: {config}")
 ---
 
 For more information, see:
+
 - [Redis Documentation](https://redis.io/documentation)
 - [Redis Python Client](https://redis-py.readthedocs.io/)
 - [Async Redis Client](https://aioredis.readthedocs.io/)

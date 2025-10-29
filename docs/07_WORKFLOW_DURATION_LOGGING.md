@@ -47,19 +47,19 @@ workflow_duration_logging:
   log_file: "logs/workflow_durations.jsonl"
   max_log_file_size_mb: 100
   enable_console_logging: true
-  
+
   # Performance monitoring settings
   performance_monitoring:
     track_cli_workflows: true
     track_slack_workflows: true
     track_api_workflows: true
-    
+
   # Analytics and reporting
   analytics:
     enable_performance_summary: true
     summary_interval_hours: 24
     retention_days: 30
-    
+
   # Log rotation settings
   rotation:
     enabled: true
@@ -186,18 +186,21 @@ for metric in recent_metrics:
 The system automatically categorizes workflows into types:
 
 ### FAST_REPLY
+
 - Single-step workflows that use fast-path routing
 - Typically complete in under 3 seconds
 - Use WEAK model for quick responses
 - Identified by workflow ID prefix `fr_`
 
 ### COMPLEX_WORKFLOW
+
 - Multi-step workflows that require planning
 - May involve multiple tasks and dependencies
 - Use DEFAULT or STRONG models
 - Identified by workflow ID prefix `wf_`
 
 ### UNKNOWN
+
 - Workflows where type cannot be determined
 - Fallback category for edge cases
 
@@ -317,11 +320,13 @@ os.remove(log_file); os.rmdir(temp_dir)
 ### Common Issues
 
 1. **Log File Not Created**
+
    - Check directory permissions for log file path
    - Ensure parent directories exist
    - Verify configuration is correct
 
 2. **Missing Duration Entries**
+
    - Check that workflows are completing successfully
    - Verify logger is initialized before workflow execution
    - Check for exceptions in workflow completion
@@ -343,16 +348,19 @@ logging.getLogger("supervisor.workflow_duration_logger").setLevel(logging.DEBUG)
 ## Best Practices
 
 1. **Configuration**
+
    - Set appropriate log file size limits
    - Enable log rotation for production
    - Configure retention policies
 
 2. **Monitoring**
+
    - Regularly review performance summaries
    - Set up alerts for high error rates
    - Monitor average duration trends
 
 3. **Analysis**
+
    - Use external tools for advanced analytics
    - Export data for visualization
    - Correlate with system metrics

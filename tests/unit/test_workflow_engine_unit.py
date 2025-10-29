@@ -146,31 +146,32 @@ class TestWorkflowEngineUnit:
         """Test successful workflow creation and startup."""
         instruction = "Create a test workflow"
 
-        # Mock the task planning
-        with patch.object(workflow_engine, "_create_task_plan") as mock_create_plan:
-            mock_task_context = Mock(spec=TaskContext)
-            mock_task_context.context_id = "test_context_123"
-            mock_create_plan.return_value = mock_task_context
+        # Mock the universal agent to return a string result
+        workflow_engine.universal_agent.execute_task = Mock(
+            return_value="Workflow started successfully"
+        )
 
-            with patch.object(
-                workflow_engine, "_execute_dag_parallel"
-            ) as mock_execute_dag:
-                # Execute
-                workflow_id = workflow_engine.start_workflow(instruction)
+        # Mock role registry
+        workflow_engine.role_registry.get_role_execution_type = Mock(
+            return_value="hybrid"
+        )
 
-                # Verify workflow creation
-                assert workflow_id is not None
-                assert workflow_id.startswith("wf_")
-                assert workflow_id in workflow_engine.active_workflows
-                assert workflow_engine.state == WorkflowState.RUNNING
-                assert workflow_engine.start_time is not None
+        with patch("supervisor.workflow_engine.get_duration_logger") as mock_logger:
+            mock_duration_logger = Mock()
+            mock_logger.return_value = mock_duration_logger
 
-                # Verify task context was created and started
-                mock_create_plan.assert_called_once_with(instruction, workflow_id)
-                mock_task_context.start_execution.assert_called_once()
+            # Execute
+            workflow_id = workflow_engine.start_workflow(instruction)
 
-                # Verify DAG execution was initiated
-                mock_execute_dag.assert_called_once_with(mock_task_context)
+            # Verify workflow creation
+            assert workflow_id is not None
+            # New architecture uses fr_ prefix
+            assert workflow_id.startswith("fr_")
+            assert workflow_id in workflow_engine.active_workflows
+
+            # Verify workflow context was created
+            context = workflow_engine.get_request_context(workflow_id)
+            assert context is not None
 
     def test_pause_workflow_success(self, workflow_engine, sample_task_context):
         """Test workflow can be paused successfully."""

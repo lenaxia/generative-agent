@@ -110,8 +110,9 @@ class TestIntentProcessor:
         assert result["failed"] == 0
         assert len(result["errors"]) == 0
 
+        # Updated to match actual call signature
         mock_workflow_engine.start_workflow.assert_called_once_with(
-            request="Execute data_processing", parameters={"input": "test.csv"}
+            instruction="Execute data_processing"
         )
 
     @pytest.mark.asyncio

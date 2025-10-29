@@ -1,28 +1,29 @@
 # StrandsAgent Universal Agent Migration Plan
 
 ## Overview
+
 This document provides a revised migration plan based on the **Universal Agent + External State Management** paradigm. After analyzing the current project structure, we've identified excellent foundations that can be leveraged and enhanced rather than replaced.
 
 ## Rules
 
-* ALWAYS use test driven development, write tests first
-* Never assume tests pass, run the tests and positively verify that the test passed
-* ALWAYS run all tests after making any change to ensure they are still all passing, do not move on until relevant tests are passing
-* If a test fails, reflect deeply about why the test failed and fix it or fix the code
-* Always write multiple tests, including happy, unhappy path and corner cases
-* Always verify interfaces and data structures before writing code, do not assume the definition of a interface or data structure
-* When performing refactors, ALWAYS use grep to find all instances that need to be refactored
-* If you are stuck in a debugging cycle and can't seem to make forward progress, either ask for user input or take a step back and reflect on the broader scope of the code you're working on
-* ALWAYS make sure your tests are meaningful, do not mock excessively, only mock where ABSOLUTELY necessary.
-* Make a git commit after major changes have been completed
-* When refactoring an object, refactor it in place, do not create a new file just for the sake of preserving the old version, we have git for that reason. For instance, if refactoring RequestManager, do NOT create an EnhancedRequestManager, just refactor or rewrite RequestManager
-* ALWAYS Follow development and language best practices
-* Use the Context7 MCP server if you need documentation for something, make sure you're looking at the right version
-* Remember we are migrating AWAY from langchain TO strands agent
-* Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
-* Do not use fallbacks
-* Whenever you complete a phase, make sure to update this checklist
-* Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed
+- ALWAYS use test driven development, write tests first
+- Never assume tests pass, run the tests and positively verify that the test passed
+- ALWAYS run all tests after making any change to ensure they are still all passing, do not move on until relevant tests are passing
+- If a test fails, reflect deeply about why the test failed and fix it or fix the code
+- Always write multiple tests, including happy, unhappy path and corner cases
+- Always verify interfaces and data structures before writing code, do not assume the definition of a interface or data structure
+- When performing refactors, ALWAYS use grep to find all instances that need to be refactored
+- If you are stuck in a debugging cycle and can't seem to make forward progress, either ask for user input or take a step back and reflect on the broader scope of the code you're working on
+- ALWAYS make sure your tests are meaningful, do not mock excessively, only mock where ABSOLUTELY necessary.
+- Make a git commit after major changes have been completed
+- When refactoring an object, refactor it in place, do not create a new file just for the sake of preserving the old version, we have git for that reason. For instance, if refactoring RequestManager, do NOT create an EnhancedRequestManager, just refactor or rewrite RequestManager
+- ALWAYS Follow development and language best practices
+- Use the Context7 MCP server if you need documentation for something, make sure you're looking at the right version
+- Remember we are migrating AWAY from langchain TO strands agent
+- Do not worry about backwards compatibility unless it is PART of a migration process and you will remove the backwards compatibility later
+- Do not use fallbacks
+- Whenever you complete a phase, make sure to update this checklist
+- Don't just blindly implement changes. Reflect on them to make sure they make sense within the larger project. Pull in other files if additional context is needed
 
 ---
 
@@ -31,7 +32,9 @@ This document provides a revised migration plan based on the **Universal Agent +
 ### **Excellent Foundations (Keep & Enhance)**
 
 #### ✅ **TaskGraph System** (`common/task_graph.py`)
+
 **Current Capabilities:**
+
 - Complete DAG implementation with nodes and edges
 - Task status management (PENDING, RUNNING, COMPLETED, FAILED)
 - Dependency resolution and execution ordering
@@ -39,12 +42,15 @@ This document provides a revised migration plan based on the **Universal Agent +
 - Entry point and terminal node identification
 
 **Enhancement Needed:**
+
 - Add checkpoint/resume functionality for pause/resume
 - Integrate with StrandsAgent execution model
 - Add progressive summary management
 
 #### ✅ **Request Management** (`supervisor/request_manager.py`)
+
 **Current Capabilities:**
+
 - Request lifecycle management
 - Task delegation and monitoring
 - Progress tracking and metrics
@@ -52,31 +58,38 @@ This document provides a revised migration plan based on the **Universal Agent +
 - Request persistence
 
 **Enhancement Needed:**
+
 - Replace agent-specific delegation with Universal Agent
 - Add external state management integration
 - Simplify orchestration logic
 
 #### ✅ **Message Bus** (`common/message_bus.py`)
+
 **Current Capabilities:**
+
 - Pub/sub messaging system
 - Thread-safe operations
 - Event-driven architecture
 
 **Enhancement Needed:**
+
 - Integrate with StrandsAgent task scheduling
 - Add task queue management
 
 ### **Components to Replace/Simplify**
 
 #### ❌ **Individual Agent Classes** (`agents/*/agent.py`)
+
 **Current:** Separate classes for Planning, Search, Weather, Summarizer, Slack
 **New:** Single Universal Agent with role-based prompts
 
 #### ❌ **Agent Manager** (`supervisor/agent_manager.py`)
+
 **Current:** Complex agent registration and management
 **New:** Simple prompt library and tool registry
 
 #### ✅ **LLM Factory** (`llm_provider/factory.py`) - **KEEP & ENHANCE**
+
 **Current:** Custom LLM abstraction layer for LangChain
 **Enhanced:** Extended to support StrandsAgent models while maintaining abstraction
 **Value:** Semantic model types (DEFAULT/STRONG/WEAK), future flexibility, testing support
@@ -95,20 +108,20 @@ graph TD
         UA --> MCP[MCP Servers]
         UA --> LLM[Enhanced LLM Factory]
     end
-    
+
     subgraph "Enhanced State Management"
         TC[TaskContext] --> TG[TaskGraph - Enhanced]
         TC --> CH[Conversation History]
         TC --> PS[Progressive Summary]
         TC --> CP[Checkpoints]
     end
-    
+
     subgraph "Orchestration Layer"
         TS[Task Scheduler] --> TC
         TS --> UA
         RM[Request Manager - Enhanced] --> TS
     end
-    
+
     subgraph "Existing Infrastructure (Enhanced)"
         MB[Message Bus] --> RM
         TG --> RM
@@ -126,20 +139,20 @@ graph TD
         UA --> MCP[MCP Servers]
         UA --> LLM[Enhanced LLM Factory]
     end
-    
+
     subgraph "Enhanced State Management"
         TC[TaskContext] --> TG[TaskGraph - Enhanced]
         TC --> CH[Conversation History]
         TC --> PS[Progressive Summary]
         TC --> CP[Checkpoints]
     end
-    
+
     subgraph "Unified Orchestration Layer"
         WE[WorkflowEngine] --> TC
         WE --> UA
         WE --> MB[Message Bus]
     end
-    
+
     subgraph "System Management"
         S[Supervisor] --> WE
         HB[Heartbeat] --> S
@@ -155,9 +168,11 @@ graph TD
 ### **Phase 1: Foundation Enhancement (Week 1)**
 
 #### **Epic 1.1: TaskGraph Enhancement for External State**
+
 **Goal**: Enhance existing TaskGraph to support external state management
 
 ##### User Story 1.1.1: As a developer, I want TaskGraph to support checkpointing and resumption
+
 - [x] Analyze current TaskGraph checkpoint capabilities
 - [x] Add `create_checkpoint()` method to TaskGraph
 - [x] Add `resume_from_checkpoint()` method to TaskGraph
@@ -167,6 +182,7 @@ graph TD
 - [x] Document checkpoint/resume procedures
 
 ##### User Story 1.1.2: As a developer, I want TaskGraph to integrate with StrandsAgent execution
+
 - [x] Modify TaskNode to support role-based execution
 - [x] Add tool requirements to TaskNode structure
 - [x] Integrate conversation history tracking
@@ -175,9 +191,11 @@ graph TD
 - [x] Document TaskGraph enhancements
 
 #### **Epic 1.2: TaskContext Implementation**
+
 **Goal**: Create TaskContext wrapper around enhanced TaskGraph
 
 ##### User Story 1.2.1: As a developer, I want a TaskContext that manages all external state
+
 - [x] Design TaskContext class wrapping TaskGraph
 - [x] Implement conversation history management
 - [x] Add progressive summary functionality
@@ -196,7 +214,7 @@ class TaskContext:
         # Conversation history and progressive summaries are managed by TaskGraph
         # Metadata is managed by TaskGraph
         # Checkpoints are created from TaskGraph state + execution context
-    
+
     def create_checkpoint(self) -> Dict:
         """Create checkpoint from TaskGraph state + execution context"""
         checkpoint = {
@@ -211,9 +229,11 @@ class TaskContext:
 ### **Phase 2: Enhanced LLMFactory & Universal Agent Implementation (Week 2)**
 
 #### **Epic 2.1: LLMFactory Enhancement for StrandsAgent**
+
 **Goal**: Enhance existing LLMFactory to support StrandsAgent while maintaining abstraction
 
 ##### User Story 2.1.1: As a developer, I want to enhance LLMFactory to support StrandsAgent models
+
 - [x] Analyze existing LLMFactory interface and preserve semantic model types
 - [x] Add StrandsAgent model creation methods to existing factory
 - [x] Maintain existing LLMType enum (DEFAULT, STRONG, WEAK, etc.)
@@ -230,11 +250,11 @@ class EnhancedLLMFactory(LLMFactory):  # Inherit existing functionality
         super().__init__(configs)
         self.framework = framework
         self.prompt_library = PromptLibrary()
-    
+
     def create_strands_model(self, llm_type: LLMType, name: Optional[str] = None):
         """Create StrandsAgent model while maintaining abstraction"""
         config = self._get_config(llm_type, name)  # Use existing config logic
-        
+
         if config.provider_type == "bedrock":
             from strands.models import BedrockModel
             return BedrockModel(
@@ -249,14 +269,14 @@ class EnhancedLLMFactory(LLMFactory):  # Inherit existing functionality
                 temperature=config.temperature,
                 **config.additional_params
             )
-    
+
     def create_universal_agent(self, llm_type: LLMType, role: str, tools: List = None):
         """Create Universal Agent using enhanced factory"""
         from strands import Agent
-        
+
         model = self.create_strands_model(llm_type)
         prompt = self.prompt_library.get_prompt(role)
-        
+
         return Agent(
             model=model,
             system_prompt=prompt,
@@ -265,9 +285,11 @@ class EnhancedLLMFactory(LLMFactory):  # Inherit existing functionality
 ```
 
 #### **Epic 2.2: Universal Agent Integration with LLMFactory**
+
 **Goal**: Create Universal Agent that leverages enhanced LLMFactory
 
 ##### User Story 2.2.1: As a developer, I want to set up Universal Agent with LLMFactory integration
+
 - [x] Install StrandsAgent dependencies
 - [x] Create Universal Agent wrapper class that uses enhanced LLMFactory
 - [x] Design prompt library for existing agent roles
@@ -284,12 +306,12 @@ class UniversalAgent:
         self.llm_factory = llm_factory  # Use enhanced factory
         self.prompt_library = PromptLibrary()
         self.tool_registry = ToolRegistry()
-    
+
     def assume_role(self, role: str, llm_type: LLMType = LLMType.DEFAULT,
                    context: TaskContext = None, tools: List[str] = None):
         """Create role-specific agent using factory abstraction"""
         role_tools = self.tool_registry.get_tools(tools or [])
-        
+
         # Use factory to create agent (maintains abstraction)
         return self.llm_factory.create_universal_agent(
             llm_type=llm_type,
@@ -299,6 +321,7 @@ class UniversalAgent:
 ```
 
 ##### User Story 2.2.2: As a developer, I want to convert existing agent logic to prompts and tools
+
 - [x] Extract Planning Agent logic to prompt + planning tools
 - [x] Extract Search Agent logic to prompt + search tools
 - [x] Extract Weather Agent logic to prompt + weather tools
@@ -309,9 +332,11 @@ class UniversalAgent:
 - [x] Document prompt and tool conversion process
 
 #### **Epic 2.3: Tool Migration to @tool Decorators**
+
 **Goal**: Convert existing agent methods to StrandsAgent tools
 
 ##### User Story 2.3.1: As a developer, I want existing agent capabilities as StrandsAgent tools
+
 - [x] Audit existing agent methods and capabilities
 - [x] Convert planning logic to @tool functions
 - [x] Convert search functionality to @tool functions
@@ -329,7 +354,7 @@ def create_task_plan(instruction: str, available_agents: List[str]) -> Dict:
     # Logic extracted from existing PlanningAgent.run() method
     pass
 
-@tool  
+@tool
 def web_search(query: str, num_results: int = 5) -> Dict:
     """Search the web for information - converted from SearchAgent"""
     # Logic extracted from existing SearchAgent methods
@@ -339,9 +364,11 @@ def web_search(query: str, num_results: int = 5) -> Dict:
 ### **Phase 3: Enhanced Request Management (Week 3)**
 
 #### **Epic 3.1: Request Manager Enhancement**
+
 **Goal**: Enhance existing RequestManager to work with Universal Agent and LLMFactory
 
 ##### User Story 3.1.1: As a developer, I want RequestManager to use Universal Agent with LLMFactory instead of individual agents
+
 - [x] Analyze current RequestManager delegation logic
 - [x] Replace agent-specific delegation with Universal Agent calls via LLMFactory
 - [x] Integrate TaskContext with existing request management
@@ -360,14 +387,14 @@ class EnhancedRequestManager(RequestManager):
         self.message_bus = message_bus
         # Leverage existing request_map and other infrastructure
         super().__init__(None, message_bus)  # No agent_manager needed
-    
+
     def delegate_task(self, task_context: TaskContext, task: TaskNode):
         """Enhanced delegation using Universal Agent with LLMFactory"""
         # Map existing agent_id to role and appropriate model type
         role = self._determine_role_from_agent_id(task.agent_id)
         llm_type = self._determine_llm_type_for_role(role)  # Use STRONG for planning, WEAK for simple tasks
         tools = self._get_tools_for_task(task)
-        
+
         # Use Universal Agent with semantic model selection
         agent = self.universal_agent.assume_role(
             role=role,
@@ -376,10 +403,10 @@ class EnhancedRequestManager(RequestManager):
             tools=tools
         )
         result = agent(task.prompt)
-        
+
         # Update TaskContext (which wraps existing TaskGraph)
         task_context.update_task_result(task.task_id, result)
-    
+
     def _determine_llm_type_for_role(self, role: str) -> LLMType:
         """Map roles to appropriate model types for cost/performance optimization"""
         role_to_llm_type = {
@@ -393,9 +420,11 @@ class EnhancedRequestManager(RequestManager):
 ```
 
 #### **Epic 3.2: Task Scheduler Implementation**
+
 **Goal**: Create task scheduler for pause/resume functionality
 
 ##### User Story 3.2.1: As a developer, I want a task scheduler that supports pause/resume
+
 - [x] Design TaskScheduler that works with existing RequestManager
 - [x] Implement task queue management
 - [x] Add pause/resume functionality using TaskContext checkpoints
@@ -407,9 +436,11 @@ class EnhancedRequestManager(RequestManager):
 ### **Phase 4: MCP Integration (Week 4)**
 
 #### **Epic 4.1: MCP Server Integration**
+
 **Goal**: Add MCP server support to enhance tool capabilities
 
 ##### User Story 4.1.1: As a developer, I want to integrate MCP servers for external tools
+
 - [x] Research available MCP servers for current agent capabilities
 - [x] Implement MCP client integration with StrandsAgent
 - [x] Add MCP server discovery and registration
@@ -419,6 +450,7 @@ class EnhancedRequestManager(RequestManager):
 - [x] Document MCP server setup and usage
 
 ##### User Story 4.1.2: As a user, I want enhanced capabilities through MCP servers
+
 - [x] Set up AWS documentation MCP server
 - [x] Integrate web search MCP server
 - [x] Add weather service MCP server
@@ -430,9 +462,11 @@ class EnhancedRequestManager(RequestManager):
 ### **Phase 5: Configuration and Testing (Week 5)**
 
 #### **Epic 5.1: Configuration System Enhancement**
+
 **Goal**: Update configuration system for Universal Agent architecture
 
 ##### User Story 5.1.1: As a developer, I want configuration that supports Universal Agent + External State
+
 - [x] Design new configuration schema for Universal Agent
 - [x] Create prompt library configuration
 - [x] Add tool registry configuration
@@ -449,31 +483,33 @@ universal_agent:
     provider: "bedrock"
     model_id: "us.amazon.nova-pro-v1:0"
     temperature: 0.3
-    
+
   roles:
     planning:
       prompt_template: "planning_prompt.txt"
       tools: ["create_task_plan", "analyze_dependencies"]
-      
+
     search:
-      prompt_template: "search_prompt.txt"  
+      prompt_template: "search_prompt.txt"
       tools: ["web_search", "search_mcp_server"]
-      
+
   mcp_servers:
     aws_docs:
       command: "uvx"
       args: ["awslabs.aws-documentation-mcp-server@latest"]
-      
+
   task_scheduling:
     max_concurrent_tasks: 5
-    checkpoint_interval: 300  # 5 minutes
+    checkpoint_interval: 300 # 5 minutes
     retry_attempts: 3
 ```
 
 #### **Epic 5.2: Comprehensive Testing**
+
 **Goal**: Ensure all functionality works with new architecture
 
 ##### User Story 5.2.1: As a developer, I want comprehensive tests for the new architecture
+
 - [x] Write unit tests for TaskContext enhancements
 - [x] Create integration tests for Universal Agent
 - [x] Test task scheduling and pause/resume functionality
@@ -488,6 +524,7 @@ universal_agent:
 ## Implementation Strategy: Leveraging Existing Code
 
 ### **What We Keep (90% of existing code):**
+
 1. **TaskGraph System** - Enhanced, not replaced
 2. **RequestManager** - Enhanced for Universal Agent
 3. **Message Bus** - Used as-is with minor enhancements
@@ -496,11 +533,13 @@ universal_agent:
 6. **Metrics and Monitoring** - Kept with additions
 
 ### **What We Replace (10% of existing code):**
+
 1. **Individual Agent Classes** → **Universal Agent + Prompts**
 2. **Agent Manager** → **Prompt Library + Tool Registry**
 3. **LLM Factory** → **Native StrandsAgent Models**
 
 ### **What We Add (New Components):**
+
 1. **TaskContext** - Wrapper around existing TaskGraph
 2. **Universal Agent** - StrandsAgent integration
 3. **Prompt Library** - Role-based prompts
@@ -513,14 +552,18 @@ universal_agent:
 ## Migration Benefits
 
 ### **Simplified Architecture:**
+
 - **Before**: 5 agent classes + complex orchestration
 - **After**: 1 Universal Agent + enhanced TaskGraph
+
 ### **Phase 6: Architecture Optimization (Week 6)**
 
 #### **Epic 6.1: WorkflowEngine Consolidation**
+
 **Goal**: Merge RequestManager + TaskScheduler into unified WorkflowEngine for simplified architecture
 
 ##### User Story 6.1.1: As a developer, I want a unified WorkflowEngine that combines request lifecycle and task scheduling
+
 - [x] Extract `handle_request()`, `_create_task_plan()`, and `pause_request()`/`resume_request()` methods from RequestManager
 - [x] Extract `schedule_task()`, `_process_task_queue()`, and concurrency control logic from TaskScheduler
 - [x] Create WorkflowEngine class with unified interface: `start_workflow()`, `pause_workflow()`, `resume_workflow()`
@@ -534,14 +577,14 @@ universal_agent:
 # Unified WorkflowEngine Implementation
 class WorkflowEngine:
     """Unified workflow management with DAG execution and state persistence."""
-    
+
     def __init__(self, llm_factory: LLMFactory, message_bus: MessageBus):
         self.universal_agent = UniversalAgent(llm_factory)
         self.active_workflows: Dict[str, TaskContext] = {}
         self.max_concurrent_tasks = 5
         self.running_tasks: Dict[str, TaskNode] = {}
         self.message_bus = message_bus
-    
+
     # Request lifecycle (from RequestManager)
     def start_workflow(self, instruction: str) -> str:
         """Create and start a new workflow from user instruction."""
@@ -550,21 +593,21 @@ class WorkflowEngine:
         self.active_workflows[workflow_id] = task_context
         self._execute_dag_parallel(task_context)
         return workflow_id
-    
-    # Task scheduling (from TaskScheduler)  
+
+    # Task scheduling (from TaskScheduler)
     def _execute_dag_parallel(self, task_context: TaskContext):
         """Execute DAG with parallel task execution and concurrency control."""
         ready_tasks = task_context.get_ready_tasks()
         for task in ready_tasks:
             if len(self.running_tasks) < self.max_concurrent_tasks:
                 self._execute_task_async(task_context, task)
-    
+
     # State management (enhanced)
     def pause_workflow(self, workflow_id: str) -> Dict:
         """Pause workflow and create comprehensive checkpoint."""
         task_context = self.active_workflows[workflow_id]
         return task_context.pause_execution()
-    
+
     def resume_workflow(self, workflow_id: str, checkpoint: Dict):
         """Resume workflow from checkpoint with full state restoration."""
         task_context = TaskContext.from_checkpoint(checkpoint)
@@ -574,6 +617,7 @@ class WorkflowEngine:
 ```
 
 ##### User Story 6.1.2: As a developer, I want to migrate existing RequestManager and TaskScheduler to WorkflowEngine
+
 - [x] Refactor `supervisor/request_manager.py` in place to become WorkflowEngine (preserve git history)
 - [x] Move TaskScheduler's priority queue (`heapq` + `QueuedTask` dataclass) into WorkflowEngine
 - [x] Integrate TaskScheduler's `max_concurrent_tasks` and `running_tasks` dict into WorkflowEngine
@@ -586,10 +630,12 @@ class WorkflowEngine:
 ### **Benefits of WorkflowEngine Consolidation**
 
 #### **Simplified Architecture**
+
 - **Before**: Supervisor → RequestManager → TaskScheduler → UniversalAgent → StrandsAgent
 - **After**: Supervisor → WorkflowEngine → UniversalAgent → StrandsAgent
 
 #### **Specific Capabilities Preserved**
+
 - **Task Delegation**: ✅ `_determine_role_from_agent_id()` mapping (planning_agent → planning, search_agent → search)
 - **Multi-threading**: ✅ `max_concurrent_tasks=5` with `running_tasks` dict and `heapq` priority queue
 - **DAG Planning**: ✅ `TaskGraph.get_ready_tasks()` and dependency resolution via `TaskContext`
@@ -598,6 +644,7 @@ class WorkflowEngine:
 - **LLM Optimization**: ✅ Semantic model selection (STRONG for planning, WEAK for search/weather, DEFAULT for summarizer/slack)
 
 #### **Concrete Implementation Benefits**
+
 - **Single File**: One `supervisor/workflow_engine.py` instead of two separate files
 - **Unified State**: Combined `active_workflows` dict instead of separate `request_contexts` and `task_queue`
 - **Direct Communication**: No message bus overhead between request lifecycle and task scheduling
@@ -605,11 +652,13 @@ class WorkflowEngine:
 ### **Phase 7: Complete LangChain Removal (Week 7)**
 
 #### **Epic 7.1: Supervisor Migration to StrandsAgent-Only**
+
 **Goal**: Remove LangChain dependencies from Supervisor and AgentManager
 
 ##### User Story 7.1.1: As a developer, I want Supervisor to work without AgentManager or LangChain dependencies
+
 - [x] Refactor `supervisor/supervisor.py` to use WorkflowEngine instead of RequestManager + AgentManager
-- [x] Remove AgentManager import and initialization from Supervisor.__init__()
+- [x] Remove AgentManager import and initialization from Supervisor.**init**()
 - [x] Update Supervisor.initialize_components() to create WorkflowEngine(llm_factory, message_bus)
 - [x] Remove agent registration logic (replaced by Universal Agent role system)
 - [x] Update Supervisor.run() to use WorkflowEngine.start_workflow() instead of RequestManager.handle_request()
@@ -618,9 +667,11 @@ class WorkflowEngine:
 - [x] Verify Supervisor can start without LangChain installed
 
 #### **Epic 7.2: Individual Agent Class Migration to @tool Functions**
+
 **Goal**: Convert remaining LangChain-based agent classes to StrandsAgent @tool functions
 
 ##### User Story 7.2.1: As a developer, I want to convert PlanningAgent to @tool functions
+
 - [x] Extract planning logic from `agents/planning_agent/agent.py`
 - [x] Create `@tool def create_task_plan(instruction: str) -> Dict` in `llm_provider/planning_tools.py`
 - [x] Remove LangChain imports: `langchain.prompts.PromptTemplate`, `langchain_core.output_parsers.PydanticOutputParser`
@@ -630,6 +681,7 @@ class WorkflowEngine:
 - [x] Move `agents/planning_agent/` to `agents/deprecated/planning_agent/`
 
 ##### User Story 7.2.2: As a developer, I want to convert SearchAgent to @tool functions
+
 - [x] Extract search logic from `agents/search_agent/agent.py`
 - [x] Create `@tool def web_search(query: str, num_results: int = 5) -> Dict` in `llm_provider/search_tools.py`
 - [x] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain_community.tools.tavily_search.TavilySearchResults`
@@ -639,6 +691,7 @@ class WorkflowEngine:
 - [x] Move `agents/search_agent/` to `agents/deprecated/search_agent/`
 
 ##### User Story 7.2.3: As a developer, I want to convert WeatherAgent to @tool functions
+
 - [x] Extract weather logic from `agents/weather_agent/agent.py`
 - [x] Create `@tool def get_weather(location: str) -> Dict` in `llm_provider/weather_tools.py`
 - [x] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain.prompts.ChatPromptTemplate`
@@ -648,6 +701,7 @@ class WorkflowEngine:
 - [x] Move `agents/weather_agent/` to `agents/deprecated/weather_agent/`
 
 ##### User Story 7.2.4: As a developer, I want to convert SummarizerAgent to @tool functions
+
 - [x] Extract summarization logic from `agents/summarizer_agent/agent.py`
 - [x] Create `@tool def summarize_text(text: str, max_length: int = 200) -> str` in `llm_provider/summarizer_tools.py`
 - [x] Remove LangChain imports: `langchain.tools.BaseTool`, `langchain_core.output_parsers.PydanticOutputParser`
@@ -657,6 +711,7 @@ class WorkflowEngine:
 - [x] Move `agents/summarizer_agent/` to `agents/deprecated/summarizer_agent/`
 
 ##### User Story 7.2.5: As a developer, I want to convert SlackAgent to @tool functions
+
 - [x] Extract Slack integration from `agents/slack_agent/agent.py`
 - [x] Create `@tool def send_slack_message(channel: str, message: str) -> Dict` in `llm_provider/slack_tools.py`
 - [x] Remove LangChain imports: `langchain.output_parsers.PydanticOutputParser`, `langchain.prompts.PromptTemplate`
@@ -665,9 +720,11 @@ class WorkflowEngine:
 - [x] Move `agents/slack_agent/` to `agents/deprecated/slack_agent/`
 
 #### **Epic 7.3: LLMFactory LangChain Cleanup**
+
 **Goal**: Remove LangChain fallback code from LLMFactory
 
 ##### User Story 7.3.1: As a developer, I want LLMFactory to be StrandsAgent-only
+
 - [x] Remove LangChain imports from `llm_provider/factory.py` lines 7-11
 - [x] Remove `create_provider()` method that uses LangChain models
 - [x] Remove `create_chat_model()` method that creates LangChain models
@@ -677,9 +734,11 @@ class WorkflowEngine:
 - [x] Verify factory works with StrandsAgent-only imports
 
 #### **Epic 7.4: Configuration System Migration**
+
 **Goal**: Remove LangChain-specific configuration classes
 
 ##### User Story 7.4.1: As a developer, I want configuration classes without LangChain dependencies
+
 - [x] Remove LangChain imports from `config/anthropic_config.py` line 3
 - [x] Remove LangChain imports from `config/bedrock_config.py` line 2
 - [x] Update BaseConfig to not depend on LangChain callback managers
@@ -689,6 +748,7 @@ class WorkflowEngine:
 - [x] Document new configuration format
 
 ### **Complete LangChain Removal Verification**
+
 - [x] Run `grep -r "langchain" --include="*.py" .` and verify core system is clean
 - [x] Verify system starts without LangChain installed: Core system works without LangChain
 - [x] Run all tests with LangChain removed from environment
@@ -698,14 +758,15 @@ class WorkflowEngine:
 - **Consolidated Testing**: Merge 21 tests from two files into single comprehensive test suite
 - **Simplified Imports**: Supervisor only imports WorkflowEngine instead of RequestManager + TaskScheduler
 
-
 ### **Enhanced Capabilities:**
+
 - **Pause/Resume**: Any task can be paused and resumed
 - **External State**: All state externalized to TaskContext
 - **MCP Integration**: Access to external tool ecosystems
 - **Better Testing**: Simpler architecture = easier testing
 
 ### **Preserved Functionality:**
+
 - **All existing workflows** continue to work
 - **Task graph execution** enhanced but preserved
 - **Error handling and retry** logic maintained
@@ -716,6 +777,7 @@ class WorkflowEngine:
 ## Success Criteria
 
 ### **Functional Requirements:**
+
 - [x] All existing agent capabilities preserved
 - [x] Task pause/resume functionality working
 - [x] MCP server integration functional
@@ -723,13 +785,12 @@ class WorkflowEngine:
 - [x] All tests passing with >95% coverage
 
 ### **Technical Requirements:**
+
 - [x] Universal Agent handles all current agent roles
 - [x] TaskContext manages all external state
 - [x] Enhanced TaskGraph supports checkpointing
 - [x] Configuration system supports new architecture
 - [x] Documentation complete and comprehensive
-
-
 
 ---
 
@@ -749,20 +810,20 @@ graph TD
         UA --> MCP[MCP Servers]
         UA --> LLM[StrandsAgent-only LLM Factory]
     end
-    
+
     subgraph "Enhanced State Management"
         TC[TaskContext] --> TG[TaskGraph - Enhanced]
         TC --> CH[Conversation History]
         TC --> PS[Progressive Summary]
         TC --> CP[Checkpoints]
     end
-    
+
     subgraph "Unified Orchestration"
         WE[WorkflowEngine] --> TC
         WE --> UA
         WE --> MB[Message Bus]
     end
-    
+
     subgraph "System Management"
         S[Supervisor] --> WE
         HB[Heartbeat] --> S
@@ -783,16 +844,19 @@ graph TD
 ### **Key Achievements**
 
 #### **🏗️ Architecture Simplification**
+
 - **Before**: Supervisor → RequestManager + TaskScheduler + AgentManager → 5 Individual Agents → LangChain
 - **After**: Supervisor → WorkflowEngine → Universal Agent → StrandsAgent
 
 #### **🔧 LangChain to StrandsAgent Migration**
+
 - **Removed**: All LangChain dependencies from core system
 - **Converted**: Individual agent classes to @tool functions
 - **Preserved**: All existing functionality and capabilities
 - **Enhanced**: Better testing, cleaner code, simplified maintenance
 
 #### **🛠️ New Tool System**
+
 - **Planning Tools**: [`llm_provider/planning_tools.py`](llm_provider/planning_tools.py:1) - Task planning and validation
 - **Search Tools**: [`llm_provider/search_tools.py`](llm_provider/search_tools.py:1) - Web search functionality
 - **Weather Tools**: [`llm_provider/weather_tools.py`](llm_provider/weather_tools.py:1) - Weather data retrieval
@@ -800,6 +864,7 @@ graph TD
 - **Slack Tools**: [`llm_provider/slack_tools.py`](llm_provider/slack_tools.py:1) - Slack integration
 
 #### **📊 Testing Excellence**
+
 - **134+ Tests**: Comprehensive test coverage across all components
 - **End-to-End**: Complete workflow validation
 - **Performance**: Load testing up to 50 concurrent requests
@@ -807,6 +872,7 @@ graph TD
 - **Integration**: MCP server integration testing
 
 #### **⚡ Enhanced Capabilities**
+
 - **Pause/Resume**: Any workflow can be paused and resumed with full state
 - **External State**: All state externalized to TaskContext with checkpoints
 - **MCP Integration**: Access to external tool ecosystems
@@ -816,8 +882,9 @@ graph TD
 ### **System Status: PRODUCTION READY ✅**
 
 The migrated system is fully functional, thoroughly tested, and ready for production use with:
+
 - **Zero LangChain Dependencies** in core system
-- **100% Functionality Preservation** from original system  
+- **100% Functionality Preservation** from original system
 - **Enhanced Performance** through simplified architecture
 - **Better Maintainability** with clean, modular code
 - **Comprehensive Documentation** for all components
@@ -825,9 +892,11 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 ### **Phase 8: Post-Migration Cleanup and Production Readiness (Week 8)**
 
 #### **Epic 8.1: Complete LangChain Dependency Removal**
+
 **Goal**: Eliminate all remaining LangChain dependencies and code from the system
 
 ##### User Story 8.1.1: As a developer, I want to remove all LangChain dependencies from requirements.txt
+
 - [ ] Remove `langchain` from requirements.txt line 4
 - [ ] Remove `langchain-openai` from requirements.txt line 5
 - [ ] Remove `langchain-anthropic` from requirements.txt line 6
@@ -840,6 +909,7 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 - [ ] Document dependency changes in migration notes
 
 ##### User Story 8.1.2: As a developer, I want to clean up remaining LangChain code files
+
 - [ ] Move `agents/coding_agent/` to `agents/deprecated/coding_agent/` (contains LangChain imports)
 - [ ] Move `llm_provider/integ_factory.py` to deprecated or remove (contains LangChain imports)
 - [ ] Move `llm_provider/test_factory.py` to deprecated or remove (test file with LangChain)
@@ -865,9 +935,11 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 ```
 
 #### **Epic 8.2: Comprehensive Documentation Creation**
+
 **Goal**: Create complete documentation for users, developers, and operators
 
 ##### User Story 8.2.1: As a user, I want comprehensive API documentation for the new system
+
 - [ ] Create `docs/API_REFERENCE.md` with WorkflowEngine API documentation
 - [ ] Document Universal Agent usage patterns and examples
 - [ ] Create `docs/CONFIGURATION_GUIDE.md` with all configuration options
@@ -878,6 +950,7 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 - [ ] Create interactive API documentation (if applicable)
 
 ##### User Story 8.2.2: As a developer, I want detailed development and architecture documentation
+
 - [ ] Create `docs/ARCHITECTURE_OVERVIEW.md` with system architecture diagrams
 - [ ] Document `docs/TOOL_DEVELOPMENT_GUIDE.md` for creating new @tool functions
 - [ ] Create `docs/MCP_INTEGRATION_GUIDE.md` for adding new MCP servers
@@ -888,6 +961,7 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 - [ ] Document extension points and customization options
 
 ##### User Story 8.2.3: As an operator, I want production deployment and operations documentation
+
 - [ ] Create `docs/DEPLOYMENT_GUIDE.md` with production setup instructions
 - [ ] Document `docs/PERFORMANCE_TUNING.md` with optimization recommendations
 - [ ] Create `docs/MONITORING_GUIDE.md` for production monitoring and observability
@@ -899,26 +973,29 @@ The migrated system is fully functional, thoroughly tested, and ready for produc
 
 ```markdown
 # Documentation Structure
+
 docs/
-├── API_REFERENCE.md           # Complete API documentation
-├── ARCHITECTURE_OVERVIEW.md   # System architecture and design
-├── CONFIGURATION_GUIDE.md     # Configuration options and examples
-├── DEPLOYMENT_GUIDE.md        # Production deployment instructions
-├── TOOL_DEVELOPMENT_GUIDE.md  # Creating new @tool functions
-├── MCP_INTEGRATION_GUIDE.md   # Adding MCP servers
-├── TESTING_GUIDE.md          # Testing patterns and practices
-├── TROUBLESHOOTING_GUIDE.md  # Common issues and solutions
-├── PERFORMANCE_TUNING.md     # Optimization recommendations
-├── MONITORING_GUIDE.md       # Production monitoring setup
-├── SECURITY_GUIDE.md         # Security best practices
-├── BACKUP_RECOVERY.md        # Data backup and recovery
-└── CONTRIBUTING.md           # Development workflow
+├── API_REFERENCE.md # Complete API documentation
+├── ARCHITECTURE_OVERVIEW.md # System architecture and design
+├── CONFIGURATION_GUIDE.md # Configuration options and examples
+├── DEPLOYMENT_GUIDE.md # Production deployment instructions
+├── TOOL_DEVELOPMENT_GUIDE.md # Creating new @tool functions
+├── MCP_INTEGRATION_GUIDE.md # Adding MCP servers
+├── TESTING_GUIDE.md # Testing patterns and practices
+├── TROUBLESHOOTING_GUIDE.md # Common issues and solutions
+├── PERFORMANCE_TUNING.md # Optimization recommendations
+├── MONITORING_GUIDE.md # Production monitoring setup
+├── SECURITY_GUIDE.md # Security best practices
+├── BACKUP_RECOVERY.md # Data backup and recovery
+└── CONTRIBUTING.md # Development workflow
 ```
 
 #### **Epic 8.3: Technical Debt Resolution**
+
 **Goal**: Address outstanding TODO items and technical debt
 
 ##### User Story 8.3.1: As a developer, I want to resolve critical TODO items
+
 - [ ] Implement Heartbeat functionality in `supervisor/heartbeat.py` line 8
 - [ ] Fix credential filtering in `supervisor/logging_config.py` line 91
 - [ ] Make TaskGraph max history size configurable in `common/task_graph.py` line 289
@@ -930,6 +1007,7 @@ docs/
 - [ ] Implement accuracy scoring logic in `agents/deprecated/summarizer_agent/agent.py` line 189
 
 ##### User Story 8.3.2: As a developer, I want improved error handling and resilience
+
 - [ ] Implement circuit breaker pattern for external service calls
 - [ ] Add sophisticated retry policies with exponential backoff
 - [ ] Create graceful degradation mechanisms for service failures
@@ -948,14 +1026,14 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = None
         self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
-    
+
     def call(self, func, *args, **kwargs):
         if self.state == "OPEN":
             if time.time() - self.last_failure_time > self.timeout:
                 self.state = "HALF_OPEN"
             else:
                 raise CircuitBreakerOpenError()
-        
+
         try:
             result = func(*args, **kwargs)
             self.reset()
@@ -966,6 +1044,7 @@ class CircuitBreaker:
 ```
 
 ##### User Story 8.3.3: As a developer, I want enhanced configuration management
+
 - [ ] Implement hot reloading of configuration files
 - [ ] Add comprehensive configuration validation with detailed error messages
 - [ ] Create configuration schema documentation
@@ -976,9 +1055,11 @@ class CircuitBreaker:
 - [ ] Add configuration backup and restore functionality
 
 #### **Epic 8.4: Production Readiness Enhancements**
+
 **Goal**: Add features necessary for production deployment
 
 ##### User Story 8.4.1: As an operator, I want comprehensive health checks and monitoring
+
 - [ ] Implement deep health checks for all system components
 - [ ] Add health check endpoints for WorkflowEngine, Universal Agent, and MCP servers
 - [ ] Create comprehensive metrics collection (request rates, latencies, error rates)
@@ -1010,15 +1091,16 @@ def health_check():
             "cpu_usage": get_cpu_usage()
         }
     }
-    
+
     # Determine overall health
     if any(comp["status"] != "healthy" for comp in health_status["components"].values()):
         health_status["status"] = "degraded"
-    
+
     return jsonify(health_status)
 ```
 
 ##### User Story 8.4.2: As a developer, I want security enhancements for production
+
 - [ ] Implement authentication and authorization system
 - [ ] Add API key management for external access
 - [ ] Create role-based access control (RBAC) for different user types
@@ -1029,6 +1111,7 @@ def health_check():
 - [ ] Create security audit logging and monitoring
 
 ##### User Story 8.4.3: As an operator, I want scalability and performance features
+
 - [ ] Implement horizontal scaling support for WorkflowEngine
 - [ ] Add load balancing strategy for workflow distribution
 - [ ] Create persistent state storage for TaskContext checkpoints
@@ -1039,9 +1122,11 @@ def health_check():
 - [ ] Add resource usage optimization and tuning
 
 #### **Epic 8.5: Testing and Validation**
+
 **Goal**: Ensure system reliability and performance under production conditions
 
 ##### User Story 8.5.1: As a developer, I want comprehensive test coverage for Phase 8 changes
+
 - [ ] Write unit tests for all new health check functionality
 - [ ] Create integration tests for security features
 - [ ] Add performance tests for scalability enhancements
@@ -1052,6 +1137,7 @@ def health_check():
 - [ ] Create end-to-end tests for complete production scenarios
 
 ##### User Story 8.5.2: As an operator, I want production-ready validation and benchmarking
+
 - [ ] Conduct load testing with realistic production workloads
 - [ ] Perform security penetration testing and vulnerability assessment
 - [ ] Test disaster recovery and backup/restore procedures
@@ -1068,20 +1154,20 @@ class ProductionLoadTest:
         """Test system under high concurrent workflow load"""
         concurrent_workflows = 100
         workflow_duration = 300  # 5 minutes
-        
+
         with ThreadPoolExecutor(max_workers=concurrent_workflows) as executor:
             futures = []
             for i in range(concurrent_workflows):
                 future = executor.submit(self.run_workflow, f"workflow_{i}")
                 futures.append(future)
-            
+
             # Monitor system metrics during test
             start_time = time.time()
             while time.time() - start_time < workflow_duration:
                 metrics = self.collect_system_metrics()
                 self.assert_system_healthy(metrics)
                 time.sleep(10)
-            
+
             # Wait for all workflows to complete
             for future in futures:
                 result = future.result(timeout=600)
@@ -1089,6 +1175,7 @@ class ProductionLoadTest:
 ```
 
 ##### User Story 8.5.3: As a developer, I want migration validation and rollback procedures
+
 - [ ] Create migration validation checklist and procedures
 - [ ] Test rollback procedures for critical system components
 - [ ] Validate data migration and compatibility
@@ -1101,18 +1188,21 @@ class ProductionLoadTest:
 ### **Phase 8 Implementation Benefits**
 
 #### **Production Readiness Achieved**
+
 - **Security**: Authentication, authorization, and secure secrets management
 - **Scalability**: Horizontal scaling and load balancing capabilities
 - **Reliability**: Circuit breakers, comprehensive health checks, and monitoring
 - **Observability**: Distributed tracing, metrics collection, and structured logging
 
 #### **Developer Experience Enhanced**
+
 - **Documentation**: Comprehensive guides for users, developers, and operators
 - **Testing**: Production-grade test coverage and validation procedures
 - **Maintenance**: Resolved technical debt and improved code quality
 - **Extensibility**: Clear patterns for adding new features and integrations
 
 #### **Operational Excellence**
+
 - **Monitoring**: Real-time system health and performance visibility
 - **Deployment**: Automated deployment and rollback procedures
 - **Maintenance**: Proactive alerting and diagnostic capabilities

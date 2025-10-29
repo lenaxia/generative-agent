@@ -7,24 +7,28 @@ The StrandsAgent Universal Agent System includes intelligent **Task Result Shari
 ## Problem Solved
 
 ### Before Task Result Sharing
+
 ```
 Task 1 (Search) → Results stored but not shared
 Task 2 (Analysis) → No access to Task 1 results → Performs duplicate search
 ```
 
 **Issues:**
+
 - Duplicate work performed by dependent tasks
 - Inefficient resource usage
 - Longer execution times
 - Unnecessary API calls
 
 ### After Task Result Sharing
+
 ```
 Task 1 (Search) → Results automatically shared
 Task 2 (Analysis) → Receives Task 1 results → Uses existing data
 ```
 
 **Benefits:**
+
 - ✅ Eliminates duplicate work
 - ✅ Improves workflow efficiency by ~50%
 - ✅ Reduces API calls and resource usage
@@ -38,11 +42,13 @@ Task 2 (Analysis) → Receives Task 1 results → Uses existing data
 The WorkflowEngine automatically enhances task prompts with predecessor results:
 
 **Original Prompt:**
+
 ```
 Analyze the retrieved information about USS Monitor
 ```
 
 **Enhanced Prompt with Predecessor Results:**
+
 ```
 Previous task results available for context:
 - USS Monitor: Revolutionary Civil War ironclad warship designed by John Ericsson
@@ -53,6 +59,7 @@ Current task: Analyze the retrieved information about USS Monitor
 ### Intelligent Filtering
 
 The system intelligently filters predecessor results:
+
 - ✅ **Includes**: Meaningful task results with actual data
 - ❌ **Excludes**: Empty results, "The beginning" placeholders, whitespace-only results
 - ✅ **Handles**: Multiple predecessor results from parallel tasks
@@ -80,11 +87,11 @@ The WorkflowEngine was enhanced to use this existing infrastructure:
 def delegate_task(self, task_context: TaskContext, task: TaskNode):
     # Get predecessor results from TaskGraph history
     predecessor_results = task_context.task_graph.get_task_history(task.task_id)
-    
+
     # Filter meaningful results
-    meaningful_results = [result for result in predecessor_results 
+    meaningful_results = [result for result in predecessor_results
                          if result and result.strip() and result != "The beginning"]
-    
+
     # Enhance prompt with predecessor context
     if meaningful_results:
         enhanced_prompt = f"""Previous task results available for context:
@@ -112,6 +119,7 @@ TaskDescription(
 ```
 
 **Behavior:**
+
 - `include_full_history=False` (default): Gets only direct predecessor results
 - `include_full_history=True`: Gets complete workflow execution history
 
@@ -121,9 +129,9 @@ Configure history limits in `config.yaml`:
 
 ```yaml
 task_graph:
-  max_history_size: 1000          # Maximum history entries to keep
+  max_history_size: 1000 # Maximum history entries to keep
   enable_progressive_summary: true # Enable progressive summary functionality
-  checkpoint_compression: true    # Compress checkpoint data
+  checkpoint_compression: true # Compress checkpoint data
 ```
 
 ## Performance Impact
@@ -131,11 +139,13 @@ task_graph:
 ### Measured Improvements
 
 **Before Enhancement:**
+
 - USS Monitor workflow: 12 web searches (6 + 6 duplicate)
 - Execution time: ~60 seconds
 - API calls: 12 Tavily API requests
 
 **After Enhancement:**
+
 - USS Monitor workflow: 6 web searches (search task only)
 - Execution time: ~30 seconds (50% improvement)
 - API calls: 6 Tavily API requests (50% reduction)
@@ -150,6 +160,7 @@ task_graph:
 ## Use Cases
 
 ### 1. Search → Analysis Workflows
+
 ```python
 # Search task finds information
 # Analysis task receives search results automatically
@@ -157,6 +168,7 @@ task_graph:
 ```
 
 ### 2. Data Collection → Processing Workflows
+
 ```python
 # Collection task gathers data from multiple sources
 # Processing task receives all collected data
@@ -164,6 +176,7 @@ task_graph:
 ```
 
 ### 3. Multi-Stage Research Workflows
+
 ```python
 # Stage 1: Initial research
 # Stage 2: Deep dive research (gets Stage 1 results)
@@ -181,6 +194,7 @@ task_graph:
 ### Checkpoint Compatibility
 
 Task result sharing works seamlessly with checkpointing:
+
 - Predecessor results are preserved in checkpoints
 - Restored workflows maintain result sharing functionality
 - No loss of efficiency after pause/resume operations
@@ -197,7 +211,7 @@ The feature includes extensive testing:
 
 # Test results: 9/10 tests passing
 # - Predecessor result passing ✅
-# - Empty result handling ✅  
+# - Empty result handling ✅
 # - Multiple predecessor support ✅
 # - Checkpoint compatibility ✅
 # - Performance optimization ✅
@@ -219,16 +233,19 @@ from common.task_context import TaskContext
 ## Best Practices
 
 ### 1. Design Task Dependencies Thoughtfully
+
 - Structure workflows to maximize result sharing benefits
 - Avoid unnecessary task isolation
 - Use meaningful task names and results
 
 ### 2. Optimize Task Results
+
 - Provide comprehensive, structured results from predecessor tasks
 - Include key information that dependent tasks will need
 - Avoid overly verbose results that could overwhelm prompts
 
 ### 3. Use include_full_history Judiciously
+
 - Set `include_full_history=True` only when complete context is essential
 - Default to `False` for better performance and focused context
 - Consider prompt length limits when using full history
@@ -248,6 +265,7 @@ INFO - Task 'task_123' completed with predecessor context
 ### Metrics
 
 Monitor result sharing effectiveness:
+
 - Track duplicate work reduction
 - Measure execution time improvements
 - Monitor API call reductions
@@ -265,6 +283,7 @@ Monitor result sharing effectiveness:
 ### Configuration Extensions
 
 Future configuration options may include:
+
 - Maximum predecessor result length
 - Result summarization thresholds
 - Selective result inclusion rules
