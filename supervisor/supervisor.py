@@ -82,6 +82,8 @@ class Supervisor:
 
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
+        self.initialize_components()
+        logger.info("LLM-safe Supervisor initialization complete.")
 
     def add_scheduled_task(self, task: dict) -> None:
         """Document 35: Add task to scheduled execution queue (LLM-safe).

@@ -29,6 +29,7 @@ class TestSupervisorScheduledTasks:
     def test_add_scheduled_task_one_time(self):
         """Test adding one-time scheduled task."""
         # Arrange
+        initial_count = len(self.supervisor._scheduled_tasks)  # May have cleanup task
         task = {
             "type": "test_task",
             "handler": self.mock_handler,
@@ -39,12 +40,13 @@ class TestSupervisorScheduledTasks:
         self.supervisor.add_scheduled_task(task)
 
         # Assert
-        assert len(self.supervisor._scheduled_tasks) == 1
-        assert self.supervisor._scheduled_tasks[0] == task
+        assert len(self.supervisor._scheduled_tasks) == initial_count + 1
+        assert task in self.supervisor._scheduled_tasks
 
     def test_add_scheduled_task_interval(self):
         """Test adding interval scheduled task."""
         # Arrange
+        initial_count = len(self.supervisor._scheduled_tasks)
         task = {
             "type": "interval_task",
             "handler": self.mock_interval_handler,
@@ -56,8 +58,8 @@ class TestSupervisorScheduledTasks:
         self.supervisor.add_scheduled_task(task)
 
         # Assert
-        assert len(self.supervisor._scheduled_tasks) == 1
-        assert self.supervisor._scheduled_tasks[0] == task
+        assert len(self.supervisor._scheduled_tasks) == initial_count + 1
+        assert task in self.supervisor._scheduled_tasks
 
     def test_process_scheduled_tasks_one_time(self):
         """Test processing one-time scheduled tasks."""
@@ -74,7 +76,8 @@ class TestSupervisorScheduledTasks:
 
         # Assert
         self.mock_handler.assert_called_once_with({"test": "data"})
-        assert len(self.supervisor._scheduled_tasks) == 0  # One-time task removed
+        # One-time task removed, but interval tasks (like cleanup) remain
+        assert task not in self.supervisor._scheduled_tasks
 
     def test_process_scheduled_tasks_with_intent(self):
         """Test processing scheduled tasks with intent parameter."""
@@ -111,7 +114,8 @@ class TestSupervisorScheduledTasks:
 
         # Assert
         self.mock_handler.assert_called_once_with(intent)
-        assert len(self.supervisor._scheduled_tasks) == 0
+        # One-time task removed, interval tasks remain
+        assert task not in self.supervisor._scheduled_tasks
 
     def test_process_scheduled_tasks_interval(self):
         """Test processing interval scheduled tasks."""
@@ -128,7 +132,8 @@ class TestSupervisorScheduledTasks:
 
         # Assert
         self.mock_interval_handler.assert_called_once()
-        assert len(self.supervisor._scheduled_tasks) == 1  # Interval task remains
+        # Interval task remains (plus any other interval tasks like cleanup)
+        assert task in self.supervisor._scheduled_tasks
         assert "interval_task" in self.supervisor._scheduled_intervals
 
         # Act - Second call immediately should not execute (interval not met)
@@ -180,7 +185,7 @@ class TestSupervisorScheduledTasks:
         self.supervisor.process_scheduled_tasks()
 
         # Assert - Task should be removed even if it failed
-        assert len(self.supervisor._scheduled_tasks) == 0
+        assert task not in self.supervisor._scheduled_tasks
 
     def test_process_scheduled_tasks_multiple_tasks(self):
         """Test processing multiple scheduled tasks."""
@@ -205,7 +210,9 @@ class TestSupervisorScheduledTasks:
         handler1.assert_called_once()
         handler2.assert_called_once()
         handler3.assert_called_once()
-        assert len(self.supervisor._scheduled_tasks) == 0
+        # All one-time tasks removed, interval tasks remain
+        for task in tasks:
+            assert task not in self.supervisor._scheduled_tasks
 
     def test_scheduled_task_types(self):
         """Test different scheduled task types."""
@@ -220,7 +227,8 @@ class TestSupervisorScheduledTasks:
         self.supervisor.add_scheduled_task(intent_task)
 
         # Assert
-        assert len(self.supervisor._scheduled_tasks) == 3
+        initial_count = len(self.supervisor._scheduled_tasks)
+        assert len(self.supervisor._scheduled_tasks) >= 3  # At least our 3 tasks
 
         # Verify task types
         task_types = [task["type"] for task in self.supervisor._scheduled_tasks]
