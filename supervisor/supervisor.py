@@ -203,23 +203,24 @@ class Supervisor:
     def _attempt_heartbeat_recovery(self):
         """Attempt to recover from sustained heartbeat failures.
 
-        This recreates the Bedrock client to establish fresh connections.
+        Note: Since Strands BedrockModel doesn't support custom boto3 clients,
+        we can only log the issue and reset the counter. The heartbeat will
+        continue attempting, and boto3's internal retry logic will handle recovery.
         """
         try:
-            if self.llm_factory and hasattr(self.llm_factory, "_bedrock_client"):
-                logger.info("🔄 Recreating Bedrock client to recover connection...")
+            logger.info("🔄 Attempting heartbeat recovery...")
 
-                # Recreate the optimized client
-                self.llm_factory._bedrock_client = (
-                    self.llm_factory._create_optimized_bedrock_client()
-                )
+            # Clear model cache to force recreation on next use
+            if self.llm_factory:
+                self.llm_factory.clear_cache()
+                logger.info("✅ Cleared model cache to force fresh connections")
 
-                # Reset failure count after recovery attempt
-                self._heartbeat_failure_count = 0
-                logger.info("✅ Bedrock client recreated successfully")
+            # Reset failure count after recovery attempt
+            self._heartbeat_failure_count = 0
+            logger.info("✅ Heartbeat recovery completed")
 
         except Exception as e:
-            logger.error(f"❌ Failed to recover Bedrock client: {e}")
+            logger.error(f"❌ Failed to recover from heartbeat failures: {e}")
             # Keep trying on next heartbeat
 
     def initialize_config_manager(self, config_file: str | None = None):
