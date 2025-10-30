@@ -230,9 +230,7 @@ def _correlation_analysis(data: list[float]) -> dict:
         "trend_direction": (
             "positive"
             if correlation > 0.1
-            else "negative"
-            if correlation < -0.1
-            else "neutral"
+            else "negative" if correlation < -0.1 else "neutral"
         ),
         "correlation_strength": abs(correlation),
     }
@@ -253,9 +251,7 @@ def _trend_analysis(data: list[float]) -> dict:
     trend = (
         "increasing"
         if increases > decreases
-        else "decreasing"
-        if decreases > increases
-        else "stable"
+        else "decreasing" if decreases > increases else "stable"
     )
 
     return {

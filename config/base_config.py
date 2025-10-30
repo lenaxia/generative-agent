@@ -61,9 +61,9 @@ class BaseConfig(BaseModel):
     name: str
     provider_name: str = "baseconfig"
     api_key: str | None = None
-    llm_config_class: type[
-        ModelConfig
-    ] = None  # Add a new field for the model configuration class
+    llm_config_class: type[ModelConfig] = (
+        None  # Add a new field for the model configuration class
+    )
     llm_config: ModelConfig = None
 
     class Config:

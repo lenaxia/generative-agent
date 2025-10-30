@@ -431,9 +431,7 @@ class IntelligentSlackBot:
                         health_emoji = (
                             "✅"
                             if health_status == "healthy"
-                            else "⚠️"
-                            if health_status == "degraded"
-                            else "❓"
+                            else "⚠️" if health_status == "degraded" else "❓"
                         )
                         status_msg += (
                             f"• Health Status: {health_emoji} {health_status}\n"

@@ -253,9 +253,9 @@ class WorkflowEngine:
         if workflow_id and hasattr(self, "duration_logger"):
             try:
                 if workflow_id in self.duration_logger.active_workflows:
-                    self.duration_logger.active_workflows[
-                        workflow_id
-                    ].source = WorkflowSource.CLI
+                    self.duration_logger.active_workflows[workflow_id].source = (
+                        WorkflowSource.CLI
+                    )
             except Exception as e:
                 logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
 

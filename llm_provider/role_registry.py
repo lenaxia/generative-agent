@@ -59,24 +59,24 @@ class RoleRegistry:
 
         # Enhanced role storage for hybrid architecture
         self.llm_roles: dict[str, RoleDefinition] = {}  # All roles are hybrid now
-        self.role_types: dict[
-            str, str
-        ] = {}  # Role type mapping (kept for compatibility)
+        self.role_types: dict[str, str] = (
+            {}
+        )  # Role type mapping (kept for compatibility)
 
         # Hybrid role lifecycle support
-        self.lifecycle_functions: dict[
-            str, dict[str, Callable]
-        ] = {}  # role_name -> {func_name: func}
+        self.lifecycle_functions: dict[str, dict[str, Callable]] = (
+            {}
+        )  # role_name -> {func_name: func}
 
         # Event handling support
-        self._role_event_handlers: dict[
-            str, dict[str, Callable]
-        ] = {}  # role_name -> {event_type: handler}
+        self._role_event_handlers: dict[str, dict[str, Callable]] = (
+            {}
+        )  # role_name -> {event_type: handler}
 
         # Backward compatibility - keep existing interface
-        self.roles: dict[
-            str, RoleDefinition
-        ] = self.llm_roles  # Alias for backward compatibility
+        self.roles: dict[str, RoleDefinition] = (
+            self.llm_roles
+        )  # Alias for backward compatibility
         self.shared_tools: dict[str, Callable] = {}
 
         # Performance optimization: Track initialization state
