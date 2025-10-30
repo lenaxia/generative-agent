@@ -10,6 +10,9 @@ import logging
 from enum import Enum
 from typing import Any
 
+import boto3
+from botocore.config import Config
+
 from config.base_config import BaseConfig
 
 # Import StrandsAgent dependencies with fallback for testing
@@ -146,7 +149,12 @@ class LLMFactory:
         self._agent_pool: dict[str, Any] = {}  # Provider-based Agent pool
         self._pool_stats = {"hits": 0, "misses": 0, "created": 0}
 
-        logger.info("LLMFactory initialized with caching and agent pooling enabled")
+        # Connection pooling optimization: Shared boto3 client for Bedrock
+        self._bedrock_client = self._create_optimized_bedrock_client()
+
+        logger.info(
+            "LLMFactory initialized with caching, agent pooling, and optimized connection pooling enabled"
+        )
 
     def add_config(self, llm_type: LLMType, config: BaseConfig):
         """Add a configuration for the specified LLM type."""
@@ -264,10 +272,47 @@ class LLMFactory:
         else:
             return 0.3  # default
 
+    def _create_optimized_bedrock_client(self):
+        """Create optimized boto3 Bedrock client with connection pooling.
+
+        This client is shared across all BedrockModel instances to enable
+        connection reuse and prevent idle connection timeouts.
+
+        Returns:
+            Configured boto3 bedrock-runtime client
+        """
+        try:
+            boto_config = Config(
+                region_name="us-west-2",
+                # Adaptive retry mode with intelligent backoff
+                retries={"max_attempts": 3, "mode": "adaptive"},
+                # Aggressive connection pooling to maintain warm connections
+                max_pool_connections=50,
+                # TCP keepalive to prevent connection timeouts
+                tcp_keepalive=True,
+                # Faster timeout detection for stale connections
+                connect_timeout=5,
+                read_timeout=60,
+                # Performance optimization
+                parameter_validation=False,
+            )
+
+            client = boto3.client("bedrock-runtime", config=boto_config)
+            logger.info("✅ Optimized Bedrock client created with connection pooling")
+            return client
+
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create optimized Bedrock client: {e}")
+            logger.warning("Falling back to default boto3 client configuration")
+            return boto3.client("bedrock-runtime", region_name="us-west-2")
+
     def _create_model_instance(self, provider_type: str, model_params: dict):
-        """Create model instance based on provider type."""
+        """Create model instance based on provider type.
+
+        For Bedrock, uses shared boto3 client with connection pooling.
+        """
         if provider_type == "bedrock":
-            return BedrockModel(**model_params)
+            return BedrockModel(client=self._bedrock_client, **model_params)
         elif provider_type == "openai":
             if OPENAI_AVAILABLE:
                 return OpenAIModel(**model_params)

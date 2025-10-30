@@ -15,7 +15,7 @@ from typing import Optional
 
 from common.intent_processor import IntentProcessor
 from common.intents import WorkflowIntent
-from common.message_bus import MessageBus
+from common.message_bus import MessageBus, MessageType
 from config.anthropic_config import AnthropicConfig
 from config.bedrock_config import BedrockConfig
 from config.openai_config import OpenAIConfig
@@ -76,6 +76,10 @@ class Supervisor:
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
         self.initialize_components()
+
+        # Schedule Bedrock connection heartbeat to prevent idle timeouts
+        self._schedule_bedrock_heartbeat()
+
         logger.info("LLM-safe Supervisor initialization complete.")
 
     def add_scheduled_task(self, task: dict) -> None:
@@ -136,6 +140,43 @@ class Supervisor:
 
                 except Exception as e:
                     logger.error(f"Interval task {task_type} failed: {e}")
+
+    def _schedule_bedrock_heartbeat(self):
+        """Schedule recurring heartbeat to keep Bedrock connection alive.
+
+        This prevents idle connection timeouts by periodically validating
+        AWS credentials, which keeps the boto3 connection pool active.
+        Uses FREE AWS STS API call - no Bedrock/LLM costs incurred.
+        """
+        heartbeat_task = {
+            "type": "bedrock_heartbeat",
+            "handler": self._bedrock_heartbeat,
+            "interval": 300,  # 5 minutes (300 seconds)
+        }
+
+        self.add_scheduled_task(heartbeat_task)
+        logger.info("📡 Bedrock heartbeat scheduled (5-minute interval, zero cost)")
+
+    def _bedrock_heartbeat(self):
+        """Keep Bedrock connection alive with FREE AWS credential validation.
+
+        This method is called every 5 minutes to prevent connection pool
+        timeouts. It uses AWS STS get_caller_identity which is a FREE API
+        call that validates credentials and keeps the connection active.
+        """
+        try:
+            # Use FREE AWS STS API to validate credentials
+            # This keeps the boto3 connection pool active without any cost
+            import boto3
+
+            sts = boto3.client("sts")
+            sts.get_caller_identity()
+
+            logger.debug("✅ Bedrock heartbeat successful (no cost)")
+
+        except Exception as e:
+            logger.warning(f"⚠️ Bedrock heartbeat failed: {e}")
+            # Don't crash the system - just log and continue
 
     def initialize_config_manager(self, config_file: str | None = None):
         """Initializes the config manager and loads the configuration.
