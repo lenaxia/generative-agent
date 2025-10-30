@@ -1,11 +1,12 @@
 repos:
+  # Basic file quality checks (fast, essential)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        args: ["--unsafe"] # For complex YAML configs
+        args: ["--unsafe"]
       - id: check-added-large-files
         args: ["--maxkb=1000"]
       - id: check-merge-conflict
@@ -15,6 +16,7 @@ repos:
       - id: mixed-line-ending
         args: ["--fix=lf"]
 
+  # Python code formatting (fast, auto-fixes)
   - repo: https://github.com/psf/black
     rev: 23.12.1
     hooks:
@@ -22,6 +24,7 @@ repos:
         exclude: ^agents/deprecated/
         language_version: python3
 
+  # Import sorting (fast, auto-fixes)
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
@@ -29,72 +32,15 @@ repos:
         exclude: ^agents/deprecated/
         args: ["--profile", "black"]
 
-  # Temporarily disabled during systematic linting improvements
-  # - repo: https://github.com/pycqa/flake8
-  #   rev: 7.0.0
-  #   hooks:
-  #     - id: flake8
-  #       exclude: ^agents/deprecated/
-  #       additional_dependencies:
-  #         - flake8-docstrings>=1.7.0
-  #         - flake8-bugbear>=23.12.2
-  #         - flake8-comprehensions>=3.14.0
-  #         - flake8-pytest-style>=1.7.2
-  #         - flake8-import-order>=0.18.2
-
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       exclude: ^agents/deprecated/
-  #       additional_dependencies:
-  #         - types-PyYAML>=6.0.12
-  #         - types-requests>=2.31.0
-  #         - types-redis>=4.6.0
-  #       args: [--ignore-missing-imports]
-
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.32.0
-    hooks:
-      - id: yamllint
-        args: [-c=yamllint.yml]
-
-  # Temporarily disabled during systematic linting improvements
-  # - repo: https://github.com/pycqa/bandit
-  #   rev: 1.7.5
-  #   hooks:
-  #     - id: bandit
-  #       args: [-c, pyproject.toml]
-  #       additional_dependencies: ["bandit[toml]"]
-  #       exclude: ^(tests/|agents/deprecated/)
-
-  # Temporarily disabled during systematic linting improvements
-  # - repo: https://github.com/pycqa/pydocstyle
-  #   rev: 6.3.0
-  #   hooks:
-  #     - id: pydocstyle
-  #       exclude: ^(tests/|agents/deprecated/|examples/)
-  #       args: [--convention=google]
-
-  # - repo: https://github.com/pylint-dev/pylint
-  #   rev: v3.0.3
-  #   hooks:
-  #     - id: pylint
-  #       exclude: ^(agents/deprecated/|tests/)
-  #       args: [--rcfile=pyproject.toml]
-  #       additional_dependencies:
-  #         - PyYAML>=6.0
-  #         - requests>=2.28.0
-  #         - redis>=4.5.0
-  #         - pydantic>=2.0.0
-
+  # Python syntax upgrades (fast, auto-fixes)
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.10.1
     hooks:
       - id: pyupgrade
-        args: [--py39-plus]
+        args: [--py310-plus]
         exclude: ^agents/deprecated/
 
+  # Markdown/YAML/JSON formatting (fast, auto-fixes)
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.0.3
     hooks:
@@ -104,12 +50,9 @@ repos:
 
 ci:
   autofix_commit_msg: |
-    [pre-commit.ci] auto fixes from pre-commit.com hooks
-
-    for more information, see https://pre-commit.ci
+    [pre-commit.ci] auto fixes from pre-commit hooks
   autofix_prs: true
   autoupdate_branch: ""
   autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
-  skip: [pylint, mypy] # Skip heavy linters in CI
   submodules: false
