@@ -73,6 +73,10 @@ class Supervisor:
         self.intent_processor = None
         self.suspended_requests = {}
 
+        # Heartbeat failure tracking
+        self._heartbeat_failure_count = 0
+        self._heartbeat_max_failures = 3
+
         self.initialize_config_manager(config_file)
         self._set_environment_variables()
         self.initialize_components()
@@ -163,6 +167,8 @@ class Supervisor:
         This method is called every 5 minutes to prevent connection pool
         timeouts. It uses AWS STS get_caller_identity which is a FREE API
         call that validates credentials and keeps the connection active.
+
+        Tracks failures and attempts recovery after sustained failures.
         """
         try:
             # Use FREE AWS STS API to validate credentials
@@ -172,11 +178,49 @@ class Supervisor:
             sts = boto3.client("sts")
             sts.get_caller_identity()
 
+            # Reset failure count on success
+            if self._heartbeat_failure_count > 0:
+                logger.info(
+                    f"✅ Bedrock heartbeat recovered after {self._heartbeat_failure_count} failures"
+                )
+                self._heartbeat_failure_count = 0
+
             logger.debug("✅ Bedrock heartbeat successful (no cost)")
 
         except Exception as e:
-            logger.warning(f"⚠️ Bedrock heartbeat failed: {e}")
-            # Don't crash the system - just log and continue
+            self._heartbeat_failure_count += 1
+            logger.warning(
+                f"⚠️ Bedrock heartbeat failed ({self._heartbeat_failure_count}/{self._heartbeat_max_failures}): {e}"
+            )
+
+            # Attempt recovery after sustained failures
+            if self._heartbeat_failure_count >= self._heartbeat_max_failures:
+                logger.error(
+                    f"🚨 Bedrock heartbeat failed {self._heartbeat_max_failures} times, attempting recovery..."
+                )
+                self._attempt_heartbeat_recovery()
+
+    def _attempt_heartbeat_recovery(self):
+        """Attempt to recover from sustained heartbeat failures.
+
+        This recreates the Bedrock client to establish fresh connections.
+        """
+        try:
+            if self.llm_factory and hasattr(self.llm_factory, "_bedrock_client"):
+                logger.info("🔄 Recreating Bedrock client to recover connection...")
+
+                # Recreate the optimized client
+                self.llm_factory._bedrock_client = (
+                    self.llm_factory._create_optimized_bedrock_client()
+                )
+
+                # Reset failure count after recovery attempt
+                self._heartbeat_failure_count = 0
+                logger.info("✅ Bedrock client recreated successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to recover Bedrock client: {e}")
+            # Keep trying on next heartbeat
 
     def initialize_config_manager(self, config_file: str | None = None):
         """Initializes the config manager and loads the configuration.

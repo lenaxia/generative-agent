@@ -282,8 +282,11 @@ class LLMFactory:
             Configured boto3 bedrock-runtime client
         """
         try:
+            # Extract region from Bedrock config
+            region = self._get_bedrock_region()
+
             boto_config = Config(
-                region_name="us-west-2",
+                region_name=region,
                 # Adaptive retry mode with intelligent backoff
                 retries={"max_attempts": 3, "mode": "adaptive"},
                 # Aggressive connection pooling to maintain warm connections
@@ -298,13 +301,48 @@ class LLMFactory:
             )
 
             client = boto3.client("bedrock-runtime", config=boto_config)
-            logger.info("✅ Optimized Bedrock client created with connection pooling")
+            logger.info(
+                f"✅ Optimized Bedrock client created with connection pooling (region: {region})"
+            )
             return client
 
         except Exception as e:
             logger.warning(f"⚠️ Failed to create optimized Bedrock client: {e}")
             logger.warning("Falling back to default boto3 client configuration")
-            return boto3.client("bedrock-runtime", region_name="us-west-2")
+            # Use same region extraction for fallback
+            region = self._get_bedrock_region()
+            return boto3.client("bedrock-runtime", region_name=region)
+
+    def _get_bedrock_region(self) -> str:
+        """Extract Bedrock region from configuration.
+
+        Returns:
+            Region name from config, defaults to us-west-2
+        """
+        try:
+            # Look for Bedrock configs in any LLM type
+            for llm_type, configs in self.configs.items():
+                for config in configs:
+                    # Check if this is a Bedrock config
+                    provider = self._extract_provider_type(config)
+                    if provider == "bedrock":
+                        # Try to get region from config
+                        if hasattr(config, "llm_config") and hasattr(
+                            config.llm_config, "region_name"
+                        ):
+                            return config.llm_config.region_name
+                        elif hasattr(config, "region_name"):
+                            return config.region_name
+                        elif hasattr(config, "region"):
+                            return config.region
+
+            # Default fallback
+            logger.debug("No Bedrock region found in config, using default: us-west-2")
+            return "us-west-2"
+
+        except Exception as e:
+            logger.warning(f"Error extracting Bedrock region: {e}, using default")
+            return "us-west-2"
 
     def _create_model_instance(self, provider_type: str, model_params: dict):
         """Create model instance based on provider type.
