@@ -42,15 +42,10 @@ extend-exclude = '''
 
 [tool.isort]
 profile = "black"
-multi_line_output = 3
 line_length = 88
 known_first_party = ["llm_provider", "supervisor", "common", "config", "roles", "tests"]
 known_third_party = ["strands_agents", "strands_agents_tools", "slack_bolt", "slack_sdk", "redis", "aioredis", "pytest", "yaml", "pydantic"]
 skip_glob = ["agents/deprecated/*", ".benchmarks/*", ".roo/*"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
 
 [tool.mypy]
 python_version = "3.9"
