@@ -162,22 +162,38 @@ class Supervisor:
         logger.info("📡 Bedrock heartbeat scheduled (5-minute interval, zero cost)")
 
     def _bedrock_heartbeat(self):
-        """Keep Bedrock connection alive with FREE Bedrock API call.
+        """Keep Bedrock runtime connection alive with minimal inference call.
 
         This method is called every 5 minutes to prevent connection pool
-        timeouts. It uses Bedrock's list_foundation_models API which is
-        a FREE API call that keeps the actual Bedrock connection active.
+        timeouts. It uses bedrock-runtime with a minimal 1-token inference
+        to keep the actual runtime connection pool active.
+
+        Cost: ~$0.00025 per call = $0.072/day = $2.16/month
+        Benefit: Prevents 123s idle delays, achieves 0-2s wake-up time
 
         Tracks failures and attempts recovery after sustained failures.
         """
         try:
-            # Use FREE Bedrock API to keep connection alive
-            # list_foundation_models is a FREE API call (no inference costs)
+            # Use bedrock-runtime (same service Strands uses for inference)
+            import json
+
             import boto3
 
-            bedrock = boto3.client("bedrock", region_name="us-west-2")
-            # Make minimal API call - just list models (FREE, no data returned needed)
-            bedrock.list_foundation_models(byOutputModality="TEXT", maxResults=1)
+            bedrock_runtime = boto3.client("bedrock-runtime", region_name="us-west-2")
+
+            # Make minimal inference call with cheapest/fastest model
+            # Use Haiku with max_tokens=1 to minimize cost
+            body = json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1,  # Minimal output
+                    "messages": [{"role": "user", "content": "hi"}],
+                }
+            )
+
+            bedrock_runtime.invoke_model(
+                modelId="anthropic.claude-3-haiku-20240307-v1:0", body=body
+            )
 
             # Reset failure count on success
             if self._heartbeat_failure_count > 0:
@@ -186,7 +202,7 @@ class Supervisor:
                 )
                 self._heartbeat_failure_count = 0
 
-            logger.debug("✅ Bedrock heartbeat successful (no cost)")
+            logger.debug("✅ Bedrock runtime heartbeat successful (~$0.00025)")
 
         except Exception as e:
             self._heartbeat_failure_count += 1
