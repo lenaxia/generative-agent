@@ -6,9 +6,10 @@ Manages dynamic loading and registration of roles from file-based definitions.
 import importlib.util
 import inspect
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import yaml
 from pydantic import ValidationError
@@ -80,7 +81,7 @@ class RoleRegistry:
 
         # Performance optimization: Track initialization state
         self._is_initialized = False
-        self._fast_reply_roles_cache: Optional[list[RoleDefinition]] = None
+        self._fast_reply_roles_cache: list[RoleDefinition] | None = None
 
         # Load shared tools first
         self._load_shared_tools()
@@ -410,7 +411,7 @@ class RoleRegistry:
             logger.error(f"Failed to load tools from {tools_file}: {e}")
             return []
 
-    def get_role(self, role_name: str) -> Optional[RoleDefinition]:
+    def get_role(self, role_name: str) -> RoleDefinition | None:
         """Get a role definition by name.
 
         Args:
@@ -463,7 +464,7 @@ class RoleRegistry:
             )
         return roles_info
 
-    def get_shared_tool(self, tool_name: str) -> Optional[Callable]:
+    def get_shared_tool(self, tool_name: str) -> Callable | None:
         """Get a shared tool by name.
 
         Args:
@@ -870,9 +871,7 @@ class RoleRegistry:
                         self._role_event_handlers[role_name] = {}
                     self._role_event_handlers[role_name][event_type] = handler_func
 
-    def _load_role_handler(
-        self, role_name: str, handler_name: str
-    ) -> Optional[Callable]:
+    def _load_role_handler(self, role_name: str, handler_name: str) -> Callable | None:
         """Load event handler function from role's lifecycle module.
 
         Args:

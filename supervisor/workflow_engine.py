@@ -112,9 +112,9 @@ class WorkflowEngine:
         retry_delay: float = 1.0,
         max_concurrent_tasks: int = 5,
         checkpoint_interval: int = 300,
-        mcp_config_path: Optional[str] = None,
+        mcp_config_path: str | None = None,
         roles_directory: str = "roles",
-        fast_path_config: Optional[dict[str, Any]] = None,
+        fast_path_config: dict[str, Any] | None = None,
     ):
         """Initialize WorkflowEngine with Universal Agent, task scheduling, and fast-path routing support.
 
@@ -206,9 +206,9 @@ class WorkflowEngine:
 
         # Workflow state
         self.state = WorkflowState.IDLE
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
-        self.last_checkpoint_time: Optional[float] = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
+        self.last_checkpoint_time: float | None = None
 
         # Configuration
         self.max_retries = max_retries
@@ -480,7 +480,7 @@ class WorkflowEngine:
             }
             return self._handle_fast_reply(request, fallback_routing)
 
-    def pause_workflow(self, workflow_id: Optional[str] = None) -> dict:
+    def pause_workflow(self, workflow_id: str | None = None) -> dict:
         """Pause workflow execution and create comprehensive checkpoint.
 
         Args:
@@ -527,7 +527,7 @@ class WorkflowEngine:
         return checkpoint
 
     def resume_workflow(
-        self, workflow_id: Optional[str] = None, checkpoint: Optional[dict] = None
+        self, workflow_id: str | None = None, checkpoint: dict | None = None
     ) -> bool:
         """Resume workflow execution from checkpoint.
 
@@ -673,7 +673,7 @@ class WorkflowEngine:
     # ==================== TASK DELEGATION AND EXECUTION ====================
 
     def _create_task_plan(
-        self, instruction: str, request_id: Optional[str] = None
+        self, instruction: str, request_id: str | None = None
     ) -> TaskContext:
         r"""\1
 
@@ -1046,7 +1046,7 @@ Current task: {base_prompt}"""
 
     # ==================== PAUSE/RESUME FUNCTIONALITY ====================
 
-    def pause_request(self, request_id: str) -> Optional[dict]:
+    def pause_request(self, request_id: str) -> dict | None:
         r"""\1
 
         Args:
@@ -1068,9 +1068,7 @@ Current task: {base_prompt}"""
             logger.error(f"Error pausing request '{request_id}': {e}")
             return None
 
-    def resume_request(
-        self, request_id: str, checkpoint: Optional[dict] = None
-    ) -> bool:
+    def resume_request(self, request_id: str, checkpoint: dict | None = None) -> bool:
         r"""\1
 
         Args:
@@ -1233,7 +1231,7 @@ Current task: {base_prompt}"""
         except Exception as e:
             logger.debug(f"Duration tracking already completed for {request_id}: {e}")
 
-    def get_request_context(self, request_id: str) -> Optional[TaskContext]:
+    def get_request_context(self, request_id: str) -> TaskContext | None:
         r"""\1
 
         Args:
@@ -1353,8 +1351,8 @@ Current task: {base_prompt}"""
     # ==================== MCP INTEGRATION ====================
 
     def _initialize_mcp_manager(
-        self, config_path: Optional[str] = None
-    ) -> Optional[MCPClientManager]:
+        self, config_path: str | None = None
+    ) -> MCPClientManager | None:
         r"""\1
 
         Args:
@@ -1409,7 +1407,7 @@ Current task: {base_prompt}"""
             )
             return None
 
-    def get_mcp_tools(self, role: Optional[str] = None) -> list[dict]:
+    def get_mcp_tools(self, role: str | None = None) -> list[dict]:
         r"""\1
 
         Args:

@@ -33,8 +33,9 @@ class TestHeartbeatTaskStartup:
         supervisor = Supervisor("config.yaml")
 
         # Mock asyncio.create_task to verify it's called
-        with patch("asyncio.create_task") as mock_create_task, patch(
-            "asyncio.get_running_loop"
+        with (
+            patch("asyncio.create_task") as mock_create_task,
+            patch("asyncio.get_running_loop"),
         ):
             supervisor._start_scheduled_tasks()
 

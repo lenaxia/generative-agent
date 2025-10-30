@@ -162,7 +162,7 @@ class LLMFactory:
             config for config in self.configs[llm_type] if config.name != name
         ]
 
-    def create_strands_model(self, llm_type: LLMType, name: Optional[str] = None):
+    def create_strands_model(self, llm_type: LLMType, name: str | None = None):
         """Create a StrandsAgent model instance with caching for performance.
 
         Args:
@@ -193,7 +193,7 @@ class LLMFactory:
 
         return model
 
-    def _create_new_model(self, llm_type: LLMType, name: Optional[str] = None):
+    def _create_new_model(self, llm_type: LLMType, name: str | None = None):
         """Internal method to create a new model instance.
 
         Args:
@@ -282,7 +282,7 @@ class LLMFactory:
         self,
         llm_type: LLMType,
         role: str,
-        tools: Optional[list] = None,
+        tools: list | None = None,
         role_registry=None,
     ):
         """Create a Universal Agent using StrandsAgent framework with caching.
@@ -421,7 +421,7 @@ class LLMFactory:
             "agent_cache_keys": list(self._agent_cache.keys()),
         }
 
-    def _get_config(self, llm_type: LLMType, name: Optional[str] = None) -> BaseConfig:
+    def _get_config(self, llm_type: LLMType, name: str | None = None) -> BaseConfig:
         """Get configuration for the specified LLM type and name.
 
         Args:

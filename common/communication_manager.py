@@ -16,8 +16,9 @@ import pkgutil
 import queue
 import threading
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from common.message_bus import MessageBus, MessageType
 from common.request_model import RequestMetadata
@@ -63,7 +64,7 @@ class ChannelHandler:
 
     channel_type: ChannelType  # Must be defined in subclasses
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the channel handler with optional configuration."""
         self.config = config or {}
         self.enabled = False
@@ -168,9 +169,9 @@ class ChannelHandler:
     async def send_notification(
         self,
         message: str,
-        recipient: Optional[str] = None,
+        recipient: str | None = None,
         message_format: MessageFormat = MessageFormat.PLAIN_TEXT,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Send a notification through this channel.
@@ -198,7 +199,7 @@ class ChannelHandler:
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
@@ -210,7 +211,7 @@ class ChannelHandler:
         raise NotImplementedError("Channel handlers must implement _send method")
 
     async def ask_question(
-        self, question: str, options: Optional[list[str]] = None, timeout: int = 300
+        self, question: str, options: list[str] | None = None, timeout: int = 300
     ) -> str:
         """Ask user a question and wait for response. Override in bidirectional channels."""
         if not self.get_capabilities().get("bidirectional", False):
@@ -923,12 +924,12 @@ class CommunicationManager:
     async def send_notification(
         self,
         message: str,
-        channel_type: Optional[ChannelType] = None,
-        recipient: Optional[str] = None,
+        channel_type: ChannelType | None = None,
+        recipient: str | None = None,
         message_format: MessageFormat = MessageFormat.PLAIN_TEXT,
         delivery_guarantee: DeliveryGuarantee = DeliveryGuarantee.BEST_EFFORT,
-        metadata: Optional[dict[str, Any]] = None,
-        fallback_channels: Optional[list[ChannelType]] = None,
+        metadata: dict[str, Any] | None = None,
+        fallback_channels: list[ChannelType] | None = None,
     ) -> dict[str, Any]:
         """
         Send a notification through the specified channel with fallback support.
