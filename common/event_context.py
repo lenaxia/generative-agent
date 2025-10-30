@@ -12,7 +12,7 @@ import logging
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class LLMSafeEventContext:
     4. Thread-safe by design (no shared mutable state)
     """
 
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+    user_id: str | None = None
+    channel_id: str | None = None
     timestamp: float = field(default_factory=time.time)
     source: str = "unknown"
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -131,8 +131,8 @@ class LLMSafeEventContext:
 def create_context_from_event_data(
     event_data: Any,
     source: str = "unknown",
-    user_id: Optional[str] = None,
-    channel_id: Optional[str] = None,
+    user_id: str | None = None,
+    channel_id: str | None = None,
 ) -> LLMSafeEventContext:
     """
     Create LLM-safe event context from various event data formats.

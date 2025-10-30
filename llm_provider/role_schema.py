@@ -4,7 +4,7 @@ This module provides schema validation for role definition YAML files to ensure
 they have the correct structure and prevent runtime errors.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,8 +15,8 @@ class ToolsConfig(BaseModel):
     automatic: bool = False
     shared: list[str] = Field(default_factory=list)
     role_specific: list[str] = Field(default_factory=list, alias="role_specific")
-    fast_reply: Optional[dict[str, Any]] = None
-    mcp_keywords: Optional[list[str]] = None
+    fast_reply: dict[str, Any] | None = None
+    mcp_keywords: list[str] | None = None
 
     class Config:
         extra = "allow"  # Allow additional fields for flexibility
@@ -30,8 +30,8 @@ class RoleMetadata(BaseModel):
     description: str
     fast_reply: bool = False
     llm_type: str = "DEFAULT"
-    author: Optional[str] = None
-    when_to_use: Optional[str] = None
+    author: str | None = None
+    when_to_use: str | None = None
 
     class Config:
         extra = "allow"
@@ -42,9 +42,9 @@ class ParameterSchema(BaseModel):
 
     type: str
     required: bool = False
-    description: Optional[str] = None
-    examples: Optional[list[str]] = None
-    enum: Optional[list[str]] = None
+    description: str | None = None
+    examples: list[str] | None = None
+    enum: list[str] | None = None
 
     class Config:
         extra = "allow"
@@ -61,11 +61,11 @@ class EventDefinition(BaseModel):
     """Schema for event definitions."""
 
     event_type: str
-    description: Optional[str] = None
-    handler: Optional[str] = None
-    data_schema: Optional[dict[str, Any]] = None
-    condition: Optional[str] = None
-    example: Optional[dict[str, Any]] = None
+    description: str | None = None
+    handler: str | None = None
+    data_schema: dict[str, Any] | None = None
+    condition: str | None = None
+    example: dict[str, Any] | None = None
 
     class Config:
         extra = "allow"
@@ -85,8 +85,8 @@ class LifecycleFunction(BaseModel):
     """Schema for lifecycle function definitions."""
 
     name: str
-    description: Optional[str] = None
-    uses_parameters: Optional[list[str]] = None
+    description: str | None = None
+    uses_parameters: list[str] | None = None
 
     class Config:
         extra = "allow"
@@ -106,8 +106,8 @@ class LifecyclePhase(BaseModel):
 class LifecycleConfig(BaseModel):
     """Schema for lifecycle configuration."""
 
-    pre_processing: Optional[LifecyclePhase] = None
-    post_processing: Optional[LifecyclePhase] = None
+    pre_processing: LifecyclePhase | None = None
+    post_processing: LifecyclePhase | None = None
 
     class Config:
         extra = "allow"
@@ -117,7 +117,7 @@ class PromptsConfig(BaseModel):
     """Schema for prompts configuration."""
 
     system: str = "You are a helpful AI assistant."
-    user: Optional[str] = None
+    user: str | None = None
 
     class Config:
         extra = "allow"
@@ -128,7 +128,7 @@ class ModelConfig(BaseModel):
 
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=2048, gt=0)
-    max_context: Optional[int] = Field(default=None, gt=0)
+    max_context: int | None = Field(default=None, gt=0)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
 
     class Config:
@@ -159,27 +159,27 @@ class RoleDefinitionSchema(BaseModel):
     """Complete schema for role definition YAML files."""
 
     # Core fields that map to the current RoleDefinition dataclass
-    name: Optional[str] = None  # Can be inferred from role.name or filename
-    description: Optional[str] = None  # Can be inferred from role.description
-    version: Optional[str] = "1.0.0"
-    llm_type: Optional[str] = "DEFAULT"
+    name: str | None = None  # Can be inferred from role.name or filename
+    description: str | None = None  # Can be inferred from role.description
+    version: str | None = "1.0.0"
+    llm_type: str | None = "DEFAULT"
 
     # Structured sections
-    role: Optional[RoleMetadata] = None
+    role: RoleMetadata | None = None
     parameters: dict[str, ParameterSchema] = Field(default_factory=dict)
-    events: Optional[EventsConfig] = None
-    lifecycle: Optional[LifecycleConfig] = None
-    prompts: Optional[PromptsConfig] = None
-    model_configuration: Optional[ModelConfig] = Field(
+    events: EventsConfig | None = None
+    lifecycle: LifecycleConfig | None = None
+    prompts: PromptsConfig | None = None
+    model_configuration: ModelConfig | None = Field(
         default=None, alias="model_config"
     )
-    tools: Optional[ToolsConfig] = None
-    capabilities: Optional[CapabilitiesConfig] = None
-    logging: Optional[LoggingConfig] = None
+    tools: ToolsConfig | None = None
+    capabilities: CapabilitiesConfig | None = None
+    logging: LoggingConfig | None = None
 
     # Legacy fields for backward compatibility
     lifecycle_functions: list[str] = Field(default_factory=list)
-    config: Optional[dict[str, Any]] = None
+    config: dict[str, Any] | None = None
 
     @validator("tools")
     def validate_tools_is_dict(cls, v):

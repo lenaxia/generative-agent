@@ -7,9 +7,8 @@ with wake word detection, speech recognition, and text-to-speech.
 
 import asyncio
 import logging
-import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from common.communication_manager import ChannelHandler, ChannelType, MessageFormat
 
@@ -30,7 +29,7 @@ class VoiceChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.VOICE
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the Voice channel handler."""
         super().__init__(config)
 
@@ -116,17 +115,17 @@ class VoiceChannelHandler(ChannelHandler):
         """Get descriptive error message for missing Voice requirements."""
         missing = []
         try:
-            import speech_recognition as sr
+            pass
         except ImportError:
             missing.append("SpeechRecognition")
 
         try:
-            import pyaudio
+            pass
         except ImportError:
             missing.append("pyaudio")
 
         try:
-            import pyttsx3
+            pass
         except ImportError:
             missing.append("pyttsx3")
 
@@ -279,7 +278,7 @@ class VoiceChannelHandler(ChannelHandler):
         except Exception as e:
             logger.error(f"Voice command processing error: {e}")
 
-    async def _speech_to_text(self) -> Optional[str]:
+    async def _speech_to_text(self) -> str | None:
         """Convert speech to text using configured STT engine."""
         try:
             loop = asyncio.get_event_loop()
@@ -321,7 +320,7 @@ class VoiceChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:

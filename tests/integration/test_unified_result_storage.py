@@ -13,7 +13,7 @@ from common.message_bus import MessageBus
 from common.request_model import RequestMetadata
 from common.task_context import ExecutionState
 from common.task_graph import TaskStatus
-from llm_provider.factory import LLMFactory, LLMType
+from llm_provider.factory import LLMFactory
 from supervisor.workflow_engine import WorkflowEngine
 
 

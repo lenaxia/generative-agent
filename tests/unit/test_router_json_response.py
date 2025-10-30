@@ -4,10 +4,8 @@ Tests the router implementation that uses JSON responses with Pydantic validatio
 instead of tool calls for routing decisions.
 """
 
-import json
 import os
 import sys
-from unittest.mock import Mock, patch
 
 import pytest
 

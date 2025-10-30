@@ -6,7 +6,7 @@ to Slack responses when replying to users, improving user experience
 and ensuring proper notification delivery.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

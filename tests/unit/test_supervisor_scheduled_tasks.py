@@ -7,9 +7,7 @@ Following Documents 25 & 26 LLM-safe architecture patterns.
 """
 
 import time
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from supervisor.supervisor import Supervisor
 

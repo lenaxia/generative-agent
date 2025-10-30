@@ -7,15 +7,12 @@ LLM-safe declarative event processing works correctly.
 Following TDD principles - tests written first.
 """
 
-import time
-from unittest.mock import Mock
 
 import pytest
 
 from common.intents import (
     AuditIntent,
     ErrorIntent,
-    Intent,
     NotificationIntent,
     WorkflowIntent,
     create_error_intent,

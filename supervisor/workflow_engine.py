@@ -12,7 +12,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -23,13 +23,7 @@ from common.providers.mqtt_location_provider import MQTTLocationProvider
 from common.providers.redis_memory_provider import RedisMemoryProvider
 from common.request_model import RequestMetadata
 from common.task_context import TaskContext
-from common.task_graph import (
-    TaskDependency,
-    TaskDescription,
-    TaskGraph,
-    TaskNode,
-    TaskStatus,
-)
+from common.task_graph import TaskDependency, TaskDescription, TaskNode, TaskStatus
 from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.mcp_client import MCPClientManager
 
@@ -253,9 +247,9 @@ class WorkflowEngine:
         if workflow_id and hasattr(self, "duration_logger"):
             try:
                 if workflow_id in self.duration_logger.active_workflows:
-                    self.duration_logger.active_workflows[workflow_id].source = (
-                        WorkflowSource.CLI
-                    )
+                    self.duration_logger.active_workflows[
+                        workflow_id
+                    ].source = WorkflowSource.CLI
             except Exception as e:
                 logger.debug(f"Could not update workflow source for {workflow_id}: {e}")
 
@@ -1744,7 +1738,7 @@ Respond with ONLY valid JSON in this exact format:
         instead of asyncio.create_task for single event loop compliance.
         """
         from common.task_context import TaskContext
-        from common.task_graph import TaskGraph, TaskNode, TaskStatus
+        from common.task_graph import TaskGraph
 
         logger.info(
             f"Executing WorkflowIntent {intent.request_id} with {len(intent.tasks or [])} tasks"

@@ -7,13 +7,10 @@ interface using MQTT for Home Assistant integration.
 
 import json
 import logging
-from datetime import datetime
-from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from common.interfaces.context_interfaces import LocationData
 from common.providers.mqtt_location_provider import MQTTLocationProvider
 
 logger = logging.getLogger(__name__)

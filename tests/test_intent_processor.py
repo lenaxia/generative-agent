@@ -8,8 +8,7 @@ Following TDD principles - tests written first.
 """
 
 import asyncio
-from typing import List
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

@@ -8,8 +8,7 @@ for Home Assistant integration via MQTT messaging.
 import asyncio
 import json
 import logging
-from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from common.interfaces.context_interfaces import LocationData, LocationProvider
 from roles.shared_tools.redis_tools import redis_read, redis_write
@@ -29,8 +28,8 @@ class MQTTLocationProvider(LocationProvider):
         self,
         broker_host: str,
         broker_port: int = 1883,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
     ):
         """Initialize MQTT location provider.
 
@@ -104,7 +103,7 @@ class MQTTLocationProvider(LocationProvider):
         except Exception as e:
             logger.warning(f"MQTT message processing failed: {e}")
 
-    async def get_current_location(self, user_id: str) -> Optional[str]:
+    async def get_current_location(self, user_id: str) -> str | None:
         """Get user's current location from Redis.
 
         Args:

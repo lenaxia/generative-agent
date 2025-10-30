@@ -17,7 +17,7 @@ Created: 2025-10-15
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from strands import tool
 
@@ -124,11 +124,11 @@ class HomeAssistantServiceIntent(Intent):
 
     domain: str  # "light", "switch", "climate", etc.
     service: str  # "turn_on", "turn_off", "set_brightness", etc.
-    entity_id: Optional[str] = None
-    service_data: Optional[dict[str, Any]] = None
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
-    event_context: Optional[dict[str, Any]] = None
+    entity_id: str | None = None
+    service_data: dict[str, Any] | None = None
+    user_id: str | None = None
+    channel_id: str | None = None
+    event_context: dict[str, Any] | None = None
 
     def validate(self) -> bool:
         """Validate Home Assistant service intent parameters."""
@@ -143,11 +143,11 @@ class HomeAssistantServiceIntent(Intent):
 class HomeAssistantStateIntent(Intent):
     """Home Assistant state query intent - owned by smart_home role."""
 
-    entity_id: Optional[str] = None
-    domain: Optional[str] = None
+    entity_id: str | None = None
+    domain: str | None = None
     operation: str = "get_state"  # "get_state", "list_entities"
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+    user_id: str | None = None
+    channel_id: str | None = None
 
     def validate(self) -> bool:
         """Validate Home Assistant state intent parameters."""
@@ -159,11 +159,11 @@ class SmartHomeControlIntent(Intent):
     """Smart home control coordination intent - owned by smart_home role."""
 
     action: str
-    target_entity: Optional[str] = None
-    parameters: Optional[dict[str, Any]] = None
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
-    event_context: Optional[dict[str, Any]] = None
+    target_entity: str | None = None
+    parameters: dict[str, Any] | None = None
+    user_id: str | None = None
+    channel_id: str | None = None
+    event_context: dict[str, Any] | None = None
 
     def validate(self) -> bool:
         """Validate smart home control intent parameters."""
@@ -274,7 +274,7 @@ def handle_device_discovery(
 # 4. TOOLS (MCP-integrated, LLM-friendly)
 @tool
 def ha_call_service(
-    domain: str, service: str, entity_id: Optional[str] = None, **service_data
+    domain: str, service: str, entity_id: str | None = None, **service_data
 ) -> dict[str, Any]:
     """LLM-SAFE: Call Home Assistant service via MCP - returns intent for processing."""
     try:
@@ -328,7 +328,7 @@ def ha_get_state(entity_id: str) -> dict[str, Any]:
 
 
 @tool
-def ha_list_entities(domain: Optional[str] = None) -> dict[str, Any]:
+def ha_list_entities(domain: str | None = None) -> dict[str, Any]:
     """LLM-SAFE: List Home Assistant entities via MCP - returns intent for processing."""
     try:
         return {

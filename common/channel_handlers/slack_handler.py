@@ -6,14 +6,11 @@ with support for rich formatting and interactive buttons.
 """
 
 import asyncio
-import json
 import logging
 import os
-import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import aiohttp
-import requests
 
 from common.communication_manager import ChannelHandler, ChannelType, MessageFormat
 
@@ -33,7 +30,7 @@ class SlackChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.SLACK
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the Slack channel handler."""
         super().__init__(config)
 
@@ -114,7 +111,7 @@ class SlackChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
@@ -156,7 +153,7 @@ class SlackChannelHandler(ChannelHandler):
         else:
             return {"success": False, "error": "No Slack credentials configured"}
 
-    def _format_message_with_mention(self, message: str, user_id: Optional[str]) -> str:
+    def _format_message_with_mention(self, message: str, user_id: str | None) -> str:
         """Format message with @ mention if user_id is provided.
 
         Args:

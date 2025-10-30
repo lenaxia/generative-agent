@@ -12,7 +12,7 @@ Part of: Threading Architecture Improvements (Documents 25, 26, 27)
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -40,7 +40,6 @@ class Intent(ABC):
         Returns:
             bool: True if intent is valid, False otherwise
         """
-        pass
 
     def to_dict(self) -> dict[str, Any]:
         """Convert intent to dictionary for serialization."""
@@ -62,7 +61,7 @@ class NotificationIntent(Intent):
 
     message: str
     channel: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
     priority: str = "medium"  # "low", "medium", "high"
     notification_type: str = "info"  # "info", "warning", "error", "success"
 
@@ -87,7 +86,7 @@ class AuditIntent(Intent):
 
     action: str
     details: dict[str, Any]
-    user_id: Optional[str] = None
+    user_id: str | None = None
     severity: str = "info"  # "debug", "info", "warning", "error", "critical"
 
     def validate(self) -> bool:
@@ -114,15 +113,15 @@ class WorkflowIntent(Intent):
     workflow_type: str
     parameters: dict[str, Any]
     priority: int = 1
-    context: Optional[dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
     # Optional: Explicit task graph for detailed workflow execution
-    tasks: Optional[list[dict[str, Any]]] = None
-    dependencies: Optional[list[dict[str, Any]]] = None
-    request_id: Optional[str] = None
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
-    original_instruction: Optional[str] = None
+    tasks: list[dict[str, Any]] | None = None
+    dependencies: list[dict[str, Any]] | None = None
+    request_id: str | None = None
+    user_id: str | None = None
+    channel_id: str | None = None
+    original_instruction: str | None = None
 
     def validate(self) -> bool:
         """Validate workflow intent parameters."""
@@ -215,7 +214,7 @@ class ErrorIntent(Intent):
     error_message: str
     error_details: dict[str, Any]
     recoverable: bool = True
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
     def validate(self) -> bool:
         """Validate error intent parameters."""
@@ -246,7 +245,7 @@ def validate_intent_list(intents: list) -> bool:
 
 
 def create_error_intent(
-    error: Exception, context: Optional[dict[str, Any]] = None
+    error: Exception, context: dict[str, Any] | None = None
 ) -> ErrorIntent:
     """
     Create an ErrorIntent from an exception.

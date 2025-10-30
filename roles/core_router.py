@@ -7,11 +7,10 @@ Architecture: Single Event Loop + Intent-Based + JSON Response + Pydantic Parsin
 Created: 2025-01-13
 """
 
-import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -99,7 +98,7 @@ class RoutingRequestIntent(Intent):
 
     request_text: str
     source_channel: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
     def validate(self) -> bool:
         """Validate routing request intent."""
@@ -234,7 +233,6 @@ Extract relevant parameters from the user request based on the role's parameter 
 
         # Execute with router role - this will output JSON
         from llm_provider.factory import LLMType
-        from llm_provider.universal_agent import UniversalAgent
 
         # Get universal agent from role registry (avoid circular imports)
         universal_agent = getattr(role_registry, "_universal_agent", None)

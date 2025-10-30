@@ -8,7 +8,7 @@ configuration management and caching.
 import hashlib
 import logging
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from config.base_config import BaseConfig
 
@@ -551,7 +551,9 @@ class LLMFactory:
                 self.get_agent(llm_type, provider)
                 logger.info(f"✅ Pre-warmed {provider}_{llm_type.value}")
             except Exception as e:
-                logger.warning(f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}")
+                logger.warning(
+                    f"⚠️ Failed to pre-warm {provider}_{llm_type.value}: {e}"
+                )
 
     def get_pool_stats(self) -> dict[str, Any]:
         """Get Agent pool performance statistics."""

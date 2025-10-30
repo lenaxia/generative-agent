@@ -11,7 +11,7 @@ Part of: Phase 3 - Integration & Testing (Document 27)
 import asyncio
 import logging
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 

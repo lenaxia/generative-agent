@@ -438,7 +438,6 @@ async def run_interactive_mode(supervisor: Supervisor):
         try:
             # Clean up readline before stopping supervisor
             try:
-                import atexit
                 import readline
 
                 # Save history before cleanup

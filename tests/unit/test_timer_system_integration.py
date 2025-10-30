@@ -8,10 +8,7 @@ These tests verify that:
 """
 
 import asyncio
-import time
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from common.intent_processor import IntentProcessor
 from common.message_bus import MessageBus

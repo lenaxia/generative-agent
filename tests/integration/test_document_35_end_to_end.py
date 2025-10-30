@@ -8,14 +8,11 @@ Following Documents 25 & 26 LLM-safe architecture patterns.
 
 import json
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
 from common.intents import WorkflowIntent
-from llm_provider.factory import LLMFactory, LLMType
-from llm_provider.role_registry import RoleRegistry
-from llm_provider.universal_agent import UniversalAgent
 from roles.core_planning import execute_task_graph
 
 
@@ -534,7 +531,6 @@ class TestDocument35EndToEnd:
         """Test concurrent intent creation to verify thread safety."""
         # Arrange
         import concurrent.futures
-        import threading
 
         def create_intent(request_id):
             mock_context = Mock()

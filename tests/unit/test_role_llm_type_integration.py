@@ -2,8 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from llm_provider.factory import LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent

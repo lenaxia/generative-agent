@@ -6,13 +6,10 @@ following Document 35 Phase 2.3 implementation.
 Following Documents 25 & 26 LLM-safe architecture patterns.
 """
 
-import time
 from unittest.mock import Mock
 
-import pytest
-
 from common.intents import WorkflowIntent
-from common.message_bus import MessageBus, MessageType
+from common.message_bus import MessageBus
 from supervisor.workflow_engine import WorkflowEngine
 
 

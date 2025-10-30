@@ -10,9 +10,8 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
-import aiohttp
 import boto3
 from botocore.exceptions import ClientError
 
@@ -33,7 +32,7 @@ class EmailChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.EMAIL
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the email channel handler."""
         super().__init__(config)
 
@@ -95,7 +94,7 @@ class EmailChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:

@@ -5,8 +5,7 @@ Tests the Sonos audio output functionality including device discovery,
 text-to-speech conversion, and audio playback.
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

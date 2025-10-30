@@ -5,15 +5,11 @@ This module tests the complete end-to-end flow of context-aware request processi
 from router context selection through context gathering to enhanced role execution.
 """
 
-import asyncio
-from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from common.context_types import ContextCollector, ContextType
-from common.interfaces.context_interfaces import MemoryEntry
-from common.request_model import RequestMetadata
+from common.context_types import ContextCollector
 from supervisor.supervisor import Supervisor
 
 
@@ -175,7 +171,7 @@ class TestContextAwareIntegration:
 
     def test_calendar_role_integration(self):
         """Test calendar role integration with role registry."""
-        from roles.core_calendar import ROLE_CONFIG, register_role
+        from roles.core_calendar import register_role
 
         registration = register_role()
 

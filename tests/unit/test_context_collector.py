@@ -6,7 +6,7 @@ provide enum-based context gathering with interface-driven design.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Optional
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -82,7 +82,7 @@ class MockLocationProvider(LocationProvider):
     def __init__(self, locations: dict[str, str] = None):
         self.locations = locations or {}
 
-    async def get_current_location(self, user_id: str) -> Optional[str]:
+    async def get_current_location(self, user_id: str) -> str | None:
         return self.locations.get(user_id)
 
     async def update_location(

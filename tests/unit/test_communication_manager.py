@@ -4,9 +4,7 @@ Unit tests for the Communication Manager.
 Tests the functionality of the Communication Manager and channel handlers.
 """
 
-import asyncio
-import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,8 +12,6 @@ from common.communication_manager import (
     ChannelHandler,
     ChannelType,
     CommunicationManager,
-    DeliveryGuarantee,
-    MessageFormat,
 )
 
 

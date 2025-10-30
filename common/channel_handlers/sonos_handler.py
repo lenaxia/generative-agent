@@ -7,8 +7,7 @@ with device discovery and text-to-speech functionality.
 
 import asyncio
 import logging
-import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from common.communication_manager import ChannelHandler, ChannelType, MessageFormat
 
@@ -28,7 +27,7 @@ class SonosChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.SONOS
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the Sonos channel handler."""
         super().__init__(config)
 
@@ -68,7 +67,7 @@ class SonosChannelHandler(ChannelHandler):
     def _get_requirements_error_message(self) -> str:
         """Get descriptive error message for missing Sonos requirements."""
         try:
-            import soco
+            pass
 
             # If soco is available but no devices found
             return "no Sonos devices discovered on network. Ensure Sonos speakers are powered on and connected to the same network"
@@ -112,7 +111,7 @@ class SonosChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
@@ -263,7 +262,7 @@ class SonosChannelHandler(ChannelHandler):
 
         return await loop.run_in_executor(None, _play_sync)
 
-    async def _text_to_speech(self, text: str, language: str = "en") -> Optional[str]:
+    async def _text_to_speech(self, text: str, language: str = "en") -> str | None:
         """Convert text to speech and return path to audio file."""
         try:
             if self.tts_service == "gTTS":
@@ -277,7 +276,7 @@ class SonosChannelHandler(ChannelHandler):
             logger.error(f"Text-to-speech conversion failed: {e}")
             return None
 
-    async def _tts_gtts(self, text: str, language: str) -> Optional[str]:
+    async def _tts_gtts(self, text: str, language: str) -> str | None:
         """Generate speech using Google Text-to-Speech."""
         try:
             import os
@@ -304,7 +303,7 @@ class SonosChannelHandler(ChannelHandler):
             logger.error(f"gTTS conversion failed: {e}")
             return None
 
-    async def _tts_pyttsx3(self, text: str) -> Optional[str]:
+    async def _tts_pyttsx3(self, text: str) -> str | None:
         """Generate speech using pyttsx3 (offline TTS)."""
         try:
             import os

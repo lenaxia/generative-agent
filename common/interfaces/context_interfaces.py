@@ -9,7 +9,7 @@ information to the agent system.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -19,9 +19,9 @@ class MemoryEntry:
     user_id: str
     content: str
     timestamp: datetime
-    location: Optional[str] = None
+    location: str | None = None
     importance: float = 0.5
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -31,7 +31,7 @@ class LocationData:
     user_id: str
     current_location: str
     timestamp: datetime
-    previous_location: Optional[str] = None
+    previous_location: str | None = None
     confidence: float = 1.0
 
 
@@ -42,7 +42,7 @@ class ContextData:
     user_id: str
     context_type: str
     data: dict[str, Any]
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class MemoryProvider(ABC):
@@ -58,7 +58,6 @@ class MemoryProvider(ABC):
         Returns:
             bool: True if storage was successful, False otherwise
         """
-        pass
 
     @abstractmethod
     async def get_recent_memories(
@@ -73,7 +72,6 @@ class MemoryProvider(ABC):
         Returns:
             List[MemoryEntry]: Recent memories for the user
         """
-        pass
 
     @abstractmethod
     async def search_memories(
@@ -89,14 +87,13 @@ class MemoryProvider(ABC):
         Returns:
             List[MemoryEntry]: Relevant memories matching the query
         """
-        pass
 
 
 class LocationProvider(ABC):
     """Interface for location tracking backends."""
 
     @abstractmethod
-    async def get_current_location(self, user_id: str) -> Optional[str]:
+    async def get_current_location(self, user_id: str) -> str | None:
         """Get user's current location.
 
         Args:
@@ -105,7 +102,6 @@ class LocationProvider(ABC):
         Returns:
             Optional[str]: Current location or None if not available
         """
-        pass
 
     @abstractmethod
     async def update_location(
@@ -121,7 +117,6 @@ class LocationProvider(ABC):
         Returns:
             bool: True if update was successful, False otherwise
         """
-        pass
 
 
 class ContextProvider(ABC):
@@ -130,7 +125,7 @@ class ContextProvider(ABC):
     @abstractmethod
     async def get_context(
         self, user_id: str, context_type: str
-    ) -> Optional[ContextData]:
+    ) -> ContextData | None:
         """Get context data for user.
 
         Args:
@@ -140,7 +135,6 @@ class ContextProvider(ABC):
         Returns:
             Optional[ContextData]: Context data or None if not available
         """
-        pass
 
 
 class EnvironmentProvider(ABC):
@@ -148,7 +142,7 @@ class EnvironmentProvider(ABC):
 
     @abstractmethod
     async def get_environment_data(
-        self, location: Optional[str] = None
+        self, location: str | None = None
     ) -> dict[str, Any]:
         """Get environment data for location.
 
@@ -158,4 +152,3 @@ class EnvironmentProvider(ABC):
         Returns:
             Dict[str, Any]: Environment data (weather, time, etc.)
         """
-        pass

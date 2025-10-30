@@ -6,8 +6,7 @@ the contract for context providers in the Universal Agent System.
 """
 
 from datetime import datetime
-from typing import List, Optional
-from unittest.mock import AsyncMock, Mock
+from typing import Optional
 
 import pytest
 
@@ -252,7 +251,7 @@ class MockMemoryProvider(MemoryProvider):
 class MockLocationProvider(LocationProvider):
     """Mock implementation of LocationProvider for testing."""
 
-    async def get_current_location(self, user_id: str) -> Optional[str]:
+    async def get_current_location(self, user_id: str) -> str | None:
         return "test_location"
 
     async def update_location(

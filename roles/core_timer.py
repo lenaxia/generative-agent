@@ -18,7 +18,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from strands import tool
 
@@ -104,9 +104,9 @@ class TimerCreationIntent(Intent):
     duration: str
     duration_seconds: int
     label: str = ""
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
-    event_context: Optional[dict[str, Any]] = None  # Store full LLMSafeEventContext
+    user_id: str | None = None
+    channel_id: str | None = None
+    event_context: dict[str, Any] | None = None  # Store full LLMSafeEventContext
 
     def validate(self) -> bool:
         """Validate timer creation intent parameters."""
@@ -124,7 +124,7 @@ class TimerCancellationIntent(Intent):
     """Timer-specific intent: Cancel an existing timer."""
 
     timer_id: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
     def validate(self) -> bool:
         """Validate timer cancellation intent parameters."""
@@ -135,8 +135,8 @@ class TimerCancellationIntent(Intent):
 class TimerListingIntent(Intent):
     """Timer-specific intent: List active timers for a user."""
 
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+    user_id: str | None = None
+    channel_id: str | None = None
 
     def validate(self) -> bool:
         """Validate timer listing intent parameters."""
@@ -150,9 +150,9 @@ class TimerExpiryIntent(Intent):
     timer_id: str
     original_duration: str
     label: str = ""
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
-    event_context: Optional[dict[str, Any]] = None  # Store full LLMSafeEventContext
+    user_id: str | None = None
+    channel_id: str | None = None
+    event_context: dict[str, Any] | None = None  # Store full LLMSafeEventContext
 
     def validate(self) -> bool:
         """Validate timer expiry intent parameters."""

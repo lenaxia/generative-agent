@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional
 
 from common.interfaces.context_interfaces import MemoryProvider
-from llm_provider.factory import LLMFactory, LLMType
+from llm_provider.factory import LLMFactory
 from llm_provider.universal_agent import UniversalAgent
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class MemoryAssessor:
         """
         self.memory_provider = memory_provider
         self.llm_factory = llm_factory
-        self.agent: Optional[UniversalAgent] = None
+        self.agent: UniversalAgent | None = None
         self.importance_threshold = 0.3  # Store memories with importance > 0.3
 
     async def initialize(self):
@@ -55,8 +55,8 @@ class MemoryAssessor:
         user_id: str,
         prompt: str,
         response: str,
-        location: Optional[str] = None,
-        workflow_id: Optional[str] = None,
+        location: str | None = None,
+        workflow_id: str | None = None,
     ) -> bool:
         """Assess conversation importance and store if significant.
 
@@ -109,7 +109,7 @@ class MemoryAssessor:
             return False
 
     async def _assess_importance(
-        self, prompt: str, response: str, location: Optional[str] = None
+        self, prompt: str, response: str, location: str | None = None
     ) -> float:
         """Assess the importance of a conversation using LLM.
 
@@ -146,7 +146,7 @@ class MemoryAssessor:
             return 0.1
 
     def _build_assessment_prompt(
-        self, prompt: str, response: str, location: Optional[str] = None
+        self, prompt: str, response: str, location: str | None = None
     ) -> str:
         """Build prompt for LLM importance assessment.
 

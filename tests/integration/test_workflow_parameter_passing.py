@@ -5,7 +5,7 @@ Tests that parameters defined in planning role's task graph are correctly
 passed through to role execution, addressing issues found in Document 43.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -13,8 +13,6 @@ from common.intent_processor import IntentProcessor
 from common.intents import WorkflowIntent
 from common.message_bus import MessageBus
 from llm_provider.factory import LLMFactory
-from llm_provider.role_registry import RoleRegistry
-from llm_provider.universal_agent import UniversalAgent
 from supervisor.workflow_engine import WorkflowEngine
 
 

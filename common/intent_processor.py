@@ -8,10 +8,9 @@ Created: 2025-10-12
 Part of: Threading Architecture Improvements (Documents 25, 26, 27)
 """
 
-import asyncio
 import logging
-import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+from collections.abc import Callable
 
 from common.intents import (
     AuditIntent,

@@ -8,7 +8,7 @@ It's intentionally minimal - just LLM calls with context, no agents, no tools, n
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from llm_provider.factory import LLMType
 from llm_provider.universal_agent import UniversalAgent

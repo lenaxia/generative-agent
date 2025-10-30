@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from common.intent_processor import IntentProcessor
 from common.intents import WorkflowIntent
@@ -43,18 +43,18 @@ class Supervisor:
     # TODO: It should be able to do it mostly out of the box right now, but we should confirm whether or not we can nest supervisors, to basically do
     #       teams of teams. Each team would get its own MessageBus to communicate internally, and then the Supervisor would be responsible for communicating
     #       with the other teams and the top level supervisor.
-    config_file: Optional[str] = None
-    config_manager: Optional[ConfigManager] = None
-    config: Optional[SupervisorConfig] = None
-    message_bus: Optional[MessageBus] = None
-    workflow_engine: Optional[WorkflowEngine] = None
-    metrics_manager: Optional[MetricsManager] = None
-    llm_factory: Optional[LLMFactory] = None
-    communication_manager: Optional[object] = None  # Import will be done in method
-    intent_processor: Optional[IntentProcessor] = None
+    config_file: str | None = None
+    config_manager: ConfigManager | None = None
+    config: SupervisorConfig | None = None
+    message_bus: MessageBus | None = None
+    workflow_engine: WorkflowEngine | None = None
+    metrics_manager: MetricsManager | None = None
+    llm_factory: LLMFactory | None = None
+    communication_manager: object | None = None  # Import will be done in method
+    intent_processor: IntentProcessor | None = None
     suspended_requests: dict = None
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: str | None = None):
         """Initializes the Supervisor with the given configuration file.
 
         If no configuration file is given, it will use the default configuration
@@ -137,7 +137,7 @@ class Supervisor:
                 except Exception as e:
                     logger.error(f"Interval task {task_type} failed: {e}")
 
-    def initialize_config_manager(self, config_file: Optional[str] = None):
+    def initialize_config_manager(self, config_file: str | None = None):
         """Initializes the config manager and loads the configuration.
 
         If a configuration file is provided, it will be used to initialize the
@@ -621,7 +621,7 @@ class Supervisor:
                 else:
                     time.sleep(5)  # Wait for 5 seconds before checking progress again
 
-    def status(self) -> Optional[dict]:
+    def status(self) -> dict | None:
         """Retrieves the current status of the Supervisor, including whether it is running,
 
         the current metrics, and the status of all requests.

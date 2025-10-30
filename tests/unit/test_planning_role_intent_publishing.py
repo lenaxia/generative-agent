@@ -9,7 +9,7 @@ in the Universal Agent's post-processing phase.
 """
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -77,7 +77,7 @@ class TestPlanningRoleIntentPublishing:
         # to a user-friendly string message while scheduling the intent.
 
         # Arrange
-        from unittest.mock import Mock, patch
+        from unittest.mock import Mock
 
         from llm_provider.factory import LLMFactory
         from llm_provider.universal_agent import UniversalAgent

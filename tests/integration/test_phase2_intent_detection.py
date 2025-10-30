@@ -13,16 +13,9 @@ This validates the complete Phase 2 implementation:
 """
 
 import json
-from unittest.mock import AsyncMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from common.intents import WorkflowIntent
-from common.task_context import TaskContext
-from common.task_graph import TaskGraph
-from llm_provider.factory import LLMFactory, LLMType
-from llm_provider.role_registry import RoleRegistry
-from llm_provider.universal_agent import UniversalAgent
 
 
 class TestPhase2IntentDetection:

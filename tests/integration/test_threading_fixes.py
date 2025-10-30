@@ -13,7 +13,7 @@ import asyncio
 import logging
 import threading
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -62,8 +62,6 @@ class TestThreadingFixes:
         logger.info(f"Initial thread count: {initial_count}")
 
         # Create supervisor with minimal config to avoid communication manager threads
-        from supervisor.config_manager import ConfigManager
-        from supervisor.supervisor_config import SupervisorConfig
 
         # Create minimal supervisor without full initialization
         supervisor = Supervisor.__new__(Supervisor)

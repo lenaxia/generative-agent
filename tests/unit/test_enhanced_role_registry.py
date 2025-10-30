@@ -6,15 +6,12 @@ handler loading, and MessageBus integration.
 """
 
 import asyncio
-from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from common.event_handler_llm import EventHandlerLLM
 from common.message_bus import MessageBus, MessageTypeRegistry
-from llm_provider.role_registry import RoleDefinition, RoleRegistry
+from llm_provider.role_registry import RoleRegistry
 
 
 class TestEnhancedRoleRegistry:

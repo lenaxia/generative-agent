@@ -20,11 +20,11 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from strands import tool
 
-from common.intents import Intent, NotificationIntent
+from common.intents import Intent
 
 logger = logging.getLogger(__name__)
 
@@ -325,7 +325,7 @@ def _search_topics_with_relevance(
 ) -> dict[str, Any]:
     """Search topics with relevance scoring and high threshold filtering."""
     try:
-        from roles.shared_tools.redis_tools import redis_read, redis_write
+        from roles.shared_tools.redis_tools import redis_read
 
         # Load all topics
         topics_data = redis_read(f"conversation:topics:{user_id}")

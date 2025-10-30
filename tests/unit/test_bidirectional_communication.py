@@ -6,7 +6,7 @@ communication capabilities.
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -15,8 +15,6 @@ from common.communication_manager import (
     ChannelHandler,
     ChannelType,
     CommunicationManager,
-    DeliveryGuarantee,
-    MessageFormat,
 )
 from common.message_bus import MessageBus, MessageType
 

@@ -8,7 +8,6 @@ import asyncio
 import logging
 import os
 import sys
-import threading
 from pathlib import Path
 
 from slack_bolt import App
@@ -80,7 +79,7 @@ class IntelligentSlackBot:
     def _setup_timer_notifications(self):
         """Set up timer expiry notifications."""
         try:
-            from common.message_bus import MessageType
+            pass
 
             # Timer notifications now handled via intent-based system
             logger.info("✅ Timer notifications handled via intent-based system")
@@ -431,7 +430,9 @@ class IntelligentSlackBot:
                         health_emoji = (
                             "✅"
                             if health_status == "healthy"
-                            else "⚠️" if health_status == "degraded" else "❓"
+                            else "⚠️"
+                            if health_status == "degraded"
+                            else "❓"
                         )
                         status_msg += (
                             f"• Health Status: {health_emoji} {health_status}\n"

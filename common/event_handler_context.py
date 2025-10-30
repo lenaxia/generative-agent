@@ -7,7 +7,7 @@ and provide clean access to all necessary dependencies for event processing.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from common.event_handler_llm import EventHandlerLLM
 from common.message_bus import MessageBus
@@ -52,7 +52,7 @@ class EventHandlerContext:
         return self.llm.get_context(key)
 
     async def create_workflow(
-        self, instruction: str, context: Optional[dict[str, Any]] = None
+        self, instruction: str, context: dict[str, Any] | None = None
     ) -> str:
         """Create a new workflow with the given instruction.
 
@@ -69,8 +69,8 @@ class EventHandlerContext:
     async def send_notification(
         self,
         message: str,
-        channels: Optional[list[str]] = None,
-        recipient: Optional[str] = None,
+        channels: list[str] | None = None,
+        recipient: str | None = None,
     ):
         """Send notification through communication manager.
 
@@ -79,7 +79,6 @@ class EventHandlerContext:
             channels: List of channel types (defaults to SLACK)
             recipient: Notification recipient (defaults to execution context channel)
         """
-        from common.communication_manager import ChannelType, MessageFormat
 
         # Default values from execution context
         default_channel = channels[0] if channels else "slack"

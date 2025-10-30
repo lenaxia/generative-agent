@@ -9,16 +9,13 @@ import asyncio
 import glob
 import importlib
 import inspect
-import json
 import logging
 import os
-import pkgutil
 import queue
 import threading
 import time
-from collections.abc import Callable
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from common.message_bus import MessageBus, MessageType
 from common.request_model import RequestMetadata
@@ -127,15 +124,15 @@ class ChannelHandler:
 
         # Register queue and thread with CommunicationManager
         if self.communication_manager:
-            self.communication_manager.channel_queues[self.channel_type.value] = (
-                self.message_queue
-            )
+            self.communication_manager.channel_queues[
+                self.channel_type.value
+            ] = self.message_queue
             # LLM-SAFE: Track the background task for cleanup
             if not hasattr(self.communication_manager, "_background_tasks"):
                 self.communication_manager._background_tasks = {}
-            self.communication_manager._background_tasks[self.channel_type.value] = (
-                self.background_task
-            )
+            self.communication_manager._background_tasks[
+                self.channel_type.value
+            ] = self.background_task
 
     def _run_background_session(self):
         """Run background session in dedicated thread."""
@@ -267,13 +264,13 @@ class CommunicationManager:
         self.channel_queues: dict[str, asyncio.Queue] = {}  # Thread communication
         self.default_channel = ChannelType.CONSOLE
         self._shutdown_called = False  # Prevent duplicate shutdowns
-        self._background_threads: dict[str, threading.Thread] = (
-            {}
-        )  # Track all background threads
+        self._background_threads: dict[
+            str, threading.Thread
+        ] = {}  # Track all background threads
         self._initialized = False
-        self._pending_requests: dict[str, dict] = (
-            {}
-        )  # Track requests awaiting responses
+        self._pending_requests: dict[
+            str, dict
+        ] = {}  # Track requests awaiting responses
 
         # Document 35 Phase 2.4: Workflow lifecycle tracking
         self.active_workflows: dict[str, set[str]] = {}  # request_id -> {workflow_ids}

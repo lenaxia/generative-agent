@@ -9,10 +9,7 @@ import asyncio
 import json
 import logging
 import os
-import threading
-from typing import Any, Dict, List, Optional
-
-import aiohttp
+from typing import Any, Optional
 
 from common.communication_manager import ChannelHandler, ChannelType, MessageFormat
 
@@ -33,7 +30,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.HOME_ASSISTANT
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the Home Assistant channel handler."""
         super().__init__(config)
 
@@ -78,7 +75,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
 
         # Check for websockets library
         try:
-            import websockets
+            pass
 
             return True
         except ImportError:
@@ -96,7 +93,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
             missing.append("HOME_ASSISTANT_URL environment variable")
 
         try:
-            import websockets
+            pass
         except ImportError:
             missing.append("websockets library (pip install websockets)")
 
@@ -297,7 +294,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
@@ -340,7 +337,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
             return {"success": False, "error": str(e)}
 
     async def _call_service(
-        self, message: str, recipient: Optional[str], metadata: dict[str, Any]
+        self, message: str, recipient: str | None, metadata: dict[str, Any]
     ) -> dict[str, Any]:
         """Call a Home Assistant service."""
         service = metadata.get("service")
@@ -383,7 +380,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
                 del self.pending_commands[command_id]
             return {"success": False, "error": "Command timeout"}
 
-    def _parse_service_from_message(self, message: str) -> Optional[str]:
+    def _parse_service_from_message(self, message: str) -> str | None:
         """Parse service name from natural language message."""
         message_lower = message.lower()
 
@@ -505,7 +502,7 @@ class HomeAssistantChannelHandler(ChannelHandler):
             {"service": service, "service_data": service_data},
         )
 
-    async def list_entities(self, domain: Optional[str] = None) -> dict[str, Any]:
+    async def list_entities(self, domain: str | None = None) -> dict[str, Any]:
         """List all entities or entities in a specific domain."""
         try:
             command_id = self._get_next_id()

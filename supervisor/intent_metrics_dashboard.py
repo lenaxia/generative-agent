@@ -11,7 +11,7 @@ Part of: Technical Debt Cleanup - Intent Processing Metrics
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class IntentMetricsCollector:
         self,
         intent_type: str,
         processing_time: float,
-        role_name: Optional[str] = None,
+        role_name: str | None = None,
         success: bool = True,
     ):
         """Record a processed intent with metrics."""
@@ -97,7 +97,7 @@ class IntentMetricsCollector:
             self._intent_type_failures[intent_type] += 1
 
     def record_intent_error(
-        self, error: Exception, intent_type: str, role_name: Optional[str] = None
+        self, error: Exception, intent_type: str, role_name: str | None = None
     ):
         """Record an intent processing error."""
         error_entry = {
@@ -367,8 +367,8 @@ Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(metrics['last_u
 
 
 # Global metrics collector instance
-_metrics_collector: Optional[IntentMetricsCollector] = None
-_dashboard: Optional[IntentProcessingDashboard] = None
+_metrics_collector: IntentMetricsCollector | None = None
+_dashboard: IntentProcessingDashboard | None = None
 
 
 def get_intent_metrics_collector() -> IntentMetricsCollector:
@@ -403,7 +403,7 @@ def get_intent_dashboard() -> IntentProcessingDashboard:
 def record_intent_processing_metrics(
     intent_type: str,
     processing_time: float,
-    role_name: Optional[str] = None,
+    role_name: str | None = None,
     success: bool = True,
 ):
     """
@@ -420,7 +420,7 @@ def record_intent_processing_metrics(
 
 
 def record_intent_error(
-    error: Exception, intent_type: str, role_name: Optional[str] = None
+    error: Exception, intent_type: str, role_name: str | None = None
 ):
     """
     Record an intent processing error.

@@ -5,7 +5,6 @@ This module tests the integration of context systems with the supervisor
 for proper initialization and lifecycle management.
 """
 
-from typing import Optional
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

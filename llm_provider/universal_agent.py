@@ -7,7 +7,6 @@ different LLM providers and execution strategies.
 
 import logging
 import time
-from enum import Enum
 from typing import Any, Optional
 
 from strands import Agent
@@ -159,8 +158,8 @@ class UniversalAgent:
     def __init__(
         self,
         llm_factory: LLMFactory,
-        role_registry: Optional[RoleRegistry] = None,
-        mcp_manager: Optional[MCPClientManager] = None,
+        role_registry: RoleRegistry | None = None,
+        mcp_manager: MCPClientManager | None = None,
     ):
         r"""\1
 
@@ -190,9 +189,9 @@ class UniversalAgent:
     def assume_role(
         self,
         role: str,
-        llm_type: Optional[LLMType] = None,
-        context: Optional[TaskContext] = None,
-        tools: Optional[list[str]] = None,
+        llm_type: LLMType | None = None,
+        context: TaskContext | None = None,
+        tools: list[str] | None = None,
     ):
         r"""\1
 
@@ -305,9 +304,9 @@ class UniversalAgent:
         instruction: str,
         role: str = "default",
         llm_type: LLMType = LLMType.DEFAULT,
-        context: Optional[TaskContext] = None,
-        event_context: Optional[LLMSafeEventContext] = None,
-        extracted_parameters: Optional[dict] = None,
+        context: TaskContext | None = None,
+        event_context: LLMSafeEventContext | None = None,
+        extracted_parameters: dict | None = None,
     ) -> str:
         """Execute task with unified lifecycle execution.
 
@@ -344,9 +343,9 @@ class UniversalAgent:
         instruction: str,
         role: str,
         llm_type: LLMType,
-        context: Optional[TaskContext] = None,
-        event_context: Optional[LLMSafeEventContext] = None,
-        extracted_parameters: Optional[dict] = None,
+        context: TaskContext | None = None,
+        event_context: LLMSafeEventContext | None = None,
+        extracted_parameters: dict | None = None,
     ) -> str:
         """Execute task with lifecycle hooks following LLM-Safe patterns.
 
@@ -364,7 +363,6 @@ class UniversalAgent:
         Returns:
             str: Task result
         """
-        import asyncio
         import time
 
         start_time = time.time()
@@ -553,8 +551,6 @@ class UniversalAgent:
         parameters: dict,
     ) -> dict:
         """Run pre-processors synchronously using asyncio.run for async functions."""
-        import asyncio
-        import inspect
 
         results = {}
 
@@ -678,8 +674,8 @@ class UniversalAgent:
         instruction: str,
         role: str,
         llm_type: LLMType,
-        context: Optional[TaskContext] = None,
-        event_context: Optional[LLMSafeEventContext] = None,
+        context: TaskContext | None = None,
+        event_context: LLMSafeEventContext | None = None,
     ) -> str:
         """Execute LLM task (legacy method - now uses lifecycle execution)."""
         return self._execute_task_with_lifecycle(
@@ -958,8 +954,8 @@ class UniversalAgent:
     def _create_basic_agent(
         self,
         llm_type: LLMType,
-        context: Optional[TaskContext] = None,
-        tools: Optional[list[str]] = None,
+        context: TaskContext | None = None,
+        tools: list[str] | None = None,
     ) -> Agent:
         r"""\1
 

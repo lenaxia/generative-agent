@@ -6,7 +6,6 @@ This module tests the fixes for:
 2. Missing Slack responses (workflow results sent back to Slack)
 """
 
-import asyncio
 import queue
 from unittest.mock import AsyncMock, Mock, patch
 

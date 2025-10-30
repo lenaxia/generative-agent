@@ -7,19 +7,19 @@ Handles parameter extraction, validation, calendar operations, and confirmation 
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 async def parse_calendar_parameters(
     action: str,
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    event_id: Optional[str] = None,
-    description: Optional[str] = None,
-    location: Optional[str] = None,
+    title: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    event_id: str | None = None,
+    description: str | None = None,
+    location: str | None = None,
     **kwargs,
 ) -> dict[str, Any]:
     """Parse and normalize calendar parameters from user input.
@@ -86,8 +86,8 @@ async def parse_calendar_parameters(
 
 async def validate_calendar_request(
     action: str,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
     **kwargs,
 ) -> dict[str, Any]:
     """Validate calendar request parameters.
@@ -228,7 +228,7 @@ async def audit_calendar_action(llm_response: str, **kwargs) -> dict[str, Any]:
         return {"audit_logged": False, "error": str(e)}
 
 
-def _parse_datetime_string(datetime_str: str) -> Optional[datetime]:
+def _parse_datetime_string(datetime_str: str) -> datetime | None:
     """Parse various datetime string formats.
 
     Args:
@@ -301,7 +301,7 @@ def _parse_datetime_string(datetime_str: str) -> Optional[datetime]:
         return None
 
 
-def _parse_time_component(time_str: str) -> Optional[datetime.time]:
+def _parse_time_component(time_str: str) -> datetime.time | None:
     """Parse time component from string.
 
     Args:

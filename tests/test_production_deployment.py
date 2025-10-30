@@ -7,9 +7,7 @@ Validates production configuration, monitoring, and final integration.
 Following TDD principles with production-focused testing.
 """
 
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml

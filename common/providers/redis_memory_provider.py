@@ -5,11 +5,8 @@ This module provides a Redis-based implementation of the MemoryProvider interfac
 using the existing Redis tools for storage and retrieval operations.
 """
 
-import json
 import logging
-import time
 from datetime import datetime
-from typing import List
 
 from common.interfaces.context_interfaces import MemoryEntry, MemoryProvider
 from roles.shared_tools.redis_tools import redis_get_keys, redis_read, redis_write

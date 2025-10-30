@@ -6,8 +6,7 @@ interface using Redis as the backend storage system.
 """
 
 from datetime import datetime
-from typing import List
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 

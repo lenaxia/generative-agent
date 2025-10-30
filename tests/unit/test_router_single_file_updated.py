@@ -6,9 +6,7 @@ and intent-based processing without legacy functions.
 
 import os
 import sys
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

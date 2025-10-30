@@ -4,20 +4,13 @@ Unit tests for dynamic channel handler loading.
 Tests the functionality of the dynamic channel handler discovery and loading.
 """
 
-import asyncio
-import os
-import shutil
-import tempfile
 import unittest
-from unittest.mock import MagicMock, mock_open, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from common.communication_manager import (
     ChannelHandler,
     ChannelType,
     CommunicationManager,
-    DeliveryGuarantee,
 )
 
 

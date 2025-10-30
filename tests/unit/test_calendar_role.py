@@ -6,9 +6,7 @@ and calendar management functionality.
 """
 
 import time
-from datetime import datetime
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

@@ -4,24 +4,17 @@ End-to-end tests for timer notification routing fixes.
 Tests the complete flow from Slack timer request to Slack notification delivery.
 """
 
-import asyncio
-import logging
-import time
-import unittest.mock as mock
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from common.channel_handlers.console_handler import ConsoleChannelHandler
 from common.channel_handlers.slack_handler import SlackChannelHandler
-from common.communication_manager import ChannelType, CommunicationManager
+from common.communication_manager import CommunicationManager
 from common.message_bus import MessageBus
-from common.request_model import RequestMetadata
-from llm_provider.factory import LLMFactory, LLMType
 from llm_provider.role_registry import RoleRegistry
 from llm_provider.universal_agent import UniversalAgent
 from roles.core_timer import handle_timer_expiry, set_timer
-from supervisor.workflow_engine import WorkflowEngine
 
 
 class TestTimerNotificationRouting:

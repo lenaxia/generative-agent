@@ -12,7 +12,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import requests
 from strands import tool
@@ -89,9 +89,9 @@ class WeatherIntent(Intent):
     """Weather-specific intent - owned by weather role."""
 
     action: str  # "fetch", "validate", "format"
-    location: Optional[str] = None
-    timeframe: Optional[str] = None
-    format_type: Optional[str] = None
+    location: str | None = None
+    timeframe: str | None = None
+    format_type: str | None = None
 
     def validate(self) -> bool:
         """Validate weather intent parameters."""

@@ -8,13 +8,12 @@ covering both happy path and unhappy path cases with focused component testing.
 import asyncio
 import json
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from common.context_types import ContextCollector, ContextType
+from common.context_types import ContextCollector
 from common.interfaces.context_interfaces import MemoryEntry
-from common.request_model import RequestMetadata
 from supervisor.workflow_engine import WorkflowEngine
 
 

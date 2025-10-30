@@ -14,8 +14,6 @@ Following TDD principles - tests written first.
 """
 
 import time
-from dataclasses import dataclass
-from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest

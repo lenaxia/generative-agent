@@ -5,8 +5,7 @@ Home Assistant via MCP (Model Context Protocol) for real device control.
 """
 
 import time
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

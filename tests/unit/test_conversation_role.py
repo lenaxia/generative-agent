@@ -11,7 +11,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from common.intents import NotificationIntent
 from roles.core_conversation import (
     ROLE_CONFIG,
     TopicAnalysisIntent,
@@ -29,7 +28,6 @@ from roles.core_conversation import (
     get_conversation_statistics,
     load_conversation_context,
     process_topic_analysis_intent,
-    process_topic_search_intent,
     register_role,
     save_message_to_log,
     search_topics,

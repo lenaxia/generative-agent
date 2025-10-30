@@ -1,0 +1,609 @@
+🔍 Running linters...
+  → Running black (format check)...
+black --check --diff .
+  → Running isort (import check)...
+isort --check-only --diff .
+Skipped 3 files
+  → Running flake8 (style guide)...
+flake8 .
+./cli.py:441:17: F401 'atexit' imported but unused
+./common/channel_handlers/__init__.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/console_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/console_handler.py:10:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/console_handler.py:18:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/console_handler.py:55:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/email_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/email_handler.py:13:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/email_handler.py:13:1: F401 'typing.List' imported but unused
+./common/channel_handlers/email_handler.py:13:1: F401 'typing.Union' imported but unused
+./common/channel_handlers/email_handler.py:15:1: F401 'aiohttp' imported but unused
+./common/channel_handlers/email_handler.py:25:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/email_handler.py:102:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/home_assistant_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/home_assistant_handler.py:12:1: F401 'threading' imported but unused
+./common/channel_handlers/home_assistant_handler.py:13:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/home_assistant_handler.py:13:1: F401 'typing.List' imported but unused
+./common/channel_handlers/home_assistant_handler.py:15:1: F401 'aiohttp' imported but unused
+./common/channel_handlers/home_assistant_handler.py:23:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/home_assistant_handler.py:81:13: F401 'websockets' imported but unused
+./common/channel_handlers/home_assistant_handler.py:99:13: F401 'websockets' imported but unused
+./common/channel_handlers/home_assistant_handler.py:304:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/home_assistant_handler.py:461:13: F841 local variable 'question_id' is assigned to but never used
+./common/channel_handlers/home_assistant_handler.py:547:13: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/home_assistant_handler.py:547:13: E722 do not use bare 'except'
+./common/channel_handlers/slack_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/slack_handler.py:9:1: F401 'json' imported but unused
+./common/channel_handlers/slack_handler.py:12:1: F401 'threading' imported but unused
+./common/channel_handlers/slack_handler.py:13:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/slack_handler.py:13:1: F401 'typing.List' imported but unused
+./common/channel_handlers/slack_handler.py:16:1: F401 'requests' imported but unused
+./common/channel_handlers/slack_handler.py:24:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/slack_handler.py:121:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/slack_handler.py:217:9: F811 redefinition of unused 'threading' from line 12
+./common/channel_handlers/slack_handler.py:246:5: C901 'SlackChannelHandler._send_via_shared_session' is too complex (13)
+./common/channel_handlers/slack_handler.py:319:17: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/slack_handler.py:319:17: E722 do not use bare 'except'
+./common/channel_handlers/slack_handler.py:361:9: F811 redefinition of unused 'requests' from line 16
+./common/channel_handlers/slack_handler.py:521:5: C901 'SlackChannelHandler._background_session_loop' is too complex (18)
+./common/channel_handlers/slack_handler.py:751:5: C901 'SlackChannelHandler.stop_session' is too complex (12)
+./common/channel_handlers/sonos_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/sonos_handler.py:10:1: F401 'tempfile' imported but unused
+./common/channel_handlers/sonos_handler.py:11:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/sonos_handler.py:11:1: F401 'typing.List' imported but unused
+./common/channel_handlers/sonos_handler.py:19:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/sonos_handler.py:71:13: F401 'soco' imported but unused
+./common/channel_handlers/sonos_handler.py:112:5: C901 'SonosChannelHandler._send' is too complex (11)
+./common/channel_handlers/sonos_handler.py:119:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/sonos_handler.py:180:13: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/sonos_handler.py:180:13: E722 do not use bare 'except'
+./common/channel_handlers/sonos_handler.py:229:25: F841 local variable 'current_track' is assigned to but never used
+./common/channel_handlers/sonos_handler.py:230:25: F841 local variable 'current_position' is assigned to but never used
+./common/channel_handlers/sonos_handler.py:233:21: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/sonos_handler.py:233:21: E722 do not use bare 'except'
+./common/channel_handlers/sonos_handler.py:261:17: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/sonos_handler.py:261:17: E722 do not use bare 'except'
+./common/channel_handlers/sonos_handler.py:284:13: F811 redefinition of unused 'tempfile' from line 10
+./common/channel_handlers/sonos_handler.py:311:13: F811 redefinition of unused 'tempfile' from line 10
+./common/channel_handlers/voice_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/voice_handler.py:10:1: F401 'threading' imported but unused
+./common/channel_handlers/voice_handler.py:12:1: F401 'typing.Dict' imported but unused
+./common/channel_handlers/voice_handler.py:12:1: F401 'typing.List' imported but unused
+./common/channel_handlers/voice_handler.py:20:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/voice_handler.py:66:5: C901 'VoiceChannelHandler._validate_requirements' is too complex (12)
+./common/channel_handlers/voice_handler.py:119:13: F401 'speech_recognition as sr' imported but unused
+./common/channel_handlers/voice_handler.py:124:13: F401 'pyaudio' imported but unused
+./common/channel_handlers/voice_handler.py:129:13: F401 'pyttsx3' imported but unused
+./common/channel_handlers/voice_handler.py:328:1: D212 Multi-line docstring summary should start at the first line
+./common/channel_handlers/voice_handler.py:425:13: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/voice_handler.py:425:13: E722 do not use bare 'except'
+./common/channel_handlers/voice_handler.py:431:13: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./common/channel_handlers/voice_handler.py:431:13: E722 do not use bare 'except'
+./common/communication_manager.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:12:1: F401 'json' imported but unused
+./common/communication_manager.py:15:1: F401 'pkgutil' imported but unused
+./common/communication_manager.py:19:1: F401 'collections.abc.Callable' imported but unused
+./common/communication_manager.py:21:1: F401 'typing.Dict' imported but unused
+./common/communication_manager.py:21:1: F401 'typing.List' imported but unused
+./common/communication_manager.py:21:1: F401 'typing.Optional' imported but unused
+./common/communication_manager.py:21:1: F401 'typing.Union' imported but unused
+./common/communication_manager.py:176:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:206:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:233:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:437:9: F811 redefinition of unused 'json' from line 12
+./common/communication_manager.py:503:21: B030 Except handlers should only be names of exception classes
+./common/communication_manager.py:618:13: F841 local variable 'task_id' is assigned to but never used
+./common/communication_manager.py:619:13: F841 local variable 'status' is assigned to but never used
+./common/communication_manager.py:728:5: C901 'CommunicationManager._send_with_delivery_guarantee' is too complex (12)
+./common/communication_manager.py:880:13: B007 Loop control variable 'channel_id' not used within the loop body. If this is intended, start the name with an underscore.
+./common/communication_manager.py:895:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:910:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:924:5: C901 'CommunicationManager.send_notification' is too complex (13)
+./common/communication_manager.py:934:1: D212 Multi-line docstring summary should start at the first line
+./common/communication_manager.py:1055:13: B007 Loop control variable 'channel_type' not used within the loop body. If this is intended, start the name with an underscore.
+./common/context_types.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/context_types.py:8:1: F401 'asyncio' imported but unused
+./common/context_types.py:9:1: F401 'json' imported but unused
+./common/context_types.py:11:1: F401 'time' imported but unused
+./common/context_types.py:12:1: F401 'datetime.datetime' imported but unused
+./common/context_types.py:14:1: F401 'typing.Dict' imported but unused
+./common/context_types.py:14:1: F401 'typing.List' imported but unused
+./common/context_types.py:14:1: F401 'typing.Optional' imported but unused
+./common/context_types.py:16:1: F401 'common.interfaces.context_interfaces.ContextProvider' imported but unused
+./common/context_types.py:16:1: F401 'common.interfaces.context_interfaces.EnvironmentProvider' imported but unused
+./common/context_types.py:16:1: F401 'common.interfaces.context_interfaces.MemoryEntry' imported but unused
+./common/context_types.py:23:1: F401 'roles.shared_tools.redis_tools.redis_write' imported but unused
+./common/context_types.py:71:5: C901 'ContextCollector.gather_context' is too complex (13)
+./common/context_types.py:150:16: F821 undefined name 'context'
+./common/event_context.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:15:1: F401 'typing.Dict' imported but unused
+./common/event_context.py:15:1: F401 'typing.Union' imported but unused
+./common/event_context.py:22:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:40:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:52:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:61:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:71:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:80:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:89:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:98:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:108:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:137:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:205:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:220:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:239:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:272:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:290:1: D212 Multi-line docstring summary should start at the first line
+./common/event_context.py:303:1: D212 Multi-line docstring summary should start at the first line
+./common/event_handler_context.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/event_handler_context.py:10:1: F401 'typing.Dict' imported but unused
+./common/event_handler_context.py:10:1: F401 'typing.List' imported but unused
+./common/event_handler_context.py:66:9: F841 local variable 'workflow_context' is assigned to but never used
+./common/event_handler_context.py:82:9: F401 'common.communication_manager.ChannelType' imported but unused
+./common/event_handler_context.py:82:9: F401 'common.communication_manager.MessageFormat' imported but unused
+./common/event_handler_llm.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/event_handler_llm.py:11:1: F401 'typing.Dict' imported but unused
+./common/event_handler_llm.py:11:1: F401 'typing.Optional' imported but unused
+./common/intent_processor.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:11:1: F401 'asyncio' imported but unused
+./common/intent_processor.py:13:1: F401 'time' imported but unused
+./common/intent_processor.py:14:1: F401 'typing.Dict' imported but unused
+./common/intent_processor.py:14:1: F401 'typing.List' imported but unused
+./common/intent_processor.py:14:1: F401 'typing.Optional' imported but unused
+./common/intent_processor.py:28:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:38:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:67:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:79:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:111:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:164:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:194:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:200:9: F841 local variable 'audit_entry' is assigned to but never used
+./common/intent_processor.py:213:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:245:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:251:9: F841 local variable 'error_entry' is assigned to but never used
+./common/intent_processor.py:274:1: D212 Multi-line docstring summary should start at the first line
+./common/intent_processor.py:283:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:15:1: F401 'typing.Dict' imported but unused
+./common/intents.py:20:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:37:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:56:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:81:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:104:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:207:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:233:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:251:1: D212 Multi-line docstring summary should start at the first line
+./common/intents.py:275:1: D212 Multi-line docstring summary should start at the first line
+./common/interfaces/context_interfaces.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/interfaces/context_interfaces.py:12:1: F401 'typing.Dict' imported but unused
+./common/interfaces/context_interfaces.py:12:1: F401 'typing.List' imported but unused
+./common/message_bus.py:9:1: F401 'threading' imported but unused
+./common/message_bus.py:10:1: F401 'time' imported but unused
+./common/message_bus.py:12:1: F401 'typing.Dict' imported but unused
+./common/message_bus.py:12:1: F401 'typing.List' imported but unused
+./common/message_bus.py:12:1: F401 'typing.Set' imported but unused
+./common/message_bus.py:260:5: C901 'MessageBus.publish' is too complex (24)
+./common/message_bus.py:426:21: F841 local variable 'loop' is assigned to but never used
+./common/message_bus.py:436:5: C901 'MessageBus._process_callback_intents' is too complex (12)
+./common/message_bus.py:442:53: B009 Do not call getattr with a constant attribute value, it is not any safer than normal property access.
+./common/message_bus.py:453:57: B009 Do not call getattr with a constant attribute value, it is not any safer than normal property access.
+./common/message_bus.py:576:5: C901 'MessageBus.publish_async' is too complex (11)
+./common/message_bus.py:577:1: D212 Multi-line docstring summary should start at the first line
+./common/providers/__init__.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/providers/mqtt_location_provider.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/providers/mqtt_location_provider.py:11:1: F401 'datetime.datetime' imported but unused
+./common/providers/mqtt_location_provider.py:12:1: F401 'typing.List' imported but unused
+./common/providers/redis_memory_provider.py:1:1: D212 Multi-line docstring summary should start at the first line
+./common/providers/redis_memory_provider.py:8:1: F401 'json' imported but unused
+./common/providers/redis_memory_provider.py:10:1: F401 'time' imported but unused
+./common/providers/redis_memory_provider.py:12:1: F401 'typing.List' imported but unused
+./config/base_config.py:8:1: F401 'typing.Optional' imported but unused
+./llm_provider/factory.py:11:1: F401 'typing.Optional' imported but unused
+./llm_provider/mcp_client.py:141:13: F841 local variable 'keywords' is assigned to but never used
+./llm_provider/mcp_client.py:143:25: F821 undefined name 'role_tool_mapping'
+./llm_provider/role_registry.py:12:1: F401 'typing.TYPE_CHECKING' imported but unused
+./llm_provider/role_registry.py:12:1: F401 'typing.Optional' imported but unused
+./llm_provider/role_registry.py:225:5: C901 'RoleRegistry._load_single_file_role' is too complex (11)
+./llm_provider/role_schema.py:7:1: F401 'typing.Dict' imported but unused
+./llm_provider/role_schema.py:7:1: F401 'typing.List' imported but unused
+./llm_provider/role_schema.py:7:1: F401 'typing.Union' imported but unused
+./llm_provider/role_schema.py:21:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:36:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:49:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:56:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:70:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:80:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:91:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:102:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:112:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:122:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:134:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:144:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:154:1: D106 Missing docstring in public nested class
+./llm_provider/role_schema.py:209:1: D106 Missing docstring in public nested class
+./llm_provider/universal_agent.py:10:1: F401 'enum.Enum' imported but unused
+./llm_provider/universal_agent.py:32:1: D107 Missing docstring in __init__
+./llm_provider/universal_agent.py:36:1: D102 Missing docstring in public method
+./llm_provider/universal_agent.py:39:5: C901 'IntentProcessingHook._process_tool_result_intents' is too complex (13)
+./llm_provider/universal_agent.py:41:22: F541 f-string is missing placeholders
+./llm_provider/universal_agent.py:44:26: F541 f-string is missing placeholders
+./llm_provider/universal_agent.py:342:5: C901 'UniversalAgent._execute_task_with_lifecycle' is too complex (26)
+./llm_provider/universal_agent.py:367:9: F401 'asyncio' imported but unused
+./llm_provider/universal_agent.py:556:9: F401 'asyncio' imported but unused
+./llm_provider/universal_agent.py:557:9: F401 'inspect' imported but unused
+./llm_provider/universal_agent.py:1183:26: F541 f-string is missing placeholders
+./llm_provider/universal_agent.py:1200:30: F541 f-string is missing placeholders
+./llm_provider/universal_agent.py:1204:21: F541 f-string is missing placeholders
+./roles/archived/calendar/lifecycle.py:10:1: F401 'typing.Dict' imported but unused
+./roles/archived/calendar/lifecycle.py:87:1: C901 'validate_calendar_request' is too complex (12)
+./roles/archived/calendar/lifecycle.py:231:1: C901 '_parse_datetime_string' is too complex (14)
+./roles/archived/shared_tools/event_subscriber.py:1:1: D212 Multi-line docstring summary should start at the first line
+./roles/archived/shared_tools/event_subscriber.py:9:1: F401 'asyncio' imported but unused
+./roles/archived/shared_tools/event_subscriber.py:14:1: F401 'typing.Dict' imported but unused
+./roles/archived/shared_tools/event_subscriber.py:190:9: F401 'common.communication_manager.ChannelType' imported but unused
+./roles/archived/shared_tools/event_subscriber.py:190:9: F401 'common.communication_manager.CommunicationManager' imported but unused
+./roles/archived/shared_tools/event_subscriber.py:190:9: F401 'common.communication_manager.MessageFormat' imported but unused
+./roles/archived/shared_tools/event_subscriber.py:201:9: F841 local variable 'execution_context' is assigned to but never used
+./roles/archived/shared_tools/event_subscriber.py:254:9: F841 local variable 'execution_context' is assigned to but never used
+./roles/archived/shared_tools/event_subscriber.py:287:1: D107 Missing docstring in __init__
+./roles/core_calendar.py:19:1: F401 'typing.Dict' imported but unused
+./roles/core_calendar.py:19:1: F401 'typing.List' imported but unused
+./roles/core_calendar.py:24:1: F401 'common.intents.AuditIntent' imported but unused
+./roles/core_calendar.py:194:5: F841 local variable 'event_data' is assigned to but never used
+./roles/core_conversation.py:23:1: F401 'typing.Dict' imported but unused
+./roles/core_conversation.py:23:1: F401 'typing.List' imported but unused
+./roles/core_conversation.py:23:1: F401 'typing.Optional' imported but unused
+./roles/core_conversation.py:27:1: F401 'common.intents.NotificationIntent' imported but unused
+./roles/core_conversation.py:323:1: C901 '_search_topics_with_relevance' is too complex (12)
+./roles/core_conversation.py:328:9: F401 'roles.shared_tools.redis_tools.redis_write' imported but unused
+./roles/core_conversation.py:586:9: F841 local variable 'conversation_text' is assigned to but never used
+./roles/core_planning.py:14:1: F401 'json' imported but unused
+./roles/core_planning.py:17:1: F401 'typing.Union' imported but unused
+./roles/core_planning.py:142:1: C901 'validate_task_graph' is too complex (12)
+./roles/core_planning.py:145:9: F811 redefinition of unused 'json' from line 14
+./roles/core_planning.py:318:9: F811 redefinition of unused 'json' from line 14
+./roles/core_router.py:10:1: F401 'json' imported but unused
+./roles/core_router.py:14:1: F401 'typing.Dict' imported but unused
+./roles/core_router.py:14:1: F401 'typing.List' imported but unused
+./roles/core_router.py:39:1: D106 Missing docstring in public nested class
+./roles/core_router.py:237:9: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./roles/core_router.py:278:9: F811 redefinition of unused 'json' from line 10
+./roles/core_search.py:20:1: F401 'typing.Dict' imported but unused
+./roles/core_search.py:20:1: F401 'typing.List' imported but unused
+./roles/core_search.py:328:5: F841 local variable 'e' is assigned to but never used
+./roles/core_smart_home.py:20:1: F401 'typing.Dict' imported but unused
+./roles/core_smart_home.py:20:1: F401 'typing.List' imported but unused
+./roles/core_smart_home.py:336:24: F541 f-string is missing placeholders
+./roles/core_timer.py:21:1: F401 'typing.Dict' imported but unused
+./roles/core_timer.py:21:1: F401 'typing.List' imported but unused
+./roles/core_timer.py:353:1: C901 '_parse_duration' is too complex (11)
+./roles/core_timer.py:589:25: F541 f-string is missing placeholders
+./roles/core_weather.py:15:1: F401 'typing.Dict' imported but unused
+./roles/core_weather.py:15:1: F401 'typing.List' imported but unused
+./roles/core_weather.py:132:29: F541 f-string is missing placeholders
+./slack.py:11:1: F401 'threading' imported but unused
+./slack.py:83:13: F401 'common.message_bus.MessageType' imported but unused
+./slack.py:386:43: F821 undefined name 'Optional'
+./supervisor/intent_metrics_dashboard.py:1:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:14:1: F401 'typing.Dict' imported but unused
+./supervisor/intent_metrics_dashboard.py:14:1: F401 'typing.List' imported but unused
+./supervisor/intent_metrics_dashboard.py:20:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:288:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:375:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:389:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:409:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:425:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:438:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:449:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/intent_metrics_dashboard.py:460:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/memory_assessor.py:14:1: F401 'llm_provider.factory.LLMType' imported but unused
+./supervisor/supervisor.py:14:1: F401 'typing.List' imported but unused
+./supervisor/supervisor.py:90:5: C901 'Supervisor.process_scheduled_tasks' is too complex (12)
+./supervisor/supervisor.py:428:16: F541 f-string is missing placeholders
+./supervisor/supervisor.py:440:17: F821 undefined name 'MessageType'
+./supervisor/supervisor.py:745:13: F841 local variable 'loop' is assigned to but never used
+./supervisor/threading_monitor.py:1:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:15:1: F401 'typing.Dict' imported but unused
+./supervisor/threading_monitor.py:15:1: F401 'typing.List' imported but unused
+./supervisor/threading_monitor.py:21:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:45:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:85:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:103:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:123:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:137:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:205:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:241:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:283:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:297:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/threading_monitor.py:308:1: D212 Multi-line docstring summary should start at the first line
+./supervisor/workflow_engine.py:15:1: F401 'typing.Optional' imported but unused
+./supervisor/workflow_engine.py:26:1: F401 'common.task_graph.TaskGraph' imported but unused
+./supervisor/workflow_engine.py:290:24: F541 f-string is missing placeholders
+./supervisor/workflow_engine.py:297:5: C901 'WorkflowEngine._handle_fast_reply' is too complex (13)
+./supervisor/workflow_engine.py:362:17: F811 redefinition of unused 'TaskGraph' from line 26
+./supervisor/workflow_engine.py:468:21: F541 f-string is missing placeholders
+./supervisor/workflow_engine.py:1486:13: F841 local variable 'routing_instruction' is assigned to but never used
+./supervisor/workflow_engine.py:1736:9: F841 local variable 'fallback_routing' is assigned to but never used
+./supervisor/workflow_engine.py:1747:9: F401 'common.task_graph.TaskNode' imported but unused
+./supervisor/workflow_engine.py:1747:9: F401 'common.task_graph.TaskStatus' imported but unused
+./supervisor/workflow_engine.py:1747:9: F811 redefinition of unused 'TaskGraph' from line 26
+./supervisor/workflow_engine.py:1882:13: B007 Loop control variable 'task_id' not used within the loop body. If this is intended, start the name with an underscore.
+./supervisor/workflow_engine.py:1890:40: F821 undefined name 'enhanced_request'
+./supervisor/workflow_engine.py:1890:58: F821 undefined name 'fallback_routing'
+./tests/conftest.py:12:1: PT004 fixture 'mock_planning_phase' does not return anything, add leading underscore
+./tests/conftest.py:42:15: F821 undefined name 'mock_create_plan'
+./tests/debug/test_conversation_prompt_injection.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/debug/test_conversation_prompt_injection.py:10:1: F401 'json' imported but unused
+./tests/integration/test_context_aware_end_to_end.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_context_aware_end_to_end.py:11:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/integration/test_context_aware_end_to_end.py:15:1: F401 'common.context_types.ContextType' imported but unused
+./tests/integration/test_context_aware_end_to_end.py:17:1: F401 'common.request_model.RequestMetadata' imported but unused
+./tests/integration/test_context_aware_end_to_end.py:208:17: B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
+./tests/integration/test_context_aware_end_to_end.py:208:17: PT015 assertion always fails, replace with pytest.fail()
+./tests/integration/test_context_aware_end_to_end.py:281:9: F811 redefinition of unused 'ContextType' from line 15
+./tests/integration/test_context_aware_end_to_end.py:394:13: B007 Loop control variable 'prompt' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_end_to_end.py:394:21: B007 Loop control variable 'expected_role' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_end_to_end.py:409:13: B007 Loop control variable 'prompt' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_context_aware_integration.py:8:1: F401 'asyncio' imported but unused
+./tests/integration/test_context_aware_integration.py:9:1: F401 'datetime.datetime' imported but unused
+./tests/integration/test_context_aware_integration.py:14:1: F401 'common.context_types.ContextType' imported but unused
+./tests/integration/test_context_aware_integration.py:15:1: F401 'common.interfaces.context_interfaces.MemoryEntry' imported but unused
+./tests/integration/test_context_aware_integration.py:16:1: F401 'common.request_model.RequestMetadata' imported but unused
+./tests/integration/test_context_aware_integration.py:178:9: F401 'roles.core_calendar.ROLE_CONFIG' imported but unused
+./tests/integration/test_context_aware_integration.py:232:9: F811 redefinition of unused 'ContextType' from line 14
+./tests/integration/test_context_aware_integration.py:280:13: B007 Loop control variable 'request' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_integration.py:293:13: B007 Loop control variable 'request' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_integration.py:306:13: B007 Loop control variable 'request' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_context_aware_integration.py:319:13: B007 Loop control variable 'request' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_conversation_memory_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_conversation_memory_integration.py:10:1: F401 'asyncio' imported but unused
+./tests/integration/test_docker_redis_setup.py:3:1: F401 'json' imported but unused
+./tests/integration/test_document_35_end_to_end.py:11:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/integration/test_document_35_end_to_end.py:11:1: F401 'unittest.mock.patch' imported but unused
+./tests/integration/test_document_35_end_to_end.py:16:1: F401 'llm_provider.factory.LLMFactory' imported but unused
+./tests/integration/test_document_35_end_to_end.py:16:1: F401 'llm_provider.factory.LLMType' imported but unused
+./tests/integration/test_document_35_end_to_end.py:17:1: F401 'llm_provider.role_registry.RoleRegistry' imported but unused
+./tests/integration/test_document_35_end_to_end.py:18:1: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./tests/integration/test_document_35_end_to_end.py:347:13: B007 Loop control variable 'i' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/integration/test_document_35_end_to_end.py:367:5: C901 'TestDocument35EndToEnd.test_context_field_handling_robustness' is too complex (12)
+./tests/integration/test_document_35_end_to_end.py:537:9: F401 'threading' imported but unused
+./tests/integration/test_intent_based_planning_integration.py:10:1: F401 'unittest.mock.patch' imported but unused
+./tests/integration/test_intent_based_planning_integration.py:15:1: F401 'llm_provider.factory.LLMFactory' imported but unused
+./tests/integration/test_intent_based_planning_integration.py:15:1: F401 'llm_provider.factory.LLMType' imported but unused
+./tests/integration/test_intent_based_planning_integration.py:16:1: F401 'llm_provider.role_registry.RoleRegistry' imported but unused
+./tests/integration/test_intent_based_planning_integration.py:17:1: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./tests/integration/test_phase2_intent_detection.py:16:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/integration/test_phase2_intent_detection.py:16:1: F401 'unittest.mock.patch' imported but unused
+./tests/integration/test_phase2_intent_detection.py:18:1: F401 'pytest' imported but unused
+./tests/integration/test_phase2_intent_detection.py:21:1: F401 'common.task_context.TaskContext' imported but unused
+./tests/integration/test_phase2_intent_detection.py:22:1: F401 'common.task_graph.TaskGraph' imported but unused
+./tests/integration/test_phase2_intent_detection.py:23:1: F401 'llm_provider.factory.LLMFactory' imported but unused
+./tests/integration/test_phase2_intent_detection.py:23:1: F401 'llm_provider.factory.LLMType' imported but unused
+./tests/integration/test_phase2_intent_detection.py:24:1: F401 'llm_provider.role_registry.RoleRegistry' imported but unused
+./tests/integration/test_phase2_intent_detection.py:25:1: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./tests/integration/test_planning_role_execution.py:8:1: F401 'time' imported but unused
+./tests/integration/test_planning_role_execution.py:13:1: F401 'common.task_context.TaskContext' imported but unused
+./tests/integration/test_planning_role_execution.py:14:1: F401 'common.task_graph.TaskGraph' imported but unused
+./tests/integration/test_planning_role_execution.py:14:1: F401 'common.task_graph.TaskNode' imported but unused
+./tests/integration/test_planning_role_execution.py:15:1: F401 'llm_provider.role_registry.RoleRegistry' imported but unused
+./tests/integration/test_planning_role_execution.py:16:1: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./tests/integration/test_threading_fixes.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_threading_fixes.py:16:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/integration/test_threading_fixes.py:65:9: F401 'supervisor.config_manager.ConfigManager' imported but unused
+./tests/integration/test_threading_fixes.py:66:9: F401 'supervisor.supervisor_config.SupervisorConfig' imported but unused
+./tests/integration/test_timer_notification_routing.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_timer_notification_routing.py:7:1: F401 'asyncio' imported but unused
+./tests/integration/test_timer_notification_routing.py:8:1: F401 'logging' imported but unused
+./tests/integration/test_timer_notification_routing.py:9:1: F401 'time' imported but unused
+./tests/integration/test_timer_notification_routing.py:10:1: F401 'unittest.mock' imported but unused
+./tests/integration/test_timer_notification_routing.py:11:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/integration/test_timer_notification_routing.py:17:1: F401 'common.communication_manager.ChannelType' imported but unused
+./tests/integration/test_timer_notification_routing.py:19:1: F401 'common.request_model.RequestMetadata' imported but unused
+./tests/integration/test_timer_notification_routing.py:20:1: F401 'llm_provider.factory.LLMFactory' imported but unused
+./tests/integration/test_timer_notification_routing.py:20:1: F401 'llm_provider.factory.LLMType' imported but unused
+./tests/integration/test_timer_notification_routing.py:24:1: F401 'supervisor.workflow_engine.WorkflowEngine' imported but unused
+./tests/integration/test_timer_notification_routing.py:152:9: F841 local variable 'comm_manager' is assigned to but never used
+./tests/integration/test_timer_notification_routing.py:163:9: F841 local variable 'result' is assigned to but never used
+./tests/integration/test_timer_notification_routing.py:250:9: F841 local variable 'mock_configs' is assigned to but never used
+./tests/integration/test_timer_notification_routing.py:273:21: F841 local variable 'result' is assigned to but never used
+./tests/integration/test_unified_communication_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_unified_communication_integration.py:9:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/integration/test_unified_communication_integration.py:9:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/integration/test_unified_communication_integration.py:26:1: D107 Missing docstring in __init__
+./tests/integration/test_unified_result_storage.py:16:1: F401 'llm_provider.factory.LLMType' imported but unused
+./tests/integration/test_workflow_parameter_passing.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/integration/test_workflow_parameter_passing.py:8:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/integration/test_workflow_parameter_passing.py:8:1: F401 'unittest.mock.patch' imported but unused
+./tests/integration/test_workflow_parameter_passing.py:16:1: F401 'llm_provider.role_registry.RoleRegistry' imported but unused
+./tests/integration/test_workflow_parameter_passing.py:17:1: F401 'llm_provider.universal_agent.UniversalAgent' imported but unused
+./tests/llm_provider/test_comprehensive_universal_agent.py:5:1: F401 'common.communication_manager.DeliveryGuarantee' imported but unused
+./tests/performance/test_threading_performance.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/performance/test_threading_performance.py:14:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/test_intent_configuration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/test_intent_processor.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/test_intent_processor.py:11:1: F401 'typing.List' imported but unused
+./tests/test_intent_processor.py:12:1: F401 'unittest.mock.call' imported but unused
+./tests/test_intents.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/test_intents.py:10:1: F401 'time' imported but unused
+./tests/test_intents.py:11:1: F401 'unittest.mock.Mock' imported but unused
+./tests/test_intents.py:15:1: F401 'common.intents.Intent' imported but unused
+./tests/test_production_deployment.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/test_production_deployment.py:10:1: F401 'tempfile' imported but unused
+./tests/test_production_deployment.py:12:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/test_production_deployment.py:12:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/test_production_deployment.py:330:13: B007 Loop control variable 'i' not used within the loop body. If this is intended, start the name with an underscore.
+./tests/test_single_file_timer_role.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/test_single_file_timer_role.py:17:1: F401 'dataclasses.dataclass' imported but unused
+./tests/test_single_file_timer_role.py:18:1: F401 'typing.List' imported but unused
+./tests/test_single_file_timer_role.py:432:20: E721 do not compare types, for exact checks use `is` / `is not`, for instance checks use `isinstance()`
+./tests/unit/test_bidirectional_communication.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_bidirectional_communication.py:9:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_bidirectional_communication.py:14:1: F401 'common.communication_manager.DeliveryGuarantee' imported but unused
+./tests/unit/test_bidirectional_communication.py:14:1: F401 'common.communication_manager.MessageFormat' imported but unused
+./tests/unit/test_calendar_role.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_calendar_role.py:9:1: F401 'datetime.datetime' imported but unused
+./tests/unit/test_calendar_role.py:10:1: F401 'typing.Any' imported but unused
+./tests/unit/test_calendar_role.py:10:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_calendar_role.py:10:1: F401 'typing.List' imported but unused
+./tests/unit/test_calendar_role.py:11:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/unit/test_calendar_role.py:11:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_communication_manager.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_communication_manager.py:7:1: F401 'asyncio' imported but unused
+./tests/unit/test_communication_manager.py:8:1: F401 'unittest' imported but unused
+./tests/unit/test_communication_manager.py:9:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/unit/test_communication_manager.py:13:1: F401 'common.communication_manager.DeliveryGuarantee' imported but unused
+./tests/unit/test_communication_manager.py:13:1: F401 'common.communication_manager.MessageFormat' imported but unused
+./tests/unit/test_communication_manager.py:27:1: D107 Missing docstring in __init__
+./tests/unit/test_communication_manager.py:52:5: PT004 fixture 'setup_method' does not return anything, add leading underscore
+./tests/unit/test_communication_manager_lifecycle.py:12:1: F401 'pytest' imported but unused
+./tests/unit/test_context_collector.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_context_collector.py:9:1: F401 'typing.Any' imported but unused
+./tests/unit/test_context_collector.py:9:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_context_collector.py:9:1: F401 'typing.List' imported but unused
+./tests/unit/test_context_collector.py:52:1: D107 Missing docstring in __init__
+./tests/unit/test_context_collector.py:82:1: D107 Missing docstring in __init__
+./tests/unit/test_context_collector.py:395:9: F841 local variable 'collector' is assigned to but never used
+./tests/unit/test_context_interfaces.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_context_interfaces.py:9:1: F401 'typing.List' imported but unused
+./tests/unit/test_context_interfaces.py:10:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/unit/test_context_interfaces.py:10:1: F401 'unittest.mock.Mock' imported but unused
+./tests/unit/test_conversation_role.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_conversation_role.py:14:1: F401 'common.intents.NotificationIntent' imported but unused
+./tests/unit/test_conversation_role.py:15:1: F401 'roles.core_conversation.process_topic_search_intent' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_dynamic_channel_handlers.py:7:1: F401 'asyncio' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:8:1: F401 'os' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:9:1: F401 'shutil' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:10:1: F401 'tempfile' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:12:1: F401 'unittest.mock.mock_open' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:14:1: F401 'pytest' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:16:1: F401 'common.communication_manager.DeliveryGuarantee' imported but unused
+./tests/unit/test_dynamic_channel_handlers.py:73:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_dynamic_channel_handlers.py:76:9: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_dynamic_channel_handlers.py:77:9: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_dynamic_channel_handlers.py:78:9: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_dynamic_channel_handlers.py:106:13: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_dynamic_channel_handlers.py:109:13: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_dynamic_role_generation.py:145:65: F841 local variable 'mock_calc' is assigned to but never used
+./tests/unit/test_dynamic_role_generation.py:146:64: F841 local variable 'mock_file_read' is assigned to but never used
+./tests/unit/test_dynamic_role_generation.py:147:60: F841 local variable 'mock_shell' is assigned to but never used
+./tests/unit/test_enhanced_role_registry.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_enhanced_role_registry.py:9:1: F401 'pathlib.Path' imported but unused
+./tests/unit/test_enhanced_role_registry.py:10:1: F401 'typing.Any' imported but unused
+./tests/unit/test_enhanced_role_registry.py:10:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_enhanced_role_registry.py:11:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_enhanced_role_registry.py:15:1: F401 'common.event_handler_llm.EventHandlerLLM' imported but unused
+./tests/unit/test_enhanced_role_registry.py:17:1: F401 'llm_provider.role_registry.RoleDefinition' imported but unused
+./tests/unit/test_enhanced_role_registry.py:261:56: F841 local variable 'mock_open' is assigned to but never used
+./tests/unit/test_enhanced_role_registry.py:272:17: F841 local variable 'role_def' is assigned to but never used
+./tests/unit/test_intent_processor_workflow_handling.py:9:1: F401 'asyncio' imported but unused
+./tests/unit/test_intent_processor_workflow_handling.py:11:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_mqtt_location_provider.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_mqtt_location_provider.py:10:1: F401 'datetime.datetime' imported but unused
+./tests/unit/test_mqtt_location_provider.py:11:1: F401 'typing.Optional' imported but unused
+./tests/unit/test_mqtt_location_provider.py:12:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_mqtt_location_provider.py:16:1: F401 'common.interfaces.context_interfaces.LocationData' imported but unused
+./tests/unit/test_planning_role_intent_creation.py:10:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_planning_role_intent_publishing.py:12:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_planning_role_intent_publishing.py:80:9: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_planning_role_intent_publishing.py:80:9: F811 redefinition of unused 'patch' from line 12
+./tests/unit/test_redis_memory_provider.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_redis_memory_provider.py:9:1: F401 'typing.List' imported but unused
+./tests/unit/test_redis_memory_provider.py:10:1: F401 'unittest.mock.Mock' imported but unused
+./tests/unit/test_role_llm_type_integration.py:5:1: F401 'pytest' imported but unused
+./tests/unit/test_router_json_response.py:7:1: F401 'json' imported but unused
+./tests/unit/test_router_json_response.py:10:1: F401 'unittest.mock.Mock' imported but unused
+./tests/unit/test_router_json_response.py:10:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_router_single_file_updated.py:9:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_router_single_file_updated.py:11:1: F401 'pytest' imported but unused
+./tests/unit/test_router_type_safety.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_router_type_safety.py:8:1: F401 'typing.Any' imported but unused
+./tests/unit/test_router_type_safety.py:8:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_slack_app_mention_fix.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_slack_app_mention_fix.py:12:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_slack_app_mention_fix.py:12:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_slack_app_mention_fix.py:14:1: F401 'pytest' imported but unused
+./tests/unit/test_slack_app_mention_fix.py:50:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:60:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:63:9: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_slack_app_mention_fix.py:64:9: PT009 use a regular assert instead of unittest-style 'assertIn'
+./tests/unit/test_slack_app_mention_fix.py:115:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:119:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:168:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:172:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:173:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:174:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:175:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:176:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:203:13: F841 local variable 'message' is assigned to but never used
+./tests/unit/test_slack_app_mention_fix.py:210:9: PT009 use a regular assert instead of unittest-style 'assertEqual'
+./tests/unit/test_slack_app_mention_fix.py:213:9: PT009 use a regular assert instead of unittest-style 'assertLess'
+./tests/unit/test_slack_app_mention_fix.py:214:9: PT009 use a regular assert instead of unittest-style 'assertLess'
+./tests/unit/test_slack_app_mention_handler.py:1:1: D200 One-line docstring should fit on one line with quotes
+./tests/unit/test_slack_app_mention_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_slack_mention_enhancement.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_slack_mention_enhancement.py:9:1: F401 'unittest.mock.Mock' imported but unused
+./tests/unit/test_slack_session_cleanup.py:1:1: D200 One-line docstring should fit on one line with quotes
+./tests/unit/test_slack_session_cleanup.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_slack_workflow_fixes.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_slack_workflow_fixes.py:9:1: F401 'asyncio' imported but unused
+./tests/unit/test_slack_workflow_fixes.py:145:13: F841 local variable 'request_id' is assigned to but never used
+./tests/unit/test_slack_workflow_integration_fix.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_smart_home_mcp_integration.py:8:1: F401 'typing.Any' imported but unused
+./tests/unit/test_smart_home_mcp_integration.py:8:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_smart_home_mcp_integration.py:9:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/unit/test_sonos_handler.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_sonos_handler.py:8:1: F401 'asyncio' imported but unused
+./tests/unit/test_sonos_handler.py:9:1: F401 'unittest.mock.mock_open' imported but unused
+./tests/unit/test_supervisor_context_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_supervisor_context_integration.py:8:1: F401 'typing.Optional' imported but unused
+./tests/unit/test_supervisor_context_integration.py:102:13: B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
+./tests/unit/test_supervisor_context_integration.py:102:13: PT015 assertion always fails, replace with pytest.fail()
+./tests/unit/test_supervisor_context_integration.py:104:13: PT017 found assertion on exception e in except block, use pytest.raises() instead
+./tests/unit/test_supervisor_scheduled_tasks.py:10:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_supervisor_scheduled_tasks.py:12:1: F401 'pytest' imported but unused
+./tests/unit/test_supervisor_scheduled_tasks.py:230:9: F841 local variable 'initial_count' is assigned to but never used
+./tests/unit/test_timer_system_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_timer_system_integration.py:11:1: F401 'time' imported but unused
+./tests/unit/test_timer_system_integration.py:12:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_timer_system_integration.py:12:1: F401 'unittest.mock.Mock' imported but unused
+./tests/unit/test_timer_system_integration.py:14:1: F401 'pytest' imported but unused
+./tests/unit/test_unified_communication_manager.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_unified_communication_manager.py:9:1: F401 'unittest.mock.AsyncMock' imported but unused
+./tests/unit/test_unified_communication_manager.py:9:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_unified_communication_manager.py:28:1: D107 Missing docstring in __init__
+./tests/unit/test_unified_communication_manager.py:70:1: D107 Missing docstring in __init__
+./tests/unit/test_weather_timeframe_mapping.py:7:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_weather_timeframe_mapping.py:9:1: F401 'pytest' imported but unused
+./tests/unit/test_weather_timeframe_mapping.py:124:17: B001 Do not use bare `except:`, it also catches unexpected events like memory errors, interrupts, system exit, and so on.  Prefer excepting specific exceptions  If you're sure what you're doing, be explicit and write `except BaseException:`.
+./tests/unit/test_weather_timeframe_mapping.py:124:17: E722 do not use bare 'except'
+./tests/unit/test_workflow_engine_context_integration.py:1:1: D212 Multi-line docstring summary should start at the first line
+./tests/unit/test_workflow_engine_context_integration.py:8:1: F401 'json' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:9:1: F401 'datetime.datetime' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:10:1: F401 'typing.Dict' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:10:1: F401 'typing.List' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:11:1: F401 'unittest.mock.MagicMock' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:11:1: F401 'unittest.mock.patch' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:15:1: F401 'common.context_types.ContextCollector' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:15:1: F401 'common.context_types.ContextType' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:16:1: F401 'common.interfaces.context_interfaces.LocationProvider' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:16:1: F401 'common.interfaces.context_interfaces.MemoryEntry' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:16:1: F401 'common.interfaces.context_interfaces.MemoryProvider' imported but unused
+./tests/unit/test_workflow_engine_context_integration.py:27:1: D107 Missing docstring in __init__
+./tests/unit/test_workflow_engine_context_integration.py:49:1: D107 Missing docstring in __init__
+./tests/unit/test_workflow_engine_context_integration.py:117:9: F841 local variable 'workflow_engine' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:120:9: F841 local variable 'base_prompt' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:124:9: F841 local variable 'expected_parts' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:131:9: F841 local variable 'base_prompt' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:148:9: F841 local variable 'base_prompt' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:159:9: F841 local variable 'base_prompt' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:173:9: F841 local variable 'base_prompt' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:310:13: F841 local variable 'context' is assigned to but never used
+./tests/unit/test_workflow_engine_context_integration.py:311:13: B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
+./tests/unit/test_workflow_engine_context_integration.py:311:13: PT015 assertion always fails, replace with pytest.fail()
+./tests/unit/test_workflow_engine_context_integration.py:313:13: PT017 found assertion on exception e in except block, use pytest.raises() instead
+./tests/unit/test_workflow_engine_context_integration.py:328:13: B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
+./tests/unit/test_workflow_engine_context_integration.py:328:13: PT015 assertion always fails, replace with pytest.fail()
+./tests/unit/test_workflow_engine_context_integration.py:330:13: PT017 found assertion on exception e in except block, use pytest.raises() instead
+./tests/unit/test_workflow_engine_intent_execution.py:9:1: F401 'time' imported but unused
+./tests/unit/test_workflow_engine_intent_execution.py:12:1: F401 'pytest' imported but unused
+./tests/unit/test_workflow_engine_intent_execution.py:15:1: F401 'common.message_bus.MessageType' imported but unused

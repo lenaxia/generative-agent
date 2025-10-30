@@ -7,7 +7,6 @@ This test verifies:
 3. Whether the prompt formatting is working correctly
 """
 
-import json
 import time
 from unittest.mock import Mock, patch
 

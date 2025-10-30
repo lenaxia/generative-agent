@@ -4,9 +4,7 @@ Validates that the weather role correctly processes timeframe parameters
 from the router and fetches appropriate weather data (current vs forecast).
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from roles.core_weather import fetch_weather_data_for_request
 

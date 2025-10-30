@@ -7,14 +7,11 @@ Following Documents 25 & 26 LLM-safe architecture patterns.
 """
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
 from common.intents import WorkflowIntent
-from llm_provider.factory import LLMFactory, LLMType
-from llm_provider.role_registry import RoleRegistry
-from llm_provider.universal_agent import UniversalAgent
 from roles.core_planning import execute_task_graph
 
 

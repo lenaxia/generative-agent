@@ -6,9 +6,8 @@ following Document 35 Phase 2 implementation for LLM-safe architecture complianc
 Following Documents 25 & 26 LLM-safe architecture patterns.
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 

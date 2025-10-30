@@ -9,8 +9,6 @@ Following Documents 25 & 26 LLM-safe architecture patterns.
 import time
 from unittest.mock import Mock
 
-import pytest
-
 from common.communication_manager import CommunicationManager
 from common.message_bus import MessageBus, MessageType
 

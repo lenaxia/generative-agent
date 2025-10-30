@@ -7,7 +7,6 @@ This test replicates the scenario where:
 3. Agent should remember the height from previous message
 """
 
-import asyncio
 import json
 import time
 from unittest.mock import Mock, patch

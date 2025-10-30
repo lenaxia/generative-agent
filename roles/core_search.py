@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import requests
 from strands import tool
@@ -95,8 +95,8 @@ class SearchIntent(Intent):
     query: str
     max_results: int = 5
     search_depth: str = "basic"
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+    user_id: str | None = None
+    channel_id: str | None = None
 
     def validate(self) -> bool:
         """Validate search intent parameters."""
@@ -114,8 +114,8 @@ class NewsSearchIntent(Intent):
 
     query: str
     max_results: int = 5
-    user_id: Optional[str] = None
-    channel_id: Optional[str] = None
+    user_id: str | None = None
+    channel_id: str | None = None
 
     def validate(self) -> bool:
         """Validate news search intent parameters."""

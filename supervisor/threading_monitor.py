@@ -12,7 +12,7 @@ import asyncio
 import logging
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ThreadingMonitor:
         self._intent_processing_history: list[float] = []
         self._max_history_size = 100
         self._error_count = 0
-        self._last_error_time: Optional[float] = None
+        self._last_error_time: float | None = None
 
     def get_threading_health(self) -> dict[str, Any]:
         """
@@ -276,7 +276,7 @@ class ThreadingMonitor:
 
 
 # Global threading monitor instance
-_threading_monitor: Optional[ThreadingMonitor] = None
+_threading_monitor: ThreadingMonitor | None = None
 
 
 def get_threading_monitor() -> ThreadingMonitor:

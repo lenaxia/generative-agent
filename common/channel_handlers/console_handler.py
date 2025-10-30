@@ -7,7 +7,7 @@ and as a fallback when other channels are unavailable.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from common.communication_manager import ChannelHandler, ChannelType, MessageFormat
 
@@ -24,7 +24,7 @@ class ConsoleChannelHandler(ChannelHandler):
 
     channel_type = ChannelType.CONSOLE
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the console channel handler."""
         super().__init__(config)
 
@@ -48,7 +48,7 @@ class ConsoleChannelHandler(ChannelHandler):
     async def _send(
         self,
         message: str,
-        recipient: Optional[str],
+        recipient: str | None,
         message_format: MessageFormat,
         metadata: dict[str, Any],
     ) -> dict[str, Any]:

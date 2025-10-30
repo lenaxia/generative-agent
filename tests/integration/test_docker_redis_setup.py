@@ -1,6 +1,5 @@
 """Integration tests for Docker Redis setup."""
 
-import json
 import subprocess
 import time
 from unittest.mock import patch

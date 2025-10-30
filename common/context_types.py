@@ -5,22 +5,12 @@ This module provides enum-based context types and a ContextCollector class
 for surgical context gathering with interface-driven design.
 """
 
-import asyncio
-import json
 import logging
-import time
-from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from common.interfaces.context_interfaces import (
-    ContextProvider,
-    EnvironmentProvider,
-    LocationProvider,
-    MemoryEntry,
-    MemoryProvider,
-)
-from roles.shared_tools.redis_tools import redis_get_keys, redis_read, redis_write
+from common.interfaces.context_interfaces import LocationProvider, MemoryProvider
+from roles.shared_tools.redis_tools import redis_get_keys, redis_read
 
 logger = logging.getLogger(__name__)
 

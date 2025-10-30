@@ -6,12 +6,12 @@ events from the MessageBus, enabling delayed actions, cross-role communication,
 and complex event-driven workflows.
 """
 
-import asyncio
 import json
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 
 from common.message_bus import MessageBus, MessageType
 
@@ -47,7 +47,7 @@ class EventSubscriber:
         role_name: str,
         workflow_engine,
         universal_agent,
-        message_bus: Optional[MessageBus] = None,
+        message_bus: MessageBus | None = None,
     ):
         """Initialize event subscriber for a specific role.
 
@@ -187,11 +187,6 @@ Respond in JSON format:
         self, parsed_action: dict[str, Any], event_data: dict[str, Any]
     ):
         """Handle simple notification actions."""
-        from common.communication_manager import (
-            ChannelType,
-            CommunicationManager,
-            MessageFormat,
-        )
 
         # Get communication manager (would need to be injected or accessed)
         # This is a design decision - how to access CommunicationManager

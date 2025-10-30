@@ -9,9 +9,6 @@ import queue
 import threading
 import time
 import unittest
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 class TestSlackAppMentionFix(unittest.TestCase):

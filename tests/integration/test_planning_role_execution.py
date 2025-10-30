@@ -5,15 +5,11 @@ following the post-lifecycle fix implementation.
 """
 
 import json
-import time
 from unittest.mock import Mock, patch
 
 import pytest
 
-from common.task_context import TaskContext
-from common.task_graph import TaskGraph, TaskNode, TaskStatus
-from llm_provider.role_registry import RoleRegistry
-from llm_provider.universal_agent import UniversalAgent
+from common.task_graph import TaskStatus
 from roles.core_planning import execute_task_graph
 
 

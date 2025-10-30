@@ -6,10 +6,9 @@ event handling, and workflow coordination across the system.
 
 import asyncio
 import logging
-import threading
-import time
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Optional
+from collections.abc import Callable
 
 from common.event_context import LLMSafeEventContext, create_context_from_event_data
 from common.intent_processor import IntentProcessor
@@ -113,7 +112,7 @@ class MessageTypeRegistry:
         self,
         event_type: str,
         publisher_role: str,
-        schema: Optional[dict[str, Any]] = None,
+        schema: dict[str, Any] | None = None,
         description: str = "",
     ):
         """Register a new event type from a role.
@@ -219,7 +218,7 @@ class MessageBus:
         self.event_registry = MessageTypeRegistry()
 
         # NEW: Intent processing for LLM-safe architecture
-        self._intent_processor: Optional[IntentProcessor] = None
+        self._intent_processor: IntentProcessor | None = None
         self._enable_intent_processing = True
 
         # Dependencies for intent processor (set by supervisor)
@@ -503,7 +502,7 @@ class MessageBus:
         logger.info(f"Subscribed {subscriber} to event '{event_type}'")
 
     def unsubscribe(
-        self, subscriber, message_type, callback: Optional[Callable] = None
+        self, subscriber, message_type, callback: Callable | None = None
     ):
         """Unsubscribe from messages of a specific type.
 
