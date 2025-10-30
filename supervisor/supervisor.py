@@ -162,21 +162,22 @@ class Supervisor:
         logger.info("📡 Bedrock heartbeat scheduled (5-minute interval, zero cost)")
 
     def _bedrock_heartbeat(self):
-        """Keep Bedrock connection alive with FREE AWS credential validation.
+        """Keep Bedrock connection alive with FREE Bedrock API call.
 
         This method is called every 5 minutes to prevent connection pool
-        timeouts. It uses AWS STS get_caller_identity which is a FREE API
-        call that validates credentials and keeps the connection active.
+        timeouts. It uses Bedrock's list_foundation_models API which is
+        a FREE API call that keeps the actual Bedrock connection active.
 
         Tracks failures and attempts recovery after sustained failures.
         """
         try:
-            # Use FREE AWS STS API to validate credentials
-            # This keeps the boto3 connection pool active without any cost
+            # Use FREE Bedrock API to keep connection alive
+            # list_foundation_models is a FREE API call (no inference costs)
             import boto3
 
-            sts = boto3.client("sts")
-            sts.get_caller_identity()
+            bedrock = boto3.client("bedrock", region_name="us-west-2")
+            # Make minimal API call - just list models (FREE, no data returned needed)
+            bedrock.list_foundation_models(byOutputModality="TEXT", maxResults=1)
 
             # Reset failure count on success
             if self._heartbeat_failure_count > 0:
