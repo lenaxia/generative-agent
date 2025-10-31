@@ -28,6 +28,22 @@ logging.basicConfig(
 logger = logging.getLogger("cli")
 
 
+def _restore_terminal_settings():
+    """Restore terminal settings to normal state.
+
+    This fixes the issue where terminal echo is disabled after Ctrl+C.
+    Uses stty to restore terminal to sane defaults.
+    """
+    try:
+        import subprocess
+
+        # Restore terminal to sane state
+        subprocess.run(["stty", "sane"], check=False, capture_output=True)
+        logger.debug("Terminal settings restored")
+    except Exception as e:
+        logger.debug(f"Could not restore terminal settings: {e}")
+
+
 def setup_readline():
     """Setup readline for command history and cursor navigation."""
     try:
@@ -427,15 +443,21 @@ async def run_interactive_mode(supervisor: Supervisor):
 
             except KeyboardInterrupt:
                 logger.info("\n⚠️ Interrupted by user")
+                _restore_terminal_settings()
                 continue
 
     except KeyboardInterrupt:
         logger.info("\n⚠️ System interrupted by user")
+        _restore_terminal_settings()
     except Exception as e:
         logger.error(f"❌ System error: {e}")
+        _restore_terminal_settings()
         sys.exit(1)
     finally:
         try:
+            # Restore terminal settings before any other cleanup
+            _restore_terminal_settings()
+
             # Clean up readline before stopping supervisor
             try:
                 import readline
@@ -468,6 +490,7 @@ async def run_interactive_mode(supervisor: Supervisor):
 
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
+            _restore_terminal_settings()
             import os
 
             os._exit(1)

@@ -10,7 +10,7 @@ Created: 2025-01-13
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -36,10 +36,12 @@ class RoutingResponse(BaseModel):
     )
 
     class Config:
+        """Pydantic model configuration."""
+
         extra = "forbid"  # Don't allow extra fields
 
 
-# 2. ROLE METADATA (replaces definition.yaml)
+# 2. ROLE METADATA
 ROLE_CONFIG = {
     "name": "router",
     "version": "4.0.0",
@@ -57,6 +59,14 @@ ROLE_CONFIG = {
 
 CRITICAL: Respond with ONLY valid JSON. No explanations, no additional text, no markdown formatting.
 
+PARAMETER EXTRACTION RULES:
+1. Extract parameters directly from the user's natural language request
+2. For REQUIRED parameters: You MUST extract a value or route to "planning"
+3. For optional parameters: Extract if present in the request, otherwise omit from JSON
+4. When enum values are provided: Use ONLY those exact values
+5. When examples are provided: Match the format/pattern shown in examples
+6. Preserve user's phrasing when it matches expected format (e.g., "5 minutes" → "5m")
+
 Available roles will be provided in the prompt. Analyze the user request and respond with JSON in this EXACT format:
 
 <routing_response> ::= "{" <route_field> "," <confidence_field> "," <parameters_field> "}"
@@ -65,13 +75,13 @@ Available roles will be provided in the prompt. Analyze the user request and res
 <parameters_field> ::= '"parameters":' <parameters_object>
 <role_name> ::= '"' <string> '"'
 <confidence_value> ::= <number_between_0_and_1>
-<parameters_object> ::= "{" "}"
+<parameters_object> ::= "{" <param_key_value_pairs> "}"
 
-Example:
+Example with parameters:
 {
-  "route": "weather",
+  "route": "timer",
   "confidence": 0.95,
-  "parameters": {}
+  "parameters": {"action": "set", "duration": "5m", "label": "pizza"}
 }
 
 ROUTING RULES:
@@ -86,12 +96,12 @@ ROUTING RULES:
 - Respond with ONLY the JSON object, nothing else
 
 CRITICAL: If the request contains multiple tasks (like "do X, then Y, then Z"),
-route to "planning" role with confidence 0.95. The planning role will break it down properly."""
+route to "planning" role. The planning role will break it down properly."""
     },
 }
 
 
-# 2. ROLE-SPECIFIC INTENTS (minimal - only for external events)
+# 2. ROLE-SPECIFIC INTENTS
 @dataclass
 class RoutingRequestIntent(Intent):
     """Intent for external routing requests via events."""
@@ -145,12 +155,8 @@ def handle_external_routing_request(
         ]
 
 
-# 4. NO TOOLS - JSON Response Only
-# Router role uses direct JSON output instead of tool calls
-
-
 # 5. ROUTING FUNCTIONS (owned by router role)
-def route_request_with_available_roles(
+def route_request_with_available_roles(  # noqa: C901
     request_text: str, role_registry
 ) -> dict[str, Any]:
     """Route request using available roles - owned by router role.
@@ -192,32 +198,45 @@ def route_request_with_available_roles(
                 "fast_reply": False,
             }
 
-        # Build routing instruction with pre-injected role information and parameter schemas
+        # Build routing instruction with enhanced parameter extraction format
         roles_description_parts = []
         for role_name, info in available_roles_info.items():
-            role_desc = f"- {role_name}: {info['description']} (Use when: {info['when_to_use']})"
+            role_desc = f"- {role_name}: {info['description']}\n  Use when: {info['when_to_use']}"
 
-            # Add parameter schema if available
+            # Add parameter schema with enhanced formatting
             if info.get("parameters"):
-                param_examples = []
+                role_desc += "\n  PARAMETERS TO EXTRACT:"
                 for param_name, param_info in info["parameters"].items():
                     required_str = (
-                        "required" if param_info.get("required") else "optional"
+                        "REQUIRED" if param_info.get("required") else "optional"
                     )
+                    param_type = param_info.get("type", "string")
+                    description = param_info.get("description", "")
                     examples = param_info.get("examples", [])
-                    example_str = (
-                        f" (e.g., {', '.join(str(ex) for ex in examples[:2])})"
-                        if examples
-                        else ""
-                    )
-                    param_examples.append(f"{param_name} ({required_str}){example_str}")
+                    enum_values = param_info.get("enum", [])
 
-                if param_examples:
-                    role_desc += f"\n  Parameters: {'; '.join(param_examples)}"
+                    # Build parameter line with clear structure
+                    param_line = f"\n    • {param_name} ({required_str}, {param_type})"
+
+                    # Add description if available
+                    if description:
+                        param_line += f": {description}"
+
+                    # PRIORITY: Show enum values if available, otherwise show examples
+                    if enum_values:
+                        # Use enum values as the authoritative list
+                        param_line += f"\n      Valid values: {', '.join(enum_values)}"
+                    elif examples:
+                        # Fallback to examples if no enum
+                        param_line += "\n      Examples from user input:"
+                        for example in examples[:3]:  # Show up to 3 examples
+                            param_line += f"\n        - '{example}'"
+
+                    role_desc += param_line
 
             roles_description_parts.append(role_desc)
 
-        roles_description = "\n".join(roles_description_parts)
+        roles_description = "\n".join(roles_description_parts)  # noqa: F541
 
         # Use the router role's system prompt instead of creating a custom one
         router_system_prompt = ROLE_CONFIG["prompts"]["system"]
