@@ -1877,15 +1877,42 @@ Respond with ONLY valid JSON in this exact format:
         return task_nodes
 
     def _get_consolidated_results(self, task_context):
-        """Collect consolidated results from completed tasks."""
+        """Collect results from leaf nodes (tasks with no dependents).
+
+        Leaf nodes represent the final outputs of a workflow. Intermediate task
+        results are passed to dependent tasks via predecessor results, so we only
+        need to return the final synthesis/output tasks.
+        """
         from common.task_graph import TaskStatus
 
-        results = []
-        for task_id, task_node in task_context.task_graph.nodes.items():
-            if task_node.status == TaskStatus.COMPLETED and task_node.result:
-                results.append(f"**{task_node.task_name}**: {task_node.result}")
+        completed_tasks = {
+            task_id: task_node
+            for task_id, task_node in task_context.task_graph.nodes.items()
+            if task_node.status == TaskStatus.COMPLETED and task_node.result
+        }
 
-        if results:
-            return "Workflow completed successfully:\n\n" + "\n\n".join(results)
-        else:
+        if not completed_tasks:
             return "Workflow completed but no results were generated."
+
+        # Find leaf nodes (tasks with no outbound edges = no dependents)
+        leaf_tasks = [
+            (task_id, task)
+            for task_id, task in completed_tasks.items()
+            if not task.outbound_edges  # No tasks depend on this one
+        ]
+
+        # Return results from all leaf nodes
+        if leaf_tasks:
+            results = [
+                f"**{task.task_name}**:\n\n{task.result}" for _, task in leaf_tasks
+            ]
+            if len(results) == 1:
+                return results[0]  # Single leaf node - return directly
+            else:
+                return "Workflow completed successfully:\n\n" + "\n\n".join(results)
+
+        # Fallback: if no clear leaf nodes, return all results
+        results = [
+            f"**{task.task_name}**: {task.result}" for task in completed_tasks.values()
+        ]
+        return "Workflow completed successfully:\n\n" + "\n\n".join(results)
