@@ -22,7 +22,7 @@ from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "weather",
     "version": "3.0.0",

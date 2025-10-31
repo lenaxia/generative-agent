@@ -48,6 +48,7 @@ ROLE_CONFIG = {
     "description": "Intelligent request routing using LLM analysis with JSON response format",
     "llm_type": "WEAK",  # Routing is lightweight, use fast model
     "fast_reply": False,  # Router is not a fast-reply role itself
+    "exclude_from_planning": True,  # Router should not be used in planning workflows
     "when_to_use": "Analyzing user requests and routing to the most appropriate role based on intent and available capabilities",
     "tools": {
         "automatic": False,  # No tools - JSON response only

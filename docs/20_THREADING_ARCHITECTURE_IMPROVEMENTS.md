@@ -224,7 +224,7 @@ from strands import tool
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "timer",
     "version": "3.0.0",

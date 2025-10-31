@@ -55,8 +55,15 @@ All roles follow the pattern: `core_<role_name>.py`
    - Time-based queries
 
 8. **Search** ([`core_search.py`](core_search.py))
+
    - Web search capabilities
    - MCP integration for search providers
+
+9. **Summarizer** ([`core_summarizer.py`](core_summarizer.py))
+   - Synthesize and analyze information from multiple sources
+   - Create structured outputs (summaries, reports, itineraries, analysis)
+   - Consolidate predecessor task results
+   - Factual, concise presentation without conversational elements
 
 ## Role Structure
 

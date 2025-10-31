@@ -51,7 +51,7 @@ from common.intents import Intent, NotificationIntent, AuditIntent
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "role_name",
     "version": "3.0.0",

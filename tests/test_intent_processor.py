@@ -37,6 +37,7 @@ class TestIntentProcessor:
         """Create mock workflow engine."""
         mock = AsyncMock()
         mock.start_workflow = AsyncMock(return_value="workflow_123")
+        mock.handle_request = MagicMock(return_value="workflow_123")
         return mock
 
     @pytest.fixture
@@ -109,10 +110,11 @@ class TestIntentProcessor:
         assert result["failed"] == 0
         assert len(result["errors"]) == 0
 
-        # Updated to match actual call signature
-        mock_workflow_engine.start_workflow.assert_called_once_with(
-            instruction="Execute data_processing"
-        )
+        # Updated to match new implementation using handle_request
+        assert mock_workflow_engine.handle_request.called
+        call_args = mock_workflow_engine.handle_request.call_args[0][0]
+        assert call_args.prompt == "Execute data_processing"
+        assert call_args.response_requested is True
 
     @pytest.mark.asyncio
     async def test_process_error_intent(self, intent_processor):
@@ -151,7 +153,7 @@ class TestIntentProcessor:
 
         # Verify all intents were processed
         mock_communication_manager.route_message.assert_called_once()
-        mock_workflow_engine.start_workflow.assert_called_once()
+        assert mock_workflow_engine.handle_request.called
 
     @pytest.mark.asyncio
     async def test_process_invalid_intent(self, intent_processor):

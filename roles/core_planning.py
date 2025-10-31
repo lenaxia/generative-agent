@@ -25,6 +25,7 @@ ROLE_CONFIG = {
     "description": "Generate WorkflowExecutionIntents using available system roles",
     "llm_type": "STRONG",
     "fast_reply": False,
+    "exclude_from_planning": True,  # Planning should not be used within planning workflows
     "when_to_use": "Create multi-step workflows, break down complex tasks, coordinate multiple roles",
     "tools": {
         "automatic": False,  # No tools needed
@@ -104,10 +105,13 @@ def load_available_roles(instruction: str, context, parameters: dict) -> dict:
         logger.info(f"Loading roles for planning - found {len(all_roles)} total roles")
         logger.info(f"All role names: {list(all_roles.keys())}")
 
-        # Filter out planning and router roles (can't plan planning or route routing)
-        available_roles = [
-            name for name in all_roles.keys() if name not in ["planning", "router"]
-        ]
+        # Filter out roles that have exclude_from_planning=True
+        available_roles = []
+        for name, role_def in all_roles.items():
+            role_config = getattr(role_def, "config", {}).get("role", {})
+            exclude_from_planning = role_config.get("exclude_from_planning", False)
+            if not exclude_from_planning:
+                available_roles.append(name)
 
         logger.info(f"Filtered roles for planning: {available_roles}")
 

@@ -39,7 +39,7 @@ ROLE_CONFIG = {
     "location_aware": False,
     "presence_aware": False,
     "schedule_aware": False,
-    "when_to_use": "Natural conversation, questions, dialogue, follow-up discussions, casual chat, explanations",
+    "when_to_use": "Natural conversation, questions, dialogue, follow-up discussions, casual chat, explanations, you can also use this to summarize or analyze information",
     "parameters": {
         # No specific parameters needed - LLM handles conversation naturally
     },

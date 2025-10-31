@@ -25,7 +25,7 @@ from common.intents import Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "calendar",
     "version": "1.0.0",

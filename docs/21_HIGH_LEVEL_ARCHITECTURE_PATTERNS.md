@@ -112,7 +112,7 @@ from typing import List, Optional, Dict, Any
 from common.intents import Intent, NotificationIntent, AuditIntent
 from strands import tool
 
-# 1. ROLE METADATA (replaces definition.yaml)
+# 1. ROLE METADATA
 ROLE_CONFIG = {
     "name": "role_name",
     "version": "1.0.0",

@@ -109,6 +109,7 @@ The Universal Agent can assume different specialized roles:
 - **Router** ([`roles/core_router.py`](roles/core_router.py)) - Intelligent request routing with context selection
 - **Planning** ([`roles/core_planning.py`](roles/core_planning.py)) - Complex task planning and workflow generation
 - **Conversation** ([`roles/core_conversation.py`](roles/core_conversation.py)) - General conversation with memory
+- **Summarizer** ([`roles/core_summarizer.py`](roles/core_summarizer.py)) - Synthesis and structured presentation of information
 - **Timer** ([`roles/core_timer.py`](roles/core_timer.py)) - Timer, alarm, and reminder management
 - **Weather** ([`roles/core_weather.py`](roles/core_weather.py)) - Weather information and forecasts
 - **Smart Home** ([`roles/core_smart_home.py`](roles/core_smart_home.py)) - Device control via Home Assistant
@@ -389,6 +390,7 @@ generative-agent/
 │   ├── core_router.py          # Request routing
 │   ├── core_planning.py        # Task planning
 │   ├── core_conversation.py    # Conversation
+│   ├── core_summarizer.py      # Synthesis & presentation
 │   ├── core_timer.py           # Timer management
 │   ├── core_weather.py         # Weather info
 │   ├── core_smart_home.py      # Smart home control
