@@ -24,9 +24,8 @@ class BusPacket(BaseModel):
     sender_id: str = None
     recipient_id: str = None
     packet_id: str = "pkt_" + str(uuid.uuid4()).split("-")[-1]
-    request_id: Optional[str] = None
-    callback_details: Optional[dict] = None
-    metadata: Optional[dict] = None
+    request_id: str | None = None
+    metadata: dict | None = None
 
     def send(self, message_bus):
         """Send this packet via the provided message bus.

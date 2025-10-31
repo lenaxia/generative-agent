@@ -93,9 +93,9 @@ class TestWorkflowEngineContextIntegration:
             prompt="Turn on the lights",
             source_id="test_source",
             target_id="workflow_engine",
+            user_id="test_user",
+            channel_id="console",
             metadata={
-                "user_id": "test_user",
-                "channel_id": "console",
                 "workflow_id": "wf_123",
             },
             response_requested=True,
@@ -235,10 +235,12 @@ class TestWorkflowEngineContextIntegration:
 
     def test_request_metadata_user_id_extraction(self, sample_request):
         """Test extracting user_id from request metadata."""
-        user_id = sample_request.metadata.get("user_id")
+        # user_id and channel_id are now top-level fields
+        user_id = sample_request.user_id
+        channel_id = sample_request.channel_id
 
         assert user_id == "test_user"
-        assert sample_request.metadata.get("channel_id") == "console"
+        assert channel_id == "console"
         assert sample_request.metadata.get("workflow_id") == "wf_123"
 
     def test_context_requirements_parsing(self):
@@ -327,11 +329,13 @@ class TestContextIntegrationErrorHandling:
             prompt="Test request",
             source_id="test",
             target_id="workflow_engine",
-            metadata={},  # No user_id
+            user_id=None,
+            channel_id=None,
+            metadata={},
             response_requested=True,
         )
 
-        user_id = request.metadata.get("user_id")
+        user_id = request.user_id
 
         assert user_id is None
 

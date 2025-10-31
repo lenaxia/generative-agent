@@ -137,7 +137,6 @@ class ContextCollector:
         except Exception as e:
             logger.warning(f"Failed to get schedule for {user_id}: {e}")
             return []
-        return context
 
     async def _get_others_home(self, user_id: str) -> list[str]:
         """Get other users currently home using Redis location data.

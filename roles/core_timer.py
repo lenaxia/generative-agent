@@ -74,7 +74,7 @@ ROLE_CONFIG = {
 If you decide to make a tool call: DO NOT GENERATE ANY TEXT PRIOR TO MAKING A TOOL CALL
 
 Available timer tools:
-- set_timer(duration, label): Set a new timer with duration (e.g., "5s", "2m", "1h") and optional label
+- set_timer(duration, label, deferred_workflow): Set a new timer with duration (e.g., "5s", "2m", "1h"), optional label, and optional deferred workflow
 - cancel_timer(timer_id): Cancel an existing timer by ID
 - list_timers(): List all active timers
 
@@ -84,11 +84,19 @@ Timer Architecture:
 - No persistent async tasks or threading complexity
 - All operations are intent-based and LLM-safe
 
+DEFERRED WORKFLOW EXECUTION:
+When users request "do X in Y time" or "check X after Y", use the deferred_workflow parameter:
+- Example: "check the weather in 10 seconds" → set_timer("10s", "check weather", "check the weather in seattle")
+- Example: "remind me to call John in 5 minutes" → set_timer("5m", "call John") [simple reminder, no workflow]
+- The deferred_workflow parameter should contain the FULL task/instruction to execute when the timer expires
+- When timer expires, the system will automatically execute the deferred workflow AND send a notification
+
 When users request timer operations:
 1. Parse the duration from natural language (5s, 2 minutes, 1 hour, etc.)
-2. Do not generate any text before making a tool call
-2. Use the appropriate tool to perform the action
-3. Provide clear confirmation of the action taken
+2. Determine if this is a simple reminder (just notification) or deferred task execution (run workflow after timer)
+3. Do not generate any text before making a tool call
+4. Use the appropriate tool to perform the action
+5. Provide clear confirmation of the action taken
 
 Always use the timer tools to perform timer operations. Do not suggest alternative approaches."""
     },
@@ -104,6 +112,7 @@ class TimerCreationIntent(Intent):
     duration: str
     duration_seconds: int
     label: str = ""
+    deferred_workflow: str = ""  # NEW: Workflow to execute when timer expires
     user_id: str | None = None
     channel_id: str | None = None
     event_context: dict[str, Any] | None = None  # Store full LLMSafeEventContext
@@ -150,6 +159,7 @@ class TimerExpiryIntent(Intent):
     timer_id: str
     original_duration: str
     label: str = ""
+    deferred_workflow: str = ""  # NEW: Workflow to execute when timer expires
     user_id: str | None = None
     channel_id: str | None = None
     event_context: dict[str, Any] | None = None  # Store full LLMSafeEventContext
@@ -241,12 +251,14 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                 logger.debug(f"Retrieved timer data for {timer_id}")
                 # Extract stored event context for full traceability
                 stored_context = timer_data.get("event_context", {})
+                deferred_workflow = timer_data.get("deferred_workflow", "")
 
                 intents.append(
                     TimerExpiryIntent(
                         timer_id=timer_id,
                         original_duration=timer_data.get("duration", "unknown"),
                         label=timer_data.get("label", ""),
+                        deferred_workflow=deferred_workflow,  # NEW: Pass workflow for execution
                         user_id=stored_context.get("user_id"),  # Extract from context
                         channel_id=stored_context.get(
                             "channel_id"
@@ -256,8 +268,13 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                 )
 
                 # Log essential context for production monitoring
+                workflow_info = (
+                    f" with deferred workflow: {deferred_workflow}"
+                    if deferred_workflow
+                    else ""
+                )
                 logger.info(
-                    f"Timer {timer_id} expiring for user {stored_context.get('user_id')} in channel {stored_context.get('channel_id')}"
+                    f"Timer {timer_id} expiring for user {stored_context.get('user_id')} in channel {stored_context.get('channel_id')}{workflow_info}"
                 )
             else:
                 logger.warning(
@@ -275,8 +292,20 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
 
 # 4. TOOLS (declarative, LLM-friendly, intent-based)
 @tool
-def set_timer(duration: str, label: str = "") -> dict[str, Any]:
-    """LLM-SAFE: Declarative timer creation - returns intent, no side effects."""
+def set_timer(
+    duration: str, label: str = "", deferred_workflow: str = ""
+) -> dict[str, Any]:
+    """LLM-SAFE: Declarative timer creation - returns intent, no side effects.
+
+    Args:
+        duration: Timer duration (e.g., "5s", "2m", "1h")
+        label: Optional label/description for the timer
+        deferred_workflow: Optional workflow/task to execute when timer expires
+
+    Examples:
+        set_timer("10s", "coffee break")  # Simple reminder
+        set_timer("5m", "check weather", "check the weather in seattle")  # Deferred task
+    """
     try:
         # Parse duration to seconds
         duration_seconds = _parse_duration(duration)
@@ -286,17 +315,24 @@ def set_timer(duration: str, label: str = "") -> dict[str, Any]:
         # Generate unique timer ID
         timer_id = f"timer_{uuid.uuid4().hex[:8]}"
 
+        # Build message based on whether this is a deferred workflow
+        if deferred_workflow:
+            message = f"Timer set for {duration} - will execute: {deferred_workflow}"
+        else:
+            message = f"Timer set for {duration}" + (f" ({label})" if label else "")
+
         # Return intent data for processing by infrastructure
         return {
             "success": True,
             "timer_id": timer_id,
-            "message": f"Timer set for {duration}" + (f" ({label})" if label else ""),
+            "message": message,
             "intent": {
                 "type": "TimerCreationIntent",
                 "timer_id": timer_id,
                 "duration": duration,
                 "duration_seconds": duration_seconds,
                 "label": label,
+                "deferred_workflow": deferred_workflow,
                 # user_id and channel_id will be injected by UniversalAgent
             },
         }
@@ -444,12 +480,18 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
             "duration": intent.duration,
             "duration_seconds": intent.duration_seconds,
             "label": intent.label,
+            "deferred_workflow": intent.deferred_workflow,  # NEW: Store workflow for deferred execution
             "created_at": time.time(),
             "expires_at": expiry_time,
             "status": "active",
             "event_context": intent.event_context,  # Complete context includes user_id and channel_id
         }
         logger.debug(f"Storing timer data for {intent.timer_id}")
+
+        if intent.deferred_workflow:
+            logger.info(
+                f"Timer {intent.timer_id} will execute workflow: {intent.deferred_workflow}"
+            )
 
         # Store timer metadata in Redis hash
         redis_result = redis_write(
@@ -555,7 +597,7 @@ async def process_timer_listing_intent(intent: TimerListingIntent):
 
 
 async def process_timer_expiry_intent(intent: TimerExpiryIntent):
-    """Process timer expiry intents - handles notification delivery."""
+    """Process timer expiry intents - handles notification delivery AND deferred workflow execution."""
     try:
         logger.info(f"Processing timer expiry notification for {intent.timer_id}")
 
@@ -578,7 +620,7 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
             f"Timer expiry notification ready: {notification_intent.message} -> {notification_intent.channel}"
         )
 
-        # Get the IntentProcessor from the global registry and process the notification
+        # Get the IntentProcessor from the global registry
         from llm_provider.role_registry import RoleRegistry
 
         role_registry = RoleRegistry.get_global_registry()
@@ -587,11 +629,42 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
                 notification_intent
             )
             logger.info(f"Timer expiry notification sent via IntentProcessor")
+
+            # NEW: Execute deferred workflow if present
+            if intent.deferred_workflow:
+                logger.info(
+                    f"Executing deferred workflow for timer {intent.timer_id}: {intent.deferred_workflow}"
+                )
+
+                # Create a WorkflowIntent to trigger the deferred task
+                from common.intents import WorkflowIntent
+
+                workflow_intent = WorkflowIntent(
+                    workflow_type="deferred_execution",
+                    parameters={
+                        "source": "timer_expiry",
+                        "original_timer_id": intent.timer_id,
+                    },
+                    request_id=f"deferred_{intent.timer_id}",
+                    user_id=intent.user_id,
+                    channel_id=intent.channel_id,
+                    original_instruction=intent.deferred_workflow,
+                    context=intent.event_context or {},
+                )
+
+                # Process the workflow intent through the IntentProcessor
+                await role_registry.intent_processor._process_workflow(workflow_intent)
+                logger.info(
+                    f"Deferred workflow triggered successfully for timer {intent.timer_id}"
+                )
         else:
             logger.error("No IntentProcessor available for timer expiry notification")
 
     except Exception as e:
         logger.error(f"Timer expiry processing failed: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 
 # 7. ROLE REGISTRATION (auto-discovery)

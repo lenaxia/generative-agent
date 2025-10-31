@@ -526,16 +526,25 @@ class CommunicationManager:
             }
 
             # Create proper RequestMetadata object for WorkflowEngine
+            # Pass through any channel-specific metadata from the message
+            channel_metadata = {
+                "source": channel_id,
+                "request_id": request_id,
+            }
+
+            # Copy any additional metadata from the message (channel-agnostic)
+            # This allows channel handlers to pass through their own routing data
+            for key, value in message.items():
+                if key not in ["type", "user_id", "channel_id", "text", "timestamp"]:
+                    channel_metadata[key] = value
+
             request_metadata = RequestMetadata(
                 prompt=message["text"],
                 source_id=channel_id,
                 target_id="workflow_engine",
-                metadata={
-                    "user_id": message["user_id"],
-                    "channel_id": full_channel_id,
-                    "source": channel_id,
-                    "request_id": request_id,
-                },
+                user_id=message["user_id"],
+                channel_id=full_channel_id,
+                metadata=channel_metadata,
                 response_requested=True,
             )
 
@@ -632,6 +641,7 @@ class CommunicationManager:
             source_channel = request_info["source_channel"]
             channel_id = request_info["channel_id"]
             user_id = request_info["user_id"]
+            original_message = request_info["original_message"]
 
             # Extract just the channel part (remove source prefix)
             target_channel = (
@@ -642,13 +652,25 @@ class CommunicationManager:
                 f"🎯 Routing response back to {source_channel}:{target_channel} for user {user_id}"
             )
 
+            # Prepare metadata with channel-specific routing info
+            response_metadata = {
+                "user_id": user_id,
+                "channel_id": target_channel,  # Include actual channel ID for handler
+            }
+
+            # Copy channel-specific metadata from original message
+            # This allows channel handlers to access their own routing data
+            for key, value in original_message.items():
+                if key not in ["type", "user_id", "channel_id", "text", "timestamp"]:
+                    response_metadata[key] = value
+
             # Send response back to the originating channel
             if source_channel in self.channels:
                 await self.channels[source_channel].send_notification(
                     f"🤖 {response_text}",
                     target_channel,
                     MessageFormat.PLAIN_TEXT,
-                    {"user_id": user_id},
+                    response_metadata,
                 )
                 logger.info(
                     f"✅ Sent response back to {source_channel}:{target_channel}"
@@ -750,12 +772,13 @@ class CommunicationManager:
                     )
 
                     # Add timeout to prevent hanging
+                    # Pass entire context as metadata so channel handlers get all routing info
                     result = await asyncio.wait_for(
                         self.channels[channel_id].send_notification(
                             message,
                             context.get("recipient"),
                             context.get("message_format", MessageFormat.PLAIN_TEXT),
-                            context.get("metadata", {}),
+                            context,  # Pass whole context as metadata
                         ),
                         timeout=10.0,  # 10 second timeout
                     )

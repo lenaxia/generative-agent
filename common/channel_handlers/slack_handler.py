@@ -8,7 +8,7 @@ with support for rich formatting and interactive buttons.
 import asyncio
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
 
@@ -116,7 +116,7 @@ class SlackChannelHandler(ChannelHandler):
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
         """
-        Send a notification to Slack.
+        Send a notification to Slack with smart routing for updates vs threads.
 
         Args:
             message: The message content
@@ -127,12 +127,21 @@ class SlackChannelHandler(ChannelHandler):
                 - attachments: Slack attachments
                 - thread_ts: Thread timestamp to reply in a thread
                 - buttons: List of button configs (text, value, style)
+                - slack_initial_ts: Initial message timestamp for updates
+                - slack_initial_content: Initial message content for comparison
+                - slack_thread_ts: Thread parent timestamp
 
         Returns:
             Dict with status information
         """
         # Determine the channel to post to
-        channel = recipient or self.default_channel
+        # Prefer channel_id from metadata (actual Slack channel ID like C52L1UK5E)
+        # over recipient (which might be #general)
+        channel = metadata.get("channel_id") or recipient or self.default_channel
+
+        # If channel_id has slack: prefix, extract just the channel part
+        if isinstance(channel, str) and ":" in channel:
+            channel = channel.split(":", 1)[1]
 
         # Enhance message with @ mention if user_id is provided
         user_id = metadata.get("user_id")
@@ -140,6 +149,27 @@ class SlackChannelHandler(ChannelHandler):
 
         # Check if we have buttons to add
         buttons = metadata.get("buttons", [])
+
+        # Content-based routing: Check if this is an update to the initial message
+        initial_ts = metadata.get("initial_msg_ts")
+        initial_content = metadata.get("initial_content")
+
+        # If we have an initial message and current content differs from initial "Processing..." message
+        # This means it's the first real response - update the initial message
+        if initial_ts and initial_content and enhanced_message != initial_content:
+            # Check if initial message still says "Processing..." by comparing content
+            # If content changed, this is first response - UPDATE it
+            logger.info(
+                f"First response - updating initial message {initial_ts} in channel {channel}"
+            )
+            return await self._update_message(
+                enhanced_message, channel, initial_ts, buttons, metadata
+            )
+
+        # For subsequent responses (or if no initial message), use threading
+        if initial_ts:
+            # Thread under the initial message
+            metadata["thread_ts"] = initial_ts
 
         # Prepare the payload based on available credentials
         if self.webhook_url:
@@ -152,6 +182,84 @@ class SlackChannelHandler(ChannelHandler):
             )
         else:
             return {"success": False, "error": "No Slack credentials configured"}
+
+    async def _update_message(
+        self,
+        message: str,
+        channel: str,
+        message_ts: str,
+        buttons: list[dict[str, str]],
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update an existing Slack message using chat.update API.
+
+        Args:
+            message: New message content
+            channel: Slack channel ID
+            message_ts: Timestamp of message to update
+            buttons: Optional buttons to add
+            metadata: Additional metadata
+
+        Returns:
+            Dict with status information
+        """
+        payload = {"channel": channel, "ts": message_ts, "text": message}
+
+        # Add blocks if provided in metadata
+        if "blocks" in metadata:
+            payload["blocks"] = metadata["blocks"]
+        # Otherwise create blocks if we have buttons
+        elif buttons:
+            payload["blocks"] = self._create_blocks_with_buttons(message, buttons)
+
+        # Add attachments if provided
+        if "attachments" in metadata:
+            payload["attachments"] = metadata["attachments"]
+
+        try:
+            # Use fresh aiohttp session for reliability (no event loop context issues)
+            timeout = aiohttp.ClientTimeout(total=10.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    "https://slack.com/api/chat.update",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8",
+                        "Authorization": f"Bearer {self.bot_token}",
+                    },
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        if response_data.get("ok"):
+                            logger.info(f"Successfully updated message {message_ts}")
+                            return {
+                                "success": True,
+                                "channel": channel,
+                                "ts": message_ts,
+                                "updated": True,
+                            }
+                        else:
+                            error = response_data.get("error", "Unknown error")
+                            logger.error(f"Slack API error updating message: {error}")
+                            return {
+                                "success": False,
+                                "error": f"Slack API error: {error}",
+                            }
+                    else:
+                        error_text = await response.text()
+                        logger.error(
+                            f"HTTP error updating message: {response.status} - {error_text}"
+                        )
+                        return {
+                            "success": False,
+                            "error": f"HTTP {response.status}: {error_text}",
+                        }
+        except asyncio.TimeoutError:
+            logger.error("Slack API update timed out after 10 seconds")
+            return {"success": False, "error": "Slack API timeout"}
+        except Exception as e:
+            logger.error(f"Exception updating Slack message: {str(e)}")
+            return {"success": False, "error": str(e)}
 
     def _format_message_with_mention(self, message: str, user_id: str | None) -> str:
         """Format message with @ mention if user_id is provided.
@@ -224,16 +332,14 @@ class SlackChannelHandler(ChannelHandler):
 
             async with self._session_lock:
                 if self._session is None or self._session.closed:
-                    timeout = aiohttp.ClientTimeout(total=10.0)
+                    # Don't set timeout at session level - set per-request instead
                     connector = aiohttp.TCPConnector(
                         limit=self._session_pool_size,
                         limit_per_host=self._session_pool_size,
                         keepalive_timeout=30,
                         enable_cleanup_closed=True,
                     )
-                    self._session = aiohttp.ClientSession(
-                        timeout=timeout, connector=connector
-                    )
+                    self._session = aiohttp.ClientSession(connector=connector)
                     logger.info(
                         f"Created shared aiohttp session with pool size {self._session_pool_size}"
                     )
@@ -326,23 +432,17 @@ class SlackChannelHandler(ChannelHandler):
         buttons: list[dict[str, str]],
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
-        """Send message with automatic thread-safe detection and session management."""
+        """Send message with automatic thread-safe detection."""
         if self._is_background_thread():
             logger.info("Background thread detected, using thread-safe HTTP client")
             return await self._send_via_api_threadsafe(
                 message, channel, message_format, buttons, metadata
             )
         else:
-            if self._use_shared_session:
-                logger.info("Main thread detected, using shared aiohttp session")
-                return await self._send_via_shared_session(
-                    message, channel, message_format, buttons, metadata
-                )
-            else:
-                logger.info("Main thread detected, using standard aiohttp")
-                return await self._send_via_api_aiohttp(
-                    message, channel, message_format, buttons, metadata
-                )
+            logger.info("Main thread detected, using aiohttp")
+            return await self._send_via_api_aiohttp(
+                message, channel, message_format, buttons, metadata
+            )
 
     async def _send_via_api_threadsafe(
         self,
@@ -549,7 +649,7 @@ class SlackChannelHandler(ChannelHandler):
             self.bot_user_id = None
 
         # Unified message handler - routes based on message type
-        def process_slack_message(event, message_type):
+        def process_slack_message(event, message_type, say=None):
             """Unified message processing with proper routing."""
             # Ignore bot messages
             if event.get("bot_id"):
@@ -587,6 +687,21 @@ class SlackChannelHandler(ChannelHandler):
                 logger.debug(f"🔕 Ignoring channel message without bot mention: {text}")
                 return
 
+            # Post initial "Processing..." message if say is available
+            initial_msg_ts = None
+            initial_content = None
+            if say and queue_type == "app_mention":
+                # For @mentions, post a processing message
+                initial_content = (
+                    f"<@{user_id}> :thinking_face: Processing your request..."
+                )
+                try:
+                    initial_msg = say(initial_content)
+                    initial_msg_ts = initial_msg.get("ts") if initial_msg else None
+                    logger.debug(f"Posted initial processing message: {initial_msg_ts}")
+                except Exception as e:
+                    logger.warning(f"Failed to post initial message: {e}")
+
             # Queue the message for processing
             message_data = {
                 "type": queue_type,
@@ -594,6 +709,8 @@ class SlackChannelHandler(ChannelHandler):
                 "channel_id": channel_id,
                 "text": text,
                 "timestamp": timestamp,
+                "initial_msg_ts": initial_msg_ts,
+                "initial_content": initial_content,
             }
 
             logger.debug(f"Queuing {queue_type} message: {message_data}")
@@ -602,12 +719,12 @@ class SlackChannelHandler(ChannelHandler):
         # Handle incoming messages
         @self.slack_app.event("message")
         def handle_message(event, say):
-            process_slack_message(event, "message")
+            process_slack_message(event, "message", say)
 
         # Handle app mentions
         @self.slack_app.event("app_mention")
         def handle_app_mention(event, say):
-            process_slack_message(event, "app_mention")
+            process_slack_message(event, "app_mention", say)
 
         # Handle button interactions
         @self.slack_app.action(".*")  # Match all button actions

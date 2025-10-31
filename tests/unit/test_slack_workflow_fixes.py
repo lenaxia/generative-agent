@@ -125,9 +125,9 @@ class TestSlackResponseFlow:
             prompt="what's the weather in seattle?",
             source_id="slack",
             target_id="workflow_engine",
+            user_id="U123456",
+            channel_id="slack:C123456",
             metadata={
-                "user_id": "U123456",
-                "channel_id": "slack:C123456",
                 "source": "slack",
                 "request_id": "test_request_123",
             },
@@ -232,8 +232,8 @@ class TestEndToEndSlackWorkflow:
         request_metadata = call_args[0][2]
         assert isinstance(request_metadata, RequestMetadata)
         assert request_metadata.prompt == "<@U07TCJFKF1C> what's the weather?"
-        assert request_metadata.metadata["user_id"] == "U123456"
-        assert request_metadata.metadata["channel_id"] == "slack:C123456"
+        assert request_metadata.user_id == "U123456"
+        assert request_metadata.channel_id == "slack:C123456"
         assert request_metadata.response_requested is True
         assert request_metadata.source_id == "slack"
         assert request_metadata.target_id == "workflow_engine"

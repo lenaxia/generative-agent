@@ -29,7 +29,7 @@ class MCPServerConfig:
     name: str
     command: str
     args: list[str]
-    description: Optional[str] = None
+    description: str | None = None
 
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -63,7 +63,7 @@ class MCPClientManager:
         name: str,
         command: str,
         args: list[str],
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> bool:
         """Register and initialize an MCP server.
 
@@ -140,7 +140,7 @@ class MCPClientManager:
             # Final fallback
             keywords = [role]
 
-        role_keywords = role_tool_mapping.get(role, [])
+        role_keywords = keywords
         if not role_keywords:
             return self.available_tools  # Return all tools if role not mapped
 

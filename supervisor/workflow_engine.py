@@ -319,18 +319,15 @@ class WorkflowEngine:
 
             if execution_type == "hybrid":
                 # Get workflow context for user_id and channel_id
-                user_id = None
-                channel_id = None
+                # Use top-level fields from RequestMetadata
+                user_id = request.user_id
+                channel_id = request.channel_id
 
-                # First try to get from request metadata
-                if request.metadata:
-                    user_id = request.metadata.get("user_id")
-                    channel_id = request.metadata.get("channel_id")
-                    logger.info(
-                        f"Fast-reply context from request metadata: user_id={user_id}, channel_id={channel_id}"
-                    )
+                logger.info(
+                    f"Fast-reply context from request: user_id={user_id}, channel_id={channel_id}"
+                )
 
-                # Fallback to workflow metrics if not in metadata
+                # Fallback to workflow metrics if not in request
                 if not user_id or not channel_id:
                     if (
                         hasattr(self, "duration_logger")
@@ -443,18 +440,28 @@ class WorkflowEngine:
             # Skip for planning workflows since immediate notification was already sent
             if request.response_requested and role != "planning":
                 logger.info(
-                    f"📤 Sending fast-reply result back to requester: {request.metadata.get('channel_id')}"
+                    f"📤 Sending fast-reply result back to requester: {request.channel_id}"
                 )
+
+                # Build context with channel-specific metadata for proper routing
+                response_context = {
+                    "channel_id": request.channel_id,
+                    "user_id": request.user_id,
+                    "request_id": request.metadata.get("request_id")
+                    if request.metadata
+                    else None,
+                }
+
+                # Include all channel-specific metadata for routing (thread_ts, initial_msg_ts, etc.)
+                if request.metadata:
+                    response_context.update(request.metadata)
+
                 self.message_bus.publish(
                     self,
                     MessageType.SEND_MESSAGE,
                     {
                         "message": result,
-                        "context": {
-                            "channel_id": request.metadata.get("channel_id"),
-                            "user_id": request.metadata.get("user_id"),
-                            "request_id": request.metadata.get("request_id"),
-                        },
+                        "context": response_context,
                     },
                 )
             elif role == "planning":
@@ -1691,12 +1698,11 @@ Respond with ONLY valid JSON in this exact format:
         if (
             self.context_collector
             and routing_result.get("context_requirements")
-            and request.metadata
-            and request.metadata.get("user_id")
+            and request.user_id
         ):
             try:
                 context = await self.context_collector.gather_context(
-                    user_id=request.metadata["user_id"],
+                    user_id=request.user_id,
                     context_types=routing_result["context_requirements"],
                 )
             except Exception as e:
@@ -1713,6 +1719,8 @@ Respond with ONLY valid JSON in this exact format:
             prompt=enhanced_prompt,
             source_id=request.source_id,
             target_id=request.target_id,
+            user_id=request.user_id,
+            channel_id=request.channel_id,
             metadata=request.metadata,
             response_requested=request.response_requested,
         )
@@ -1881,4 +1889,3 @@ Respond with ONLY valid JSON in this exact format:
             return "Workflow completed successfully:\n\n" + "\n\n".join(results)
         else:
             return "Workflow completed but no results were generated."
-        return self._handle_fast_reply(enhanced_request, fallback_routing)

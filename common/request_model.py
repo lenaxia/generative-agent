@@ -20,11 +20,28 @@ class RequestMetadata(BaseModel):
     """
 
     prompt: str
-    metadata: Optional[dict] = None
     source_id: str = Field(..., description="The source agent")
     target_id: str = Field(..., description="The target agent")
-    callback_details: Optional[dict] = None
-    response_requested: Optional[bool] = Field(
+
+    # Common routing fields - present in all requests
+    user_id: str | None = Field(None, description="User identifier across all channels")
+    channel_id: str | None = Field(
+        None,
+        description="Channel identifier (e.g., 'slack:C123', 'home_assistant:entity')",
+    )
+
+    # Channel-specific metadata - plain dict for flexibility
+    # Should contain channel-specific routing data like:
+    # - Slack: slack_thread_ts, slack_initial_ts, slack_initial_content
+    # - Home Assistant: ha_entity_id, ha_initial_state
+    # - Sonos: sonos_device, sonos_initial_announcement
+    metadata: dict | None = Field(
+        None,
+        description="Channel-specific routing and context data (thread IDs, message timestamps, etc.)",
+    )
+
+    callback_details: dict | None = None
+    response_requested: bool | None = Field(
         default=False, description="Whether the request should return a response"
     )
 
