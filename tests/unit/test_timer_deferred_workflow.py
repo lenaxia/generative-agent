@@ -179,7 +179,8 @@ class TestDeferredWorkflowExecution:
                 workflow_call.original_instruction
                 == "check the weather in san francisco"
             )
-            assert workflow_call.workflow_type == "deferred_execution"
+            # workflow_type is semantic type, original_instruction has the actual instruction
+            assert workflow_call.workflow_type == "deferred_timer_execution"
             assert workflow_call.user_id == "user_exec"
             assert workflow_call.channel_id == "slack:C_EXEC"
             assert workflow_call.parameters["source"] == "timer_expiry"
@@ -308,7 +309,7 @@ class TestDeferredWorkflowIntegration:
 
             workflow_intent = mock_intent_processor._process_workflow.call_args[0][0]
             assert workflow_intent.original_instruction == "test workflow execution"
-            assert workflow_intent.workflow_type == "deferred_execution"
+            assert workflow_intent.workflow_type == "deferred_timer_execution"
 
 
 class TestBackwardCompatibility:

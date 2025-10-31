@@ -9,8 +9,8 @@ Part of: Threading Architecture Improvements (Documents 25, 26, 27)
 """
 
 import logging
-from typing import Any
 from collections.abc import Callable
+from typing import Any
 
 from common.intents import (
     AuditIntent,
@@ -19,6 +19,7 @@ from common.intents import (
     NotificationIntent,
     WorkflowIntent,
 )
+from common.request_model import RequestMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -230,10 +231,28 @@ class IntentProcessor:
                 # Execute via workflow engine's task graph execution (synchronous)
                 self.workflow_engine.execute_workflow_intent(intent)
             else:
-                # Simple workflow - use generic start_workflow (synchronous)
-                workflow_id = self.workflow_engine.start_workflow(
-                    instruction=f"Execute {intent.workflow_type}"
+                # Simple workflow - create RequestMetadata with user_id and channel_id from intent
+                # Use original_instruction if available (for deferred workflows), otherwise use workflow_type
+                instruction = intent.original_instruction or intent.workflow_type
+
+                # Only add "Execute" prefix if this looks like a workflow type, not a full instruction
+                if intent.original_instruction:
+                    # This is a full instruction (e.g., from deferred workflow), use as-is
+                    prompt = instruction
+                else:
+                    # This is a workflow type, add Execute prefix
+                    prompt = f"Execute {instruction}"
+
+                request = RequestMetadata(
+                    prompt=prompt,
+                    source_id="intent_processor",
+                    target_id="workflow_engine",
+                    user_id=intent.user_id,
+                    channel_id=intent.channel_id,
+                    metadata=intent.parameters or {},
+                    response_requested=True,  # Ensure result is sent back to user
                 )
+                workflow_id = self.workflow_engine.handle_request(request)
                 logger.info(
                     f"Started workflow {workflow_id} from intent: {intent.workflow_type}"
                 )

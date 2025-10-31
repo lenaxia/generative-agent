@@ -637,10 +637,11 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
                 )
 
                 # Create a WorkflowIntent to trigger the deferred task
+                # Use original_instruction to pass the full instruction without "Execute" prefix
                 from common.intents import WorkflowIntent
 
                 workflow_intent = WorkflowIntent(
-                    workflow_type="deferred_execution",
+                    workflow_type="deferred_timer_execution",  # Semantic type for tracking
                     parameters={
                         "source": "timer_expiry",
                         "original_timer_id": intent.timer_id,
@@ -648,12 +649,12 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
                     request_id=f"deferred_{intent.timer_id}",
                     user_id=intent.user_id,
                     channel_id=intent.channel_id,
-                    original_instruction=intent.deferred_workflow,
+                    original_instruction=intent.deferred_workflow,  # Full instruction for router
                     context=intent.event_context or {},
                 )
 
-                # Process the workflow intent through the IntentProcessor
-                await role_registry.intent_processor._process_workflow(workflow_intent)
+                # Process the workflow intent through the IntentProcessor (synchronous)
+                role_registry.intent_processor._process_workflow(workflow_intent)
                 logger.info(
                     f"Deferred workflow triggered successfully for timer {intent.timer_id}"
                 )
