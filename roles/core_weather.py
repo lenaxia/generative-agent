@@ -34,7 +34,7 @@ ROLE_CONFIG = {
         "location": {
             "type": "string",
             "required": True,
-            "description": "City, state, country, or coordinates for weather lookup",
+            "description": "City, postal code or coordinates for weather lookup",
             "examples": ["Seattle", "New York, NY", "90210", "47.6062,-122.3321"],
         },
         "timeframe": {

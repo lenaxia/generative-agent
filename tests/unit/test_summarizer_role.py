@@ -52,12 +52,8 @@ class TestSummarizerRole:
         from roles.core_summarizer import load_predecessor_results
 
         context = Mock()
-        context.predecessor_results = [
-            {"task_name": "Task 1", "result": "Result 1"},
-            {"task_name": "Task 2", "result": "Result 2"},
-        ]
 
-        instruction = "Summarize the results"
+        instruction = "Previous task results available for context:\n- Task 1: Result 1\n- Task 2: Result 2\n\nCurrent task: Summarize the results"
         parameters = {"format": "summary", "length": "brief"}
 
         result = load_predecessor_results(instruction, context, parameters)
@@ -65,9 +61,8 @@ class TestSummarizerRole:
         assert "predecessor_results" in result
         assert "format" in result
         assert result["format"] == "summary"
-        assert result["result_count"] == 2
-        assert "Task 1" in result["predecessor_results"]
-        assert "Task 2" in result["predecessor_results"]
+        assert result["has_predecessors"] is True
+        assert "included in your instruction" in result["predecessor_results"]
 
     def test_load_predecessor_results_no_results(self):
         """Test pre-processing when no predecessor results exist."""
@@ -76,7 +71,6 @@ class TestSummarizerRole:
         from roles.core_summarizer import load_predecessor_results
 
         context = Mock()
-        context.predecessor_results = []
 
         instruction = "Summarize the results"
         parameters = {}
@@ -85,7 +79,7 @@ class TestSummarizerRole:
 
         assert "predecessor_results" in result
         assert "No predecessor results available" in result["predecessor_results"]
-        assert result["result_count"] == 0
+        assert result["has_predecessors"] is False
 
     def test_synthesis_intent_validation(self):
         """Test SynthesisIntent validation."""

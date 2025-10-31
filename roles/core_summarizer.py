@@ -153,38 +153,37 @@ class SynthesisIntent(Intent):
 
 # 3. LIFECYCLE FUNCTIONS
 def load_predecessor_results(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load results from predecessor tasks in the workflow.
+    """Pre-processor: Extract predecessor results from the instruction.
 
-    The workflow engine automatically provides predecessor results via context.
-    This function formats them for injection into the LLM prompt.
+    The workflow engine adds predecessor results to the instruction text in the format:
+    'Previous task results available for context:\n- Result1\n- Result2\n\nCurrent task: ...'
+
+    This function extracts format parameters for prompt injection.
     """
     try:
-        # Get predecessor results from context
-        predecessor_results = getattr(context, "predecessor_results", [])
-
         # Get format parameters
         format_type = parameters.get("format", "summary")
         focus = parameters.get("focus", "comprehensive")
         length = parameters.get("length", "detailed")
 
-        # Format predecessor results for prompt injection
-        if predecessor_results:
-            formatted_results = _format_predecessor_results(predecessor_results)
-        else:
-            formatted_results = (
-                "No predecessor results available. Using user instruction only."
-            )
+        # Check if instruction contains predecessor results
+        has_predecessors = "Previous task results available for context:" in instruction
 
-        logger.info(
-            f"Loaded {len(predecessor_results)} predecessor results for synthesis"
-        )
+        if has_predecessors:
+            logger.info("Predecessor results detected in instruction")
+            predecessor_note = (
+                "Predecessor task results are included in your instruction above."
+            )
+        else:
+            logger.info("No predecessor results in instruction")
+            predecessor_note = "No predecessor results available. Synthesize based on the current instruction."
 
         return {
-            "predecessor_results": formatted_results,
+            "predecessor_results": predecessor_note,
             "format": format_type,
             "focus": focus,
             "length": length,
-            "result_count": len(predecessor_results),
+            "has_predecessors": has_predecessors,
         }
 
     except Exception as e:
@@ -194,7 +193,7 @@ def load_predecessor_results(instruction: str, context, parameters: dict) -> dic
             "format": parameters.get("format", "summary"),
             "focus": parameters.get("focus", "comprehensive"),
             "length": parameters.get("length", "detailed"),
-            "result_count": 0,
+            "has_predecessors": False,
         }
 
 

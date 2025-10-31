@@ -34,7 +34,6 @@ ROLE_CONFIG = {
     "version": "5.0.0",
     "description": "Natural conversation with global message log and topic-based knowledge extraction",
     "llm_type": "DEFAULT",
-    "exclude_from_planning": True,  # Router should not be used in planning workflows
     "fast_reply": True,
     "memory_enabled": True,
     "location_aware": False,
