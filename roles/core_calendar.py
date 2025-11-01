@@ -8,18 +8,23 @@ Key features:
 - Calendar event management (add, retrieve, query)
 - Integration with household assistant context system
 - LLM-safe architecture with intent-based processing
+- CalDAV provider abstraction (supports iCloud, Nextcloud, etc.)
 
 Architecture: Single Event Loop + Intent-Based + Context-Aware
 Created: 2025-10-16
+Updated: 2025-11-01 - Added CalDAV provider integration
 """
 
 import logging
+import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from strands import tool
 
+from common.calendar_providers import get_calendar_provider
 from common.event_context import LLMSafeEventContext
 from common.intents import Intent, NotificationIntent
 
@@ -145,12 +150,25 @@ def handle_calendar_request(
         ]
 
 
-# 4. TOOLS
+# 4. HELPER FUNCTIONS
+def _load_calendar_config() -> dict:
+    """Load calendar configuration from environment or config file."""
+    return {
+        "provider": os.getenv("CALENDAR_PROVIDER", "caldav"),
+        "caldav": {
+            "url": os.getenv("CALDAV_URL", "https://caldav.icloud.com"),
+            "username": os.getenv("CALDAV_USERNAME", ""),
+            "password": os.getenv("CALDAV_PASSWORD", ""),
+        },
+    }
+
+
+# 5. TOOLS
 @tool
 def get_schedule(
     user_id: str, days_ahead: int = 7, location: str = None
 ) -> dict[str, Any]:
-    """Get user's schedule with location context.
+    """Get user's schedule from calendar provider.
 
     Args:
         user_id: User identifier
@@ -160,14 +178,45 @@ def get_schedule(
     Returns:
         Dict with success status, events list, and message
     """
-    # Placeholder for calendar API integration
-    # Could integrate with CalDAV, Google Calendar, etc.
+    try:
+        # Load config and get provider
+        config = _load_calendar_config()
+        provider = get_calendar_provider(config)
 
-    message = f"Schedule retrieved for {user_id}"
-    if location:
-        message += f" (location: {location})"
+        # Get events
+        start = datetime.now()
+        end = start + timedelta(days=days_ahead)
+        events = provider.get_events(start, end)
 
-    return {"success": True, "events": [], "message": message}
+        # Format events for display
+        formatted_events = []
+        for event in events:
+            formatted_events.append(
+                {
+                    "title": event["title"],
+                    "start": event["start"].isoformat()
+                    if isinstance(event["start"], datetime)
+                    else str(event["start"]),
+                    "end": event["end"].isoformat()
+                    if isinstance(event["end"], datetime)
+                    else str(event["end"]),
+                    "location": event.get("location"),
+                }
+            )
+
+        message = f"Retrieved {len(events)} events for {user_id}"
+        if location:
+            message += f" (location context: {location})"
+
+        return {"success": True, "events": formatted_events, "message": message}
+
+    except Exception as e:
+        logger.error(f"Failed to get schedule: {e}")
+        return {
+            "success": False,
+            "events": [],
+            "message": f"Failed to retrieve schedule: {str(e)}",
+        }
 
 
 @tool
@@ -178,11 +227,11 @@ def add_calendar_event(
     location: str = None,
     user_id: str = None,
 ) -> dict[str, Any]:
-    """Add calendar event with memory storage.
+    """Add calendar event using configured provider.
 
     Args:
         title: Event title
-        start_time: Event start time in ISO format
+        start_time: Event start time in ISO format (e.g., "2024-03-15T14:00:00")
         duration: Event duration in minutes (default: 60)
         location: Optional event location
         user_id: Optional user identifier
@@ -190,27 +239,45 @@ def add_calendar_event(
     Returns:
         Dict with success status, event_id, and message
     """
-    # Placeholder for calendar API integration
-    event_data = {
-        "title": title,
-        "start_time": start_time,
-        "duration": duration,
-        "location": location,
-    }
+    try:
+        # Parse start time
+        start = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
 
-    event_id = f"evt_{int(time.time())}"
-    message = f"Added event: {title} at {start_time}"
+        # Load config and get provider
+        config = _load_calendar_config()
+        provider = get_calendar_provider(config)
 
-    return {"success": True, "event_id": event_id, "message": message}
+        # Add event
+        event = provider.add_event(
+            title=title,
+            start=start,
+            duration=duration,
+            location=location,
+            description=f"Created by {user_id}" if user_id else None,
+        )
+
+        message = f"Added event: {title} at {start_time}"
+        if location:
+            message += f" ({location})"
+
+        return {"success": True, "event_id": event["id"], "message": message}
+
+    except Exception as e:
+        logger.error(f"Failed to add event: {e}")
+        return {
+            "success": False,
+            "event_id": None,
+            "message": f"Failed to add event: {str(e)}",
+        }
 
 
-# 5. INTENT HANDLER REGISTRATION
+# 6. INTENT HANDLER REGISTRATION
 async def process_calendar_intent(intent: CalendarIntent):
     """Process calendar-specific intents - called by IntentProcessor."""
     logger.info(f"Processing calendar intent: {intent.action}")
 
 
-# 6. ROLE REGISTRATION (auto-discovery)
+# 7. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Auto-discovered by RoleRegistry - LLM can modify this."""
     return {

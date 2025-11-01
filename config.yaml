@@ -253,6 +253,26 @@ household_assistant:
     mqtt_port: 1883
     mqtt_username: "${MQTT_USERNAME}"
     mqtt_password: "${MQTT_PASSWORD}"
+# Calendar Configuration
+calendar:
+  enabled: true
+  provider: "caldav" # Currently only CalDAV supported
+
+  # CalDAV Configuration (iCloud, Nextcloud, self-hosted)
+  caldav:
+    url: "${CALDAV_URL}" # e.g., https://caldav.icloud.com
+    username: "${CALDAV_USERNAME}" # Your email or username
+    password: "${CALDAV_PASSWORD}" # App-specific password for iCloud
+
+  # Future providers (not yet implemented)
+  # google:
+  #   credentials_file: "credentials.json"
+  #   token_file: "token.json"
+  #
+  # outlook:
+  #   client_id: "${OUTLOOK_CLIENT_ID}"
+  #   client_secret: "${OUTLOOK_CLIENT_SECRET}"
+  #   token_path: ".outlook_tokens"
 
   context_types:
     location: true

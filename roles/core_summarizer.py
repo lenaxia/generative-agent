@@ -29,7 +29,7 @@ ROLE_CONFIG = {
     "description": "Synthesize, analyze, and present information in structured formats from multiple sources",
     "llm_type": "DEFAULT",
     "fast_reply": True,
-    "when_to_use": "Summarize results, create reports, synthesize information from multiple sources, present findings, create structured outputs, consolidate task results, generate itineraries or plans. When used in planning, this will often (but not always) be the final step.",
+    "when_to_use": "Summarize results, create reports, synthesize information from multiple sources, present findings, create structured outputs, consolidate task results, generate itineraries or plans. When used in planning, this should be the final step.",
     "parameters": {
         "format": {
             "type": "string",
