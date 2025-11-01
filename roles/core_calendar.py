@@ -151,12 +151,32 @@ def handle_calendar_request(
 
 
 # 4. HELPER FUNCTIONS
-def _load_calendar_config() -> dict:
-    """Load calendar configuration from environment or config file."""
+def _is_calendar_configured() -> bool:
+    """Check if calendar is properly configured."""
+    url = os.getenv("CALDAV_URL", "")
+    username = os.getenv("CALDAV_USERNAME", "")
+    password = os.getenv("CALDAV_PASSWORD", "")
+
+    return bool(url and username and password)
+
+
+def _load_calendar_config() -> dict | None:
+    """Load calendar configuration from environment or config file.
+
+    Returns:
+        Config dict if properly configured, None otherwise
+    """
+    if not _is_calendar_configured():
+        logger.warning(
+            "Calendar not configured. Set CALDAV_URL, CALDAV_USERNAME, and CALDAV_PASSWORD "
+            "environment variables to enable calendar integration."
+        )
+        return None
+
     return {
         "provider": os.getenv("CALENDAR_PROVIDER", "caldav"),
         "caldav": {
-            "url": os.getenv("CALDAV_URL", "https://caldav.icloud.com"),
+            "url": os.getenv("CALDAV_URL", ""),
             "username": os.getenv("CALDAV_USERNAME", ""),
             "password": os.getenv("CALDAV_PASSWORD", ""),
         },
@@ -178,9 +198,17 @@ def get_schedule(
     Returns:
         Dict with success status, events list, and message
     """
+    # Check if calendar is configured
+    config = _load_calendar_config()
+    if config is None:
+        return {
+            "success": False,
+            "events": [],
+            "message": "Calendar not configured. Please set CALDAV_URL, CALDAV_USERNAME, and CALDAV_PASSWORD environment variables.",
+        }
+
     try:
-        # Load config and get provider
-        config = _load_calendar_config()
+        # Get provider
         provider = get_calendar_provider(config)
 
         # Get events
@@ -215,7 +243,7 @@ def get_schedule(
         return {
             "success": False,
             "events": [],
-            "message": f"Failed to retrieve schedule: {str(e)}",
+            "message": f"Calendar integration error: {str(e)}. Check your calendar configuration.",
         }
 
 
@@ -239,12 +267,20 @@ def add_calendar_event(
     Returns:
         Dict with success status, event_id, and message
     """
+    # Check if calendar is configured
+    config = _load_calendar_config()
+    if config is None:
+        return {
+            "success": False,
+            "event_id": None,
+            "message": "Calendar not configured. Please set CALDAV_URL, CALDAV_USERNAME, and CALDAV_PASSWORD environment variables.",
+        }
+
     try:
         # Parse start time
         start = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
 
-        # Load config and get provider
-        config = _load_calendar_config()
+        # Get provider
         provider = get_calendar_provider(config)
 
         # Add event
@@ -267,7 +303,7 @@ def add_calendar_event(
         return {
             "success": False,
             "event_id": None,
-            "message": f"Failed to add event: {str(e)}",
+            "message": f"Calendar integration error: {str(e)}. Check your calendar configuration.",
         }
 
 
