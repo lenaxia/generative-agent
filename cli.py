@@ -98,6 +98,155 @@ def show_command_history():
 
     except Exception as e:
         logger.warning("Could not show command history: %s", e)
+
+
+def show_realtime_log(user_id: str = "default_user", limit: int = 10):
+    """Show recent messages from realtime log."""
+    try:
+        from datetime import datetime
+
+        from common.realtime_log import get_recent_messages
+
+        messages = get_recent_messages(user_id, limit=limit)
+
+        if not messages:
+            print(f"\n📝 No realtime messages for user: {user_id}")
+            return
+
+        print(f"\n📝 Realtime Log for {user_id} (last {len(messages)} messages):")
+        print("=" * 80)
+
+        for i, msg in enumerate(messages, 1):
+            timestamp = datetime.fromtimestamp(msg["timestamp"]).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            analyzed = "✓" if msg.get("analyzed") else "○"
+            print(f"\n[{i}] {timestamp} {analyzed} ({msg['role']})")
+            print(f"User: {msg['user']}")
+            print(f"Assistant: {msg['assistant']}")
+            print("-" * 80)
+
+        print(f"\nTotal: {len(messages)} messages")
+        print(f"Analyzed: {sum(1 for m in messages if m.get('analyzed'))}")
+        print(f"Unanalyzed: {sum(1 for m in messages if not m.get('analyzed'))}")
+
+    except Exception as e:
+        print(f"❌ Error showing realtime log: {e}")
+        logger.error(f"Error showing realtime log: {e}", exc_info=True)
+
+
+def show_assessed_memories(user_id: str = "default_user", limit: int = 10):
+    """Show assessed memories from unified memory system."""
+    try:
+        from datetime import datetime
+
+        from common.providers.universal_memory_provider import UniversalMemoryProvider
+
+        provider = UniversalMemoryProvider()
+        memories = provider.get_recent_memories(
+            user_id=user_id, memory_types=None, limit=limit
+        )
+
+        if not memories:
+            print(f"\n🧠 No assessed memories for user: {user_id}")
+            return
+
+        print(f"\n🧠 Assessed Memories for {user_id} (last {len(memories)}):")
+        print("=" * 80)
+
+        for i, mem in enumerate(memories, 1):
+            timestamp = datetime.fromtimestamp(mem.timestamp).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            importance_bar = "█" * int(mem.importance * 10)
+            print(
+                f"\n[{i}] {timestamp} | Importance: {mem.importance:.1f} {importance_bar}"
+            )
+            print(f"Type: {mem.memory_type} | Source: {mem.source_role}")
+
+            if mem.summary:
+                print(f"Summary: {mem.summary}")
+            else:
+                content_preview = (
+                    mem.content[:100] + "..." if len(mem.content) > 100 else mem.content
+                )
+                print(f"Content: {content_preview}")
+
+            if mem.tags:
+                print(f"Tags: {', '.join(mem.tags)}")
+
+            if mem.topics:
+                print(f"Topics: {', '.join(mem.topics)}")
+
+            print("-" * 80)
+
+        print(f"\nTotal: {len(memories)} memories")
+        print(f"Important (>= 0.7): {sum(1 for m in memories if m.importance >= 0.7)}")
+        print(
+            f"Medium (0.5-0.7): {sum(1 for m in memories if 0.5 <= m.importance < 0.7)}"
+        )
+        print(f"Low (< 0.5): {sum(1 for m in memories if m.importance < 0.5)}")
+
+    except Exception as e:
+        print(f"❌ Error showing assessed memories: {e}")
+        logger.error(f"Error showing assessed memories: {e}", exc_info=True)
+
+
+def show_memory_stats(user_id: str = "default_user"):
+    """Show memory system statistics."""
+    try:
+        from common.providers.universal_memory_provider import UniversalMemoryProvider
+        from common.realtime_log import get_recent_messages
+
+        # Get realtime log stats
+        realtime_messages = get_recent_messages(user_id, limit=100)
+        unanalyzed_count = sum(1 for m in realtime_messages if not m.get("analyzed"))
+
+        # Get assessed memory stats
+        provider = UniversalMemoryProvider()
+        memories = provider.get_recent_memories(user_id=user_id, limit=100)
+
+        print(f"\n📊 Memory System Statistics for {user_id}:")
+        print("=" * 80)
+
+        print("\n📝 Realtime Log:")
+        print(f"  Total messages: {len(realtime_messages)}")
+        print(f"  Analyzed: {len(realtime_messages) - unanalyzed_count}")
+        print(f"  Unanalyzed: {unanalyzed_count}")
+
+        print("\n🧠 Assessed Memories:")
+        print(f"  Total memories: {len(memories)}")
+
+        if memories:
+            by_type = {}
+            by_importance = {"high": 0, "medium": 0, "low": 0}
+
+            for mem in memories:
+                by_type[mem.memory_type] = by_type.get(mem.memory_type, 0) + 1
+
+                if mem.importance >= 0.7:
+                    by_importance["high"] += 1
+                elif mem.importance >= 0.5:
+                    by_importance["medium"] += 1
+                else:
+                    by_importance["low"] += 1
+
+            print(f"\n  By Type:")
+            for mem_type, count in sorted(by_type.items()):
+                print(f"    {mem_type}: {count}")
+
+            print(f"\n  By Importance:")
+            print(f"    High (>= 0.7): {by_importance['high']}")
+            print(f"    Medium (0.5-0.7): {by_importance['medium']}")
+            print(f"    Low (< 0.5): {by_importance['low']}")
+
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"❌ Error showing memory stats: {e}")
+        logger.error(f"Error showing memory stats: {e}", exc_info=True)
+
+        logger.warning("Could not show command history: %s", e)
         print("❌ Could not retrieve command history")
 
 
@@ -298,11 +447,19 @@ def _print_help_message():
     print("  /help     - Show this help message")
     print("  /history  - Show command history")
     print("  /clear    - Clear command history")
-    print("📝 Navigation:")
+    print("\n💾 Memory Commands:")
+    print("  /log [user_id] [limit]    - Show realtime log (default: default_user, 10)")
+    print(
+        "  /memory [user_id] [limit] - Show assessed memories (default: default_user, 10)"
+    )
+    print(
+        "  /stats [user_id]          - Show memory statistics (default: default_user)"
+    )
+    print("\n📝 Navigation:")
     print("  ↑/↓ arrows - Navigate command history")
     print("  ←/→ arrows - Move cursor within current line")
     print("  Ctrl+A/E  - Move to beginning/end of line")
-    print("💬 Default: Any other text will be executed as a workflow")
+    print("\n💬 Default: Any other text will be executed as a workflow")
 
 
 def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
@@ -329,6 +486,20 @@ def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
     elif command == "clear":
         clear_command_history()
         print("✅ Command history cleared")
+    elif command == "log" or command.startswith("log "):
+        parts = command.split()
+        user_id = parts[1] if len(parts) > 1 else "default_user"
+        limit = int(parts[2]) if len(parts) > 2 else 10
+        show_realtime_log(user_id, limit)
+    elif command == "memory" or command.startswith("memory "):
+        parts = command.split()
+        user_id = parts[1] if len(parts) > 1 else "default_user"
+        limit = int(parts[2]) if len(parts) > 2 else 10
+        show_assessed_memories(user_id, limit)
+    elif command == "stats" or command.startswith("stats "):
+        parts = command.split()
+        user_id = parts[1] if len(parts) > 1 else "default_user"
+        show_memory_stats(user_id)
     else:
         print(f"❌ Unknown command: /{command}")
         print("💡 Type /help for available commands")
