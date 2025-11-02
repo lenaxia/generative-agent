@@ -100,35 +100,84 @@ def show_command_history():
         logger.warning("Could not show command history: %s", e)
 
 
-def show_realtime_log(user_id: str = "default_user", limit: int = 10):
+def get_all_user_ids() -> list[str]:
+    """Get all user IDs that have memory data."""
+    try:
+        from roles.shared_tools.redis_tools import _get_redis_client
+
+        client = _get_redis_client()
+
+        # Get all realtime log keys
+        realtime_keys = client.keys("realtime:*")
+        # Get all memory keys
+        memory_keys = client.keys("memory:*:*")
+
+        user_ids = set()
+
+        # Extract user IDs from realtime keys
+        for key in realtime_keys:
+            key_str = key.decode() if isinstance(key, bytes) else key
+            if key_str.startswith("realtime:"):
+                user_id = key_str.split(":", 1)[1]
+                user_ids.add(user_id)
+
+        # Extract user IDs from memory keys
+        for key in memory_keys:
+            key_str = key.decode() if isinstance(key, bytes) else key
+            if key_str.startswith("memory:"):
+                parts = key_str.split(":")
+                if len(parts) >= 2:
+                    user_id = parts[1]
+                    user_ids.add(user_id)
+
+        return sorted(list(user_ids))
+
+    except Exception as e:
+        logger.error(f"Error getting user IDs: {e}")
+        return []
+
+
+def show_realtime_log(user_id: str | None = None, limit: int = 10):
     """Show recent messages from realtime log."""
     try:
         from datetime import datetime
 
         from common.realtime_log import get_recent_messages
 
-        messages = get_recent_messages(user_id, limit=limit)
+        # Get all users if no user_id specified
+        user_ids = [user_id] if user_id else get_all_user_ids()
 
-        if not messages:
-            print(f"\n📝 No realtime messages for user: {user_id}")
+        if not user_ids:
+            print("\n📝 No users found with realtime messages")
             return
 
-        print(f"\n📝 Realtime Log for {user_id} (last {len(messages)} messages):")
-        print("=" * 80)
+        for uid in user_ids:
+            messages = get_recent_messages(uid, limit=limit)
 
-        for i, msg in enumerate(messages, 1):
-            timestamp = datetime.fromtimestamp(msg["timestamp"]).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            analyzed = "✓" if msg.get("analyzed") else "○"
-            print(f"\n[{i}] {timestamp} {analyzed} ({msg['role']})")
-            print(f"User: {msg['user']}")
-            print(f"Assistant: {msg['assistant']}")
-            print("-" * 80)
+            if not messages:
+                if len(user_ids) == 1:
+                    print(f"\n📝 No realtime messages for user: {uid}")
+                continue
 
-        print(f"\nTotal: {len(messages)} messages")
-        print(f"Analyzed: {sum(1 for m in messages if m.get('analyzed'))}")
-        print(f"Unanalyzed: {sum(1 for m in messages if not m.get('analyzed'))}")
+            print(f"\n📝 Realtime Log for {uid} (last {len(messages)} messages):")
+            print("=" * 80)
+
+            for i, msg in enumerate(messages, 1):
+                timestamp = datetime.fromtimestamp(msg["timestamp"]).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                analyzed = "✓" if msg.get("analyzed") else "○"
+                print(f"\n[{i}] {timestamp} {analyzed} ({msg['role']})")
+                print(f"User: {msg['user']}")
+                print(f"Assistant: {msg['assistant']}")
+                print("-" * 80)
+
+            print(f"\nTotal: {len(messages)} messages")
+            print(f"Analyzed: {sum(1 for m in messages if m.get('analyzed'))}")
+            print(f"Unanalyzed: {sum(1 for m in messages if not m.get('analyzed'))}")
+
+            if len(user_ids) > 1:
+                print("\n" + "=" * 80 + "\n")
 
     except Exception as e:
         print(f"❌ Error showing realtime log: {e}")
@@ -448,13 +497,11 @@ def _print_help_message():
     print("  /history  - Show command history")
     print("  /clear    - Clear command history")
     print("\n💾 Memory Commands:")
-    print("  /log [user_id] [limit]    - Show realtime log (default: default_user, 10)")
+    print("  /log [user_id] [limit]    - Show realtime log (default: all users, 10)")
     print(
-        "  /memory [user_id] [limit] - Show assessed memories (default: default_user, 10)"
+        "  /memory [user_id] [limit] - Show assessed memories (default: all users, 10)"
     )
-    print(
-        "  /stats [user_id]          - Show memory statistics (default: default_user)"
-    )
+    print("  /stats [user_id]          - Show memory statistics (default: all users)")
     print("\n📝 Navigation:")
     print("  ↑/↓ arrows - Navigate command history")
     print("  ←/→ arrows - Move cursor within current line")
@@ -488,17 +535,17 @@ def _handle_slash_command(command: str, supervisor: Supervisor) -> bool:
         print("✅ Command history cleared")
     elif command == "log" or command.startswith("log "):
         parts = command.split()
-        user_id = parts[1] if len(parts) > 1 else "default_user"
+        user_id = parts[1] if len(parts) > 1 else None
         limit = int(parts[2]) if len(parts) > 2 else 10
         show_realtime_log(user_id, limit)
     elif command == "memory" or command.startswith("memory "):
         parts = command.split()
-        user_id = parts[1] if len(parts) > 1 else "default_user"
+        user_id = parts[1] if len(parts) > 1 else None
         limit = int(parts[2]) if len(parts) > 2 else 10
         show_assessed_memories(user_id, limit)
     elif command == "stats" or command.startswith("stats "):
         parts = command.split()
-        user_id = parts[1] if len(parts) > 1 else "default_user"
+        user_id = parts[1] if len(parts) > 1 else None
         show_memory_stats(user_id)
     else:
         print(f"❌ Unknown command: /{command}")
