@@ -29,14 +29,21 @@ ROLE_CONFIG = {
     "when_to_use": "Create multi-step workflows, break down complex tasks, coordinate multiple roles",
     "tools": {
         "automatic": False,  # No tools needed
-        "shared": [],
+        "shared": ["memory_tools"],  # Unified memory for planning context
         "include_builtin": False,
     },
     "lifecycle": {
-        "pre_processing": {"enabled": True, "functions": ["load_available_roles"]},
+        "pre_processing": {
+            "enabled": True,
+            "functions": ["load_planning_context", "load_available_roles"],
+        },
         "post_processing": {
             "enabled": True,
-            "functions": ["validate_task_graph", "execute_task_graph"],
+            "functions": [
+                "validate_task_graph",
+                "execute_task_graph",
+                "save_planning_result",
+            ],
         },
     },
     "prompts": {
@@ -90,6 +97,33 @@ EXAMPLE (RESPOND EXACTLY LIKE THIS - JSON ONLY):
 RESPOND WITH ONLY JSON - NO OTHER TEXT."""
     },
 }
+
+
+# 2. PRE-PROCESSING: MEMORY LOADING
+def load_planning_context(instruction: str, context, parameters: dict) -> dict:
+    """Pre-processor: Load Tier 1 memories for planning context."""
+    try:
+        from common.providers.universal_memory_provider import UniversalMemoryProvider
+
+        user_id = getattr(context, "user_id", "unknown")
+
+        # TIER 1: Load recent memories from unified system (last 5)
+        memory_provider = UniversalMemoryProvider()
+        tier1_memories = memory_provider.get_recent_memories(
+            user_id=user_id, memory_types=["plan", "conversation"], limit=5
+        )
+
+        return {
+            "tier1_memories": tier1_memories,
+            "user_id": user_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to load planning context: {e}")
+        return {
+            "tier1_memories": [],
+            "user_id": getattr(context, "user_id", "unknown"),
+        }
 
 
 # 2. PRE-PROCESSING: ROLE DISCOVERY
@@ -365,6 +399,18 @@ def execute_task_graph(llm_result: str, context, pre_data: dict) -> WorkflowInte
     except Exception as e:
         logger.error(f"TaskGraph intent creation failed: {e}")
         raise ValueError(f"TaskGraph intent creation error: {e}")
+
+
+def save_planning_result(llm_result, context, pre_data: dict):
+    """Post-processing: Save planning result to unified memory."""
+    try:
+        # For now, just return the result
+        # In future, parse llm_result to extract plan details and emit MemoryWriteIntent
+        return llm_result
+
+    except Exception as e:
+        logger.error(f"Failed to save planning memory: {e}")
+        return llm_result
 
 
 # 5. ROLE REGISTRATION (auto-discovery)
