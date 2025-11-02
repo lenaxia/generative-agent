@@ -75,11 +75,15 @@ ROLE_CONFIG = {
     },
     "tools": {
         "automatic": True,  # Include custom calendar tools
-        "shared": [],  # No shared tools needed for basic calendar
+        "shared": ["memory_tools"],  # Unified memory for event context
         "include_builtin": False,  # Exclude calculator, file_read, shell
         "fast_reply": {
             "enabled": True,  # Enable tools in fast-reply mode
         },
+    },
+    "lifecycle": {
+        "pre_processing": {"enabled": True, "functions": ["load_calendar_context"]},
+        "post_processing": {"enabled": True, "functions": ["save_calendar_event"]},
     },
     "prompts": {
         "system": """You are a calendar and scheduling specialist with context awareness. You can manage calendar events, retrieve schedules, and help with event planning.
@@ -305,6 +309,45 @@ def add_calendar_event(
             "event_id": None,
             "message": f"Calendar integration error: {str(e)}. Check your calendar configuration.",
         }
+
+
+# 5. LIFECYCLE FUNCTIONS
+def load_calendar_context(instruction: str, context, parameters: dict) -> dict:
+    """Pre-processor: Load Tier 1 memories for calendar context."""
+    try:
+        from common.providers.universal_memory_provider import UniversalMemoryProvider
+
+        user_id = getattr(context, "user_id", "unknown")
+
+        # TIER 1: Load recent memories from unified system (last 5)
+        memory_provider = UniversalMemoryProvider()
+        tier1_memories = memory_provider.get_recent_memories(
+            user_id=user_id, memory_types=["event", "conversation"], limit=5
+        )
+
+        return {
+            "tier1_memories": tier1_memories,
+            "user_id": user_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to load calendar context: {e}")
+        return {
+            "tier1_memories": [],
+            "user_id": getattr(context, "user_id", "unknown"),
+        }
+
+
+def save_calendar_event(llm_result: str, context, pre_data: dict) -> str:
+    """Post-processing: Save calendar event to unified memory."""
+    try:
+        # For now, just return the result
+        # In future, parse llm_result to extract event details and emit MemoryWriteIntent
+        return llm_result
+
+    except Exception as e:
+        logger.error(f"Failed to save calendar memory: {e}")
+        return llm_result
 
 
 # 6. INTENT HANDLER REGISTRATION
