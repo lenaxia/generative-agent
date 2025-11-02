@@ -227,6 +227,39 @@ class ErrorIntent(Intent):
         )
 
 
+@dataclass
+class MemoryWriteIntent(Intent):
+    """
+    Universal intent: Any role can write memories.
+
+    This intent represents the desire to store a memory in the unified memory system.
+    The actual memory storage is handled by the infrastructure asynchronously.
+    """
+
+    user_id: str
+    memory_type: str  # conversation, event, plan, preference, fact
+    content: str
+    source_role: str
+    importance: float = 0.5
+    metadata: dict[str, Any] | None = None
+    tags: list[str] | None = None
+    related_memories: list[str] | None = None
+
+    def validate(self) -> bool:
+        """Validate memory write intent parameters."""
+        valid_types = ["conversation", "event", "plan", "preference", "fact"]
+        return (
+            bool(
+                self.user_id and self.memory_type and self.content and self.source_role
+            )
+            and self.memory_type in valid_types
+            and 0.0 <= self.importance <= 1.0
+            and len(self.user_id.strip()) > 0
+            and len(self.content.strip()) > 0
+            and len(self.source_role.strip()) > 0
+        )
+
+
 # Utility functions for intent handling
 def validate_intent_list(intents: list) -> bool:
     """
