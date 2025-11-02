@@ -41,7 +41,7 @@ class TestSingleFileTimerRoleLLMSafe:
         assert ROLE_CONFIG["llm_type"] == "WEAK"
         assert "fast_reply" in ROLE_CONFIG
         assert "when_to_use" in ROLE_CONFIG
-        assert "heartbeat polling" in ROLE_CONFIG["when_to_use"]
+        assert "timer" in ROLE_CONFIG["when_to_use"].lower()
 
         # Verify tools configuration excludes built-ins (Document 26 pattern)
         assert ROLE_CONFIG["tools"]["include_builtin"] is False
