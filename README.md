@@ -15,10 +15,11 @@ The Universal Agent System is a **single AI agent** that dynamically assumes spe
 - **🔄 Intent-Based Processing**: Declarative event handling for LLM-safe architecture
 - **⚡ Fast-Reply Routing**: Intelligent request routing with 95%+ confidence
 - **🧠 Context-Aware Intelligence**: Memory, location, and environmental awareness
+- **💾 Unified Memory System**: Cross-role memory with tiered loading and semantic search ready
 - **🔌 MCP Integration**: Seamless integration with external tool ecosystems
 - **🏠 Smart Home Integration**: Home Assistant MQTT integration
 - **📊 Health Monitoring**: Real-time system health and performance tracking
-- **🧪 Comprehensive Testing**: 842 tests with 100% pass rate
+- **🧪 Comprehensive Testing**: 958 tests with 96% pass rate
 - **🔧 Production Ready**: Docker setup, deployment guides, and monitoring
 
 ## 🚀 Quick Start
@@ -421,7 +422,11 @@ generative-agent/
 
 ### Context-Aware Intelligence
 
-- **Memory System**: Automatic importance assessment and storage
+- **Unified Memory System**: Cross-role memory with tiered loading (Tier 1: 5 recent, Tools: deep search)
+  - 5 memory types: conversation, event, plan, preference, fact
+  - Importance-based TTL (30-90 days)
+  - Rich metadata and tagging
+  - Pgvector-ready for semantic search
 - **Location Awareness**: MQTT-based real-time location tracking
 - **Environmental Context**: Weather, time-of-day, sensor integration
 - **Presence Detection**: Multi-person household awareness
@@ -448,10 +453,11 @@ Comprehensive documentation in the [`docs/`](docs/) directory:
 
 ### Test Statistics
 
-- **Total Tests**: 842
-- **Pass Rate**: 100%
+- **Total Tests**: 958
+- **Pass Rate**: 96% (11 pre-existing CalDAV failures)
 - **Coverage**: 57%
 - **Categories**: Unit, Integration, Performance, Supervisor
+- **Unified Memory Tests**: 83 tests (76 unit + 7 integration)
 
 ### Test Categories
 
