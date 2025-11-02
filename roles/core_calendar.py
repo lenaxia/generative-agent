@@ -339,14 +339,26 @@ def load_calendar_context(instruction: str, context, parameters: dict) -> dict:
 
 
 def save_calendar_event(llm_result: str, context, pre_data: dict) -> str:
-    """Post-processing: Save calendar event to unified memory."""
+    """Post-processing: Save calendar interaction to realtime log."""
     try:
-        # For now, just return the result
-        # In future, parse llm_result to extract event details and emit MemoryWriteIntent
+        from common.realtime_log import add_message
+
+        user_id = getattr(context, "user_id", "unknown")
+        user_message = getattr(context, "original_prompt", "unknown")
+
+        # Save to universal realtime log (24h TTL)
+        add_message(
+            user_id=user_id,
+            user_message=user_message,
+            assistant_response=llm_result,
+            role="calendar",
+            metadata=None,
+        )
+
         return llm_result
 
     except Exception as e:
-        logger.error(f"Failed to save calendar memory: {e}")
+        logger.error(f"Failed to save calendar interaction: {e}")
         return llm_result
 
 

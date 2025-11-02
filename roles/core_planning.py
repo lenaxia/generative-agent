@@ -402,14 +402,26 @@ def execute_task_graph(llm_result: str, context, pre_data: dict) -> WorkflowInte
 
 
 def save_planning_result(llm_result, context, pre_data: dict):
-    """Post-processing: Save planning result to unified memory."""
+    """Post-processing: Save planning interaction to realtime log."""
     try:
-        # For now, just return the result
-        # In future, parse llm_result to extract plan details and emit MemoryWriteIntent
+        from common.realtime_log import add_message
+
+        user_id = getattr(context, "user_id", "unknown")
+        user_message = getattr(context, "original_prompt", "unknown")
+
+        # Save to universal realtime log (24h TTL)
+        add_message(
+            user_id=user_id,
+            user_message=user_message,
+            assistant_response=str(llm_result),  # Convert to string
+            role="planning",
+            metadata=None,
+        )
+
         return llm_result
 
     except Exception as e:
-        logger.error(f"Failed to save planning memory: {e}")
+        logger.error(f"Failed to save planning interaction: {e}")
         return llm_result
 
 

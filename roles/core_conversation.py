@@ -230,13 +230,24 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
 
 
 def save_message_to_log(llm_result: str, context, pre_data: dict) -> str:
-    """Post-processing function to save conversation message to global log (sync version)."""
+    """Post-processing function to save conversation message to logs."""
     try:
+        from common.realtime_log import add_message
+
         user_id = getattr(context, "user_id", "unknown")
         channel_id = getattr(context, "channel_id", "unknown")
         user_message = getattr(context, "original_prompt", "unknown")
 
-        # Save message to global conversation log (synchronous)
+        # Save to universal realtime log (24h TTL)
+        add_message(
+            user_id=user_id,
+            user_message=user_message,
+            assistant_response=llm_result,
+            role="conversation",
+            metadata=None,
+        )
+
+        # Save message to global conversation log (legacy, for topic analysis)
         _save_message_to_global_log(user_id, user_message, llm_result, channel_id)
 
         logger.info(f"Saved conversation message for {user_id}")
