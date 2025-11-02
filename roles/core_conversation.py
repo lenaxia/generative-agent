@@ -45,7 +45,7 @@ ROLE_CONFIG = {
     },
     "tools": {
         "automatic": True,  # Include analyze_conversation and search_topics tools
-        "shared": ["redis_tools"],  # Need Redis for message storage
+        "shared": ["redis_tools", "memory_tools"],  # Redis + unified memory tools
         "include_builtin": False,
         "fast_reply": {
             "enabled": True,
@@ -182,11 +182,19 @@ def search_topics(query: str) -> dict[str, Any]:
 
 # 4. LIFECYCLE FUNCTIONS
 def load_conversation_context(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load recent messages and cached recent topics (no heavy search)."""
+    """Pre-processor: Load Tier 1 memories and conversation context."""
     try:
+        from common.providers.universal_memory_provider import UniversalMemoryProvider
+
         user_id = getattr(context, "user_id", "unknown")
 
-        # Load recent messages (last 30 messages)
+        # TIER 1: Load recent memories from unified system (last 5)
+        memory_provider = UniversalMemoryProvider()
+        tier1_memories = memory_provider.get_recent_memories(
+            user_id=user_id, memory_types=["conversation", "event"], limit=5
+        )
+
+        # Load recent messages (last 30 messages) - legacy for now
         recent_messages = _load_recent_messages(user_id, limit=30)
 
         # Load cached recent topics (lightweight, with TTL)
@@ -199,6 +207,7 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
         current_topics = _extract_current_topics_simple(recent_messages)
 
         return {
+            "tier1_memories": tier1_memories,  # NEW: Unified memory Tier 1
             "recent_messages": recent_messages,
             "recent_topics": recent_topics,
             "message_count": len(recent_messages),
@@ -210,6 +219,7 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
     except Exception as e:
         logger.error(f"Failed to load conversation context for {user_id}: {e}")
         return {
+            "tier1_memories": [],
             "recent_messages": [],
             "recent_topics": {},
             "message_count": 0,
