@@ -253,6 +253,31 @@ household_assistant:
     mqtt_port: 1883
     mqtt_username: "${MQTT_USERNAME}"
     mqtt_password: "${MQTT_PASSWORD}"
+# Memory System Configuration
+memory_system:
+  enabled: true
+
+  # Importance thresholds
+  permanent_threshold: 0.7 # >= 0.7 = no TTL
+
+  # TTL calculation (days)
+  ttl_calculation:
+    very_low_days: 3 # importance < 0.3
+    low_days: 7 # importance 0.3-0.5
+    medium_days: 30 # importance 0.5-0.7
+
+  # Realtime log settings
+  realtime_log:
+    ttl_hours: 24
+    max_messages: 100
+    cleanup_interval_minutes: 5
+
+  # Analysis settings
+  analysis:
+    inactivity_timeout_minutes: 30
+    model: "WEAK"
+    timeout_seconds: 5
+
 # Calendar Configuration
 calendar:
   enabled: true
