@@ -315,28 +315,62 @@ def add_calendar_event(
 
 
 # 5. LIFECYCLE FUNCTIONS
+def _format_realtime_messages(messages: list[dict[str, Any]]) -> str:
+    """Format realtime messages for prompt."""
+    if not messages:
+        return "No recent messages."
+
+    formatted = []
+    for msg in messages:
+        formatted.append(f"User: {msg['user']}")
+        formatted.append(f"Assistant: {msg['assistant']}")
+    return "\n".join(formatted)
+
+
+def _format_assessed_memories(memories: list) -> str:
+    """Format assessed memories for prompt."""
+    if not memories:
+        return "No important memories."
+
+    formatted = []
+    for mem in memories:
+        summary = mem.summary or mem.content
+        tags = ", ".join(mem.tags or [])
+        formatted.append(f"- {summary} (tags: {tags})")
+    return "\n".join(formatted)
+
+
 def load_calendar_context(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load Tier 1 memories for calendar context."""
+    """Pre-processor: Load dual-layer context (realtime log + assessed memories)."""
     try:
         from common.providers.universal_memory_provider import UniversalMemoryProvider
+        from common.realtime_log import get_recent_messages
 
         user_id = getattr(context, "user_id", "unknown")
 
-        # TIER 1: Load recent memories from unified system (last 5)
+        # Layer 1: Realtime log (last 10 messages)
+        realtime_messages = get_recent_messages(user_id, limit=10)
+
+        # Layer 2: Assessed memories (last 5, importance >= 0.7)
         memory_provider = UniversalMemoryProvider()
-        tier1_memories = memory_provider.get_recent_memories(
-            user_id=user_id, memory_types=["event", "conversation"], limit=5
+        assessed_memories = memory_provider.get_recent_memories(
+            user_id=user_id, memory_types=["event", "conversation", "plan"], limit=5
         )
 
+        # Filter for important memories only
+        important_memories = [m for m in assessed_memories if m.importance >= 0.7]
+
         return {
-            "tier1_memories": tier1_memories,
+            "realtime_context": _format_realtime_messages(realtime_messages),
+            "assessed_memories": _format_assessed_memories(important_memories),
             "user_id": user_id,
         }
 
     except Exception as e:
         logger.error(f"Failed to load calendar context: {e}")
         return {
-            "tier1_memories": [],
+            "realtime_context": "No recent messages.",
+            "assessed_memories": "No important memories.",
             "user_id": getattr(context, "user_id", "unknown"),
         }
 

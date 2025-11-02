@@ -186,35 +186,44 @@ def search_topics(query: str) -> dict[str, Any]:
 
 # 4. LIFECYCLE FUNCTIONS
 def load_conversation_context(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load Tier 1 memories and conversation context."""
+    """Pre-processor: Load dual-layer context (realtime log + assessed memories)."""
     try:
         from common.providers.universal_memory_provider import UniversalMemoryProvider
+        from common.realtime_log import get_recent_messages
 
         user_id = getattr(context, "user_id", "unknown")
 
-        # TIER 1: Load recent memories from unified system (last 5)
+        # Layer 1: Realtime log (last 10 messages)
+        realtime_messages = get_recent_messages(user_id, limit=10)
+
+        # Layer 2: Assessed memories (last 5, importance >= 0.7)
         memory_provider = UniversalMemoryProvider()
-        tier1_memories = memory_provider.get_recent_memories(
-            user_id=user_id, memory_types=["conversation", "event"], limit=5
+        assessed_memories = memory_provider.get_recent_memories(
+            user_id=user_id, memory_types=["conversation", "event", "plan"], limit=5
         )
 
-        # Load recent messages (last 30 messages) - legacy for now
-        recent_messages = _load_recent_messages(user_id, limit=30)
+        # Filter for important memories only
+        important_memories = [m for m in assessed_memories if m.importance >= 0.7]
 
         # Load cached recent topics (lightweight, with TTL)
         recent_topics = _load_recent_topics_cache(user_id)
 
         # Count unanalyzed messages
-        unanalyzed_count = _count_unanalyzed_messages(user_id)
+        unanalyzed_count = sum(1 for m in realtime_messages if not m.get("analyzed"))
 
         # Extract current topics from recent messages
-        current_topics = _extract_current_topics_simple(recent_messages)
+        current_topics = _extract_current_topics_simple(
+            [
+                {"user": m["user"], "assistant": m["assistant"]}
+                for m in realtime_messages
+            ]
+        )
 
         return {
-            "tier1_memories": tier1_memories,  # NEW: Unified memory Tier 1
-            "recent_messages": recent_messages,
+            "realtime_context": _format_realtime_messages(realtime_messages),
+            "assessed_memories": _format_assessed_memories(important_memories),
             "recent_topics": recent_topics,
-            "message_count": len(recent_messages),
+            "message_count": len(realtime_messages),
             "unanalyzed_count": unanalyzed_count,
             "current_topics": current_topics,
             "user_id": user_id,
@@ -223,14 +232,39 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
     except Exception as e:
         logger.error(f"Failed to load conversation context for {user_id}: {e}")
         return {
-            "tier1_memories": [],
-            "recent_messages": [],
+            "realtime_context": "No recent messages.",
+            "assessed_memories": "No important memories.",
             "recent_topics": {},
             "message_count": 0,
             "unanalyzed_count": 0,
             "current_topics": [],
             "user_id": getattr(context, "user_id", "unknown"),
         }
+
+
+def _format_realtime_messages(messages: list[dict[str, Any]]) -> str:
+    """Format realtime messages for prompt."""
+    if not messages:
+        return "No recent messages."
+
+    formatted = []
+    for msg in messages:
+        formatted.append(f"User: {msg['user']}")
+        formatted.append(f"Assistant: {msg['assistant']}")
+    return "\n".join(formatted)
+
+
+def _format_assessed_memories(memories: list) -> str:
+    """Format assessed memories for prompt."""
+    if not memories:
+        return "No important memories."
+
+    formatted = []
+    for mem in memories:
+        summary = mem.summary or mem.content
+        tags = ", ".join(mem.tags or [])
+        formatted.append(f"- {summary} (tags: {tags})")
+    return "\n".join(formatted)
 
 
 def save_message_to_log(llm_result: str, context, pre_data: dict) -> str:
