@@ -16,6 +16,7 @@ from common.intents import (
     AuditIntent,
     ErrorIntent,
     Intent,
+    MemoryWriteIntent,
     NotificationIntent,
     WorkflowIntent,
 )
@@ -53,6 +54,7 @@ class IntentProcessor:
             AuditIntent: self._process_audit,
             WorkflowIntent: self._process_workflow,
             ErrorIntent: self._process_error,
+            MemoryWriteIntent: self._process_memory_write,
         }
 
         # Role-specific intent handlers (registered dynamically)
@@ -287,6 +289,43 @@ class IntentProcessor:
 
         # In production, this might trigger alerts, create tickets, etc.
         logger.debug(f"Error details: {intent.error_details}")
+
+    async def _process_memory_write(self, intent: MemoryWriteIntent):
+        """
+        Process memory write intent.
+
+        Args:
+            intent: MemoryWriteIntent to process
+        """
+        try:
+            from common.providers.universal_memory_provider import (
+                UniversalMemoryProvider,
+            )
+
+            provider = UniversalMemoryProvider()
+
+            memory_id = provider.write_memory(
+                user_id=intent.user_id,
+                memory_type=intent.memory_type,
+                content=intent.content,
+                source_role=intent.source_role,
+                importance=intent.importance,
+                metadata=intent.metadata,
+                tags=intent.tags,
+                related_memories=intent.related_memories,
+            )
+
+            if memory_id:
+                logger.info(
+                    f"Memory written successfully: {memory_id} for user {intent.user_id}"
+                )
+            else:
+                logger.warning(
+                    f"Failed to write memory for user {intent.user_id}: {intent.memory_type}"
+                )
+
+        except Exception as e:
+            logger.error(f"Error processing memory write intent: {e}")
 
     def get_processed_count(self) -> int:
         """
