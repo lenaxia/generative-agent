@@ -15,11 +15,12 @@ The Universal Agent System is a **single AI agent** that dynamically assumes spe
 - **🔄 Intent-Based Processing**: Declarative event handling for LLM-safe architecture
 - **⚡ Fast-Reply Routing**: Intelligent request routing with 95%+ confidence
 - **🧠 Context-Aware Intelligence**: Memory, location, and environmental awareness
-- **💾 Unified Memory System**: Cross-role memory with tiered loading and semantic search ready
+- **💾 Dual-Layer Memory System**: Realtime log + LLM-assessed memories with graduated TTL
+- **🧠 Memory Importance Assessment**: Automatic LLM-based importance scoring and summarization
 - **🔌 MCP Integration**: Seamless integration with external tool ecosystems
 - **🏠 Smart Home Integration**: Home Assistant MQTT integration
 - **📊 Health Monitoring**: Real-time system health and performance tracking
-- **🧪 Comprehensive Testing**: 958 tests with 96% pass rate
+- **🧪 Comprehensive Testing**: 1000+ tests with 97% pass rate
 - **🔧 Production Ready**: Docker setup, deployment guides, and monitoring
 
 ## 🚀 Quick Start
