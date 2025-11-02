@@ -35,9 +35,11 @@ class UniversalMemory:
         content: The actual memory content
         source_role: Role that created this memory
         timestamp: When this memory was created (Unix timestamp)
+        summary: LLM-generated summary of the content (optional)
         importance: Importance score 0.0-1.0 (affects TTL)
         metadata: Role-specific additional data
         tags: Tags for categorization and search
+        topics: Main topics discussed (from LLM assessment, optional)
         related_memories: IDs of related memories for cross-referencing
     """
 
@@ -47,9 +49,11 @@ class UniversalMemory:
     content: str
     source_role: str
     timestamp: float
+    summary: str | None = None
     importance: float = 0.5
     metadata: dict[str, Any] | None = None
     tags: list[str] | None = None
+    topics: list[str] | None = None
     related_memories: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -63,11 +67,13 @@ class UniversalMemory:
             "user_id": self.user_id,
             "memory_type": self.memory_type,
             "content": self.content,
+            "summary": self.summary,
             "source_role": self.source_role,
             "timestamp": self.timestamp,
             "importance": self.importance,
             "metadata": self.metadata or {},
             "tags": self.tags or [],
+            "topics": self.topics or [],
             "related_memories": self.related_memories or [],
         }
 
@@ -88,9 +94,11 @@ class UniversalMemory:
             content=data["content"],
             source_role=data["source_role"],
             timestamp=data["timestamp"],
+            summary=data.get("summary"),
             importance=data.get("importance", 0.5),
             metadata=data.get("metadata", {}),
             tags=data.get("tags", []),
+            topics=data.get("topics", []),
             related_memories=data.get("related_memories", []),
         )
 
@@ -117,9 +125,11 @@ class UniversalMemoryProvider:
         memory_type: str,
         content: str,
         source_role: str,
+        summary: str | None = None,
         importance: float = 0.5,
         metadata: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        topics: list[str] | None = None,
         related_memories: list[str] | None = None,
     ) -> str | None:
         """Write memory synchronously, return memory_id.
@@ -129,9 +139,11 @@ class UniversalMemoryProvider:
             memory_type: Type of memory (conversation, event, plan, preference, fact)
             content: The memory content
             source_role: Role creating this memory
+            summary: Optional LLM-generated summary
             importance: Importance score 0.0-1.0 (affects TTL)
             metadata: Optional role-specific metadata
             tags: Optional tags for categorization
+            topics: Optional main topics discussed
             related_memories: Optional IDs of related memories
 
         Returns:
@@ -147,9 +159,11 @@ class UniversalMemoryProvider:
                 content=content,
                 source_role=source_role,
                 timestamp=time.time(),
+                summary=summary,
                 importance=importance,
                 metadata=metadata,
                 tags=tags,
+                topics=topics,
                 related_memories=related_memories,
             )
 
