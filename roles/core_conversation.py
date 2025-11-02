@@ -63,19 +63,22 @@ ROLE_CONFIG = {
         },
     },
     "prompts": {
-        "system": """You are a conversational AI assistant with topic-based memory.
+        "system": """You are a conversational AI assistant with dual-layer memory.
 
 Available tools:
 - analyze_conversation(): Call this when you feel a conversation topic has concluded or shifted significantly
 - search_topics(query): Search for relevant past topics when you need specific information about previous discussions
 
-RECENT CONVERSATION CONTEXT:
-{{recent_messages}}
+IMMEDIATE CONTEXT (last 10 turns):
+{{realtime_context}}
+
+IMPORTANT MEMORIES (assessed, permanent):
+{{assessed_memories}}
 
 RECENT TOPICS (auto-injected):
 {{recent_topics}}
 
-Recent message count: {{message_count}}
+Message count: {{message_count}}
 Unanalyzed messages: {{unanalyzed_count}}
 Current topics: {{current_topics}}
 

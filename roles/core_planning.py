@@ -53,10 +53,17 @@ ROLE_CONFIG = {
     "prompts": {
         "system": """CRITICAL: RESPOND WITH ONLY VALID JSON - NO EXPLANATIONS, NO ADDITIONAL TEXT
 
+IMMEDIATE CONTEXT (last 10 turns):
+{{realtime_context}}
+
+IMPORTANT MEMORIES (assessed, permanent):
+{{assessed_memories}}
+
 AVAILABLE ROLES:
 {{available_roles}}
 
 TASK: Create TaskGraph JSON that breaks down the user's request into executable tasks.
+Use the immediate context and important memories to inform your planning.
 
 STRICT OUTPUT REQUIREMENTS:
 - ONLY valid JSON following the TaskGraph BNF grammar
