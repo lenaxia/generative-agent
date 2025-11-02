@@ -29,7 +29,10 @@ ROLE_CONFIG = {
     "when_to_use": "Create multi-step workflows, break down complex tasks, coordinate multiple roles",
     "tools": {
         "automatic": False,  # No tools needed
-        "shared": ["memory_tools"],  # Unified memory for planning context
+        "shared": [
+            "memory_tools",
+            "conversation_analysis",
+        ],  # Unified memory + analysis for planning context
         "include_builtin": False,
     },
     "lifecycle": {

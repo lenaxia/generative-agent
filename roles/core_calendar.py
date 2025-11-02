@@ -75,7 +75,10 @@ ROLE_CONFIG = {
     },
     "tools": {
         "automatic": True,  # Include custom calendar tools
-        "shared": ["memory_tools"],  # Unified memory for event context
+        "shared": [
+            "memory_tools",
+            "conversation_analysis",
+        ],  # Unified memory + analysis for event context
         "include_builtin": False,  # Exclude calculator, file_read, shell
         "fast_reply": {
             "enabled": True,  # Enable tools in fast-reply mode

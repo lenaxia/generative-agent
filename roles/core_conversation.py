@@ -45,7 +45,11 @@ ROLE_CONFIG = {
     },
     "tools": {
         "automatic": True,  # Include analyze_conversation and search_topics tools
-        "shared": ["redis_tools", "memory_tools"],  # Redis + unified memory tools
+        "shared": [
+            "redis_tools",
+            "memory_tools",
+            "conversation_analysis",
+        ],  # Redis + unified memory + analysis tools
         "include_builtin": False,
         "fast_reply": {
             "enabled": True,
