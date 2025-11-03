@@ -321,91 +321,26 @@ def add_calendar_event(
 
 
 # 5. LIFECYCLE FUNCTIONS
-def _format_realtime_messages(messages: list[dict[str, Any]]) -> str:
-    """Format realtime messages for prompt."""
-    if not messages:
-        return "No recent messages."
-
-    formatted = []
-    for msg in messages:
-        formatted.append(f"User: {msg['user']}")
-        formatted.append(f"Assistant: {msg['assistant']}")
-    return "\n".join(formatted)
-
-
-def _format_assessed_memories(memories: list) -> str:
-    """Format assessed memories for prompt."""
-    if not memories:
-        return "No important memories."
-
-    formatted = []
-    for mem in memories:
-        summary = mem.summary or mem.content
-        tags = ", ".join(mem.tags or [])
-        formatted.append(f"- {summary} (tags: {tags})")
-    return "\n".join(formatted)
-
-
 def load_calendar_context(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load dual-layer context (realtime log + assessed memories)."""
-    try:
-        from common.providers.universal_memory_provider import UniversalMemoryProvider
-        from common.realtime_log import get_recent_messages
+    """Pre-processor: Load dual-layer context using shared helper.
 
-        user_id = getattr(context, "user_id", "unknown")
+    Uses shared load_dual_layer_context() for standard memory loading.
+    Calendar role has no additional context needs.
+    """
+    from roles.shared_tools.lifecycle_helpers import load_dual_layer_context
 
-        # Layer 1: Realtime log (last 10 messages)
-        realtime_messages = get_recent_messages(user_id, limit=10)
-
-        # Layer 2: Assessed memories (last 5, importance >= 0.7)
-        memory_provider = UniversalMemoryProvider()
-        assessed_memories = memory_provider.get_recent_memories(
-            user_id=user_id, memory_types=["event", "conversation", "plan"], limit=5
-        )
-
-        # Filter for important memories only
-        important_memories = [m for m in assessed_memories if m.importance >= 0.7]
-
-        return {
-            "realtime_context": _format_realtime_messages(realtime_messages),
-            "assessed_memories": _format_assessed_memories(important_memories),
-            "user_id": user_id,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to load calendar context: {e}")
-        return {
-            "realtime_context": "No recent messages.",
-            "assessed_memories": "No important memories.",
-            "user_id": getattr(context, "user_id", "unknown"),
-        }
+    # Load dual-layer context using shared function
+    return load_dual_layer_context(
+        context, memory_types=["event", "conversation", "plan"]
+    )
 
 
 def save_calendar_event(llm_result: str, context, pre_data: dict) -> str:
-    """Post-processing: Save calendar interaction to realtime log."""
-    try:
-        from common.realtime_log import add_message
+    """Post-processing: Save calendar interaction using shared helper."""
+    from roles.shared_tools.lifecycle_helpers import save_to_realtime_log
 
-        user_id = getattr(context, "user_id", "unknown")
-        # Get user message from context or pre_data
-        user_message = getattr(context, "original_prompt", None) or pre_data.get(
-            "_instruction", "unknown"
-        )
-
-        # Save to universal realtime log (24h TTL)
-        add_message(
-            user_id=user_id,
-            user_message=user_message,
-            assistant_response=llm_result,
-            role="calendar",
-            metadata=None,
-        )
-
-        return llm_result
-
-    except Exception as e:
-        logger.error(f"Failed to save calendar interaction: {e}")
-        return llm_result
+    # Save to realtime log using shared function
+    return save_to_realtime_log(llm_result, context, pre_data, "calendar")
 
 
 # 6. INTENT HANDLER REGISTRATION
