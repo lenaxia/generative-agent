@@ -85,7 +85,8 @@ def test_conversation_loads_both_layers(mock_realtime_messages, mock_assessed_me
         assert "realtime_context" in result
         assert "assessed_memories" in result
         assert "user_id" in result
-        mock_get_recent.assert_called_once_with("test_user", limit=10)
+        # Called twice: once in shared function, once for topics
+        assert mock_get_recent.call_count == 2
 
 
 def test_calendar_loads_both_layers(mock_realtime_messages, mock_assessed_memories):

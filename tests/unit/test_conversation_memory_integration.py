@@ -45,6 +45,9 @@ class TestConversationMemoryIntegration:
                 content=f"Memory {i}",
                 source_role="conversation",
                 timestamp=1234567890.0 - i,
+                importance=0.8,  # High importance so it passes filter
+                summary=f"Memory {i}",
+                tags=["test"],
             )
             for i in range(5)
         ]
@@ -56,13 +59,15 @@ class TestConversationMemoryIntegration:
         # Execute
         result = load_conversation_context("test instruction", mock_context, {})
 
-        # Verify Tier 1 memories were loaded
-        assert "tier1_memories" in result
-        assert len(result["tier1_memories"]) == 5
+        # Verify dual-layer context was loaded
+        assert "realtime_context" in result
+        assert "assessed_memories" in result
+        # Memories are now in assessed_memories (formatted string)
+        assert result["assessed_memories"] != "No important memories."
 
-        # Verify provider was called correctly
+        # Verify provider was called correctly (now includes plan type)
         mock_memory_provider.get_recent_memories.assert_called_once_with(
-            user_id="test_user", memory_types=["conversation", "event"], limit=5
+            user_id="test_user", memory_types=["conversation", "event", "plan"], limit=5
         )
 
     def test_conversation_has_search_memory_tool(self):
@@ -104,6 +109,8 @@ class TestConversationMemoryIntegration:
                 content="Discussion about AI",
                 source_role="conversation",
                 timestamp=1234567890.0,
+                importance=0.9,  # High importance so it passes filter
+                summary="Discussion about AI",
                 tags=["ai", "technology"],
             )
         ]
@@ -115,9 +122,11 @@ class TestConversationMemoryIntegration:
         result = load_conversation_context("test", mock_context, {})
 
         # Verify memories with tags were loaded
-        assert "tier1_memories" in result
-        assert len(result["tier1_memories"]) == 1
-        assert result["tier1_memories"][0].tags == ["ai", "technology"]
+        assert "assessed_memories" in result
+        # Memory is now in assessed_memories (formatted string)
+        assert result["assessed_memories"] != "No important memories."
+        # Verify tags are in the formatted string
+        assert "ai, technology" in result["assessed_memories"]
 
     def test_conversation_context_includes_user_id(self, mock_memory_provider):
         """Test context includes user_id for tool usage."""

@@ -189,27 +189,28 @@ def search_topics(query: str) -> dict[str, Any]:
 
 # 4. LIFECYCLE FUNCTIONS
 def load_conversation_context(instruction: str, context, parameters: dict) -> dict:
-    """Pre-processor: Load dual-layer context (realtime log + assessed memories)."""
+    """Pre-processor: Load dual-layer context with conversation-specific additions.
+
+    Uses shared load_dual_layer_context() and adds conversation-specific context
+    like recent topics and current topics.
+    """
     try:
-        from common.providers.universal_memory_provider import UniversalMemoryProvider
         from common.realtime_log import get_recent_messages
+        from roles.shared_tools.lifecycle_helpers import load_dual_layer_context
 
-        user_id = getattr(context, "user_id", "unknown")
-
-        # Layer 1: Realtime log (last 10 messages)
-        realtime_messages = get_recent_messages(user_id, limit=10)
-
-        # Layer 2: Assessed memories (last 5, importance >= 0.7)
-        memory_provider = UniversalMemoryProvider()
-        assessed_memories = memory_provider.get_recent_memories(
-            user_id=user_id, memory_types=["conversation", "event", "plan"], limit=5
+        # Load base dual-layer context using shared function
+        base_context = load_dual_layer_context(
+            context, memory_types=["conversation", "event", "plan"]
         )
 
-        # Filter for important memories only
-        important_memories = [m for m in assessed_memories if m.importance >= 0.7]
+        user_id = base_context["user_id"]
 
+        # Add conversation-specific context
         # Load cached recent topics (lightweight, with TTL)
         recent_topics = _load_recent_topics_cache(user_id)
+
+        # Get realtime messages for topic extraction and counting
+        realtime_messages = get_recent_messages(user_id, limit=10)
 
         # Count unanalyzed messages
         unanalyzed_count = sum(1 for m in realtime_messages if not m.get("analyzed"))
@@ -222,18 +223,20 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
             ]
         )
 
-        return {
-            "realtime_context": _format_realtime_messages(realtime_messages),
-            "assessed_memories": _format_assessed_memories(important_memories),
-            "recent_topics": recent_topics,
-            "message_count": len(realtime_messages),
-            "unanalyzed_count": unanalyzed_count,
-            "current_topics": current_topics,
-            "user_id": user_id,
-        }
+        # Merge with base context
+        base_context.update(
+            {
+                "recent_topics": recent_topics,
+                "message_count": len(realtime_messages),
+                "unanalyzed_count": unanalyzed_count,
+                "current_topics": current_topics,
+            }
+        )
+
+        return base_context
 
     except Exception as e:
-        logger.error(f"Failed to load conversation context for {user_id}: {e}")
+        logger.error(f"Failed to load conversation context: {e}")
         return {
             "realtime_context": "No recent messages.",
             "assessed_memories": "No important memories.",
@@ -245,58 +248,29 @@ def load_conversation_context(instruction: str, context, parameters: dict) -> di
         }
 
 
-def _format_realtime_messages(messages: list[dict[str, Any]]) -> str:
-    """Format realtime messages for prompt."""
-    if not messages:
-        return "No recent messages."
-
-    formatted = []
-    for msg in messages:
-        formatted.append(f"User: {msg['user']}")
-        formatted.append(f"Assistant: {msg['assistant']}")
-    return "\n".join(formatted)
-
-
-def _format_assessed_memories(memories: list) -> str:
-    """Format assessed memories for prompt."""
-    if not memories:
-        return "No important memories."
-
-    formatted = []
-    for mem in memories:
-        summary = mem.summary or mem.content
-        tags = ", ".join(mem.tags or [])
-        formatted.append(f"- {summary} (tags: {tags})")
-    return "\n".join(formatted)
-
-
 def save_message_to_log(llm_result: str, context, pre_data: dict) -> str:
-    """Post-processing function to save conversation message to logs."""
-    try:
-        from common.realtime_log import add_message
+    """Post-processing: Save conversation message using shared helper.
 
+    Uses shared save_to_realtime_log() and adds conversation-specific
+    legacy logging for topic analysis.
+    """
+    try:
+        from roles.shared_tools.lifecycle_helpers import save_to_realtime_log
+
+        # Save to realtime log using shared function
+        result = save_to_realtime_log(llm_result, context, pre_data, "conversation")
+
+        # Conversation-specific: Save to legacy global log for topic analysis
         user_id = getattr(context, "user_id", "unknown")
         channel_id = getattr(context, "channel_id", "unknown")
-        # Get user message from context or pre_data
         user_message = getattr(context, "original_prompt", None) or pre_data.get(
             "_instruction", "unknown"
         )
-
-        # Save to universal realtime log (24h TTL)
-        add_message(
-            user_id=user_id,
-            user_message=user_message,
-            assistant_response=llm_result,
-            role="conversation",
-            metadata=None,
-        )
-
-        # Save message to global conversation log (legacy, for topic analysis)
         _save_message_to_global_log(user_id, user_message, llm_result, channel_id)
 
         logger.info(f"Saved conversation message for {user_id}")
 
-        return llm_result
+        return result
 
     except Exception as e:
         logger.error(f"Post-processing message save failed: {e}")
