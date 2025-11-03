@@ -32,6 +32,7 @@ class LLMSafeEventContext:
 
     user_id: str | None = None
     channel_id: str | None = None
+    original_prompt: str | None = None
     timestamp: float = field(default_factory=time.time)
     source: str = "unknown"
     metadata: dict[str, Any] = field(default_factory=dict)

@@ -324,9 +324,12 @@ class UniversalAgent:
         # LLM-SAFE: Single event loop architecture (Documents 25 & 26)
         # Always use synchronous execution to eliminate threading complexity
 
-        # Store event context for intent processing
+        # Store event context for intent processing and add original prompt
         if event_context:
             self.intent_hook.current_context = event_context
+            # Add original prompt to context for post-processing
+            if not event_context.original_prompt:
+                event_context.original_prompt = instruction
 
         # Use unified lifecycle execution for all roles
         return self._execute_task_with_lifecycle(
@@ -497,9 +500,16 @@ class UniversalAgent:
                 post_start_time = time.time()
                 logger.info(f"Running post-processing for {role}")
 
+                # Add instruction to pre_data for post-processors to access
+                pre_data_with_instruction = {**pre_data, "_instruction": instruction}
+
                 # LLM-SAFE: Use asyncio.run() only for individual async lifecycle functions
                 final_result = self._run_post_processors_sync(
-                    role_def, lifecycle_functions, final_result, context, pre_data
+                    role_def,
+                    lifecycle_functions,
+                    final_result,
+                    context,
+                    pre_data_with_instruction,
                 )
 
                 post_execution_time = (time.time() - post_start_time) * 1000
@@ -630,18 +640,24 @@ class UniversalAgent:
             if processor:
                 func_start_time = time.time()
                 try:
-                    # Inject WorkflowEngine reference into context for lifecycle functions
+                    # Inject WorkflowEngine reference and original_prompt into context for lifecycle functions
                     enhanced_context = context
-                    if context and hasattr(self.role_registry, "_workflow_engine"):
-                        if hasattr(context, "workflow_engine"):
-                            # Context already has workflow_engine, keep existing
-                            enhanced_context = context
-                        else:
-                            # Create enhanced context with WorkflowEngine reference
-                            enhanced_context = context
-                            enhanced_context.workflow_engine = (
-                                self.role_registry._workflow_engine
-                            )
+                    if context:
+                        # Add workflow_engine if available
+                        if hasattr(self.role_registry, "_workflow_engine"):
+                            if not hasattr(context, "workflow_engine"):
+                                enhanced_context.workflow_engine = (
+                                    self.role_registry._workflow_engine
+                                )
+
+                        # Add original_prompt if not already set (for memory logging)
+                        if (
+                            hasattr(context, "original_prompt")
+                            and not context.original_prompt
+                        ):
+                            # Get instruction from the enclosing scope
+                            # This is passed from _execute_task_with_lifecycle
+                            pass  # Will be set in _execute_task_with_lifecycle
 
                     # LLM-SAFE: Use asyncio.run() for async functions, direct call for sync
                     if inspect.iscoroutinefunction(processor):

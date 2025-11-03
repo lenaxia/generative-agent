@@ -277,7 +277,10 @@ def save_message_to_log(llm_result: str, context, pre_data: dict) -> str:
 
         user_id = getattr(context, "user_id", "unknown")
         channel_id = getattr(context, "channel_id", "unknown")
-        user_message = getattr(context, "original_prompt", "unknown")
+        # Get user message from context or pre_data
+        user_message = getattr(context, "original_prompt", None) or pre_data.get(
+            "_instruction", "unknown"
+        )
 
         # Save to universal realtime log (24h TTL)
         add_message(

@@ -387,7 +387,10 @@ def save_calendar_event(llm_result: str, context, pre_data: dict) -> str:
         from common.realtime_log import add_message
 
         user_id = getattr(context, "user_id", "unknown")
-        user_message = getattr(context, "original_prompt", "unknown")
+        # Get user message from context or pre_data
+        user_message = getattr(context, "original_prompt", None) or pre_data.get(
+            "_instruction", "unknown"
+        )
 
         # Save to universal realtime log (24h TTL)
         add_message(
