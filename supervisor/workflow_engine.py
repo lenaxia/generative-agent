@@ -29,6 +29,7 @@ from llm_provider.mcp_client import MCPClientManager
 
 # RequestRouter removed - using router role directly
 from llm_provider.role_registry import RoleRegistry
+from llm_provider.tool_registry import ToolRegistry
 from llm_provider.universal_agent import UniversalAgent
 from supervisor.memory_assessor import MemoryAssessor
 from supervisor.workflow_duration_logger import (
@@ -128,6 +129,9 @@ class WorkflowEngine:
 
         # Initialize MCP manager
         self.mcp_manager = self._initialize_mcp_manager(mcp_config_path)
+
+        # Phase 3: Initialize ToolRegistry (will be loaded in async method)
+        self.tool_registry = ToolRegistry()
 
         # Initialize role registry with MessageBus for dynamic event registration
         self.role_registry = RoleRegistry(
@@ -1614,6 +1618,69 @@ Respond with ONLY valid JSON in this exact format:
             return LLMType.DEFAULT
 
     # ==================== CONTEXT INTEGRATION METHODS ====================
+
+    async def initialize_phase3_systems(self):
+        """Initialize Phase 3 dynamic agent systems (ToolRegistry and domain roles).
+
+        This must be called after WorkflowEngine construction to complete initialization.
+        Initialization order:
+        1. Create providers (placeholder for now)
+        2. Initialize ToolRegistry with providers
+        3. Initialize domain roles with tool_registry and llm_factory
+        """
+        try:
+            logger.info("Initializing Phase 3 dynamic agent systems...")
+
+            # Create simple providers object
+            # For Phase 3, providers are mostly placeholders as tools use env vars
+            # Tools check "if provider is None" so we need placeholder objects
+            class PlaceholderProvider:
+                """Placeholder provider for tools that use environment variables."""
+
+                pass
+
+            class Providers:
+                def __init__(self):
+                    # Use placeholder objects instead of None
+                    # Tools will use env vars for actual configuration
+                    self.weather = PlaceholderProvider()
+                    self.calendar = PlaceholderProvider()
+                    self.redis = PlaceholderProvider()
+                    self.home_assistant = PlaceholderProvider()
+                    self.memory = PlaceholderProvider()
+                    self.search = PlaceholderProvider()
+                    self.communication = PlaceholderProvider()
+                    self.planning = PlaceholderProvider()
+
+            providers = Providers()
+
+            # Initialize ToolRegistry with providers
+            logger.info("Loading tools from domain modules...")
+            await self.tool_registry.initialize(config={}, providers=providers)
+
+            tool_summary = self.tool_registry.get_tool_summary()
+            logger.info(
+                f"ToolRegistry initialized: {tool_summary['total_tools']} tools "
+                f"across {tool_summary['total_categories']} categories"
+            )
+
+            # Initialize domain roles with dependencies
+            logger.info("Initializing domain-based roles...")
+            await self.role_registry.initialize_domain_roles(
+                self.tool_registry, self.llm_factory
+            )
+
+            domain_roles = list(self.role_registry.domain_role_instances.keys())
+            logger.info(
+                f"Phase 3 systems initialized: {len(domain_roles)} domain roles loaded"
+            )
+            if domain_roles:
+                logger.info(f"  Domain roles: {', '.join(domain_roles)}")
+
+        except Exception as e:
+            logger.error(f"Phase 3 systems initialization failed: {e}", exc_info=True)
+            # Don't raise - system should work with existing roles
+            logger.warning("Continuing with existing role pattern only")
 
     async def initialize_context_systems(self):
         """Initialize context collection and memory assessment systems."""

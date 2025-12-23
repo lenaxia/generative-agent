@@ -596,6 +596,15 @@ class Supervisor:
                 self._start_scheduled_tasks()
                 logger.info("Async heartbeat tasks started successfully")
 
+                # Phase 3: Initialize ToolRegistry and domain roles
+                if hasattr(self.workflow_engine, "initialize_phase3_systems"):
+                    try:
+                        await self.workflow_engine.initialize_phase3_systems()
+                        logger.info("Phase 3 dynamic agent systems initialized successfully")
+                    except Exception as e:
+                        logger.warning(f"Phase 3 systems initialization failed: {e}")
+                        # System continues with existing role pattern
+
                 # Initialize context systems if workflow engine supports it
                 if hasattr(self.workflow_engine, "initialize_context_systems"):
                     try:
@@ -832,7 +841,7 @@ class Supervisor:
                     )
                     tick_count += 1
                     logger.debug(
-                        f"Fast heartbeat tick {tick_count} published (5s interval)"
+                        f"💓 Fast heartbeat tick {tick_count} published (5s interval)"
                     )
 
                 # Wait for next tick (5 seconds for timer monitoring)
@@ -840,7 +849,7 @@ class Supervisor:
 
             except Exception as e:
                 logger.error(f"Fast heartbeat task error: {e}")
-                await asyncio.sleep(1)  # Brief pause before retry
+                await asyncio.sleep(1)  # Brief pause before retry  # Brief pause before retry
 
     def _start_scheduled_tasks(self):
         """Start scheduled tasks for heartbeat operations."""

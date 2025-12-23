@@ -101,27 +101,70 @@ class IntentProcessingHook(HookProvider):
             logger.error(f"Error processing tool result intent: {e}")
 
     def _create_intent_from_data(self, intent_data: dict):
-        """Create intent object from tool result data."""
-        intent_type = intent_data.get("type")
+        """Create intent object from tool result data.
 
-        if intent_type == "TimerCreationIntent":
-            from roles.core_timer import TimerCreationIntent
+        Uses reflection to generically instantiate Intent classes without
+        hardcoded knowledge of domain-specific intents.
+        """
+        intent_type_name = intent_data.get("type")
+        if not intent_type_name:
+            return None
 
-            return TimerCreationIntent(
-                **{k: v for k, v in intent_data.items() if k != "type"}
-            )
-        elif intent_type == "TimerCancellationIntent":
-            from roles.core_timer import TimerCancellationIntent
+        # Try to get Intent class from registered intent handlers
+        intent_class = self._get_intent_class_from_registry(intent_type_name)
 
-            return TimerCancellationIntent(
-                **{k: v for k, v in intent_data.items() if k != "type"}
-            )
-        elif intent_type == "TimerListingIntent":
-            from roles.core_timer import TimerListingIntent
+        if not intent_class:
+            logger.warning(f"Unknown intent type: {intent_type_name}")
+            return None
 
-            return TimerListingIntent(
-                **{k: v for k, v in intent_data.items() if k != "type"}
-            )
+        try:
+            # Use reflection to determine which fields the Intent class accepts
+            import inspect
+            from dataclasses import fields as dataclass_fields, is_dataclass
+
+            if is_dataclass(intent_class):
+                # Get field names from dataclass
+                valid_fields = {f.name for f in dataclass_fields(intent_class)}
+            else:
+                # Fallback: use __init__ signature
+                sig = inspect.signature(intent_class.__init__)
+                valid_fields = set(sig.parameters.keys()) - {'self'}
+
+            # Filter intent_data to only include valid fields
+            filtered_data = {
+                k: v
+                for k, v in intent_data.items()
+                if k != "type" and k in valid_fields
+            }
+
+            return intent_class(**filtered_data)
+
+        except Exception as e:
+            logger.error(f"Failed to create {intent_type_name}: {e}")
+            return None
+
+    def _get_intent_class_from_registry(self, intent_type_name: str):
+        """Get Intent class from IntentProcessor's registered handlers."""
+        if not (
+            hasattr(self.universal_agent, "role_registry")
+            and self.universal_agent.role_registry
+            and hasattr(self.universal_agent.role_registry, "intent_processor")
+            and self.universal_agent.role_registry.intent_processor
+        ):
+            return None
+
+        intent_processor = self.universal_agent.role_registry.intent_processor
+
+        # Check core handlers
+        for intent_class in intent_processor._core_handlers.keys():
+            if intent_class.__name__ == intent_type_name:
+                return intent_class
+
+        # Check role-specific handlers
+        if hasattr(intent_processor, "_role_handlers"):
+            for intent_class in intent_processor._role_handlers.keys():
+                if intent_class.__name__ == intent_type_name:
+                    return intent_class
 
         return None
 
@@ -209,12 +252,50 @@ class UniversalAgent:
             logger.info("None role requested, falling back to default role")
             role = "default"
 
-        # Load role definition (cached by RoleRegistry)
-        role_def = self.role_registry.get_role(role)
+        # PHASE 3: Check for domain-based role first (lifecycle-compatible)
+        domain_role = self.role_registry.get_domain_role(role)
+        if domain_role:
+            logger.info(f"✨ Using Phase 3 domain role: {role} with {len(domain_role.get_tools())} tools")
+            # Domain roles provide configuration for lifecycle execution
+            # Override llm_type if role specifies one
+            if hasattr(domain_role, 'get_llm_type'):
+                llm_type = domain_role.get_llm_type()
+
+            # Create a minimal role_def for compatibility with rest of lifecycle
+            role_def = type('obj', (object,), {
+                'name': role,
+                'config': {
+                    'type': 'domain_based',
+                    'name': role,
+                    'prompts': {'system': domain_role.get_system_prompt()},
+                },
+                'custom_tools': domain_role.get_tools(),
+                'shared_tools': {}
+            })()
+        else:
+            # Fall back to old role definition pattern
+            role_def = self.role_registry.get_role(role)
+
         if not role_def:
             logger.warning(f"Role '{role}' not found, falling back to default")
             role = "default"
-            role_def = self.role_registry.get_role(role)
+            domain_role = self.role_registry.get_domain_role(role)
+            if domain_role:
+                logger.info(f"✨ Using Phase 3 domain role: {role} (fallback)")
+                if hasattr(domain_role, 'get_llm_type'):
+                    llm_type = domain_role.get_llm_type()
+                role_def = type('obj', (object,), {
+                    'name': role,
+                    'config': {
+                        'type': 'domain_based',
+                        'name': role,
+                        'prompts': {'system': domain_role.get_system_prompt()},
+                    },
+                    'custom_tools': domain_role.get_tools(),
+                    'shared_tools': {}
+                })()
+            else:
+                role_def = self.role_registry.get_role(role)
 
         # If even default role doesn't exist, create a basic fallback
         if not role_def:
@@ -371,8 +452,29 @@ class UniversalAgent:
         start_time = time.time()
 
         try:
-            # 1. Load role definition
-            role_def = self.role_registry.get_role(role)
+            # PHASE 3: Check for domain-based role first (lifecycle-compatible)
+            domain_role = self.role_registry.get_domain_role(role)
+            if domain_role:
+                # Domain roles provide configuration for lifecycle execution
+                logger.info(f"✨ Using Phase 3 domain role in lifecycle: {role} with {len(domain_role.get_tools())} tools")
+                # Override llm_type if role specifies one
+                if hasattr(domain_role, 'get_llm_type'):
+                    llm_type = domain_role.get_llm_type()
+
+                # Create a minimal role_def for compatibility with rest of lifecycle
+                role_def = type('obj', (object,), {
+                    'name': role,
+                    'config': {
+                        'type': 'domain_based',
+                        'name': role,
+                        'prompts': {'system': domain_role.get_system_prompt()},
+                    },
+                    'custom_tools': domain_role.get_tools(),
+                    'shared_tools': {}
+                })()
+            else:
+                # Fall back to old role definition pattern
+                role_def = self.role_registry.get_role(role)
             if not role_def:
                 return f"Error: Role '{role}' not found"
 

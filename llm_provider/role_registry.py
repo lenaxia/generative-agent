@@ -63,6 +63,10 @@ class RoleRegistry:
             str, str
         ] = {}  # Role type mapping (kept for compatibility)
 
+        # Domain-based role storage (new pattern from Phase 3)
+        self.domain_role_classes: dict[str, type] = {}  # role_name -> RoleClass
+        self.domain_role_instances: dict[str, Any] = {}  # role_name -> role_instance
+
         # Hybrid role lifecycle support
         self.lifecycle_functions: dict[
             str, dict[str, Callable]
@@ -189,20 +193,29 @@ class RoleRegistry:
         logger.info("Role registry initialization completed")
 
     def _discover_roles(self) -> list[str]:
-        """Discover all available role definitions (both multi-file and single-file)."""
+        """Discover all available role definitions (single-file, multi-file, and domain-based)."""
         roles = []
 
         if not self.roles_directory.exists():
             logger.warning(f"Roles directory not found: {self.roles_directory}")
             return roles
 
-        # Discover single-file roles FIRST (new LLM-safe pattern - prioritized)
+        # Discover single-file roles FIRST (LLM-safe pattern - prioritized)
         for role_file in self.roles_directory.glob("core_*.py"):
             role_name = role_file.stem.replace("core_", "")
             roles.append(role_name)
             logger.debug(f"Discovered single-file role: {role_name}")
 
-        # Discover multi-file roles SECOND (legacy pattern - only if no single-file exists)
+        # Discover domain-based roles SECOND (Phase 3 pattern - roles/*/role.py)
+        for role_dir in self.roles_directory.iterdir():
+            if role_dir.is_dir() and (role_dir / "role.py").exists():
+                # Skip shared_tools and utility domains (no roles)
+                if role_dir.name not in ["shared_tools", "memory", "search", "notification", "planning"]:
+                    if role_dir.name not in roles:
+                        roles.append(role_dir.name)
+                        logger.debug(f"Discovered domain-based role: {role_dir.name}")
+
+        # Discover multi-file roles THIRD (legacy pattern - only if no other exists)
         for role_dir in self.roles_directory.iterdir():
             if role_dir.is_dir() and (role_dir / "definition.yaml").exists():
                 # Skip shared_tools directory
@@ -213,14 +226,35 @@ class RoleRegistry:
         return roles
 
     def _load_role(self, role_name: str) -> RoleDefinition:
-        """Enhanced role loading with support for both multi-file and single-file roles."""
-        # Check for single-file role first (new LLM-safe pattern)
+        """Enhanced role loading with support for multi-file, single-file, and domain-based roles.
+
+        Priority order (Phase 3+):
+        1. Domain-based roles (roles/*/role.py) - NEW pattern, highest priority
+        2. Single-file roles (core_*.py) - LLM-safe pattern
+        3. Multi-file roles (*/definition.yaml) - Legacy pattern
+        """
+        # Check for domain-based role FIRST (Phase 3 pattern - highest priority)
+        domain_role_path = self.roles_directory / role_name / "role.py"
+
+        if domain_role_path.exists():
+            # Domain-based roles are loaded separately - store class reference
+            self._load_domain_role_class(role_name, domain_role_path)
+            # Return a placeholder RoleDefinition for compatibility
+            return RoleDefinition(
+                name=role_name,
+                config={"name": role_name, "type": "domain_based"},
+                custom_tools=[],
+                shared_tools={}
+            )
+
+        # Check for single-file role second (LLM-safe pattern)
         single_file_path = self.roles_directory / f"core_{role_name}.py"
 
         if single_file_path.exists():
             return self._load_single_file_role(role_name, single_file_path)
-        else:
-            return self._load_multi_file_role(role_name)
+
+        # Fall back to multi-file role (legacy pattern)
+        return self._load_multi_file_role(role_name)
 
     def _load_single_file_role(self, role_name: str, role_file: Path) -> RoleDefinition:
         """Load single-file role using register_role() function."""
@@ -306,6 +340,65 @@ class RoleRegistry:
 
         except Exception as e:
             logger.error(f"Failed to load single-file role {role_name}: {e}")
+            raise
+
+    def _load_domain_role_class(self, role_name: str, role_file: Path):
+        """Load domain-based role class (Phase 3 pattern).
+
+        Domain-based roles are Python classes that need dependencies injected.
+        This method loads the class and stores it for later instantiation.
+
+        Args:
+            role_name: Name of the role (e.g., "weather", "calendar")
+            role_file: Path to the role.py file
+        """
+        logger.debug(f"Loading domain-based role class: {role_name}")
+
+        try:
+            # Import the domain role module
+            spec = importlib.util.spec_from_file_location(
+                f"roles.{role_name}.role", role_file
+            )
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load spec for {role_file}")
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            # Find the role class (e.g., WeatherRole, CalendarRole, SmartHomeRole)
+            # Convention: convert snake_case to PascalCase + "Role"
+            # e.g., "smart_home" -> "SmartHomeRole"
+            role_class_name = "".join(word.capitalize() for word in role_name.split("_")) + "Role"
+
+            if not hasattr(module, role_class_name):
+                raise ValueError(
+                    f"Domain role {role_name} missing {role_class_name} class"
+                )
+
+            role_class = getattr(module, role_class_name)
+
+            # Validate role class has required attributes/methods
+            if not hasattr(role_class, "REQUIRED_TOOLS"):
+                logger.warning(
+                    f"Domain role {role_name} missing REQUIRED_TOOLS class variable"
+                )
+
+            # Phase 3: Lifecycle-compatible roles provide configuration, not execution
+            required_methods = ["__init__", "initialize", "get_system_prompt", "get_llm_type", "get_tools"]
+            for method in required_methods:
+                if not hasattr(role_class, method):
+                    raise ValueError(
+                        f"Domain role {role_name} missing required method: {method}"
+                    )
+
+            # Store the role class
+            self.domain_role_classes[role_name] = role_class
+            logger.info(
+                f"Loaded domain role class: {role_name} ({role_class_name}) with {len(role_class.REQUIRED_TOOLS)} required tools"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to load domain role class {role_name}: {e}")
             raise
 
     def _load_multi_file_role(self, role_name: str) -> RoleDefinition:
@@ -410,6 +503,85 @@ class RoleRegistry:
         except Exception as e:
             logger.error(f"Failed to load tools from {tools_file}: {e}")
             return []
+
+    async def initialize_domain_roles(self, tool_registry, llm_factory):
+        """Initialize domain-based roles with dependencies (Phase 3).
+
+        This should be called after ToolRegistry has been initialized with providers.
+        It creates instances of domain role classes with injected dependencies.
+
+        Args:
+            tool_registry: Initialized ToolRegistry instance
+            llm_factory: LLMFactory instance for creating models
+        """
+        logger.info(
+            f"Initializing {len(self.domain_role_classes)} domain-based roles..."
+        )
+
+        for role_name, role_class in self.domain_role_classes.items():
+            try:
+                # Instantiate role with dependencies
+                role_instance = role_class(tool_registry, llm_factory)
+
+                # Call role's initialize method to load tools
+                await role_instance.initialize()
+
+                # Store instance
+                self.domain_role_instances[role_name] = role_instance
+
+                logger.info(
+                    f"Initialized domain role: {role_name} with {len(role_instance.tools)} tools"
+                )
+
+                # Register event handlers if the role provides them
+                if hasattr(role_instance, "get_event_handlers") and callable(role_instance.get_event_handlers):
+                    event_handlers = role_instance.get_event_handlers()
+                    for event_type, handler_func in event_handlers.items():
+                        if self.message_bus:
+                            self.message_bus.subscribe(role_name, event_type, handler_func)
+                            logger.info(
+                                f"📡 Registered event handler {event_type} for domain role {role_name}"
+                            )
+
+                # Register intent handlers if the role provides them
+                if hasattr(role_instance, "get_intent_handlers") and callable(role_instance.get_intent_handlers):
+                    intent_handlers = role_instance.get_intent_handlers()
+                    if self.intent_processor:
+                        for intent_class, handler_func in intent_handlers.items():
+                            self.intent_processor.register_role_intent_handler(
+                                intent_class, handler_func, role_name
+                            )
+                            logger.info(
+                                f"Registered {intent_class.__name__} handler for domain role {role_name}"
+                            )
+
+                # Update RoleDefinition with actual config from domain role
+                if hasattr(role_instance, "get_role_config") and callable(role_instance.get_role_config):
+                    role_config = role_instance.get_role_config()
+                    # Update the placeholder RoleDefinition with actual config
+                    if role_name in self.llm_roles:
+                        self.llm_roles[role_name].config["role"] = role_config
+                        logger.info(
+                            f"Updated config for domain role {role_name}: fast_reply={role_config.get('fast_reply', False)}, llm_type={role_config.get('llm_type', 'DEFAULT')}"
+                        )
+                        # Clear cache to force recomputation of fast-reply roles
+                        self._fast_reply_roles_cache = None
+
+            except Exception as e:
+                logger.error(f"Failed to initialize domain role {role_name}: {e}")
+
+        logger.info(f"Domain roles initialized: {list(self.domain_role_instances.keys())}")
+
+    def get_domain_role(self, role_name: str) -> Any | None:
+        """Get a domain-based role instance by name (Phase 3).
+
+        Args:
+            role_name: Name of the role
+
+        Returns:
+            Role instance or None if not found
+        """
+        return self.domain_role_instances.get(role_name)
 
     def get_role(self, role_name: str) -> RoleDefinition | None:
         """Get a role definition by name.
@@ -976,8 +1148,8 @@ class RoleRegistry:
                 # Register with MessageBus
                 if self.message_bus:
                     self.message_bus.subscribe(role_name, event_type, handler_func)
-                    logger.debug(
-                        f"Registered event handler {event_type} for single-file role {role_name}"
+                    logger.info(  # Changed to INFO for debugging
+                        f"📡 Registered event handler {event_type} for single-file role {role_name}"
                     )
 
                 # Store in local registry
