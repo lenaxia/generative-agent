@@ -210,7 +210,8 @@ class RoleRegistry:
         for role_dir in self.roles_directory.iterdir():
             if role_dir.is_dir() and (role_dir / "role.py").exists():
                 # Skip shared_tools and utility domains (no roles)
-                if role_dir.name not in ["shared_tools", "memory", "search", "notification", "planning"]:
+                # Note: search is NOW a full domain role (migrated in Phase 3)
+                if role_dir.name not in ["shared_tools", "memory", "notification", "planning"]:
                     if role_dir.name not in roles:
                         roles.append(role_dir.name)
                         logger.debug(f"Discovered domain-based role: {role_dir.name}")

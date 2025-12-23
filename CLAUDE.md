@@ -1,407 +1,543 @@
-# Claude AI Assistant Guidelines
+# CLAUDE.md
 
-**Purpose:** This document provides guidelines for AI assistants (Claude, GPT, etc.) working on this codebase to ensure high-quality, collaborative development.
-
----
-
-## Core Principles
-
-### 1. **Never Make Assumptions or Inferences**
-
-**DO NOT:**
-- ❌ Assume what the user wants without explicit confirmation
-- ❌ Infer requirements from context alone
-- ❌ Guess at implementation details
-- ❌ Make decisions on behalf of the user
-- ❌ Assume you understand the user's intent fully
-
-**INSTEAD:**
-- ✅ Ask explicit questions when anything is unclear
-- ✅ Confirm your understanding before proceeding
-- ✅ Present options and let the user choose
-- ✅ State your assumptions clearly and ask for validation
-- ✅ Seek clarification on ambiguous requirements
-
-**Examples:**
-
-**Bad (Making Assumptions):**
-```
-User: "Add authentication"
-Assistant: [Implements JWT auth with refresh tokens, bcrypt hashing, etc.]
-```
-
-**Good (Asking for Clarification):**
-```
-User: "Add authentication"
-Assistant: "I can add authentication. To implement this correctly, I need to clarify:
-1. What authentication method? (JWT, session-based, OAuth, API keys)
-2. Where should auth be required? (All endpoints, specific routes)
-3. User storage? (Database, external service)
-4. Password requirements? (Complexity, hashing algorithm)
-5. Session management? (Timeout, refresh tokens)
-
-What are your preferences?"
-```
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-### 2. **Ask for Input When Clarification is Needed**
+## Development Commands
 
-**Always Ask About:**
-- Implementation approach when multiple valid options exist
-- Architecture decisions that affect system design
-- Trade-offs between different solutions
-- User preferences for naming, structure, or patterns
-- Unclear requirements or ambiguous instructions
-- Features that could be implemented multiple ways
+### Setup
 
-**Use Questions Like:**
-- "Would you prefer approach A or B?"
-- "Should I implement this as X or Y?"
-- "I see two ways to do this: [options]. Which fits your needs better?"
-- "Can you clarify what you mean by [ambiguous term]?"
-- "What's your priority: [trade-off A] or [trade-off B]?"
+```bash
+# Full development setup with Docker Redis
+make docker-setup
 
-**When NOT to Ask:**
-- For clearly defined, unambiguous tasks
-- When following established patterns in the codebase
-- For obvious bug fixes or corrections
-- When continuing explicitly described work
+# Install development dependencies only
+make install-dev
+
+# Setup pre-commit hooks
+make setup-pre-commit
+```
+
+### Testing
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run specific test types
+make test-unit         # Unit tests only
+make test-integration  # Integration tests only
+make test-llm          # LLM provider tests only
+
+# Run single test file
+python -m pytest tests/unit/test_specific.py -v
+
+# Run single test function
+python -m pytest tests/unit/test_file.py::test_function_name -v
+
+# Run with Docker Redis
+make docker-test
+```
+
+### Code Quality
+
+```bash
+# Format code (black, isort)
+make format
+
+# Run all linters (flake8, mypy, pylint, bandit, yamllint)
+make lint
+
+# Auto-fix safe issues (unused imports, formatting)
+make auto-fix-safe
+
+# Auto-fix all issues (includes unused variables)
+make auto-fix
+
+# Run everything (format check, lint, all tests)
+make check-all
+```
+
+### Running the System
+
+```bash
+# Interactive mode
+python cli.py
+
+# Single workflow execution
+python cli.py --workflow "Set a timer for 10 minutes"
+
+# Check system status
+python cli.py --status
+
+# Use custom configuration
+python cli.py --config production.yaml
+```
+
+### Docker Commands
+
+```bash
+# Start Docker Redis
+make docker-start
+
+# Stop Docker containers
+make docker-stop
+
+# View logs
+make docker-logs
+
+# Connect to Redis CLI
+make redis-cli
+
+# Check Docker environment
+make docker-check
+```
 
 ---
 
-### 3. **State Your Understanding**
+## High-Level Architecture
 
-Before implementing anything significant, **restate your understanding** of the task:
+### System Overview
+
+**Universal Agent System**: A single AI agent that dynamically assumes specialized roles through fast-reply routing. Built on Strands Agent Framework with event-driven architecture and intent-based processing.
+
+**Core Concept**: One agent + dynamic role specialization + intelligent routing + unified workflow management.
+
+### Architecture Patterns (Hybrid Multi-Phase)
+
+The system uses **two coexisting patterns**:
+
+1. **Legacy Single-File Roles** (System Services)
+   - `roles/core_router.py` - Request routing with 95%+ confidence
+   - `roles/core_search.py` - Fast-reply web search
+   - `roles/core_summarizer.py` - Fast-reply summarization
+   - `roles/core_conversation.py` - Fast-reply conversation handling
+
+2. **Phase 3 Domain Roles** (Event-Driven)
+   - `roles/timer/` - Timer management with expiry detection
+   - `roles/calendar/` - Calendar operations
+   - `roles/weather/` - Weather queries
+   - `roles/smart_home/` - Home Assistant integration
+
+3. **Infrastructure Tools**
+   - `tools/core/` - System infrastructure (memory, notification) - **DO NOT MODIFY**
+   - `tools/custom/` - User-extensible tools (add custom tools here)
+
+### Phase 3 Domain Role Structure
 
 ```
-"I understand you want to:
-1. [Specific goal 1]
-2. [Specific goal 2]
-3. [Specific goal 3]
-
-My plan is to:
-- [Step 1]
-- [Step 2]
-- [Step 3]
-
-Does this match your expectations?"
+roles/{domain}/
+├── role.py         # Role class with configuration
+├── handlers.py     # Event handlers & intent processors
+└── tools.py        # Tool implementations
 ```
+
+**Role Class API:**
+```python
+class DomainRole:
+    REQUIRED_TOOLS = ["domain.tool1", "domain.tool2"]
+
+    async def initialize()              # Load tools from registry
+    def get_system_prompt() -> str      # Role-specific prompt
+    def get_llm_type() -> LLMType       # LLM tier (WEAK/DEFAULT/STRONG)
+    def get_tools() -> list             # Loaded tool instances
+    def get_role_config() -> dict       # Metadata & fast_reply flag
+    def get_event_handlers() -> dict    # Event type -> handler function
+    def get_intent_handlers() -> dict   # Intent class -> processor function
+```
+
+### Key Components
+
+**Supervisor** (`supervisor/supervisor.py`)
+- Top-level orchestrator
+- Initializes all system components
+- Manages communication channels (Slack, Discord, MQTT)
+- Coordinates workflows through WorkflowEngine
+
+**WorkflowEngine** (`supervisor/workflow_engine.py`)
+- Executes task graphs and workflows
+- Routes requests to appropriate roles
+- Manages UniversalAgent lifecycle
+- Handles result aggregation
+
+**UniversalAgent** (`llm_provider/universal_agent.py`)
+- Single agent interface with dynamic role assumption
+- Manages agent pooling for efficiency
+- Integrates with lifecycle hooks (pre-processors, post-processors)
+- Executes with role-specific tools and prompts
+
+**RoleRegistry** (`llm_provider/role_registry.py`)
+- Discovers and loads all roles (legacy + domain)
+- Manages fast-reply role identification
+- Registers event handlers with MessageBus
+- Registers intent handlers with IntentProcessor
+
+**ToolRegistry** (`llm_provider/tool_registry.py`)
+- Centralized tool discovery and loading
+- Loads from `roles/{domain}/tools.py` for domain tools
+- Loads from `tools/core/*.py` for infrastructure tools
+- Provides tools to roles via `get_tools(REQUIRED_TOOLS)`
+
+**MessageBus** (`common/message_bus.py`)
+- Pub/sub event system
+- Routes events to registered handlers
+- Enables decoupled role communication
+
+**IntentProcessor** (`common/intent_processor.py`)
+- Processes Intent objects returned by event handlers
+- Executes intent-specific logic (NotificationIntent, AuditIntent, etc.)
+- LLM-safe architecture (scheduled execution, no direct asyncio)
+
+### Memory Architecture
+
+**Dual-Layer System:**
+- **Layer 1**: Realtime Log (last N messages, 24h TTL) - Fast retrieval
+- **Layer 2**: Assessed Memories (LLM-scored importance, graduated TTL) - Long-term storage
+
+**UniversalMemoryProvider** (`common/memory_providers.py`)
+- Redis-backed storage
+- Automatic importance assessment via LLM
+- Memory types: conversation, event, plan, preference, fact
+- Graduated TTL based on importance score
+
+### Fast-Reply Routing
+
+**How it Works:**
+1. Router analyzes request with LLM
+2. Returns role name + confidence score (0-1)
+3. If confidence ≥ 0.95 → Fast-reply execution
+4. If confidence < 0.70 → Fall back to planning/multi-step workflow
+5. Fast-reply roles execute immediately with specialized tools
+
+**Fast-Reply Roles:**
+- Legacy: router, search, summarizer, conversation
+- Domain: timer, calendar, weather, smart_home
+
+**Configuration:**
+```python
+def get_role_config(self) -> dict:
+    return {
+        "fast_reply": True,    # Enable fast-reply
+        "llm_type": "WEAK",    # Or "DEFAULT", "STRONG"
+    }
+```
+
+### Event-Driven Flow
+
+```
+User Request
+    ↓
+Supervisor receives via CommunicationManager
+    ↓
+WorkflowEngine.process_request()
+    ↓
+Router analyzes → Returns (role, confidence)
+    ↓
+[High Confidence] → Fast-Reply Path
+    ↓
+UniversalAgent.assume_role(role)
+    ↓
+RoleRegistry.get_domain_role(role) or get legacy role
+    ↓
+Extract: tools, system_prompt, llm_type
+    ↓
+Execute with lifecycle hooks
+    ↓
+Collect intents from tool calls
+    ↓
+IntentProcessor processes intents
+    ↓
+Return result to user
+```
+
+### Intent-Based Processing
+
+**Pure Function Pattern (LLM-Safe):**
+```python
+# Event handler (pure function)
+def handle_event(event_data: Any, context: LLMSafeEventContext) -> list[Intent]:
+    """Process event, return intents for execution."""
+    return [
+        NotificationIntent(message="Timer expired", channel=context.channel_id),
+        AuditIntent(action="timer_expiry", details={...})
+    ]
+
+# Intent processor (async, executed later)
+async def process_notification_intent(intent: NotificationIntent):
+    """Execute the actual notification."""
+    await communication_manager.send(intent.message, intent.channel)
+```
+
+**Key Intents:**
+- `NotificationIntent` - Send user notifications
+- `AuditIntent` - Log actions for auditing
+- `WorkflowExecutionIntent` - Trigger sub-workflows
+- `TimerExpiryIntent`, `CalendarIntent`, etc. - Domain-specific
 
 ---
 
-### 4. **Present Options, Not Decisions**
+## LLM-Friendly Code Principles
 
-When multiple approaches are valid:
+This codebase follows **LLM-friendly patterns** for easier understanding and modification:
 
-**Bad:**
+### 1. Locality of Behavior
+Related code is physically close together. Avoid deep inheritance hierarchies.
+
+### 2. Explicit Over Implicit
+Use explicit imports, clear function names, obvious behavior. Avoid magic methods.
+
+### 3. Flat Over Nested
+Minimize inheritance and nesting. Prefer composition and explicit function calls.
+
+### 4. Self-Documenting
+Use type hints, descriptive names, comprehensive docstrings. Code explains itself.
+
+### 5. Minimal Abstraction
+Don't abstract too early. One level of abstraction is usually enough.
+
+**Read more:** `docs/64_LLM_FRIENDLY_REFACTORING_PRINCIPLES.md`
+
+---
+
+## Collaboration Guidelines
+
+### Always Ask About:
+
+1. **Implementation Approach** - When multiple valid options exist
+   - "Should this be a domain role or a tool?"
+   - "Fast-reply role or multi-step workflow?"
+   - "Event handler or direct implementation?"
+
+2. **Architecture Decisions** - When changes affect system design
+   - "Should I create a new role or extend existing?"
+   - "Tools in `tools/core/` (infrastructure) or `tools/custom/` (user)?"
+   - "Should this integrate with MessageBus events?"
+
+3. **Breaking Changes** - Always confirm before:
+   - Deleting files or code
+   - Changing public APIs
+   - Modifying role interfaces
+   - Refactoring large sections
+
+4. **Scope** - When requests could be interpreted broadly or narrowly
+   - Clarify what "improve", "fix", "add" means
+   - Define boundaries before proceeding
+   - Ask about edge cases and requirements
+
+### Present Options, Not Decisions
+
+When multiple approaches are valid, present options with pros/cons and let the user choose.
+
+**Example:**
 ```
-"I'll use Redis for caching because it's faster."
-```
+"I see two ways to implement this:
 
-**Good:**
-```
-"For caching, I see two main options:
+Option A: Add to existing timer role
+- Pros: Reuses existing infrastructure, simple
+- Cons: Increases role complexity
 
-Option A: Redis
-- Pros: Faster, distributed, persistence
-- Cons: Additional service, more complexity
-- Best for: Production, multiple servers
-
-Option B: In-memory (Python dict)
-- Pros: Simple, no dependencies, fast for local
-- Cons: Not persistent, single-server only
-- Best for: Development, simple use cases
+Option B: Create new domain role
+- Pros: Clean separation, follows Phase 3 pattern
+- Cons: More files, additional setup
 
 Which fits your needs better?"
 ```
 
----
+### State Your Understanding
 
-### 5. **Confirm Breaking Changes**
+Before implementing significant features, restate your understanding:
 
-**Always ask before:**
-- Deleting files or code
-- Changing public APIs
-- Modifying database schemas
-- Altering configuration formats
-- Refactoring large sections of code
-- Changing dependency versions
-
-**Example:**
 ```
-"I need to delete `old_module.py` as part of this migration.
-This would be a breaking change if anyone imports it.
-Should I proceed, or should we keep it for backward compatibility?"
+"I understand you want to:
+1. [Goal 1]
+2. [Goal 2]
+
+My plan:
+- [Step 1]
+- [Step 2]
+
+Does this match your expectations?"
 ```
 
----
+### Acknowledge Uncertainty
 
-### 6. **Ask About Scope**
-
-When a request could be interpreted broadly or narrowly:
-
-**Example:**
-```
-User: "Improve error handling"
-
-Bad: [Rewrites entire error handling system]
-
-Good: "I can improve error handling. What scope are you thinking?
-1. Add try/catch to a specific function
-2. Improve error messages throughout the codebase
-3. Add error logging system
-4. Create custom exception classes
-5. All of the above
-
-Which would be most valuable?"
-```
+If unsure, say so explicitly:
+- "I'm not certain about the best approach here. Let me investigate."
+- "This could work, but I'd like to check [X] first."
+- "I see potential issues with [Y]. Should I explore alternatives?"
 
 ---
 
-### 7. **Be Explicit About What You're Doing**
+## Key Architectural Decisions
 
-When performing actions, clearly state what you're doing and why:
+### When to Create a Domain Role vs. Tool
 
-**Good Pattern:**
+**Create Domain Role When:**
+- Users directly request this functionality ("set a timer", "check weather")
+- Requires specialized system prompts
+- Needs event handling or intent processing
+- Should be selectable by router
+- Benefits from fast-reply execution
+
+**Create Tool When:**
+- Used BY other roles, not invoked directly
+- Infrastructure/utility function
+- No specialized prompting needed
+- Service layer, not agent layer
+
+**Tools in `tools/core/`**: System infrastructure (memory, notification) - DO NOT MODIFY unless system-level change
+
+**Tools in `tools/custom/`**: User-extensible tools - Add custom capabilities here
+
+### Fast-Reply vs. Multi-Step
+
+**Fast-Reply Roles:**
+- Single-purpose operations
+- No multi-step workflows needed
+- Quick information retrieval
+- Set `fast_reply: True` in `get_role_config()`
+
+**Multi-Step Workflows:**
+- Complex, multi-phase operations
+- Requires planning or decision-making
+- Involves multiple role coordination
+- Use WorkflowEngine task graphs
+
+---
+
+## Testing Patterns
+
+### Domain Role Testing
+
+```python
+# Test role initialization
+async def test_role_initialization():
+    role = TimerRole(tool_registry, llm_factory)
+    await role.initialize()
+    assert len(role.tools) == 3
+
+# Test event handlers (pure functions)
+def test_event_handler():
+    context = LLMSafeEventContext(user_id="test", channel_id="channel")
+    intents = handle_timer_expiry(event_data, context)
+    assert isinstance(intents[0], TimerExpiryIntent)
+
+# Test intent processors
+async def test_intent_processor():
+    intent = NotificationIntent(message="test", channel="test")
+    await process_notification_intent(intent)
+    # Verify notification sent
 ```
-"I'm going to:
-1. Read the existing authentication module
-2. Add password reset functionality
-3. Update the user model
-4. Write tests for the new feature
 
-Starting with step 1..."
+### Testing with Mocks
+
+```python
+# Mock providers for testing
+class MockProvider:
+    pass
+
+providers = type('Providers', (), {
+    'memory': MockProvider(),
+    'communication': MockProvider(),
+})()
+
+await tool_registry.initialize(config={}, providers=providers)
 ```
 
 ---
 
-### 8. **Acknowledge Uncertainty**
+## Common Patterns
 
-If you're unsure about something, **say so**:
+### Adding a New Domain Role
 
-**Good:**
-```
-"I'm not certain about the best approach here. Let me investigate and present options."
-"This could work, but I'd like to check [X] first to be sure."
-"I see potential issues with approach A, but I need clarification on [Y]."
+1. Create directory: `roles/{domain}/`
+2. Create `role.py` with DomainRole class
+3. Create `handlers.py` with event handlers and intent processors
+4. Create `tools.py` with tool implementations
+5. Add to ToolRegistry domain_modules list
+6. Register in RoleRegistry (automatic discovery)
+
+### Adding Event Handlers
+
+```python
+# In handlers.py
+def handle_my_event(event_data: Any, context: LLMSafeEventContext) -> list[Intent]:
+    """LLM-SAFE: Pure function."""
+    return [MyIntent(...)]
+
+# In role.py
+def get_event_handlers(self):
+    from roles.my_domain.handlers import handle_my_event
+    return {"MY_EVENT_TYPE": handle_my_event}
 ```
 
-**Bad:**
-```
-"This is definitely the right way." (when unsure)
-[Proceeds without mentioning uncertainty]
+### Adding Intent Processors
+
+```python
+# In handlers.py
+@dataclass
+class MyIntent(Intent):
+    field: str
+    def validate(self) -> bool:
+        return bool(self.field)
+
+async def process_my_intent(intent: MyIntent):
+    """Execute async operations."""
+    await do_something(intent.field)
+
+# In role.py
+def get_intent_handlers(self):
+    from roles.my_domain.handlers import MyIntent, process_my_intent
+    return {MyIntent: process_my_intent}
 ```
 
 ---
 
-## Project-Specific Guidelines
+## Important Files to Understand
 
-### This Codebase
+**Entry Point:**
+- `cli.py` - Command-line interface
+
+**Core Orchestration:**
+- `supervisor/supervisor.py` - Top-level coordinator
+- `supervisor/workflow_engine.py` - Workflow execution engine
+
+**Agent System:**
+- `llm_provider/universal_agent.py` - Single agent with role assumption
+- `llm_provider/role_registry.py` - Role discovery and management
+- `llm_provider/tool_registry.py` - Tool discovery and loading
+- `llm_provider/factory.py` - LLM provider factory
+
+**Event System:**
+- `common/message_bus.py` - Event pub/sub system
+- `common/intent_processor.py` - Intent execution system
+- `common/intents.py` - Core intent definitions
+
+**Memory:**
+- `common/memory_providers.py` - Dual-layer memory system
+
+**Communication:**
+- `communication/communication_manager.py` - Multi-platform messaging
+
+---
+
+## Documentation to Read
 
 **Architecture:**
-- Phase 3 domain-based role architecture
-- Event-driven design with MessageBus
-- Intent-based workflow system
-- Fast-reply roles for single-purpose operations
-- LLM-friendly code patterns (explicit, flat, documented)
+- `REFACTORING_STATUS_REVIEW.md` - Current architecture status
+- `docs/64_LLM_FRIENDLY_REFACTORING_PRINCIPLES.md` - Code patterns
+- `docs/19_DYNAMIC_EVENT_DRIVEN_ROLE_ARCHITECTURE_DESIGN.md` - Event system
+- `docs/24_UNIFIED_INTENT_PROCESSING_ARCHITECTURE.md` - Intent architecture
 
-**Always Ask About:**
-- Whether to create a new role or extend existing
-- Whether new functionality should be a domain role or tool
-- Whether tools should go in `tools/core/` (infrastructure) or `tools/custom/` (user tools)
-- Whether search and planning should be migrated to domain roles
-- Trade-offs between fast-reply vs. multi-step workflows
+**Migration Guides:**
+- `PHASE3_LIFECYCLE_COMPLETE.md` - Domain role lifecycle
+- `TOOLS_REORGANIZATION_PLAN.md` - Tools structure
 
-**Never Assume:**
-- That a feature belongs in a specific role without asking
-- That the user wants all possible features implemented
-- That you should migrate legacy code without confirmation
-- That you understand the complete workflow without asking
-
----
-
-## Communication Style
-
-### Be Concise But Complete
-
-**Good:**
-```
-"I'll add timer validation. This will:
-- Check duration is positive
-- Limit maximum timer duration
-- Add error messages
-
-Should I also add minimum duration checks?"
-```
-
-**Bad (Too Brief):**
-```
-"I'll add validation."
-```
-
-**Bad (Too Verbose):**
-```
-"I'm going to add validation to the timer system which will include
-checking that the duration is positive because negative timers don't
-make sense and also I'll add a maximum duration check which is important
-for system resources and I'll also add error messages that are user-friendly
-and informative so users understand what went wrong when validation fails..."
-```
-
----
-
-## Decision-Making Framework
-
-Use this framework when facing decisions:
-
-1. **Is it clearly specified?**
-   - YES → Proceed
-   - NO → Ask for clarification
-
-2. **Are there multiple valid approaches?**
-   - YES → Present options
-   - NO → Proceed with the obvious approach
-
-3. **Does it affect architecture or breaking changes?**
-   - YES → Get explicit approval
-   - NO → Proceed (but explain what you're doing)
-
-4. **Could the user have different preferences?**
-   - YES → Ask about preferences
-   - NO → Proceed with reasonable defaults
-
-5. **Would this be surprising to the user?**
-   - YES → Explain and confirm
-   - NO → Proceed
-
----
-
-## Common Scenarios
-
-### Scenario 1: Vague Request
-
-```
-User: "Make it better"
-
-Good Response:
-"I'd be happy to improve [component]. To focus my efforts effectively:
-- What specific issues are you experiencing?
-- What 'better' means to you? (Performance, readability, features, etc.)
-- Are there particular areas you want improved?
-- What's your priority?"
-```
-
-### Scenario 2: Implementation Choice
-
-```
-User: "Add caching"
-
-Good Response:
-"I can add caching. A few questions:
-1. What should be cached? (API responses, database queries, computed values)
-2. Cache duration? (Minutes, hours, days)
-3. Cache backend? (In-memory, Redis, file-based)
-4. Cache invalidation strategy? (TTL, manual, event-based)
-
-What fits your use case?"
-```
-
-### Scenario 3: Ambiguous Scope
-
-```
-User: "Fix the timer bug"
-
-Good Response:
-"I can help fix the timer bug. Can you clarify:
-1. What's the specific bug behavior you're seeing?
-2. When does it happen? (Creation, expiry, cancellation)
-3. Any error messages or logs?
-4. Expected vs. actual behavior?
-
-This will help me identify and fix the right issue."
-```
-
----
-
-## Testing Guidelines
-
-When implementing features:
-
-1. **Ask about test requirements:**
-   - "Should I add tests for this?"
-   - "What test coverage do you expect?"
-   - "Are there specific edge cases to test?"
-
-2. **Don't assume test scope:**
-   - Don't write integration tests if unit tests were requested
-   - Don't skip tests unless explicitly told
-   - Don't over-test obvious code
-
-3. **Clarify test data:**
-   - "Should I use real providers or mocks?"
-   - "What test scenarios are most important?"
-
----
-
-## Documentation Guidelines
-
-**Ask before:**
-- Creating comprehensive documentation (user might not want it)
-- Updating README files (might have specific format)
-- Adding extensive code comments (follow LLM-friendly principles)
-
-**Always document:**
-- Complex algorithms or logic
-- Breaking changes
-- New features or APIs
-- Migration guides
-
----
-
-## Error Handling
-
-When encountering issues:
-
-1. **State the problem clearly:**
-   - "I encountered [specific error]"
-   - "This approach won't work because [reason]"
-
-2. **Present alternatives:**
-   - "Here are two ways to solve this: [options]"
-
-3. **Ask for direction:**
-   - "How would you like me to proceed?"
-   - "Should I try [alternative approach]?"
-
----
-
-## Summary Checklist
-
-Before starting any task, ask yourself:
-
-- [ ] Do I fully understand what the user wants?
-- [ ] Are there multiple ways to implement this?
-- [ ] Would this involve breaking changes?
-- [ ] Are there trade-offs the user should know about?
-- [ ] Do I need clarification on scope?
-- [ ] Should I present options instead of deciding?
-- [ ] Have I stated my understanding for confirmation?
-- [ ] Am I making any assumptions?
-
-If you answered YES to any question, **ask the user before proceeding**.
-
----
-
-## Remember
-
-**The goal is collaborative development, not mind-reading.**
-
-When in doubt, **ASK**. It's better to ask and get clarity than to implement the wrong solution.
-
-Your role is to be a helpful, **consultative** assistant, not to make all decisions independently.
+**Decisions:**
+- `SEARCH_AND_PLANNING_DECISION.md` - Pending migrations
 
 ---
 
 **Last Updated:** 2025-12-22
-**Applies To:** All AI assistants working on this codebase
+**Codebase Version:** Phase 3 Domain Architecture with Tools Reorganization
