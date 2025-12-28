@@ -7,8 +7,9 @@ Central registry for ALL system capabilities (tools).
 import importlib.util
 import inspect
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,11 @@ class ToolRegistry:
                 "tools.core.notification",
                 getattr(providers, "communication", None),
             ),
+            (
+                "summarization",
+                "tools.core.summarization",
+                getattr(providers, "llm_factory", None),
+            ),
         ]
 
         # Domain tool modules (tools associated with domain roles)
@@ -99,7 +105,9 @@ class ToolRegistry:
                 )
 
             except Exception as e:
-                logger.error(f"Failed to load tools from {category}: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to load tools from {category}: {e}", exc_info=True
+                )
 
         self._loaded = True
         logger.info(
@@ -161,9 +169,7 @@ class ToolRegistry:
             logger.error(f"Could not import {module_path}: {e}")
             return []
         except Exception as e:
-            logger.error(
-                f"Error loading tools from {module_path}: {e}", exc_info=True
-            )
+            logger.error(f"Error loading tools from {module_path}: {e}", exc_info=True)
             return []
 
     def _load_tools_from_module_fallback(self, module: Any) -> list[Any]:
@@ -229,7 +235,7 @@ class ToolRegistry:
         # Fallback to string representation
         return str(tool)
 
-    def get_tool(self, tool_name: str) -> Optional[Any]:
+    def get_tool(self, tool_name: str) -> Any | None:
         """Get a specific tool by fully qualified name.
 
         Args:
