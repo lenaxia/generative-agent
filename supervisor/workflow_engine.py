@@ -299,6 +299,23 @@ class WorkflowEngine:
             role = routing_result["route"]
             parameters = routing_result.get("parameters", {})
 
+            # Phase 4: Check if we should use meta-planning for complex requests
+            if role == "planning" and self._is_phase4_enabled():
+                logger.info(
+                    f"🚀 Phase 4: Using meta-planning for complex request '{request_id}'"
+                )
+                # Phase 4 is async, but we're in sync context - schedule it and return request_id immediately
+                import asyncio
+
+                task = asyncio.create_task(
+                    self._handle_phase4_complex_request(request, request_id)
+                )
+                # Store task for tracking
+                if not hasattr(self, "_phase4_tasks"):
+                    self._phase4_tasks = {}
+                self._phase4_tasks[request_id] = task
+                return request_id
+
             # Distinguish planning workflows from fast-replies in logging
             if role == "planning":
                 logger.info(
@@ -1152,6 +1169,35 @@ Current task: {base_prompt}"""
             # Check unified active_workflows storage
             task_context = self.active_workflows.get(request_id)
             if not task_context:
+                # Check Phase 4 tasks
+                if hasattr(self, "_phase4_tasks") and request_id in self._phase4_tasks:
+                    task = self._phase4_tasks[request_id]
+                    if task.done():
+                        # Task completed - check for result or exception
+                        try:
+                            result = task.result()
+                            return {
+                                "request_id": request_id,
+                                "is_completed": True,
+                                "phase": 4,
+                                "result": result,
+                            }
+                        except Exception as e:
+                            return {
+                                "request_id": request_id,
+                                "is_completed": True,
+                                "phase": 4,
+                                "error": str(e),
+                            }
+                    else:
+                        # Task still running
+                        return {
+                            "request_id": request_id,
+                            "is_completed": False,
+                            "phase": 4,
+                            "status": "running",
+                        }
+
                 return {"error": f"Request '{request_id}' not found"}
 
             # Determine if it's a fast reply or complex workflow
@@ -1983,3 +2029,179 @@ Respond with ONLY valid JSON in this exact format:
             f"**{task.task_name}**: {task.result}" for task in completed_tasks.values()
         ]
         return "Workflow completed successfully:\n\n" + "\n\n".join(results)
+
+    def _is_phase4_enabled(self) -> bool:
+        """Check if Phase 4 meta-planning is enabled in config."""
+        try:
+            # Access config through supervisor or environment
+            # For now, check environment variable or assume enabled
+            import os
+
+            return os.getenv("ENABLE_PHASE4_META_PLANNING", "false").lower() == "true"
+        except Exception:
+            return False
+
+    async def _handle_phase4_complex_request(
+        self, request: RequestMetadata, request_id: str
+    ) -> str:
+        """Handle complex request using Phase 4 meta-planning.
+
+        Process:
+        1. Call plan_and_configure_agent() to get AgentConfiguration
+        2. Create runtime agent using RuntimeAgentFactory
+        3. Run agent autonomously
+        4. Collect and process intents
+        5. Return result
+        """
+        from types import SimpleNamespace
+
+        from llm_provider.runtime_agent_factory import RuntimeAgentFactory
+        from roles.core_planning import plan_and_configure_agent
+
+        logger.info(f"🎯 Phase 4 meta-planning starting for: {request.prompt[:100]}...")
+
+        try:
+            # Step 1: Build context for planning (simple object with user_id and channel_id)
+            context = SimpleNamespace(
+                user_id=request.user_id,
+                channel_id=request.channel_id,
+                request_id=request_id,
+            )
+
+            # Step 2: Meta-planning - analyze request and design agent configuration
+            logger.info("📋 Calling plan_and_configure_agent()...")
+            agent_config = await plan_and_configure_agent(
+                request=request.prompt,
+                context=context,
+                tool_registry=self.tool_registry,
+                llm_factory=self.llm_factory,
+            )
+
+            logger.info(
+                f"✅ Meta-planning complete: {len(agent_config.tool_names)} tools selected"
+            )
+            logger.info(f"   Tools: {agent_config.tool_names}")
+            logger.info(f"   Max iterations: {agent_config.max_iterations}")
+
+            # Step 3: Create runtime agent
+            logger.info("🤖 Creating runtime agent...")
+            factory = RuntimeAgentFactory(
+                tool_registry=self.tool_registry, llm_factory=self.llm_factory
+            )
+
+            agent, intent_collector = factory.create_agent(
+                config=agent_config, context=context
+            )
+
+            logger.info(
+                f"✅ Runtime agent created with {len(agent_config.tool_names)} tools"
+            )
+
+            # Step 4: Run agent autonomously (Strands Agent is callable)
+            logger.info(
+                f"🚀 Running agent (max {agent_config.max_iterations} iterations)..."
+            )
+            response = agent(request.prompt)
+
+            # Extract text content from Strands response
+            if hasattr(response, "message") and hasattr(response.message, "content"):
+                content = response.message.content
+                if isinstance(content, list) and len(content) > 0:
+                    # Extract text from content blocks
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            text_parts.append(block["text"])
+                        elif hasattr(block, "text"):
+                            text_parts.append(block.text)
+                    final_output = (
+                        "\n".join(text_parts)
+                        if text_parts
+                        else "Task completed successfully."
+                    )
+                elif isinstance(content, str):
+                    final_output = content
+                else:
+                    final_output = str(response)
+            else:
+                final_output = str(response)
+
+            logger.info(f"✅ Agent execution complete: {len(final_output)} chars")
+
+            # Step 5: Collect intents
+            intents = intent_collector.get_intents()
+            logger.info(f"📦 Collected {len(intents)} intents from execution")
+
+            # Step 6: Process intents
+            if intents and self.intent_processor:
+                logger.info("⚙️  Processing intents...")
+                await self.intent_processor.process_intents(intents)
+                logger.info("✅ Intents processed successfully")
+
+            # Step 7: Clean up and return
+            from common.intent_collector import clear_current_collector
+
+            clear_current_collector()
+
+            logger.info(f"🎉 Phase 4 workflow '{request_id}' completed successfully")
+
+            # Send result back to user via message bus
+            self.message_bus.publish(
+                self,
+                MessageType.SEND_MESSAGE,
+                {
+                    "message": final_output,
+                    "context": {
+                        "channel_id": request.channel_id,
+                        "user_id": request.user_id,
+                        "request_id": request_id,
+                    },
+                },
+            )
+
+            # Publish workflow completed event
+            self.message_bus.publish(
+                self,
+                MessageType.WORKFLOW_COMPLETED,
+                {
+                    "request_id": request_id,
+                    "success": True,
+                    "phase": 4,
+                },
+            )
+
+            return final_output
+
+        except Exception as e:
+            logger.error(f"❌ Phase 4 workflow failed: {e}", exc_info=True)
+            error_message = (
+                f"I encountered an error while processing your request: {str(e)}"
+            )
+
+            # Send error message to user
+            self.message_bus.publish(
+                self,
+                MessageType.SEND_MESSAGE,
+                {
+                    "message": error_message,
+                    "context": {
+                        "channel_id": request.channel_id,
+                        "user_id": request.user_id,
+                        "request_id": request_id,
+                    },
+                },
+            )
+
+            # Publish workflow failed event
+            self.message_bus.publish(
+                self,
+                MessageType.WORKFLOW_FAILED,
+                {
+                    "request_id": request_id,
+                    "error": str(e),
+                    "success": False,
+                    "phase": 4,
+                },
+            )
+
+            return error_message

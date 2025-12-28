@@ -408,6 +408,204 @@ def save_planning_result(llm_result, context, pre_data: dict):
     return save_to_realtime_log(llm_result, context, pre_data, "planning")
 
 
+# PHASE 4: META-PLANNING (NEW) - Dynamic Agent Configuration
+async def plan_and_configure_agent(
+    request: str, context, tool_registry=None, llm_factory=None
+):
+    """Phase 4: Meta-planning for dynamic agent creation.
+
+    This function analyzes a user request and creates an AgentConfiguration
+    that specifies which tools an agent needs and how it should execute.
+    This replaces TaskGraph generation with runtime agent configuration.
+
+    Args:
+        request: User's original request
+        context: TaskContext with user information and state
+        tool_registry: Optional ToolRegistry (if None, loads from global)
+        llm_factory: Optional LLMFactory (if None, creates a new one)
+
+    Returns:
+        AgentConfiguration with selected tools and execution plan
+
+    Architecture:
+    - Loads ALL available tools from ToolRegistry (not roles)
+    - Uses LLM to analyze request and select appropriate tools
+    - Creates AgentConfiguration with:
+      - plan: Step-by-step execution plan (natural language)
+      - system_prompt: Custom agent system prompt
+      - tool_names: Selected tool names (e.g., ["weather.get_forecast"])
+      - guidance: Specific constraints or guidance
+      - max_iterations: Iteration limit for tool usage
+      - metadata: Planning metadata (confidence, reasoning, etc.)
+    """
+    import json
+
+    from common.agent_configuration import AgentConfiguration
+
+    logger.info(f"Phase 4 meta-planning for request: {request[:100]}...")
+
+    # 1. Load tool registry
+    if tool_registry is None:
+        from llm_provider.tool_registry import ToolRegistry
+
+        tool_registry = ToolRegistry.get_global_registry()
+
+    # 2. Load all available tools and format for LLM
+    all_tools = tool_registry.format_for_llm()
+    logger.info(f"Loaded {len(tool_registry.get_all_tools())} tools from registry")
+
+    # 3. Load context (memories, recent conversations)
+    from roles.shared_tools.lifecycle_helpers import load_dual_layer_context
+
+    memory_context = load_dual_layer_context(
+        context, memory_types=["plan", "conversation", "event"]
+    )
+
+    # 4. Build meta-planning prompt
+    planning_prompt = f"""TASK: Analyze the user request and design a custom agent configuration.
+
+USER REQUEST:
+{request}
+
+RECENT CONTEXT:
+{memory_context.get('realtime_context', 'No recent context')}
+
+IMPORTANT MEMORIES:
+{memory_context.get('assessed_memories', 'No important memories')}
+
+AVAILABLE TOOLS:
+{all_tools}
+
+YOUR JOB:
+1. Analyze the request and determine what tools are needed
+2. Create a step-by-step execution plan
+3. Design a custom system prompt for the agent
+4. Select ONLY the tools that are necessary (be selective!)
+5. Provide specific guidance or constraints
+
+RESPOND WITH ONLY VALID JSON - NO EXPLANATIONS, NO ADDITIONAL TEXT:
+
+{{
+  "plan": "Step-by-step natural language plan\\n1. First step\\n2. Second step\\n3. etc.",
+  "system_prompt": "You are a helpful assistant that... [define agent's role and behavior]",
+  "tool_names": ["domain.tool_name", "domain.tool_name"],
+  "guidance": "Specific guidance, constraints, or preferences",
+  "max_iterations": 10,
+  "metadata": {{
+    "confidence": 0.85,
+    "reasoning": "Brief explanation of tool selection",
+    "complexity": "simple|moderate|complex"
+  }}
+}}
+
+IMPORTANT:
+- Be selective with tools - only include what's truly needed
+- max_iterations typically 5-15 depending on complexity
+- system_prompt should be specific to this task
+- plan should be actionable and clear
+- ONLY JSON, no other text
+"""
+
+    # 5. Call LLM (STRONG model for meta-planning)
+    try:
+        from llm_provider.factory import LLMFactory, LLMType
+
+        # Use provided llm_factory or create a new one
+        if llm_factory is None:
+            from llm_provider.factory import LLMFactory
+
+            llm_factory = LLMFactory()
+
+        model = llm_factory.create_strands_model(LLMType.STRONG)
+
+        # Wrap model in Agent to make it callable
+        from strands import Agent
+
+        agent = Agent(
+            model=model,
+            system_prompt="You are a meta-planning assistant that analyzes user requests and selects appropriate tools.",
+        )
+
+        logger.info("Calling LLM for meta-planning...")
+        response = agent(planning_prompt)
+
+        # Extract text from Strands response
+        if hasattr(response, "message") and hasattr(response.message, "content"):
+            content = response.message.content
+            if isinstance(content, list) and len(content) > 0:
+                result = (
+                    content[0].get("text", "")
+                    if isinstance(content[0], dict)
+                    else getattr(content[0], "text", str(response))
+                )
+            elif isinstance(content, str):
+                result = content
+            else:
+                result = str(response)
+        else:
+            result = str(response)
+
+        # 6. Parse LLM response
+        clean_json = result
+        if not result.strip().startswith("{"):
+            # Try to extract JSON using regex
+            json_match = re.search(r"\{.*\}", result, re.DOTALL)
+            if json_match:
+                clean_json = json_match.group(0)
+                logger.info("Extracted JSON from mixed content")
+            else:
+                raise ValueError("No valid JSON found in LLM response")
+
+        config_dict = json.loads(clean_json)
+
+        # 7. Create AgentConfiguration
+        agent_config = AgentConfiguration(
+            plan=config_dict.get("plan", "Execute the user's request"),
+            system_prompt=config_dict.get(
+                "system_prompt", "You are a helpful assistant."
+            ),
+            tool_names=config_dict.get("tool_names", []),
+            guidance=config_dict.get("guidance", ""),
+            max_iterations=config_dict.get("max_iterations", 10),
+            metadata=config_dict.get("metadata", {}),
+        )
+
+        # 8. Validate configuration
+        if not agent_config.validate():
+            raise ValueError("Invalid agent configuration generated by LLM")
+
+        logger.info(
+            f"Meta-planning complete: {len(agent_config.tool_names)} tools selected, "
+            f"max_iterations={agent_config.max_iterations}"
+        )
+        logger.info(f"Selected tools: {agent_config.tool_names}")
+
+        return agent_config
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse meta-planning JSON: {e}")
+        # Fallback: create minimal configuration
+        return AgentConfiguration(
+            plan="Unable to create detailed plan. Will attempt to handle the request.",
+            system_prompt="You are a helpful assistant that can use available tools to help the user.",
+            tool_names=[],  # No tools selected
+            guidance="Best effort approach",
+            max_iterations=10,
+            metadata={"error": str(e), "fallback": True},
+        )
+    except Exception as e:
+        logger.error(f"Meta-planning failed: {e}", exc_info=True)
+        # Fallback: create minimal configuration
+        return AgentConfiguration(
+            plan="Error during planning. Will attempt basic response.",
+            system_prompt="You are a helpful assistant.",
+            tool_names=[],
+            guidance="Error recovery mode",
+            max_iterations=5,
+            metadata={"error": str(e), "fallback": True},
+        )
+
+
 # 5. ROLE REGISTRATION (auto-discovery)
 def register_role():
     """Register the planning role."""

@@ -234,6 +234,7 @@ feature_flags:
   enable_context_awareness: true # Enable context-aware request processing
   enable_memory_assessment: true # Enable LLM-based memory importance assessment
   enable_location_tracking: true # Enable MQTT location tracking
+  enable_phase4_meta_planning: true # Enable Phase 4 meta-planning with dynamic agent creation
 
 # Household Assistant Configuration
 household_assistant:
