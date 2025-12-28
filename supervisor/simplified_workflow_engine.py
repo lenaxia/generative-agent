@@ -128,11 +128,38 @@ class SimplifiedWorkflowEngine:
                 context=context,
             )
 
-            # Step 2: Run agent autonomously
+            # Step 2: Prepare execution prompt with plan (if available)
+            execution_prompt = request
+            if "execution_plan" in agent_config.metadata:
+                execution_plan = agent_config.metadata["execution_plan"]
+                logger.info(
+                    f"Using execution plan {execution_plan.plan_id} with {len(execution_plan.steps)} steps"
+                )
+
+                # Format execution plan for agent
+                plan_text = self._format_execution_plan(execution_plan)
+                execution_prompt = f"""Execute the following request using the provided execution plan:
+
+REQUEST:
+{request}
+
+EXECUTION PLAN (ID: {execution_plan.plan_id}):
+{plan_text}
+
+IMPORTANT:
+- Follow the execution plan steps in order
+- Call the specified tools for each step
+- If a step fails, you can call replan() tool to revise the plan
+- Mark steps as completed as you progress
+- Provide a comprehensive final response
+
+Execute the plan now:"""
+
+            # Step 3: Run agent autonomously
             logger.info(
                 f"Running agent with max {agent_config.max_iterations} iterations"
             )
-            result = await runtime_agent.run(request)
+            result = await runtime_agent.run(execution_prompt)
 
             # Log execution metadata
             logger.info(
@@ -222,6 +249,30 @@ class SimplifiedWorkflowEngine:
             error="Fast-path not yet integrated",
         )
 
+    def _format_execution_plan(self, execution_plan: Any) -> str:
+        """Format execution plan for agent prompt.
+
+        Args:
+            execution_plan: ExecutionPlan object with steps
+
+        Returns:
+            str: Formatted plan text for agent
+        """
+        lines = []
+        lines.append(f"Reasoning: {execution_plan.reasoning}")
+        lines.append(f"\nSteps ({len(execution_plan.steps)} total):")
+
+        for step in execution_plan.steps:
+            lines.append(f"\n{step.step_number}. {step.description}")
+            lines.append(f"   Tool: {step.tool_name}")
+            if step.parameters:
+                lines.append(f"   Parameters: {step.parameters}")
+            if step.depends_on:
+                lines.append(f"   Depends on steps: {step.depends_on}")
+            lines.append(f"   Status: {step.status.value}")
+
+        return "\n".join(lines)
+
     def get_status(self) -> dict[str, Any]:
         """
         Get current engine status and statistics.
@@ -238,5 +289,7 @@ class SimplifiedWorkflowEngine:
                 "dag_execution": False,
                 "checkpointing": False,
                 "result_sharing": False,
+                "execution_planning": True,
+                "dynamic_replanning": True,
             },
         }

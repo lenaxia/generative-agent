@@ -580,6 +580,47 @@ IMPORTANT:
         )
         logger.info(f"Selected tools: {agent_config.tool_names}")
 
+        # 9. Create execution plan using planning tools (Phase 4 enhancement)
+        try:
+            # Get planning tools
+            planning_tools = tool_registry.get_tools(["planning.create_execution_plan"])
+            if planning_tools and len(planning_tools) > 0:
+                create_plan_tool = planning_tools[0]
+
+                # Create structured execution plan
+                execution_plan = await create_plan_tool(
+                    request=request,
+                    selected_tools=agent_config.tool_names,
+                    context={
+                        "user_id": getattr(context, "user_id", "unknown"),
+                        "channel_id": getattr(context, "channel_id", "unknown"),
+                        "workflow_id": getattr(context, "workflow_id", None),
+                    },
+                )
+
+                # Add execution plan to agent configuration metadata
+                agent_config.metadata["execution_plan"] = execution_plan
+                agent_config.metadata["execution_plan_id"] = execution_plan.plan_id
+
+                # Add replan tool to agent's toolset for dynamic replanning
+                if "planning.replan" not in agent_config.tool_names:
+                    agent_config.tool_names.append("planning.replan")
+                    logger.info("Added planning.replan tool to agent's toolset")
+
+                logger.info(
+                    f"Created execution plan {execution_plan.plan_id} with {len(execution_plan.steps)} steps"
+                )
+
+            else:
+                logger.warning(
+                    "Planning tools not available, skipping execution plan creation"
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to create execution plan: {e}", exc_info=True)
+            # Continue without execution plan (graceful degradation)
+            logger.warning("Continuing without structured execution plan")
+
         return agent_config
 
     except json.JSONDecodeError as e:
