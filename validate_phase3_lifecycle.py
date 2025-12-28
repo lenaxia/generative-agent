@@ -16,6 +16,7 @@ Usage:
 
 import asyncio
 import sys
+
 from colorama import Fore, Style, init
 
 # Initialize colorama
@@ -56,8 +57,8 @@ async def validate_phase3_lifecycle():
     try:
         # Initialize system
         print_info("Initializing system components...")
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         llm_factory = LLMFactory({})
@@ -143,10 +144,11 @@ async def validate_phase3_lifecycle():
                 return 1
 
             # Check for role name in prompt
-            if role_name not in prompt.lower() and role_name.replace("_", " ") not in prompt.lower():
-                print_warning(
-                    f"{role_name}: System prompt may not be role-specific"
-                )
+            if (
+                role_name not in prompt.lower()
+                and role_name.replace("_", " ") not in prompt.lower()
+            ):
+                print_warning(f"{role_name}: System prompt may not be role-specific")
 
             print_success(f"{role_name}: System prompt present ({len(prompt)} chars)")
 
@@ -165,9 +167,7 @@ async def validate_phase3_lifecycle():
             llm_type = domain_role.get_llm_type()
 
             if expected_type not in str(llm_type):
-                print_warning(
-                    f"{role_name}: Expected {expected_type}, got {llm_type}"
-                )
+                print_warning(f"{role_name}: Expected {expected_type}, got {llm_type}")
             else:
                 print_success(f"{role_name}: {llm_type}")
 
@@ -175,14 +175,13 @@ async def validate_phase3_lifecycle():
         print_header("CHECK 6: UniversalAgent Integration")
 
         # Check that UniversalAgent's assume_role checks for domain roles
-        from llm_provider.universal_agent import UniversalAgent
         import inspect
+
+        from llm_provider.universal_agent import UniversalAgent
 
         source = inspect.getsource(UniversalAgent.assume_role)
         if "get_domain_role" not in source:
-            print_error(
-                "UniversalAgent.assume_role() doesn't check for domain roles"
-            )
+            print_error("UniversalAgent.assume_role() doesn't check for domain roles")
             return 1
 
         print_success("UniversalAgent.assume_role() checks for domain roles")
@@ -197,7 +196,9 @@ async def validate_phase3_lifecycle():
         # Summary
         print_header("VALIDATION SUMMARY")
         print_success("All checks passed!")
-        print("\nPhase 3 domain roles are lifecycle-compatible and ready for production.")
+        print(
+            "\nPhase 3 domain roles are lifecycle-compatible and ready for production."
+        )
         print("\nProduction Testing:")
         print("  Run: python3 cli.py")
         print("\n  Test queries:")

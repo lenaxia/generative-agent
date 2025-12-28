@@ -10,11 +10,11 @@ import pytest
 @pytest.fixture
 def mock_redis():
     """Mock Redis operations."""
-    with patch("common.realtime_log.redis_zadd") as mock_zadd, patch(
-        "common.realtime_log.redis_zrevrange"
-    ) as mock_zrevrange, patch(
-        "common.realtime_log.redis_zremrangebyscore"
-    ) as mock_zremrangebyscore:
+    with (
+        patch("common.realtime_log.redis_zadd") as mock_zadd,
+        patch("common.realtime_log.redis_zrevrange") as mock_zrevrange,
+        patch("common.realtime_log.redis_zremrangebyscore") as mock_zremrangebyscore,
+    ):
         mock_zadd.return_value = {"success": True}
         mock_zrevrange.return_value = {"success": True, "values": []}
         mock_zremrangebyscore.return_value = {"success": True}

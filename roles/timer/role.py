@@ -7,7 +7,8 @@ Phase 3: Domain-based role with event handlers and intent processors.
 """
 
 import logging
-from typing import Any, Dict, Callable
+from collections.abc import Callable
+from typing import Any, Dict
 
 from common.task_context import TaskContext
 from llm_provider.factory import LLMFactory, LLMType
@@ -117,7 +118,7 @@ Provide clear confirmations when timers are set."""
         """
         return self.tools
 
-    def get_event_handlers(self) -> Dict[str, Callable]:
+    def get_event_handlers(self) -> dict[str, Callable]:
         """Get event handlers for this role.
 
         Returns:
@@ -129,21 +130,21 @@ Provide clear confirmations when timers are set."""
             "FAST_HEARTBEAT_TICK": handle_heartbeat_monitoring,
         }
 
-    def get_intent_handlers(self) -> Dict[type, Callable]:
+    def get_intent_handlers(self) -> dict[type, Callable]:
         """Get intent handlers for this role.
 
         Returns:
             Dict mapping Intent classes to processor functions
         """
         from roles.timer.handlers import (
-            TimerCreationIntent,
             TimerCancellationIntent,
-            TimerListingIntent,
+            TimerCreationIntent,
             TimerExpiryIntent,
-            process_timer_creation_intent,
+            TimerListingIntent,
             process_timer_cancellation_intent,
-            process_timer_listing_intent,
+            process_timer_creation_intent,
             process_timer_expiry_intent,
+            process_timer_listing_intent,
         )
 
         return {

@@ -37,29 +37,23 @@ def example_calculator(num1: float, num2: float, operation: str = "add") -> dict
             result = num1 * num2
         elif operation == "divide":
             if num2 == 0:
-                return {
-                    "success": False,
-                    "error": "Cannot divide by zero"
-                }
+                return {"success": False, "error": "Cannot divide by zero"}
             result = num1 / num2
         else:
             return {
                 "success": False,
-                "error": f"Unknown operation: {operation}. Use 'add', 'subtract', 'multiply', or 'divide'"
+                "error": f"Unknown operation: {operation}. Use 'add', 'subtract', 'multiply', or 'divide'",
             }
 
         return {
             "success": True,
             "result": result,
             "operation": operation,
-            "inputs": {"num1": num1, "num2": num2}
+            "inputs": {"num1": num1, "num2": num2},
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
 @tool
@@ -91,23 +85,17 @@ def example_text_processor(text: str, operation: str = "uppercase") -> dict:
         elif operation == "word_count":
             result = len(text.split())
         else:
-            return {
-                "success": False,
-                "error": f"Unknown operation: {operation}"
-            }
+            return {"success": False, "error": f"Unknown operation: {operation}"}
 
         return {
             "success": True,
             "result": result,
             "operation": operation,
-            "original_length": original_length
+            "original_length": original_length,
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
 # You can add multiple tools in the same file!

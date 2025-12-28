@@ -48,20 +48,24 @@ def validate_tool_creation():
     print("=" * 60)
 
     # Import all tool creation functions
-    from roles.weather import create_weather_tools
     from roles.calendar import create_calendar_tools
-    from roles.timer import create_timer_tools
-    from roles.smart_home import create_smart_home_tools
     from roles.memory import create_memory_tools
-    from roles.search import create_search_tools
     from roles.notification import create_notification_tools
     from roles.planning import create_planning_tools
+    from roles.search import create_search_tools
+    from roles.smart_home import create_smart_home_tools
+    from roles.timer import create_timer_tools
+    from roles.weather import create_weather_tools
 
     test_cases = [
         ("weather", create_weather_tools, 2),  # get_current, get_forecast
         ("calendar", create_calendar_tools, 2),  # get_schedule, add_calendar_event
         ("timer", create_timer_tools, 3),  # set_timer, cancel_timer, list_timers
-        ("smart_home", create_smart_home_tools, 3),  # ha_call_service, ha_get_state, ha_list_entities
+        (
+            "smart_home",
+            create_smart_home_tools,
+            3,
+        ),  # ha_call_service, ha_get_state, ha_list_entities
         ("memory", create_memory_tools, 2),  # search_memory, get_recent_memories
         ("search", create_search_tools, 2),  # web_search, search_news
         ("notification", create_notification_tools, 1),  # send_notification
@@ -76,12 +80,16 @@ def validate_tool_creation():
             tools = create_func(None)
 
             if not isinstance(tools, list):
-                print(f"✗ {domain_name}: create function did not return list, got {type(tools)}")
+                print(
+                    f"✗ {domain_name}: create function did not return list, got {type(tools)}"
+                )
                 all_passed = False
                 continue
 
             if len(tools) != expected_count:
-                print(f"✗ {domain_name}: Expected {expected_count} tools, got {len(tools)}")
+                print(
+                    f"✗ {domain_name}: Expected {expected_count} tools, got {len(tools)}"
+                )
                 all_passed = False
                 continue
 

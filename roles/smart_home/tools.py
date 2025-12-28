@@ -63,7 +63,8 @@ def ha_call_service(
     # The infrastructure will process this via MCP or REST API
     return {
         "success": True,
-        "message": f"Called {domain}.{service}" + (f" on {entity_id}" if entity_id else ""),
+        "message": f"Called {domain}.{service}"
+        + (f" on {entity_id}" if entity_id else ""),
         "intent": {
             "type": "HomeAssistantServiceIntent",
             "domain": domain,

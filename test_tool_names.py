@@ -5,9 +5,10 @@ import logging
 
 logging.basicConfig(level=logging.WARNING)
 
+
 async def check_tool_names():
-    from llm_provider.factory import LLMFactory
     from common.message_bus import MessageBus
+    from llm_provider.factory import LLMFactory
     from supervisor.workflow_engine import WorkflowEngine
 
     llm_factory = LLMFactory({})
@@ -53,5 +54,6 @@ async def check_tool_names():
                     tool = workflow_engine.tool_registry.get_tool(req_tool)
                     status = "✓" if tool else "✗"
                     print(f"    {status} {req_tool}")
+
 
 asyncio.run(check_tool_names())

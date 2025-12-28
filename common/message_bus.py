@@ -6,9 +6,9 @@ event handling, and workflow coordination across the system.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from enum import Enum
 from typing import Any, Optional
-from collections.abc import Callable
 
 from common.event_context import LLMSafeEventContext, create_context_from_event_data
 from common.intent_processor import IntentProcessor
@@ -501,9 +501,7 @@ class MessageBus:
 
         logger.info(f"Subscribed {subscriber} to event '{event_type}'")
 
-    def unsubscribe(
-        self, subscriber, message_type, callback: Callable | None = None
-    ):
+    def unsubscribe(self, subscriber, message_type, callback: Callable | None = None):
         """Unsubscribe from messages of a specific type.
 
         Removes a subscriber's callback(s) for the specified message type.

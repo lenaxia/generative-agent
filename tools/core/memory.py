@@ -48,7 +48,9 @@ def _get_memory_provider():
     """Get the memory provider instance."""
     if _memory_provider is None:
         # Fallback: try to get from context or raise error
-        raise RuntimeError("Memory provider not initialized. Call create_memory_tools first.")
+        raise RuntimeError(
+            "Memory provider not initialized. Call create_memory_tools first."
+        )
     return _memory_provider
 
 

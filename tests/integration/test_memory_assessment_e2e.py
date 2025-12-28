@@ -30,14 +30,15 @@ def mock_assessment():
 @pytest.mark.asyncio
 async def test_multi_turn_conversation_to_assessed_memory(mock_assessment):
     """Test full flow from conversation to assessed memory."""
-    with patch(
-        "common.realtime_log.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor, patch(
-        "common.realtime_log.mark_as_analyzed"
+    with (
+        patch("common.realtime_log.get_unanalyzed_messages") as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+        patch("common.realtime_log.mark_as_analyzed"),
     ):
         mock_get_unanalyzed.return_value = [
             {
@@ -73,13 +74,14 @@ async def test_multi_turn_conversation_to_assessed_memory(mock_assessment):
 @pytest.mark.asyncio
 async def test_inactivity_timeout_triggers_analysis(mock_assessment):
     """Test inactivity timeout triggers analysis."""
-    with patch("common.realtime_log._get_redis_client") as mock_redis, patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch("common.realtime_log._get_redis_client") as mock_redis,
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         mock_client = MagicMock()
         mock_redis.return_value = mock_client
 
@@ -111,14 +113,15 @@ async def test_inactivity_timeout_triggers_analysis(mock_assessment):
 @pytest.mark.asyncio
 async def test_assessment_creates_memory_with_correct_ttl(mock_assessment):
     """Test assessment creates memory with correct TTL."""
-    with patch(
-        "common.realtime_log.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor, patch(
-        "common.realtime_log.mark_as_analyzed"
+    with (
+        patch("common.realtime_log.get_unanalyzed_messages") as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+        patch("common.realtime_log.mark_as_analyzed"),
     ):
         mock_get_unanalyzed.return_value = [
             {
@@ -154,9 +157,12 @@ async def test_dual_layer_context_loading_works():
     from common.providers.universal_memory_provider import UniversalMemory
     from roles.core_conversation import load_conversation_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = [
             {
                 "user": "Hello",
@@ -200,9 +206,12 @@ async def test_cross_role_memory_with_realtime():
     from common.providers.universal_memory_provider import UniversalMemory
     from roles.core_calendar import load_calendar_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = [
             {
                 "user": "Schedule meeting",
@@ -295,13 +304,16 @@ async def test_summary_and_topics_in_memory(mock_assessment):
 @pytest.mark.asyncio
 async def test_analyze_conversation_tool_works():
     """Test analyze_conversation tool works."""
-    with patch("common.realtime_log._get_redis_client") as mock_redis, patch(
-        "common.realtime_log.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch("common.realtime_log._get_redis_client") as mock_redis,
+        patch("common.realtime_log.get_unanalyzed_messages") as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         mock_client = MagicMock()
         mock_redis.return_value = mock_client
 
@@ -322,14 +334,16 @@ async def test_analyze_conversation_tool_works():
 @pytest.mark.asyncio
 async def test_full_workflow_integration(mock_assessment):
     """Test complete workflow integration."""
-    with patch("common.realtime_log._get_redis_client") as mock_redis, patch(
-        "common.realtime_log.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
+    with (
+        patch("common.realtime_log._get_redis_client") as mock_redis,
+        patch("common.realtime_log.get_unanalyzed_messages") as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+        patch("roles.shared_tools.conversation_analysis.mark_as_analyzed"),
     ):
         mock_client = MagicMock()
         mock_redis.return_value = mock_client

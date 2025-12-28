@@ -68,9 +68,12 @@ def test_conversation_loads_both_layers(mock_realtime_messages, mock_assessed_me
     """Test conversation role loads both layers."""
     from roles.core_conversation import load_conversation_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = mock_realtime_messages
 
         mock_provider = MagicMock()
@@ -93,9 +96,12 @@ def test_calendar_loads_both_layers(mock_realtime_messages, mock_assessed_memori
     """Test calendar role loads both layers."""
     from roles.core_calendar import load_calendar_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = mock_realtime_messages
 
         mock_provider = MagicMock()
@@ -116,9 +122,12 @@ def test_planning_loads_both_layers(mock_realtime_messages, mock_assessed_memori
     """Test planning role loads both layers."""
     from roles.core_planning import load_planning_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = mock_realtime_messages
 
         mock_provider = MagicMock()
@@ -149,9 +158,12 @@ def test_realtime_context_formatted():
         }
     ]
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = messages
 
         mock_provider = MagicMock()
@@ -185,9 +197,12 @@ def test_assessed_context_formatted():
         )
     ]
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -207,9 +222,12 @@ def test_empty_realtime_handled():
     """Test empty realtime log handled."""
     from roles.core_conversation import load_conversation_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -228,9 +246,12 @@ def test_empty_assessed_handled():
     """Test empty assessed memories handled."""
     from roles.core_conversation import load_conversation_context
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -285,9 +306,12 @@ def test_importance_filtering():
         ),
     ]
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -319,9 +343,12 @@ def test_message_counts_accurate():
         for i in range(5)
     ]
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = messages
 
         mock_provider = MagicMock()

@@ -78,6 +78,7 @@ async def get_current_weather(location: str) -> str:
         logger.info(f"Weather retrieved successfully for {location}")
 
         import json
+
         return json.dumps(result, indent=2)
 
     except Exception as e:
@@ -90,6 +91,7 @@ async def get_current_weather(location: str) -> str:
         }
 
         import json
+
         return json.dumps(result, indent=2)
 
 
@@ -134,11 +136,10 @@ async def get_forecast(location: str, days: int = 7) -> str:
             "status": "success",
         }
 
-        logger.info(
-            f"Forecast retrieved for {location}: {len(forecast_data)} periods"
-        )
+        logger.info(f"Forecast retrieved for {location}: {len(forecast_data)} periods")
 
         import json
+
         return json.dumps(result, indent=2)
 
     except Exception as e:
@@ -151,6 +152,7 @@ async def get_forecast(location: str, days: int = 7) -> str:
         }
 
         import json
+
         return json.dumps(result, indent=2)
 
 

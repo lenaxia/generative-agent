@@ -54,15 +54,20 @@ def mock_assessment():
 @pytest.mark.asyncio
 async def test_analyze_conversation_success(mock_unanalyzed_messages, mock_assessment):
     """Test successful analysis creates memories."""
-    with patch(
-        "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
-    ) as mock_mark_analyzed, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch(
+            "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.mark_as_analyzed"
+        ) as mock_mark_analyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         # Setup mocks
         mock_get_unanalyzed.return_value = mock_unanalyzed_messages
         mock_assessor = AsyncMock()
@@ -108,15 +113,20 @@ async def test_analyze_conversation_marks_analyzed(
     mock_unanalyzed_messages, mock_assessment
 ):
     """Test messages marked as analyzed."""
-    with patch(
-        "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
-    ) as mock_mark_analyzed, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch(
+            "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.mark_as_analyzed"
+        ) as mock_mark_analyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         # Setup mocks
         mock_get_unanalyzed.return_value = mock_unanalyzed_messages
         mock_assessor = AsyncMock()
@@ -140,15 +150,18 @@ async def test_analyze_conversation_graduated_ttl(
     mock_unanalyzed_messages, mock_assessment
 ):
     """Test correct TTL applied based on importance."""
-    with patch(
-        "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
-    ), patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch(
+            "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch("roles.shared_tools.conversation_analysis.mark_as_analyzed"),
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         # Setup mocks with high importance
         high_importance_assessment = MemoryAssessment(
             importance=0.8,
@@ -178,15 +191,20 @@ async def test_analyze_conversation_graduated_ttl(
 @pytest.mark.asyncio
 async def test_analyze_conversation_assessment_failure(mock_unanalyzed_messages):
     """Test handles assessment failures gracefully."""
-    with patch(
-        "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
-    ) as mock_mark_analyzed, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch(
+            "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.mark_as_analyzed"
+        ) as mock_mark_analyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         # Setup mocks - assessment returns None (failure)
         mock_get_unanalyzed.return_value = mock_unanalyzed_messages
         mock_assessor = AsyncMock()
@@ -224,15 +242,20 @@ async def test_analyze_conversation_multiple_messages(mock_assessment):
         for i in range(5)
     ]
 
-    with patch(
-        "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
-    ) as mock_assessor_class, patch(
-        "roles.shared_tools.conversation_analysis.mark_as_analyzed"
-    ) as mock_mark_analyzed, patch(
-        "roles.shared_tools.conversation_analysis.get_intent_processor"
-    ) as mock_get_processor:
+    with (
+        patch(
+            "roles.shared_tools.conversation_analysis.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.MemoryImportanceAssessor"
+        ) as mock_assessor_class,
+        patch(
+            "roles.shared_tools.conversation_analysis.mark_as_analyzed"
+        ) as mock_mark_analyzed,
+        patch(
+            "roles.shared_tools.conversation_analysis.get_intent_processor"
+        ) as mock_get_processor,
+    ):
         # Setup mocks
         mock_get_unanalyzed.return_value = messages
         mock_assessor = AsyncMock()

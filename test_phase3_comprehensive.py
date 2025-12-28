@@ -13,13 +13,14 @@ import sys
 
 logging.basicConfig(level=logging.WARNING)
 
+
 async def comprehensive_test():
     print("=" * 70)
     print("PHASE 3 COMPREHENSIVE VALIDATION")
     print("=" * 70)
 
-    from llm_provider.factory import LLMFactory
     from common.message_bus import MessageBus
+    from llm_provider.factory import LLMFactory
     from supervisor.workflow_engine import WorkflowEngine
 
     # Step 1: Initialize system
@@ -33,7 +34,9 @@ async def comprehensive_test():
     # Step 2: Validate ToolRegistry
     print("\n[2/5] Validating ToolRegistry...")
     tool_summary = workflow_engine.tool_registry.get_tool_summary()
-    print(f"      Tools: {tool_summary['total_tools']} across {tool_summary['total_categories']} categories")
+    print(
+        f"      Tools: {tool_summary['total_tools']} across {tool_summary['total_categories']} categories"
+    )
 
     expected_tools = {
         "weather": 2,
@@ -78,7 +81,9 @@ async def comprehensive_test():
 
         actual_tool_count = len(role.tools)
         status = "✓" if actual_tool_count == expected_tool_count else "✗"
-        print(f"      {status} {role_name}: {actual_tool_count}/{expected_tool_count} tools loaded")
+        print(
+            f"      {status} {role_name}: {actual_tool_count}/{expected_tool_count} tools loaded"
+        )
 
         if actual_tool_count != expected_tool_count:
             print(f"         Required: {role.REQUIRED_TOOLS}")
@@ -102,13 +107,17 @@ async def comprehensive_test():
             result = await role.execute(f"Test {role_name} request")
             # If we got here, check the result
             if "No configurations found" in result or "failed" in result.lower():
-                print(f"      ✓ {role_name}: Execution structure works (LLM config needed)")
+                print(
+                    f"      ✓ {role_name}: Execution structure works (LLM config needed)"
+                )
             else:
                 print(f"      ✓ {role_name}: Execution successful")
         except Exception as e:
             error_msg = str(e)
             if "No configurations found" in error_msg:
-                print(f"      ✓ {role_name}: Execution structure works (LLM config needed)")
+                print(
+                    f"      ✓ {role_name}: Execution structure works (LLM config needed)"
+                )
             else:
                 print(f"      ✗ {role_name}: Unexpected error: {error_msg}")
                 execution_ok = False
@@ -123,10 +132,17 @@ async def comprehensive_test():
     checks = []
 
     # Check ToolRegistry is accessible from WorkflowEngine
-    checks.append(("ToolRegistry accessible", hasattr(workflow_engine, "tool_registry")))
+    checks.append(
+        ("ToolRegistry accessible", hasattr(workflow_engine, "tool_registry"))
+    )
 
     # Check RoleRegistry has domain roles
-    checks.append(("Domain roles registered", len(workflow_engine.role_registry.domain_role_instances) > 0))
+    checks.append(
+        (
+            "Domain roles registered",
+            len(workflow_engine.role_registry.domain_role_instances) > 0,
+        )
+    )
 
     # Check tools can be retrieved
     test_tool = workflow_engine.tool_registry.get_tool("weather.get_forecast")
@@ -153,7 +169,9 @@ async def comprehensive_test():
     print("✓ PHASE 3 COMPREHENSIVE VALIDATION PASSED")
     print("=" * 70)
     print("\nSummary:")
-    print(f"  • {tool_summary['total_tools']} tools loaded across {tool_summary['total_categories']} categories")
+    print(
+        f"  • {tool_summary['total_tools']} tools loaded across {tool_summary['total_categories']} categories"
+    )
     print(f"  • 4 domain roles loaded with correct tools")
     print(f"  • All roles have working execution structure")
     print(f"  • System integration verified")
@@ -162,6 +180,7 @@ async def comprehensive_test():
 
     return 0
 
+
 if __name__ == "__main__":
     try:
         exit_code = asyncio.run(comprehensive_test())
@@ -169,5 +188,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Test failed with exception: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

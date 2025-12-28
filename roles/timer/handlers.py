@@ -5,10 +5,10 @@ Migrated from legacy roles/core_timer.py to Phase 3 domain structure.
 
 import logging
 import time
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
-from common.intents import Intent, NotificationIntent, AuditIntent
+from common.intents import AuditIntent, Intent, NotificationIntent
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TimerCreationIntent(Intent):
     """Timer-specific intent: Create a timer with heartbeat-driven expiry."""
+
     timer_id: str
     duration: str
     duration_seconds: int
@@ -37,6 +38,7 @@ class TimerCreationIntent(Intent):
 @dataclass
 class TimerCancellationIntent(Intent):
     """Timer-specific intent: Cancel an existing timer."""
+
     timer_id: str
     user_id: str | None = None
 
@@ -47,6 +49,7 @@ class TimerCancellationIntent(Intent):
 @dataclass
 class TimerListingIntent(Intent):
     """Timer-specific intent: List active timers for a user."""
+
     user_id: str | None = None
     channel_id: str | None = None
 
@@ -57,6 +60,7 @@ class TimerListingIntent(Intent):
 @dataclass
 class TimerExpiryIntent(Intent):
     """Timer-specific intent: Handle timer expiry notification."""
+
     timer_id: str
     original_duration: str
     label: str = ""
@@ -94,7 +98,9 @@ def _get_expired_timers_from_redis(current_time: int) -> list[str]:
 
         # Remove expired timers from the active queue
         if expired_timer_ids:
-            removed_count = client.zremrangebyscore("timer:active_queue", 0, current_time)
+            removed_count = client.zremrangebyscore(
+                "timer:active_queue", 0, current_time
+            )
             logger.debug(f"Removed {removed_count} expired timers from Redis queue")
 
         # Decode timer IDs
@@ -120,7 +126,9 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
 
         expired_timer_ids = _get_expired_timers_from_redis(current_time)
         if expired_timer_ids:
-            logger.info(f"Found {len(expired_timer_ids)} expired timers: {expired_timer_ids}")
+            logger.info(
+                f"Found {len(expired_timer_ids)} expired timers: {expired_timer_ids}"
+            )
 
         # Create expiry intents for each expired timer
         intents = []
@@ -143,13 +151,19 @@ def handle_heartbeat_monitoring(event_data: Any, context) -> list[Intent]:
                     )
                 )
 
-                workflow_info = f" with deferred workflow: {deferred_workflow}" if deferred_workflow else ""
+                workflow_info = (
+                    f" with deferred workflow: {deferred_workflow}"
+                    if deferred_workflow
+                    else ""
+                )
                 logger.info(
                     f"Timer {timer_id} expiring for user {stored_context.get('user_id')} "
                     f"in channel {stored_context.get('channel_id')}{workflow_info}"
                 )
             else:
-                logger.warning(f"Failed to get timer data for {timer_id}: {timer_result}")
+                logger.warning(
+                    f"Failed to get timer data for {timer_id}: {timer_result}"
+                )
 
         if intents:
             logger.info(f"Processing {len(intents)} timer expiry notifications")
@@ -202,7 +216,11 @@ async def process_timer_creation_intent(intent: TimerCreationIntent):
 
 async def process_timer_cancellation_intent(intent: TimerCancellationIntent):
     """Process timer cancellation intents - handles actual Redis operations."""
-    from roles.shared_tools.redis_tools import _get_redis_client, redis_delete, redis_read
+    from roles.shared_tools.redis_tools import (
+        _get_redis_client,
+        redis_delete,
+        redis_read,
+    )
 
     try:
         timer_data = redis_read(f"timer:data:{intent.timer_id}")
@@ -234,7 +252,9 @@ async def process_timer_listing_intent(intent: TimerListingIntent):
         current_time = time.time()
 
         # Get all active timers (score > current_time)
-        active_timer_ids = client.zrangebyscore("timer:active_queue", current_time, "+inf")
+        active_timer_ids = client.zrangebyscore(
+            "timer:active_queue", current_time, "+inf"
+        )
 
         active_timers = []
         for timer_id in active_timer_ids:
@@ -268,18 +288,25 @@ async def process_timer_expiry_intent(intent: TimerExpiryIntent):
             priority="medium",
         )
 
-        logger.info(f"Timer expiry notification ready: {message} -> {notification_intent.channel}")
+        logger.info(
+            f"Timer expiry notification ready: {message} -> {notification_intent.channel}"
+        )
 
         # Process notification through IntentProcessor
         from llm_provider.role_registry import RoleRegistry
+
         role_registry = RoleRegistry.get_global_registry()
         if role_registry and role_registry.intent_processor:
-            await role_registry.intent_processor._process_notification(notification_intent)
+            await role_registry.intent_processor._process_notification(
+                notification_intent
+            )
             logger.info("Timer expiry notification sent via IntentProcessor")
 
         # TODO: Handle deferred workflow execution if specified
         if intent.deferred_workflow:
-            logger.warning(f"Deferred workflow execution not yet implemented: {intent.deferred_workflow}")
+            logger.warning(
+                f"Deferred workflow execution not yet implemented: {intent.deferred_workflow}"
+            )
 
     except Exception as e:
         logger.error(f"Timer expiry processing failed: {e}")

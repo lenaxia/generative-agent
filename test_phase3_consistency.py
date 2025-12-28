@@ -22,8 +22,8 @@ async def check_consistency():
     # Check 1: Tool names in tools.py vs REQUIRED_TOOLS in role.py
     print("\n[1] Checking tool name consistency...")
 
-    from llm_provider.factory import LLMFactory
     from common.message_bus import MessageBus
+    from llm_provider.factory import LLMFactory
     from supervisor.workflow_engine import WorkflowEngine
 
     llm_factory = LLMFactory({})
@@ -59,7 +59,9 @@ async def check_consistency():
         extra = actual_tool_names - required_tools
 
         if missing:
-            issues.append(f"{role_name}: Required tools not found in registry: {missing}")
+            issues.append(
+                f"{role_name}: Required tools not found in registry: {missing}"
+            )
             print(f"    ✗ MISSING: {missing}")
 
         if extra:

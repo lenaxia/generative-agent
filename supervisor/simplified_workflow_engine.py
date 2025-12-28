@@ -203,9 +203,11 @@ Execute the plan now:"""
                 response=f"I encountered an error while processing your request: {str(e)}",
                 metadata={
                     "error_type": type(e).__name__,
-                    "agent_config": agent_config.to_dict()
-                    if hasattr(agent_config, "to_dict")
-                    else str(agent_config),
+                    "agent_config": (
+                        agent_config.to_dict()
+                        if hasattr(agent_config, "to_dict")
+                        else str(agent_config)
+                    ),
                 },
                 success=False,
                 error=str(e),

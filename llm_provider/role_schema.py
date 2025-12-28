@@ -170,9 +170,7 @@ class RoleDefinitionSchema(BaseModel):
     events: EventsConfig | None = None
     lifecycle: LifecycleConfig | None = None
     prompts: PromptsConfig | None = None
-    model_configuration: ModelConfig | None = Field(
-        default=None, alias="model_config"
-    )
+    model_configuration: ModelConfig | None = Field(default=None, alias="model_config")
     tools: ToolsConfig | None = None
     capabilities: CapabilitiesConfig | None = None
     logging: LoggingConfig | None = None

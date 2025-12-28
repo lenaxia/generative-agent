@@ -111,8 +111,8 @@ Be concise and informative in your responses."""
             Dict mapping event types to handler functions
         """
         from roles.weather.handlers import (
-            handle_weather_request,
             handle_weather_data_processing,
+            handle_weather_request,
         )
 
         return {
@@ -127,10 +127,10 @@ Be concise and informative in your responses."""
             Dict mapping intent classes to processor functions
         """
         from roles.weather.handlers import (
-            WeatherIntent,
             WeatherDataIntent,
-            process_weather_intent,
+            WeatherIntent,
             process_weather_data_intent,
+            process_weather_intent,
         )
 
         return {

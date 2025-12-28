@@ -468,9 +468,9 @@ class WorkflowEngine:
                 response_context = {
                     "channel_id": request.channel_id,
                     "user_id": request.user_id,
-                    "request_id": request.metadata.get("request_id")
-                    if request.metadata
-                    else None,
+                    "request_id": (
+                        request.metadata.get("request_id") if request.metadata else None
+                    ),
                 }
 
                 # Include all channel-specific metadata for routing (thread_ts, initial_msg_ts, etc.)

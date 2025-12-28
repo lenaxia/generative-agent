@@ -23,8 +23,8 @@ async def test_phase3_integration():
 
     try:
         # Import required components
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         print("\n✓ Imports successful")
@@ -37,7 +37,9 @@ async def test_phase3_integration():
 
         # Create WorkflowEngine
         print("\n2. Creating WorkflowEngine...")
-        workflow_engine = WorkflowEngine(llm_factory=llm_factory, message_bus=message_bus)
+        workflow_engine = WorkflowEngine(
+            llm_factory=llm_factory, message_bus=message_bus
+        )
         print("✓ WorkflowEngine created")
 
         # Test that ToolRegistry exists
@@ -45,9 +47,7 @@ async def test_phase3_integration():
         assert hasattr(
             workflow_engine, "tool_registry"
         ), "WorkflowEngine missing tool_registry"
-        assert (
-            workflow_engine.tool_registry is not None
-        ), "tool_registry is None"
+        assert workflow_engine.tool_registry is not None, "tool_registry is None"
         print("✓ ToolRegistry exists")
 
         # Initialize Phase 3 systems

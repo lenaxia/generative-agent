@@ -8,8 +8,8 @@ Validates that:
 """
 
 import asyncio
-import sys
 import logging
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,8 +62,8 @@ async def test_timer_fixes():
         # Test 2: Verify UniversalAgent can create intents generically
         print("\n[TEST 2] UniversalAgent creates intents generically")
 
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         llm_factory = LLMFactory({})
@@ -193,7 +193,9 @@ async def test_timer_fixes():
             return 1
 
         if not timer_cancellation_class:
-            print(f"  ✗ FAILED: Could not resolve TimerCancellationIntent from registry")
+            print(
+                f"  ✗ FAILED: Could not resolve TimerCancellationIntent from registry"
+            )
             return 1
 
         print(f"  ✓ All timer intent classes resolved from IntentProcessor registry")

@@ -23,8 +23,8 @@ async def test_lifecycle_integration():
     try:
         # Step 1: Initialize the system
         print("[1/7] Initializing WorkflowEngine with Phase 3 systems...")
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         llm_factory = LLMFactory({})
@@ -62,7 +62,9 @@ async def test_lifecycle_integration():
                 print(f"  ✗ {role_name} still has execute() method (should be removed)")
                 return 1
 
-            print(f"  ✓ {role_name}: lifecycle-compatible with {len(role.get_tools())} tools")
+            print(
+                f"  ✓ {role_name}: lifecycle-compatible with {len(role.get_tools())} tools"
+            )
 
         # Step 3: Test domain role detection via registry
         print("\n[3/7] Testing domain role detection via RoleRegistry...")
@@ -112,17 +114,14 @@ async def test_lifecycle_integration():
                 print(f"  ✗ {role_name} has no LLM type")
                 return 1
 
-            print(f"  ✓ {role_name}: {len(tools)} tools, {len(prompt)} char prompt, {llm_type}")
+            print(
+                f"  ✓ {role_name}: {len(tools)} tools, {len(prompt)} char prompt, {llm_type}"
+            )
 
         # Step 6: Verify tool count matches REQUIRED_TOOLS
         print("\n[6/7] Verifying tool count matches REQUIRED_TOOLS...")
 
-        expected_counts = {
-            "weather": 2,
-            "calendar": 2,
-            "timer": 3,
-            "smart_home": 3
-        }
+        expected_counts = {"weather": 2, "calendar": 2, "timer": 3, "smart_home": 3}
 
         for role_name, expected_count in expected_counts.items():
             domain_role = workflow_engine.role_registry.get_domain_role(role_name)
@@ -130,14 +129,20 @@ async def test_lifecycle_integration():
             required_tools = domain_role.REQUIRED_TOOLS
 
             if len(tools) != expected_count:
-                print(f"  ✗ {role_name}: expected {expected_count} tools, got {len(tools)}")
+                print(
+                    f"  ✗ {role_name}: expected {expected_count} tools, got {len(tools)}"
+                )
                 return 1
 
             if len(required_tools) != expected_count:
-                print(f"  ✗ {role_name}: REQUIRED_TOOLS has {len(required_tools)} items, expected {expected_count}")
+                print(
+                    f"  ✗ {role_name}: REQUIRED_TOOLS has {len(required_tools)} items, expected {expected_count}"
+                )
                 return 1
 
-            print(f"  ✓ {role_name}: {len(tools)} tools loaded (matches {len(required_tools)} REQUIRED_TOOLS)")
+            print(
+                f"  ✓ {role_name}: {len(tools)} tools loaded (matches {len(required_tools)} REQUIRED_TOOLS)"
+            )
 
         # Step 7: Verify lifecycle flow (conceptual)
         print("\n[7/7] Verifying lifecycle flow integration...")
@@ -170,6 +175,7 @@ async def test_lifecycle_integration():
         print("=" * 70)
         print(f"\nError: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -182,5 +188,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Test failed with exception: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

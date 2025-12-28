@@ -119,12 +119,16 @@ def get_schedule(
             formatted_events.append(
                 {
                     "title": event["title"],
-                    "start": event["start"].isoformat()
-                    if isinstance(event["start"], datetime)
-                    else str(event["start"]),
-                    "end": event["end"].isoformat()
-                    if isinstance(event["end"], datetime)
-                    else str(event["end"]),
+                    "start": (
+                        event["start"].isoformat()
+                        if isinstance(event["start"], datetime)
+                        else str(event["start"])
+                    ),
+                    "end": (
+                        event["end"].isoformat()
+                        if isinstance(event["end"], datetime)
+                        else str(event["end"])
+                    ),
                     "location": event.get("location"),
                 }
             )

@@ -22,14 +22,16 @@ async def test_weather_role_execution():
 
     try:
         # Import required components
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         print("\n1. Creating and initializing WorkflowEngine...")
         llm_factory = LLMFactory({})
         message_bus = MessageBus()
-        workflow_engine = WorkflowEngine(llm_factory=llm_factory, message_bus=message_bus)
+        workflow_engine = WorkflowEngine(
+            llm_factory=llm_factory, message_bus=message_bus
+        )
 
         # Initialize Phase 3 systems
         await workflow_engine.initialize_phase3_systems()
@@ -48,24 +50,36 @@ async def test_weather_role_execution():
 
         # Check tools match requirements
         if len(weather_role.tools) != len(weather_role.REQUIRED_TOOLS):
-            print(f"⚠ Warning: Expected {len(weather_role.REQUIRED_TOOLS)} tools, got {len(weather_role.tools)}")
+            print(
+                f"⚠ Warning: Expected {len(weather_role.REQUIRED_TOOLS)} tools, got {len(weather_role.tools)}"
+            )
             print(f"   Required: {weather_role.REQUIRED_TOOLS}")
-            print(f"   Loaded: {[getattr(t, 'name', str(t)) for t in weather_role.tools]}")
+            print(
+                f"   Loaded: {[getattr(t, 'name', str(t)) for t in weather_role.tools]}"
+            )
 
         # Test execution (this will fail without LLM config, but we can see if the structure works)
         print("\n3. Testing role execution structure...")
-        print("   Note: This may fail without LLM configuration, but we're testing the architecture")
+        print(
+            "   Note: This may fail without LLM configuration, but we're testing the architecture"
+        )
 
         try:
             result = await weather_role.execute("What's the weather in Seattle?")
             print(f"✓ Execution completed!")
-            print(f"   Result: {result[:100]}..." if len(result) > 100 else f"   Result: {result}")
+            print(
+                f"   Result: {result[:100]}..."
+                if len(result) > 100
+                else f"   Result: {result}"
+            )
 
         except Exception as e:
             error_msg = str(e)
             # Expected errors indicate structure is working
             if "No configurations found" in error_msg or "bedrock" in error_msg.lower():
-                print(f"✓ Execution structure works (LLM config needed for full execution)")
+                print(
+                    f"✓ Execution structure works (LLM config needed for full execution)"
+                )
                 print(f"   Expected error: {error_msg}")
             else:
                 print(f"✗ Unexpected execution error: {error_msg}")
@@ -88,6 +102,7 @@ async def test_weather_role_execution():
         print("=" * 60)
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

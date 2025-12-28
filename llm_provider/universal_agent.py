@@ -120,7 +120,8 @@ class IntentProcessingHook(HookProvider):
         try:
             # Use reflection to determine which fields the Intent class accepts
             import inspect
-            from dataclasses import fields as dataclass_fields, is_dataclass
+            from dataclasses import fields as dataclass_fields
+            from dataclasses import is_dataclass
 
             if is_dataclass(intent_class):
                 # Get field names from dataclass
@@ -128,7 +129,7 @@ class IntentProcessingHook(HookProvider):
             else:
                 # Fallback: use __init__ signature
                 sig = inspect.signature(intent_class.__init__)
-                valid_fields = set(sig.parameters.keys()) - {'self'}
+                valid_fields = set(sig.parameters.keys()) - {"self"}
 
             # Filter intent_data to only include valid fields
             filtered_data = {
@@ -255,23 +256,29 @@ class UniversalAgent:
         # PHASE 3: Check for domain-based role first (lifecycle-compatible)
         domain_role = self.role_registry.get_domain_role(role)
         if domain_role:
-            logger.info(f"✨ Using Phase 3 domain role: {role} with {len(domain_role.get_tools())} tools")
+            logger.info(
+                f"✨ Using Phase 3 domain role: {role} with {len(domain_role.get_tools())} tools"
+            )
             # Domain roles provide configuration for lifecycle execution
             # Override llm_type if role specifies one
-            if hasattr(domain_role, 'get_llm_type'):
+            if hasattr(domain_role, "get_llm_type"):
                 llm_type = domain_role.get_llm_type()
 
             # Create a minimal role_def for compatibility with rest of lifecycle
-            role_def = type('obj', (object,), {
-                'name': role,
-                'config': {
-                    'type': 'domain_based',
-                    'name': role,
-                    'prompts': {'system': domain_role.get_system_prompt()},
+            role_def = type(
+                "obj",
+                (object,),
+                {
+                    "name": role,
+                    "config": {
+                        "type": "domain_based",
+                        "name": role,
+                        "prompts": {"system": domain_role.get_system_prompt()},
+                    },
+                    "custom_tools": domain_role.get_tools(),
+                    "shared_tools": {},
                 },
-                'custom_tools': domain_role.get_tools(),
-                'shared_tools': {}
-            })()
+            )()
         else:
             # Fall back to old role definition pattern
             role_def = self.role_registry.get_role(role)
@@ -282,18 +289,22 @@ class UniversalAgent:
             domain_role = self.role_registry.get_domain_role(role)
             if domain_role:
                 logger.info(f"✨ Using Phase 3 domain role: {role} (fallback)")
-                if hasattr(domain_role, 'get_llm_type'):
+                if hasattr(domain_role, "get_llm_type"):
                     llm_type = domain_role.get_llm_type()
-                role_def = type('obj', (object,), {
-                    'name': role,
-                    'config': {
-                        'type': 'domain_based',
-                        'name': role,
-                        'prompts': {'system': domain_role.get_system_prompt()},
+                role_def = type(
+                    "obj",
+                    (object,),
+                    {
+                        "name": role,
+                        "config": {
+                            "type": "domain_based",
+                            "name": role,
+                            "prompts": {"system": domain_role.get_system_prompt()},
+                        },
+                        "custom_tools": domain_role.get_tools(),
+                        "shared_tools": {},
                     },
-                    'custom_tools': domain_role.get_tools(),
-                    'shared_tools': {}
-                })()
+                )()
             else:
                 role_def = self.role_registry.get_role(role)
 
@@ -456,22 +467,28 @@ class UniversalAgent:
             domain_role = self.role_registry.get_domain_role(role)
             if domain_role:
                 # Domain roles provide configuration for lifecycle execution
-                logger.info(f"✨ Using Phase 3 domain role in lifecycle: {role} with {len(domain_role.get_tools())} tools")
+                logger.info(
+                    f"✨ Using Phase 3 domain role in lifecycle: {role} with {len(domain_role.get_tools())} tools"
+                )
                 # Override llm_type if role specifies one
-                if hasattr(domain_role, 'get_llm_type'):
+                if hasattr(domain_role, "get_llm_type"):
                     llm_type = domain_role.get_llm_type()
 
                 # Create a minimal role_def for compatibility with rest of lifecycle
-                role_def = type('obj', (object,), {
-                    'name': role,
-                    'config': {
-                        'type': 'domain_based',
-                        'name': role,
-                        'prompts': {'system': domain_role.get_system_prompt()},
+                role_def = type(
+                    "obj",
+                    (object,),
+                    {
+                        "name": role,
+                        "config": {
+                            "type": "domain_based",
+                            "name": role,
+                            "prompts": {"system": domain_role.get_system_prompt()},
+                        },
+                        "custom_tools": domain_role.get_tools(),
+                        "shared_tools": {},
                     },
-                    'custom_tools': domain_role.get_tools(),
-                    'shared_tools': {}
-                })()
+                )()
             else:
                 # Fall back to old role definition pattern
                 role_def = self.role_registry.get_role(role)

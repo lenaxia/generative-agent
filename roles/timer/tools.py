@@ -82,7 +82,9 @@ def set_timer(
 
         # Build message
         if deferred_workflow:
-            message = f"Timer set for {duration_seconds}s - will execute: {deferred_workflow}"
+            message = (
+                f"Timer set for {duration_seconds}s - will execute: {deferred_workflow}"
+            )
         else:
             message = f"Timer set for {duration_seconds}s" + (
                 f" ({label})" if label else ""

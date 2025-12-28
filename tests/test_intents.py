@@ -7,7 +7,6 @@ LLM-safe declarative event processing works correctly.
 Following TDD principles - tests written first.
 """
 
-
 import pytest
 
 from common.intents import (

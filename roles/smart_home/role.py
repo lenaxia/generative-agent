@@ -118,8 +118,8 @@ Provide clear confirmations of smart home actions."""
             Dict mapping event types to handler functions
         """
         from roles.smart_home.handlers import (
-            handle_smart_home_request,
             handle_device_discovery,
+            handle_smart_home_request,
         )
 
         return {

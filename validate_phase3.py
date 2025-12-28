@@ -43,10 +43,10 @@ def validate_role_structure():
     print("Phase 3 Validation: Testing Role Structure")
     print("=" * 60)
 
-    from roles.weather import WeatherRole
     from roles.calendar import CalendarRole
-    from roles.timer import TimerRole
     from roles.smart_home import SmartHomeRole
+    from roles.timer import TimerRole
+    from roles.weather import WeatherRole
 
     test_cases = [
         (
@@ -127,10 +127,10 @@ def validate_role_instantiation():
     print("Phase 3 Validation: Testing Role Instantiation")
     print("=" * 60)
 
-    from roles.weather import WeatherRole
     from roles.calendar import CalendarRole
-    from roles.timer import TimerRole
     from roles.smart_home import SmartHomeRole
+    from roles.timer import TimerRole
+    from roles.weather import WeatherRole
 
     # Create mock dependencies
     class MockToolRegistry:

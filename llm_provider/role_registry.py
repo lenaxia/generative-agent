@@ -211,7 +211,12 @@ class RoleRegistry:
             if role_dir.is_dir() and (role_dir / "role.py").exists():
                 # Skip shared_tools and utility domains (no roles)
                 # Note: search is NOW a full domain role (migrated in Phase 3)
-                if role_dir.name not in ["shared_tools", "memory", "notification", "planning"]:
+                if role_dir.name not in [
+                    "shared_tools",
+                    "memory",
+                    "notification",
+                    "planning",
+                ]:
                     if role_dir.name not in roles:
                         roles.append(role_dir.name)
                         logger.debug(f"Discovered domain-based role: {role_dir.name}")
@@ -245,7 +250,7 @@ class RoleRegistry:
                 name=role_name,
                 config={"name": role_name, "type": "domain_based"},
                 custom_tools=[],
-                shared_tools={}
+                shared_tools={},
             )
 
         # Check for single-file role second (LLM-safe pattern)
@@ -369,7 +374,9 @@ class RoleRegistry:
             # Find the role class (e.g., WeatherRole, CalendarRole, SmartHomeRole)
             # Convention: convert snake_case to PascalCase + "Role"
             # e.g., "smart_home" -> "SmartHomeRole"
-            role_class_name = "".join(word.capitalize() for word in role_name.split("_")) + "Role"
+            role_class_name = (
+                "".join(word.capitalize() for word in role_name.split("_")) + "Role"
+            )
 
             if not hasattr(module, role_class_name):
                 raise ValueError(
@@ -385,7 +392,13 @@ class RoleRegistry:
                 )
 
             # Phase 3: Lifecycle-compatible roles provide configuration, not execution
-            required_methods = ["__init__", "initialize", "get_system_prompt", "get_llm_type", "get_tools"]
+            required_methods = [
+                "__init__",
+                "initialize",
+                "get_system_prompt",
+                "get_llm_type",
+                "get_tools",
+            ]
             for method in required_methods:
                 if not hasattr(role_class, method):
                     raise ValueError(
@@ -535,17 +548,23 @@ class RoleRegistry:
                 )
 
                 # Register event handlers if the role provides them
-                if hasattr(role_instance, "get_event_handlers") and callable(role_instance.get_event_handlers):
+                if hasattr(role_instance, "get_event_handlers") and callable(
+                    role_instance.get_event_handlers
+                ):
                     event_handlers = role_instance.get_event_handlers()
                     for event_type, handler_func in event_handlers.items():
                         if self.message_bus:
-                            self.message_bus.subscribe(role_name, event_type, handler_func)
+                            self.message_bus.subscribe(
+                                role_name, event_type, handler_func
+                            )
                             logger.info(
                                 f"📡 Registered event handler {event_type} for domain role {role_name}"
                             )
 
                 # Register intent handlers if the role provides them
-                if hasattr(role_instance, "get_intent_handlers") and callable(role_instance.get_intent_handlers):
+                if hasattr(role_instance, "get_intent_handlers") and callable(
+                    role_instance.get_intent_handlers
+                ):
                     intent_handlers = role_instance.get_intent_handlers()
                     if self.intent_processor:
                         for intent_class, handler_func in intent_handlers.items():
@@ -557,7 +576,9 @@ class RoleRegistry:
                             )
 
                 # Update RoleDefinition with actual config from domain role
-                if hasattr(role_instance, "get_role_config") and callable(role_instance.get_role_config):
+                if hasattr(role_instance, "get_role_config") and callable(
+                    role_instance.get_role_config
+                ):
                     role_config = role_instance.get_role_config()
                     # Update the placeholder RoleDefinition with actual config
                     if role_name in self.llm_roles:
@@ -571,7 +592,9 @@ class RoleRegistry:
             except Exception as e:
                 logger.error(f"Failed to initialize domain role {role_name}: {e}")
 
-        logger.info(f"Domain roles initialized: {list(self.domain_role_instances.keys())}")
+        logger.info(
+            f"Domain roles initialized: {list(self.domain_role_instances.keys())}"
+        )
 
     def get_domain_role(self, role_name: str) -> Any | None:
         """Get a domain-based role instance by name (Phase 3).

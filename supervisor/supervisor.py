@@ -600,7 +600,9 @@ class Supervisor:
                 if hasattr(self.workflow_engine, "initialize_phase3_systems"):
                     try:
                         await self.workflow_engine.initialize_phase3_systems()
-                        logger.info("Phase 3 dynamic agent systems initialized successfully")
+                        logger.info(
+                            "Phase 3 dynamic agent systems initialized successfully"
+                        )
                     except Exception as e:
                         logger.warning(f"Phase 3 systems initialization failed: {e}")
                         # System continues with existing role pattern
@@ -849,7 +851,9 @@ class Supervisor:
 
             except Exception as e:
                 logger.error(f"Fast heartbeat task error: {e}")
-                await asyncio.sleep(1)  # Brief pause before retry  # Brief pause before retry
+                await asyncio.sleep(
+                    1
+                )  # Brief pause before retry  # Brief pause before retry
 
     def _start_scheduled_tasks(self):
         """Start scheduled tasks for heartbeat operations."""

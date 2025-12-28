@@ -7,6 +7,7 @@ Tests basic functionality without requiring full system initialization.
 import sys
 from pathlib import Path
 
+
 def validate_imports():
     """Test that all Phase 1 components can be imported."""
     print("=" * 60)
@@ -16,24 +17,28 @@ def validate_imports():
     try:
         # Test ToolRegistry import
         from llm_provider.tool_registry import ToolRegistry
+
         print("✓ ToolRegistry imported successfully")
 
         # Test IntentCollector imports
         from common.intent_collector import (
             IntentCollector,
-            set_current_collector,
-            get_current_collector,
             clear_current_collector,
+            get_current_collector,
             register_intent,
+            set_current_collector,
         )
+
         print("✓ IntentCollector imported successfully")
 
         # Test AgentConfiguration import
         from common.agent_configuration import AgentConfiguration
+
         print("✓ AgentConfiguration imported successfully")
 
         # Test RuntimeAgentFactory import
         from llm_provider.runtime_agent_factory import RuntimeAgentFactory
+
         print("✓ RuntimeAgentFactory imported successfully")
 
         return True
@@ -51,7 +56,11 @@ def validate_basic_functionality():
 
     try:
         # Test 1: IntentCollector
-        from common.intent_collector import IntentCollector, set_current_collector, get_current_collector
+        from common.intent_collector import (
+            IntentCollector,
+            get_current_collector,
+            set_current_collector,
+        )
         from common.intents import Intent
 
         collector = IntentCollector()
@@ -117,11 +126,13 @@ def validate_basic_functionality():
 
         # Test summary
         summary = registry.get_tool_summary()
-        print(f"✓ Got registry summary: {summary['total_tools']} tools, {summary['total_categories']} categories")
+        print(
+            f"✓ Got registry summary: {summary['total_tools']} tools, {summary['total_categories']} categories"
+        )
 
         # Test 4: RuntimeAgentFactory (creation only, no actual agent creation)
-        from llm_provider.runtime_agent_factory import RuntimeAgentFactory
         from llm_provider.factory import LLMFactory
+        from llm_provider.runtime_agent_factory import RuntimeAgentFactory
 
         # Note: We can't fully test RuntimeAgentFactory without LLMFactory initialization
         # Just test that it can be instantiated
@@ -132,6 +143,7 @@ def validate_basic_functionality():
 
     except Exception as e:
         import traceback
+
         print(f"✗ Functionality test failed: {e}")
         print(traceback.format_exc())
         return False

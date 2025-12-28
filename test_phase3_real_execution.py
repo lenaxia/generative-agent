@@ -7,7 +7,7 @@ We'll mock the LLM to bypass credential requirements and show the flow works.
 import asyncio
 import logging
 import sys
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,8 +23,8 @@ async def test_real_execution():
     try:
         # Step 1: Initialize the system
         print("[1/6] Initializing WorkflowEngine with Phase 3 systems...")
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         llm_factory = LLMFactory({})
@@ -35,9 +35,7 @@ async def test_real_execution():
 
         await workflow_engine.initialize_phase3_systems()
         print("  ✓ System initialized")
-        print(
-            f"  ✓ {len(workflow_engine.tool_registry._tools)} tools loaded"
-        )
+        print(f"  ✓ {len(workflow_engine.tool_registry._tools)} tools loaded")
         print(
             f"  ✓ {len(workflow_engine.role_registry.domain_role_instances)} domain roles loaded"
         )
@@ -128,8 +126,8 @@ async def test_real_execution_without_mock():
     print("=" * 70)
 
     try:
-        from llm_provider.factory import LLMFactory
         from common.message_bus import MessageBus
+        from llm_provider.factory import LLMFactory
         from supervisor.workflow_engine import WorkflowEngine
 
         llm_factory = LLMFactory({})
@@ -166,9 +164,7 @@ async def test_real_execution_without_mock():
         except ValueError as e:
             if "No configurations found" in str(e):
                 print(f"✓ Expected error: {e}")
-                print(
-                    "✓ Error is from LLM configuration, not Phase 3 implementation"
-                )
+                print("✓ Error is from LLM configuration, not Phase 3 implementation")
                 print("✓ Phase 3 execution flow works correctly!")
                 return 0
             else:

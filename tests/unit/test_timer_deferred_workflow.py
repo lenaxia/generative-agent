@@ -81,11 +81,12 @@ class TestDeferredWorkflowStorage:
             event_context={"user_id": "user456", "channel_id": "slack:C456"},
         )
 
-        with patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_redis_write, patch(
-            "roles.shared_tools.redis_tools._get_redis_client"
-        ) as mock_get_client:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_redis_write,
+            patch(
+                "roles.shared_tools.redis_tools._get_redis_client"
+            ) as mock_get_client,
+        ):
             mock_redis_write.return_value = {"success": True}
             mock_client = MagicMock()
             mock_get_client.return_value = mock_client
@@ -109,11 +110,12 @@ class TestDeferredWorkflowRetrieval:
         """Test that heartbeat monitoring retrieves deferred_workflow from Redis."""
         mock_context = MagicMock()
 
-        with patch(
-            "roles.core_timer._get_expired_timers_from_redis"
-        ) as mock_get_expired, patch(
-            "roles.shared_tools.redis_tools.redis_read"
-        ) as mock_redis_read:
+        with (
+            patch(
+                "roles.core_timer._get_expired_timers_from_redis"
+            ) as mock_get_expired,
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_redis_read,
+        ):
             # Mock expired timer
             mock_get_expired.return_value = ["timer_xyz789"]
 
@@ -246,11 +248,12 @@ class TestDeferredWorkflowIntegration:
             event_context={"user_id": "test_user", "channel_id": "test:channel"},
         )
 
-        with patch(
-            "roles.shared_tools.redis_tools.redis_write"
-        ) as mock_redis_write, patch(
-            "roles.shared_tools.redis_tools._get_redis_client"
-        ) as mock_get_client:
+        with (
+            patch("roles.shared_tools.redis_tools.redis_write") as mock_redis_write,
+            patch(
+                "roles.shared_tools.redis_tools._get_redis_client"
+            ) as mock_get_client,
+        ):
             mock_redis_write.return_value = {"success": True}
             mock_client = MagicMock()
             mock_get_client.return_value = mock_client
@@ -262,11 +265,12 @@ class TestDeferredWorkflowIntegration:
             assert timer_data["deferred_workflow"] == "test workflow execution"
 
         # Step 3: Simulate timer expiry
-        with patch(
-            "roles.core_timer._get_expired_timers_from_redis"
-        ) as mock_get_expired, patch(
-            "roles.shared_tools.redis_tools.redis_read"
-        ) as mock_redis_read:
+        with (
+            patch(
+                "roles.core_timer._get_expired_timers_from_redis"
+            ) as mock_get_expired,
+            patch("roles.shared_tools.redis_tools.redis_read") as mock_redis_read,
+        ):
             mock_get_expired.return_value = [timer_id]
             mock_redis_read.return_value = {
                 "success": True,

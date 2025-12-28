@@ -21,8 +21,8 @@ async def check_tool_implementations():
     issues = []
 
     # Initialize to get actual tools
-    from llm_provider.factory import LLMFactory
     from common.message_bus import MessageBus
+    from llm_provider.factory import LLMFactory
     from supervisor.workflow_engine import WorkflowEngine
 
     llm_factory = LLMFactory({})

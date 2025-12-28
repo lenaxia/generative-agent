@@ -45,7 +45,7 @@ class RuntimeAgentFactory:
         config: AgentConfiguration,
         context: TaskContext | None = None,
         llm_type: LLMType = LLMType.DEFAULT,
-    ) -> Tuple[Agent, IntentCollector]:
+    ) -> tuple[Agent, IntentCollector]:
         """Create runtime agent from configuration.
 
         Args:
@@ -117,15 +117,11 @@ class RuntimeAgentFactory:
                 tools.append(tool)
                 logger.debug(f"Loaded tool: {tool_name}")
             else:
-                logger.warning(
-                    f"Tool '{tool_name}' not found in registry, skipping"
-                )
+                logger.warning(f"Tool '{tool_name}' not found in registry, skipping")
 
         if len(tools) < len(tool_names):
             missing = len(tool_names) - len(tools)
-            logger.warning(
-                f"{missing} tools could not be loaded from registry"
-            )
+            logger.warning(f"{missing} tools could not be loaded from registry")
 
         return tools
 
@@ -156,9 +152,7 @@ class RuntimeAgentFactory:
         # 2. Execution plan
         if config.plan:
             prompt_parts.append("\n## EXECUTION PLAN\n")
-            prompt_parts.append(
-                "Follow this step-by-step plan to complete the task:\n"
-            )
+            prompt_parts.append("Follow this step-by-step plan to complete the task:\n")
             prompt_parts.append(config.plan)
 
         # 3. Specific guidance/constraints
@@ -207,9 +201,7 @@ class RuntimeAgentFactory:
 
         # Metadata (if available)
         if hasattr(context, "metadata") and context.metadata:
-            metadata_str = ", ".join(
-                f"{k}={v}" for k, v in context.metadata.items()
-            )
+            metadata_str = ", ".join(f"{k}={v}" for k, v in context.metadata.items())
             info_parts.append(f"Metadata: {metadata_str}")
 
         return "\n".join(info_parts) if info_parts else ""

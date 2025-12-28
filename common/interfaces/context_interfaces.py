@@ -123,9 +123,7 @@ class ContextProvider(ABC):
     """Generic interface for context providers."""
 
     @abstractmethod
-    async def get_context(
-        self, user_id: str, context_type: str
-    ) -> ContextData | None:
+    async def get_context(self, user_id: str, context_type: str) -> ContextData | None:
         """Get context data for user.
 
         Args:
@@ -141,9 +139,7 @@ class EnvironmentProvider(ABC):
     """Interface for environment data providers (weather, time, etc.)."""
 
     @abstractmethod
-    async def get_environment_data(
-        self, location: str | None = None
-    ) -> dict[str, Any]:
+    async def get_environment_data(self, location: str | None = None) -> dict[str, Any]:
         """Get environment data for location.
 
         Args:

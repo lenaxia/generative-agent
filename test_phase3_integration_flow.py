@@ -45,7 +45,9 @@ async def check_integration_flow():
         await tool_registry.initialize(config={}, providers=providers)
 
         if tool_registry.is_loaded():
-            print(f"  ✓ ToolRegistry initialized with {len(tool_registry._tools)} tools")
+            print(
+                f"  ✓ ToolRegistry initialized with {len(tool_registry._tools)} tools"
+            )
         else:
             issues.append("ToolRegistry not marked as loaded after initialization")
 
@@ -55,8 +57,8 @@ async def check_integration_flow():
 
     # Check 2: RoleRegistry.initialize_domain_roles() works
     print("\n[2] Testing RoleRegistry.initialize_domain_roles()...")
-    from llm_provider.role_registry import RoleRegistry
     from llm_provider.factory import LLMFactory
+    from llm_provider.role_registry import RoleRegistry
 
     try:
         role_registry = RoleRegistry("roles")
@@ -111,9 +113,7 @@ async def check_integration_flow():
     conflicts = set(domain_roles) & set(single_file_roles)
     if conflicts:
         print(f"  ⚠ Conflicts (both patterns exist): {conflicts}")
-        print(
-            f"    Domain-based roles should take priority (checked in _load_role())"
-        )
+        print(f"    Domain-based roles should take priority (checked in _load_role())")
 
         # Verify priority is correct
         for conflict_role in conflicts:
@@ -129,8 +129,8 @@ async def check_integration_flow():
     # Check 4: WorkflowEngine initialization sequence
     print("\n[4] Checking WorkflowEngine initialization sequence...")
 
-    from supervisor.workflow_engine import WorkflowEngine
     from common.message_bus import MessageBus
+    from supervisor.workflow_engine import WorkflowEngine
 
     try:
         message_bus = MessageBus()
@@ -190,10 +190,7 @@ async def check_integration_flow():
             print("  ✓ Supervisor calls initialize_phase3_systems")
 
         # Check it's in start_async_tasks
-        if (
-            "start_async_tasks" in content
-            and "initialize_phase3_systems" in content
-        ):
+        if "start_async_tasks" in content and "initialize_phase3_systems" in content:
             # Rough check that they're related
             start_idx = content.find("async def start_async_tasks")
             phase3_idx = content.find("initialize_phase3_systems")

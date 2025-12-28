@@ -21,13 +21,13 @@ def mock_users_with_unanalyzed():
 @pytest.mark.asyncio
 async def test_inactivity_checker_triggers_analysis():
     """Test analysis triggered after timeout."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: user1 has unanalyzed messages and last message > 30 min ago
         mock_get_unanalyzed.side_effect = lambda user_id: (
             [{"id": "msg1"}] if user_id == "user1" else []
@@ -56,13 +56,13 @@ async def test_inactivity_checker_triggers_analysis():
 @pytest.mark.asyncio
 async def test_inactivity_checker_no_trigger_recent():
     """Test no trigger for recent activity."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: user has unanalyzed messages but last message < 30 min ago
         mock_get_unanalyzed.return_value = [{"id": "msg1"}]
         current_time = time.time()
@@ -87,13 +87,13 @@ async def test_inactivity_checker_no_trigger_recent():
 @pytest.mark.asyncio
 async def test_inactivity_checker_multiple_users():
     """Test handles multiple users."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: user1 and user3 need analysis, user2 doesn't
         mock_get_unanalyzed.side_effect = lambda user_id: (
             [{"id": f"msg_{user_id}"}] if user_id in ["user1", "user3"] else []
@@ -134,13 +134,13 @@ async def test_inactivity_checker_multiple_users():
 @pytest.mark.asyncio
 async def test_inactivity_checker_no_unanalyzed():
     """Test skips users with no unanalyzed messages."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: no unanalyzed messages
         mock_get_unanalyzed.return_value = []
         current_time = time.time()
@@ -160,13 +160,13 @@ async def test_inactivity_checker_no_unanalyzed():
 @pytest.mark.asyncio
 async def test_inactivity_checker_timeout_configuration():
     """Test respects timeout configuration."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: user has unanalyzed messages
         mock_get_unanalyzed.return_value = [{"id": "msg1"}]
         current_time = time.time()
@@ -204,13 +204,13 @@ async def test_inactivity_checker_timeout_configuration():
 @pytest.mark.asyncio
 async def test_inactivity_checker_error_handling():
     """Test handles errors gracefully."""
-    with patch(
-        "supervisor.scheduled_tasks.get_unanalyzed_messages"
-    ) as mock_get_unanalyzed, patch(
-        "supervisor.scheduled_tasks.get_last_message_time"
-    ) as mock_get_last_time, patch(
-        "supervisor.scheduled_tasks.analyze_conversation"
-    ) as mock_analyze:
+    with (
+        patch(
+            "supervisor.scheduled_tasks.get_unanalyzed_messages"
+        ) as mock_get_unanalyzed,
+        patch("supervisor.scheduled_tasks.get_last_message_time") as mock_get_last_time,
+        patch("supervisor.scheduled_tasks.analyze_conversation") as mock_analyze,
+    ):
         # Setup: first user succeeds, second fails
         mock_get_unanalyzed.return_value = [{"id": "msg1"}]
         current_time = time.time()

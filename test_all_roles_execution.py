@@ -12,8 +12,8 @@ async def test_all_roles():
     print("TESTING ALL PHASE 3 DOMAIN ROLES")
     print("=" * 70)
 
-    from llm_provider.factory import LLMFactory
     from common.message_bus import MessageBus
+    from llm_provider.factory import LLMFactory
     from supervisor.workflow_engine import WorkflowEngine
 
     # Initialize system
@@ -22,7 +22,9 @@ async def test_all_roles():
     message_bus = MessageBus()
     workflow_engine = WorkflowEngine(llm_factory=llm_factory, message_bus=message_bus)
     await workflow_engine.initialize_phase3_systems()
-    print(f"✓ {len(workflow_engine.role_registry.domain_role_instances)} roles loaded\n")
+    print(
+        f"✓ {len(workflow_engine.role_registry.domain_role_instances)} roles loaded\n"
+    )
 
     # Test each role
     test_cases = [

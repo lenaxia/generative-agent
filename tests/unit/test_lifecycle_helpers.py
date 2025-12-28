@@ -60,9 +60,12 @@ def test_load_dual_layer_context_success(
     mock_context, mock_realtime_messages, mock_assessed_memories
 ):
     """Test successful dual-layer context loading."""
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = mock_realtime_messages
 
         mock_provider = MagicMock()
@@ -83,9 +86,12 @@ def test_load_dual_layer_context_with_memory_types(
     mock_context, mock_assessed_memories
 ):
     """Test loading with specific memory types."""
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -103,9 +109,12 @@ def test_load_dual_layer_context_with_memory_types(
 
 def test_load_dual_layer_context_with_limits(mock_context):
     """Test loading with custom limits."""
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -148,9 +157,12 @@ def test_load_dual_layer_context_filters_importance(mock_context):
         ),
     ]
 
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
@@ -165,9 +177,12 @@ def test_load_dual_layer_context_filters_importance(mock_context):
 
 def test_load_dual_layer_context_empty_data(mock_context):
     """Test handling empty data."""
-    with patch("common.realtime_log.get_recent_messages") as mock_get_recent, patch(
-        "common.providers.universal_memory_provider.UniversalMemoryProvider"
-    ) as mock_provider_class:
+    with (
+        patch("common.realtime_log.get_recent_messages") as mock_get_recent,
+        patch(
+            "common.providers.universal_memory_provider.UniversalMemoryProvider"
+        ) as mock_provider_class,
+    ):
         mock_get_recent.return_value = []
 
         mock_provider = MagicMock()
