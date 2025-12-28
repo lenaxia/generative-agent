@@ -1699,6 +1699,8 @@ Respond with ONLY valid JSON in this exact format:
                     self.planning = PlaceholderProvider()
 
             providers = Providers()
+            # Add llm_factory for summarization tool
+            providers.llm_factory = self.llm_factory
 
             # Initialize ToolRegistry with providers
             logger.info("Loading tools from domain modules...")
